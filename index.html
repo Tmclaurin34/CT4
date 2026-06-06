@@ -1430,209 +1430,150 @@ async function sendChat() {
   }, 50);
 }
 
-// -- Chat Widget --------------------------------------------------------------
-(function initClicktideChat(){
-  function init(){
-  // Inject styles once
-  if(!document.getElementById('ctChatStyles')){
-    var s=document.createElement('style');
-    s.id='ctChatStyles';
-    var css='@keyframes ctFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}';
-    css+='@keyframes ctPulse{0%,100%{box-shadow:0 4px 20px rgba(77,166,255,.3)}50%{box-shadow:0 4px 32px rgba(77,166,255,.6)}}';
-    css+='@keyframes ctPop{0%{opacity:0;transform:scale(.85)}100%{opacity:1;transform:scale(1)}}';
-    css+='@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}';
-    css+='#ctWrap{position:fixed;bottom:24px;left:24px;z-index:99999;display:flex;flex-direction:column;align-items:flex-start;gap:10px;touch-action:none;user-select:none;}';
-    css+='#ctOrb{width:56px;height:56px;border-radius:50%;background:#080D18;border:2px solid rgba(77,166,255,.35);display:flex;align-items:center;justify-content:center;cursor:grab;animation:ctFloat 3s ease-in-out infinite,ctPulse 3s ease-in-out infinite;flex-shrink:0;}';
-    css+='#ctOrb:active{cursor:grabbing;}';
-    css+='#ctTeaser{background:#0C1220;border:1px solid rgba(77,166,255,.25);border-radius:16px 16px 16px 4px;padding:10px 14px;font-size:13px;color:#F0F4FF;max-width:220px;line-height:1.5;cursor:pointer;animation:ctPop .3s ease;box-shadow:0 8px 24px rgba(0,0,0,.5);}';
-    css+='#ctTeaser b{color:#4DA6FF;}';
-    css+='#ctWindow{position:fixed;left:24px;width:340px;max-height:500px;background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.7);z-index:99998;display:flex;flex-direction:column;overflow:hidden;animation:ctPop .25s ease;}';
-    s.textContent=css;
-    document.head.appendChild(s);
-  }
+// -- Chat Widget --
+var _ctOpen=false,_ctMsgs=[],_ctLoading=false,_ctTi=0,_ctDismissed=false;
+var _ctTeasers=['💬 How does Clicktide work?','🎁 What gifts can I send?','📈 What is the average ROI?','🔌 Which platforms?','💳 What does it cost?'];
+var _ctProxy='https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1/ai-proxy';
+var _ctSys="You are Maya from Clicktide. Be warm, energetic and sales-focused. Clicktide auto-sends branded gifts when customers hit milestones. 14x ROI, 91% open rate. Plans from $29/mo. Always end with a CTA to sign up free. Max 2-3 sentences.";
 
-  // State
-  var chatOpen=false, chatMsgs=[], chatLoading=false, teaserIdx=0, teaserDismissed=false;
-  var wrapX=24, wrapY=24; // distance from left, bottom
-
-  var TEASERS=['💬 <b>How does Clicktide work?</b>','🎁 <b>What gifts can I send?</b>','📈 <b>What is the average ROI?</b>','🔌 <b>Which platforms do you support?</b>','💳 <b>What does it cost?</b>'];
-
-  var SYSTEM="You are Maya, Clicktide's enthusiastic sales assistant. Your #1 job is to get people excited about Clicktide and convert them into signups. Be warm, friendly, and genuinely helpful. Clicktide helps businesses automatically send physical gifts, digital rewards, and personal messages when customers hit key milestones. Key stats: 14x average ROI, 91% gift open rate, 34% churn reduction, 3.2x higher customer lifetime value. Plans from $29/month. Works with Square, Shopify, Clover, Stripe and more. Always end with a call to action to get started free. Keep responses to 2-3 sentences max.";
-
-  function petalLogo(size,gid){
-    var p='M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z';
-    var petals=[0,51.4,102.8,154.2,205.6,257,308.4].map(function(r){return '<path d="'+p+'" fill="url(#'+gid+')" transform="rotate('+r+')" opacity=".9"/>';}).join('');
-    return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 44 44"><defs><linearGradient id="'+gid+'"><stop offset="0%" stop-color="#BAE6FD"/><stop offset="100%" stop-color="#4DA6FF"/></linearGradient></defs><g transform="translate(22,22)">'+petals+'<circle cx="0" cy="0" r="4.5" fill="#080D18"/></g></svg>';
-  }
-
-  function closeX(){return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4DA6FF" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';}
-
-  // Create persistent wrapper div (never destroyed)
+function _ctRender(){
   var wrap=document.getElementById('ctWrap');
-  if(!wrap){
-    wrap=document.createElement('div');
-    wrap.id='ctWrap';
-    document.body.appendChild(wrap);
+  if(!wrap)return;
+  var petal='M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z';
+  var logo='<svg width="32" height="32" viewBox="0 0 44 44"><defs><linearGradient id="ctlg"><stop offset="0%" stop-color="#BAE6FD"/><stop offset="100%" stop-color="#4DA6FF"/></linearGradient></defs><g transform="translate(22,22)">'
+    +[0,51.4,102.8,154.2,205.6,257,308.4].map(function(r){return '<path d="'+petal+'" fill="url(#ctlg)" transform="rotate('+r+')" opacity=".9"/>';}).join('')
+    +'<circle cx="0" cy="0" r="4.5" fill="#080D18"/></g></svg>';
+  var closeIco='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4DA6FF" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  wrap.innerHTML=(!_ctOpen&&!_ctDismissed?'<div onclick="_ctToggle()" style="background:#0C1220;border:1px solid rgba(77,166,255,.25);border-radius:16px 16px 16px 4px;padding:10px 14px;font-size:13px;color:#F0F4FF;max-width:220px;line-height:1.5;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.5);margin-bottom:4px"><b style="color:#4DA6FF">'+_ctTeasers[_ctTi]+'</b></div>':'')
+    +'<div onclick="_ctDrag_click(event)" style="width:56px;height:56px;border-radius:50%;background:#080D18;border:2px solid rgba(77,166,255,.35);display:flex;align-items:center;justify-content:center;cursor:grab;box-shadow:0 4px 20px rgba(77,166,255,.3);animation:ctFloat 3s ease-in-out infinite,ctPulse 3s ease-in-out infinite;flex-shrink:0">'
+    +(_ctOpen?closeIco:logo)+'</div>';
+}
+
+function _ctToggle(){
+  _ctOpen=!_ctOpen;
+  _ctDismissed=true;
+  if(_ctOpen&&_ctMsgs.length===0){
+    _ctMsgs=[{r:'a',t:"👋 Hey! I'm Maya. I help businesses keep customers coming back automatically -- branded gifts, personal messages, digital rewards. What type of business do you run?"}];
   }
-
-  // Separate window div
-  var win=document.getElementById('ctWindow');
-  if(!win){
-    win=document.createElement('div');
-    win.id='ctWindow';
-    win.style.display='none';
-    document.body.appendChild(win);
+  _ctRender();
+  var w=document.getElementById('ctWindow');
+  if(!w)return;
+  if(_ctOpen){
+    _ctRenderWin();
+    w.style.display='flex';
+    w.style.flexDirection='column';
+  } else {
+    w.style.display='none';
   }
+}
 
-  function positionWindow(){
-    var orbBottom=wrapY+56+10;
-    win.style.bottom=orbBottom+'px';
-    win.style.left=wrapX+'px';
-  }
+function _ctRenderWin(){
+  var w=document.getElementById('ctWindow');
+  if(!w)return;
+  var petal='M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z';
+  var sml='<svg width="20" height="20" viewBox="0 0 44 44"><defs><linearGradient id="ctlgs"><stop offset="0%" stop-color="#BAE6FD"/><stop offset="100%" stop-color="#4DA6FF"/></linearGradient></defs><g transform="translate(22,22)">'
+    +[0,51.4,102.8,154.2,205.6,257,308.4].map(function(r){return '<path d="'+petal+'" fill="url(#ctlgs)" transform="rotate('+r+')" opacity=".9"/>';}).join('')
+    +'<circle cx="0" cy="0" r="4.5" fill="#080D18"/></g></svg>';
+  var msgs=_ctMsgs.map(function(m){
+    var u=m.r==='u';
+    return '<div style="display:flex;'+(u?'justify-content:flex-end':'')+'"><div style="max-width:82%;padding:10px 13px;border-radius:'+(u?'14px 14px 4px 14px':'14px 14px 14px 4px')+';background:'+(u?'linear-gradient(135deg,#4DA6FF,#2563EB)':'rgba(255,255,255,.07)')+';font-size:13px;line-height:1.55;color:#F0F4FF">'+m.t+'</div></div>';
+  }).join('');
+  var typing=_ctLoading?'<div style="display:flex"><div style="padding:10px 14px;background:rgba(255,255,255,.07);border-radius:14px 14px 14px 4px;font-size:13px;color:rgba(240,244,255,.5)">Maya is typing...</div></div>':'';
+  w.innerHTML='<div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:10px;flex-shrink:0">'
+    +'<div style="width:32px;height:32px;border-radius:50%;background:#080D18;border:1.5px solid rgba(77,166,255,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0">'+sml+'</div>'
+    +'<div><div style="font-size:13px;font-weight:700;color:#F0F4FF">Maya from Clicktide</div><div style="font-size:11px;color:#22C55E">● Online now</div></div>'
+    +'<button onclick="_ctToggle()" style="margin-left:auto;background:none;border:none;color:rgba(240,244,255,.4);cursor:pointer;font-size:22px;line-height:1">×</button>'
+    +'</div>'
+    +'<div id="ctMsgs" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;max-height:320px">'+msgs+typing+'</div>'
+    +'<div style="padding:12px;border-top:1px solid rgba(255,255,255,.07);display:flex;gap:8px;flex-shrink:0">'
+    +'<input id="ctInp" placeholder="Ask Maya anything..." onkeydown="if(event.key==String.fromCharCode(13))_ctSend()" style="flex:1;padding:9px 13px;border-radius:100px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:#F0F4FF;font-size:13px;outline:none;font-family:Inter,sans-serif"/>'
+    +'<button onclick="_ctSend()" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#4DA6FF,#2563EB);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>'
+    +'</div>';
+  var el=document.getElementById('ctMsgs');
+  if(el) el.scrollTop=el.scrollHeight;
+  var inp=document.getElementById('ctInp');
+  if(inp) setTimeout(function(){inp.focus();},50);
+}
 
-  function render(){
-    // Update wrap position
-    wrap.style.left=wrapX+'px';
-    wrap.style.bottom=wrapY+'px';
+function _ctSend(){
+  var inp=document.getElementById('ctInp');
+  if(!inp)return;
+  var msg=inp.value.trim();
+  if(!msg||_ctLoading)return;
+  inp.value='';
+  _ctMsgs.push({r:'u',t:msg});
+  _ctLoading=true;
+  _ctRenderWin();
+  fetch(_ctProxy,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,system:_ctSys,messages:_ctMsgs.map(function(m){return {role:m.r==='u'?'user':'assistant',content:m.t};})})})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    _ctMsgs.push({r:'a',t:d.content?.[0]?.text||"I'm having trouble connecting. Try again!"});
+    _ctLoading=false;
+    _ctRenderWin();
+  }).catch(function(){
+    _ctMsgs.push({r:'a',t:"Sorry, connection issue. Please try again!"});
+    _ctLoading=false;
+    _ctRenderWin();
+  });
+}
 
-    // Render orb + teaser inside wrap
-    wrap.innerHTML=((!chatOpen&&!teaserDismissed)?'<div id="ctTeaser" onclick="window._ctToggle()">'+TEASERS[teaserIdx]+'</div>':'')
-      +'<div id="ctOrb">'+( chatOpen?closeX():petalLogo(32,'cgl'+Date.now()) )+'</div>';
-
-    // Attach click to orb (separate from drag)
-    var orb=document.getElementById('ctOrb');
-    if(orb) orb.addEventListener('click',function(e){if(!window._ctDragged)window._ctToggle();});
-
-    // Show/hide window
-    if(chatOpen){
-      positionWindow();
-      win.style.display='flex';
-      win.style.flexDirection='column';
-      renderWindow();
-    } else {
-      win.style.display='none';
-    }
-  }
-
-  function renderWindow(){
-    var msgs=chatMsgs.map(function(m){
-      var isUser=m.role==="user";
-      return '<div style="display:flex;'+( isUser?'justify-content:flex-end':'' )+'"><div style="max-width:82%;padding:10px 13px;border-radius:'+( isUser?'14px 14px 4px 14px':'14px 14px 14px 4px' )+';background:'+( isUser?'linear-gradient(135deg,#4DA6FF,#2563EB)':'rgba(255,255,255,.07)' )+';font-size:13px;line-height:1.55;color:#F0F4FF">'+m.content.replace(/\n/g,"<br>")+'</div></div>';
-    }).join("");
-    var typing=chatLoading?'<div style="display:flex"><div style="padding:10px 14px;background:rgba(255,255,255,.07);border-radius:14px 14px 14px 4px;font-size:13px;color:rgba(240,244,255,.5);display:flex;align-items:center;gap:4px">Maya is typing<span style="display:inline-flex;gap:3px;margin-left:4px"><span style="width:5px;height:5px;border-radius:50%;background:rgba(240,244,255,.5);animation:bounce .8s infinite 0s"></span><span style="width:5px;height:5px;border-radius:50%;background:rgba(240,244,255,.5);animation:bounce .8s infinite .15s"></span><span style="width:5px;height:5px;border-radius:50%;background:rgba(240,244,255,.5);animation:bounce .8s infinite .3s"></span></span></div></div>':'';
-    win.innerHTML='<div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:10px;flex-shrink:0">'
-      +'<div style="width:32px;height:32px;border-radius:50%;background:#080D18;border:1.5px solid rgba(77,166,255,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0">'+petalLogo(20,'mgl')+'</div>'
-      +'<div><div style="font-size:13px;font-weight:700;color:#F0F4FF">Maya from Clicktide</div><div style="font-size:11px;color:#22C55E">● Online now</div></div>'
-      +'<button onclick="window._ctToggle()" style="margin-left:auto;background:transparent;border:none;color:rgba(240,244,255,.4);cursor:pointer;font-size:22px;line-height:1;padding:0">×</button>'
-      +'</div>'
-      +'<div id="ctMsgs" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;max-height:320px">'+msgs+typing+'</div>'
-      +'<div style="padding:12px;border-top:1px solid rgba(255,255,255,.07);display:flex;gap:8px;flex-shrink:0">'
-      +'<input id="ctInp" placeholder="Ask Maya anything..." onkeydown="if(event.key===\'Enter\')window._ctSend()" style="flex:1;padding:9px 13px;border-radius:100px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:#F0F4FF;font-size:13px;outline:none;font-family:Inter,sans-serif"/>'
-      +'<button onclick="window._ctSend()" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#4DA6FF,#2563EB);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>'
-      +'</div>';
-    var msgsEl=document.getElementById('ctMsgs');
-    if(msgsEl) msgsEl.scrollTop=msgsEl.scrollHeight;
-    var inp=document.getElementById('ctInp');
-    if(inp) setTimeout(function(){inp.focus();},50);
-  }
-
-  // Global toggle
-  window._ctToggle=function(){
-    chatOpen=!chatOpen;
-    teaserDismissed=true;
-    if(chatOpen&&chatMsgs.length===0){
-      chatMsgs=[{role:'assistant',content:"👋 Hey! I'm Maya. I help businesses like yours keep customers coming back automatically -- through branded gifts, personal messages, and digital rewards. What type of business do you run?"}];
-    }
-    render();
-  };
-
-  // Global send
-  window._ctSend=function(){
-    var inp=document.getElementById('ctInp');
-    if(!inp)return;
-    var msg=inp.value.trim();
-    if(!msg||chatLoading)return;
-    inp.value='';
-    chatMsgs.push({role:'user',content:msg});
-    chatLoading=true;
-    renderWindow();
-    fetch('https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1/ai-proxy',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,system:SYSTEM,messages:chatMsgs})
-    }).then(function(r){return r.json();}).then(function(d){
-      chatMsgs.push({role:'assistant',content:d.content?.[0]?.text||"I'm having trouble right now. Please try again!"});
-      chatLoading=false;
-      renderWindow();
-    }).catch(function(){
-      chatMsgs.push({role:'assistant',content:"Sorry, connection issue. Please try again!"});
-      chatLoading=false;
-      renderWindow();
-    });
-  };
-
-  // -- Drag logic on the ORB ---------------------------------------------------
-  window._ctDragged=false;
-  var dragStartX,dragStartY,dragOrigLeft,dragOrigBottom,dragging=false;
-
-  function dragStart(e){
-    var t=e.touches?e.touches[0]:e;
-    dragging=true;
-    window._ctDragged=false;
-    dragStartX=t.clientX;
-    dragStartY=t.clientY;
-    dragOrigLeft=wrapX;
-    dragOrigBottom=wrapY;
-    wrap.style.animation='none';
-    e.stopPropagation();
-  }
-
-  function dragMove(e){
-    if(!dragging)return;
-    var t=e.touches?e.touches[0]:e;
-    var dx=t.clientX-dragStartX;
-    var dy=t.clientY-dragStartY;
-    if(Math.abs(dx)>5||Math.abs(dy)>5) window._ctDragged=true;
-    wrapX=Math.max(8,Math.min(window.innerWidth-64,dragOrigLeft+dx));
-    wrapY=Math.max(8,Math.min(window.innerHeight-64,dragOrigBottom-dy));
-    wrap.style.left=wrapX+'px';
-    wrap.style.bottom=wrapY+'px';
-    if(chatOpen) positionWindow();
+// Drag support
+var _ctDx=0,_ctDy=24,_ctDragging=false,_ctDragMoved=false,_ctDragSX,_ctDragSY,_ctDragOX,_ctDragOY;
+function _ctDrag_click(e){if(!_ctDragMoved)_ctToggle();}
+document.addEventListener('mousedown',function(e){
+  var wrap=document.getElementById('ctWrap');
+  if(wrap&&wrap.contains(e.target)){
+    _ctDragging=true;_ctDragMoved=false;
+    _ctDragSX=e.clientX;_ctDragSY=e.clientY;
+    _ctDragOX=_ctDx;_ctDragOY=_ctDy;
     e.preventDefault();
   }
-
-  function dragEnd(){
-    if(!dragging)return;
-    dragging=false;
-    // Snap to nearest side
-    var mid=window.innerWidth/2;
-    wrapX=wrapX+28<mid?16:window.innerWidth-72;
+});
+document.addEventListener('mousemove',function(e){
+  if(!_ctDragging)return;
+  var dx=e.clientX-_ctDragSX,dy=e.clientY-_ctDragSY;
+  if(Math.abs(dx)>4||Math.abs(dy)>4)_ctDragMoved=true;
+  _ctDx=Math.max(8,Math.min(window.innerWidth-64,_ctDragOX+dx));
+  _ctDy=Math.max(8,Math.min(window.innerHeight-64,_ctDragOY-dy));
+  var wrap=document.getElementById('ctWrap');
+  if(wrap){wrap.style.left=_ctDx+'px';wrap.style.bottom=_ctDy+'px';}
+  var w=document.getElementById('ctWindow');
+  if(w){w.style.left=_ctDx+'px';w.style.bottom=(_ctDy+68)+'px';}
+});
+document.addEventListener('mouseup',function(){
+  if(!_ctDragging)return;
+  _ctDragging=false;
+  var wrap=document.getElementById('ctWrap');
+  if(wrap){
+    _ctDx=_ctDx+28<window.innerWidth/2?16:window.innerWidth-72;
     wrap.style.transition='left .25s ease';
-    wrap.style.left=wrapX+'px';
-    if(chatOpen) positionWindow();
+    wrap.style.left=_ctDx+'px';
     setTimeout(function(){wrap.style.transition='';},300);
-    if(!window._ctDragged) window._ctToggle();
   }
+});
 
-  wrap.addEventListener('mousedown',dragStart);
-  wrap.addEventListener('touchstart',dragStart,{passive:false});
-  document.addEventListener('mousemove',dragMove);
-  document.addEventListener('touchmove',dragMove,{passive:false});
-  document.addEventListener('mouseup',dragEnd);
-  document.addEventListener('touchend',dragEnd);
-
-  // Rotate teasers
-  setInterval(function(){if(!chatOpen&&!teaserDismissed){teaserIdx=(teaserIdx+1)%TEASERS.length;render();}},5000);
-
-  // Init
-  render();
-  } // end init
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+// Inject chat CSS once
+(function(){
+  var s=document.createElement('style');
+  s.textContent='@keyframes ctFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}'
+    +'@keyframes ctPulse{0%,100%{box-shadow:0 4px 20px rgba(77,166,255,.3)}50%{box-shadow:0 4px 32px rgba(77,166,255,.6)}}'
+    +'#ctWrap{position:fixed;bottom:24px;left:16px;z-index:99999;display:flex;flex-direction:column;align-items:flex-start;gap:6px;}'
+    +'#ctWindow{position:fixed;bottom:92px;left:16px;width:340px;max-height:500px;background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.7);z-index:99998;display:none;flex-direction:column;overflow:hidden;}';
+  document.head.appendChild(s);
 })();
+
+// Rotate teasers
+setInterval(function(){if(!_ctOpen&&!_ctDismissed){_ctTi=(_ctTi+1)%_ctTeasers.length;_ctRender();}},5000);
+
+// Init on DOM ready
+function _ctInit(){
+  var wrap=document.getElementById('ctWrap');
+  if(!wrap){wrap=document.createElement('div');wrap.id='ctWrap';document.body.appendChild(wrap);}
+  var w=document.getElementById('ctWindow');
+  if(!w){w=document.createElement('div');w.id='ctWindow';document.body.appendChild(w);}
+  _ctRender();
+}
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',_ctInit);}else{_ctInit();}
 </script>
 </body>
 </html>
