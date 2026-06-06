@@ -488,7 +488,33 @@ function onboard(){
       gCards+="</div>";
     });
     var canGo=obG!==null;
-    c="<div style='font-size:30px;margin-bottom:6px'>🎁</div><h2 style='font-family:Space Grotesk,sans-serif;font-size:22px;font-weight:800;margin-bottom:4px'>Pick your gift</h2><p style='color:rgba(240,244,255,.45);font-size:13px;margin-bottom:14px'>Curated for <strong style='color:"+B.c+"'>"+B.l+"</strong>. Don't see yours? Search below.</p>"+searchBar+customRow+"<div class='gc'>"+gCards+"</div><button class='btn-full "+(canGo?"btn-gold":"btn-ghost")+"' "+(canGo?"":"disabled")+" onclick='oNxt()'>Continue → Set triggers</button>";
+
+    // Logo upload section
+    var logoSection="";
+    if(obLogoUrl){
+      var ls="<div style='background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:10px'>";
+      ls+="<img src='"+obLogoUrl+"' style='width:40px;height:40px;object-fit:contain;border-radius:6px;background:rgba(255,255,255,.05);padding:4px'/>";
+      ls+="<div style='flex:1'><div style='font-size:13px;font-weight:700;color:#22C55E'>Logo uploaded!</div>";
+      ls+="<div style='font-size:11px;color:rgba(240,244,255,.45);margin-top:1px'>"+obLogoName+"</div></div>";
+      ls+="<button onclick='clearLogo()' style='background:transparent;border:none;color:rgba(240,244,255,.35);cursor:pointer;font-size:20px;padding:0'>×</button>";
+      ls+="</div>";
+      logoSection=ls;
+    } else {
+      var ls2="<div style='margin-bottom:14px'>";
+      ls2+="<label style='font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.45);display:block;margin-bottom:6px'>Your Business Logo <span style='font-size:10px;font-weight:400;text-transform:none;color:rgba(240,244,255,.3)'>— optional</span></label>";
+      ls2+="<label style='display:block;border:2px dashed rgba(255,255,255,.1);border-radius:10px;padding:18px;text-align:center;cursor:pointer;background:rgba(255,255,255,.02);transition:all .2s'>";
+      ls2+="<input type='file' accept='.png,.jpg,.jpeg,.svg' style='display:none' onchange='handleLogoUpload(this)'/>";
+      ls2+="<div style='font-size:22px;margin-bottom:6px'>🖼️</div>";
+      ls2+="<div style='font-size:13px;font-weight:600;margin-bottom:4px'>Click to upload your logo</div>";
+      ls2+="<div style='font-size:11px;color:rgba(240,244,255,.45)'>PNG or JPG · Will be printed on all gifts</div>";
+      ls2+="</label>";
+      ls2+="<div style='background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);border-radius:8px;padding:10px 12px;margin-top:8px;font-size:11px;color:rgba(240,244,255,.6);line-height:1.6'>";
+      ls2+="&#9888;&#65039; <strong style='color:#FFD166'>No logo uploaded?</strong> No problem — we will print your business name on the gift instead.";
+      ls2+="</div></div>";
+      logoSection=ls2;
+    }
+
+    c="<div style='font-size:30px;margin-bottom:6px'>🎁</div><h2 style='font-family:Space Grotesk,sans-serif;font-size:22px;font-weight:800;margin-bottom:4px'>Pick your gift</h2><p style='color:rgba(240,244,255,.45);font-size:13px;margin-bottom:14px'>Curated for <strong style='color:"+B.c+"'>"+B.l+"</strong>. Don't see yours? Search below.</p>"+searchBar+customRow+"<div class='gc'>"+gCards+"</div>"+logoSection+"<button class='btn-full "+(canGo?"btn-gold":"btn-ghost")+"' "+(canGo?"":"disabled")+" onclick='oNxt()'>Continue → Set triggers</button>";
   }
     else if(obS===3&&P)c=`<div style="font-size:30px;margin-bottom:6px">⚡</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Set your triggers</h2><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:16px">Pick what fires a campaign for <strong>${P.n}</strong> customers.</p><div class="tl">${P.tr.map(t=>`<div class="ti ${obT.includes(t)?"on":""}" onclick="oTrg('${t}')"><span style="flex:1;font-size:13px;font-weight:600">${t}</span><div class="tk">${obT.includes(t)?"✓":""}</div></div>`).join("")}</div><button class="btn-full ${obT.length?"btn-gold":"btn-ghost"}" ${!obT.length?"disabled":""} onclick="oNxt()">Continue → Create account</button>`;
   else if(obS===5){
@@ -557,7 +583,47 @@ function updateGiftGrid(){
   }
 }
 
+
+function clearLogo(){obLogoFile=null;obLogoUrl=null;obLogoName='';R();}
+function handleLogoUpload(input){
+  if(!input.files||!input.files[0])return;
+  var file=input.files[0];
+  obLogoName=file.name;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    obLogoUrl=e.target.result;
+    obLogoFile=file;
+    R();
+    // Refocus the gift step
+    setTimeout(function(){
+      var el=document.getElementById('gsearch');
+      if(el)el.focus();
+    },100);
+  };
+  reader.readAsDataURL(file);
+}
+
 function giftEnter(e){if(e.key==='Enter'){updateGiftGrid();}}
+
+function clearLogo(){obLogoFile=null;obLogoUrl=null;obLogoName='';R();}
+function handleLogoUpload(input){
+  if(!input.files||!input.files[0])return;
+  var file=input.files[0];
+  obLogoName=file.name;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    obLogoUrl=e.target.result;
+    obLogoFile=file;
+    R();
+    // Refocus the gift step
+    setTimeout(function(){
+      var el=document.getElementById('gsearch');
+      if(el)el.focus();
+    },100);
+  };
+  reader.readAsDataURL(file);
+}
+
 function giftEnter(e){if(e.key==='Enter'){updateGiftGrid();}}
 function addCustomGift(btn){
   obCustomGift=btn.dataset.q;
@@ -620,7 +686,24 @@ function oBiz(id){obB=id;R();}
 function oPlt(id){obP=id;R();}
 function oGft(i){obG=i;R();}
 function oTrg(t){obT.includes(t)?obT=obT.filter(x=>x!==t):obT.push(t);R();}
-function oCon(){const b=document.getElementById("cBtn");if(b){b.textContent="Connecting...";b.disabled=true;}setTimeout(()=>{obC=true;R();},1800);}
+function oCon(){
+  if(obP==="shopify"){
+    shopifyConnect();
+    return;
+  }
+  if(obP==="square"){
+    alert("Redirecting to Square to authorize Clicktide...");
+    squareConnect();
+    return;
+  }
+  if(obP==="clover"){
+    cloverConnect();
+    return;
+  }
+  const b=document.getElementById("cBtn");
+  if(b){b.textContent="Connecting...";b.disabled=true;}
+  setTimeout(function(){obC=true;R();},1800);
+}
 function oNxt(){if(obS===1&&!obC)return;obS++;R();}
 function oBck(){obS--;if(obS===1)obC=false;R();}
 async function oSignup(){
