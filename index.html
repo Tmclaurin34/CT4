@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Clicktide -- Send a gift. Start a tide.</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg"><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="favicon.svg"><link rel="icon" type="image/png" sizes="64x64" href="favicon.png"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png"><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#080D18;color:#F0F4FF;font-family:'Inter',sans-serif}
@@ -26,6 +26,7 @@ nav{position:sticky;top:0;z-index:99;display:flex;align-items:center;justify-con
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
+@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
 h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(36px,6vw,66px);line-height:1.02;font-weight:800;letter-spacing:-2px;margin-bottom:20px}
 .sub{font-size:16px;line-height:1.75;color:rgba(240,244,255,.5);max-width:480px;margin:0 auto 30px}
 .input-row{display:flex;justify-content:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
@@ -33,7 +34,7 @@ h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(36px,6vw,66px);line-he
 .link-btn{background:transparent;border:none;color:#FFD166;font-size:13px;cursor:pointer;text-decoration:underline;font-family:'Inter',sans-serif}
 .pills{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:36px}
 .pill{padding:5px 12px;background:rgba(77,166,255,.06);border:1px solid rgba(77,166,255,.15);border-radius:100px;font-size:12px;color:rgba(240,244,255,.5)}
-.notif{position:fixed;bottom:20px;right:20px;background:#0C1220;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:50;max-width:280px;animation:fadeUp .4s ease}
+.notif{position:fixed;top:80px;right:20px;background:#0C1220;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:50;max-width:280px;animation:fadeUp .4s ease}
 /* SECTIONS */
 .sec{padding:64px 32px}.sec-sur{background:#0C1220}
 .sec-title{font-family:'Space Grotesk',sans-serif;font-size:clamp(24px,4vw,42px);font-weight:800;letter-spacing:-1.5px;text-align:center;margin-bottom:12px}
@@ -705,7 +706,9 @@ function onboard(){
 </div>
 <input type="hidden" id="oPl" value="${obPl}"/></div><div class="err" id="oErr"></div><button class="btn-full btn-gold" id="oSub" onclick="oSignup()" style="margin-bottom:12px">Create account & go live →</button><div style="text-align:center;font-size:12px;color:rgba(240,244,255,.45)">Already have an account? <button class="link-btn" onclick="go('login')">Log in</button></div>`;
   else if(obS===6){const g=obG!==null?GF[obB]?.[obG]:null;c=`<div style="text-align:center"><div style="font-size:52px;margin-bottom:12px">🚀</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">You're live!</h2><p style="color:rgba(240,244,255,.45);font-size:14px;line-height:1.7;margin-bottom:20px">Your Clicktide campaign is active and ready.</p><ul style="list-style:none;padding:0;background:#101828;border-radius:13px;padding:16px;margin-bottom:20px;text-align:left">${[`${B?.i} ${B?.l}`,`${P?.e} ${P?.n} connected`,`🎁 ${g?.n||"--"}`,`⚡ ${obT.length} trigger${obT.length!==1?"s":""}`,`💬 Message Only: Free`,`📦 Physical gifts: From $7`].map(i=>`<li style="font-size:12px;color:rgba(240,244,255,.45);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:8px"><span style="color:#22C55E">✓</span>${i}</li>`).join("")}</ul><div style="display:flex;gap:10px"><button class="btn btn-gold" style="flex:1;padding:12px" onclick="go('dash')">Open Dashboard →</button><button class="btn btn-ghost" style="flex:1;padding:12px" onclick="go('login')">Log in</button></div></div>`;}
-  return`<div class="ob">${logoH(22)}<div class="stbar">${steps.map((s,i)=>`<div class="sp ${i===obS?"on":i<obS?"dn":"pd"}">${s}</div>`).join("")}</div><div class="ob-card">${c}</div>${obS>0&&obS<5?`<button class="link-btn" style="margin-top:12px" onclick="oBck()">← Back</button>`:""}</div>`;
+  var aiHintHtml='';
+  if(aiHint||aiHintLoading){aiHintHtml="<div style='background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.2);border-radius:12px;padding:12px 14px;margin-top:12px;display:flex;align-items:flex-start;gap:9px'><div style='font-size:16px;flex-shrink:0'>✨</div><div style='font-size:12px;color:rgba(240,244,255,.7);line-height:1.6'>"+(aiHintLoading?"<span style='color:rgba(240,244,255,.35)'>AI thinking...</span>":aiHint)+"</div></div>";}
+  return`<div class="ob">${logoH(22)}<div class="stbar">${steps.map((s,i)=>`<div class="sp ${i===obS?"on":i<obS?"dn":"pd"}">${s}</div>`).join("")}</div><div class="ob-card">${c}${aiHintHtml}</div>${obS>0&&obS<5?`<button class="link-btn" style="margin-top:12px" onclick="oBck()">← Back</button>`:""}</div>`;
 }
 
 
@@ -862,11 +865,11 @@ function handleCSV(input){
   };
   reader.readAsText(file);
 }
-function oCat(id){obCat=id;obB=null;if(id==="other")obB="other";R();}
-function oBiz(id){obB=id;R();}
-function oPlt(id){obP=id;R();}
+function oCat(id){obCat=id;obB=null;if(id==="other")obB="other";aiHint='';R();getAIHint(0,id);}
+function oBiz(id){obB=id;aiHint='';R();getAIHint(0,id);}
+function oPlt(id){obP=id;aiHint='';R();getAIHint(1,getBizById(obB)?.l||obB||'business');}
 function oGft(i){obG=i;R();}
-function oTrg(t){obT.includes(t)?obT=obT.filter(x=>x!==t):obT.push(t);R();}
+function oTrg(t){obT.includes(t)?obT=obT.filter(x=>x!==t):obT.push(t);if(!aiHint&&obT.length===1)getAIHint(3,getBizById(obB)?.l||'business');R();}
 function oCon(){
   var b=document.getElementById("cBtn");
   if(b){b.textContent="Connecting...";b.disabled=true;}
@@ -1145,7 +1148,7 @@ function cModal(){
   <div class="fg"><label class="fl">Trigger</label><select class="fi-sel" id="cTr" onchange="cmTr=this.value"><option value="">Select trigger...</option>${["New Signup","First Purchase","5th Visit","30-day Inactive","Birthday","Churn Risk","Loyalty Milestone"].map(t=>`<option value="${t}" ${cmTr===t?"selected":""}>${t}</option>`).join("")}</select></div>
   ${cmT!=="message_only"?`<div class="fg"><label class="fl">${cmT==="physical_gift"?"Gift Name":"Promo Code"}</label><div style="background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.15);border-radius:10px;padding:10px 14px;font-size:12px;color:rgba(240,244,255,.6);margin-bottom:10px;line-height:1.6">You generate the code in your Square, Shopify, or Clover dashboard. Clicktide sends it to your customer automatically.</div><input class="fi" id="cGN" value="${cmGN}" placeholder="e.g. WELCOME20 · SARAH15OFF · FREECOFFEE" oninput="cmGN=this.value"/></div>${cmT==="physical_gift"?`<div class="fg"><label class="fl">Gift Cost ($) <span style="font-size:10px;font-weight:400;color:rgba(240,244,255,.35)">-- deducted from wallet</span></label><input class="fi" id="cGC" value="${cmGC}" type="number" placeholder="22" oninput="cmGC=this.value"/></div>`:`<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:10px 14px;font-size:12px;color:#22C55E;margin-bottom:16px">✓ Digital gifts are included in your plan -- no extra cost per send</div>`}`:""}
   <div class="fg"><label class="fl">Message <span style="font-size:10px;font-weight:400;text-transform:none;color:rgba(240,244,255,.3)">${cmT==="message_only"?"-- no gift mentioned":cmT==="physical_gift"?"-- mentions gift arriving":"-- mentions digital reward"}</span></label>
-  ${tpls.map((t,i)=>`<div class="tpl ${cmTi===i&&cmM===t?"sel":""}" onclick="sTP(${i},'${t.replace(/'/g,"\\'")}')">${t}</div>`).join("")}
+  ${tpls.map(function(t,i){return '<div class="tpl '+(cmTi===i&&cmM===t?"sel":"")+'" onclick="sTP('+i+',\''+t.replace(/'/g,"\\'")+'\')">'+t+'</div>';}).join("")}
   <textarea class="ta" id="cM" rows="3" placeholder="Or write your own..." oninput="cmM=this.value">${cmM}</textarea>
   <div style="font-size:10px;color:rgba(240,244,255,.35);margin-top:4px">Use {{first_name}} and {{business_name}} to personalize</div>
   </div>
@@ -1314,6 +1317,292 @@ async function checkoutPlan(plan,email){
 }
 
 R();
+
+// -- AI Chat Widget ------------------------------------------------------------
+const CLICKTIDE_SYSTEM = `You are Maya, Clicktide's enthusiastic sales assistant. Your #1 job is to get people excited about Clicktide and convert them into signups. Be warm, friendly, and genuinely helpful -- like a great salesperson who believes in the product and wants to see businesses thrive.
+
+Clicktide helps businesses automatically send physical gifts, digital rewards, and personal messages when customers hit key milestones -- turning churn into loyalty on autopilot.
+
+Key selling points to push:
+- "Set it and forget it" -- fully automated, no manual work
+- Physical gifts shipped automatically with the merchant's logo on them
+- Average 14x ROI on every gift sent
+- 91% gift open rate vs 21% for email
+- Reduces churn by 34% on average
+- Customers who receive gifts have 3.2x higher lifetime value
+- Works with Square, Shopify, Clover, Stripe and 9 more platforms
+- Start FREE -- no credit card needed
+- Plans from just $29/month -- less than one lost customer
+
+Three gift types:
+- Message Only: FREE -- personal check-in texts
+- Digital Gift: included in plan -- promo codes sent automatically
+- Physical Gift: from $7 -- branded items shipped to customers
+
+Plans: Local $29/mo (200 customers), Growth $99/mo (1,000 customers), Scale $299/mo (unlimited)
+
+Rules:
+- Always end with a call to action -- push them to "Get started free" or "Start your free trial"
+- Use specific numbers and stats to build credibility
+- If they mention their business type, get specific about how Clicktide helps THAT business
+- If they have objections, overcome them confidently
+- Keep responses 2-3 sentences max -- punchy and energetic
+- Never be wishy-washy -- be direct and confident about the value Clicktide delivers
+- If they ask about cost, emphasize the ROI and that it pays for itself with just one retained customer`;
+
+
+let chatOpen = false;
+let chatMessages = [];
+let chatLoading = false;
+
+function toggleChat() {
+  chatOpen = !chatOpen;
+  renderChat();
+  if (chatOpen && chatMessages.length === 0) {
+    chatMessages = [{role:'assistant', content:"👋 Hey! I'm Maya. I help businesses like yours keep customers coming back automatically -- through branded gifts, personal messages, and digital rewards. What type of business do you run?"}];
+    renderChat();
+  }
+  setTimeout(() => {
+    const inp = document.getElementById('chatInp');
+    if (inp) inp.focus();
+    const msgs = document.getElementById('chatMsgs');
+    if (msgs) msgs.scrollTop = msgs.scrollHeight;
+  }, 50);
+}
+
+async function sendChat() {
+  const inp = document.getElementById('chatInp');
+  if (!inp) return;
+  const msg = inp.value.trim();
+  if (!msg || chatLoading) return;
+  inp.value = '';
+  chatMessages.push({role:'user', content:msg});
+  chatLoading = true;
+  renderChat();
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 300,
+        system: CLICKTIDE_SYSTEM,
+        messages: chatMessages.filter(m => m.role !== 'assistant' || chatMessages.indexOf(m) > 0)
+      })
+    });
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || "I'm having trouble connecting. Please try again!";
+    chatMessages.push({role:'assistant', content:reply});
+  } catch(e) {
+    chatMessages.push({role:'assistant', content:"Sorry, I'm having trouble connecting right now. Please try again!"});
+  }
+  chatLoading = false;
+  renderChat();
+  setTimeout(() => {
+    const msgs = document.getElementById('chatMsgs');
+    if (msgs) msgs.scrollTop = msgs.scrollHeight;
+  }, 50);
+}
+
+// -- Chat Widget --------------------------------------------------------------
+(function initClicktideChat(){
+  // Inject styles once
+  if(!document.getElementById('ctChatStyles')){
+    var s=document.createElement('style');
+    s.id='ctChatStyles';
+    s.textContent=`
+      @keyframes ctFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+      @keyframes ctPulse{0%,100%{box-shadow:0 4px 20px rgba(77,166,255,.3)}50%{box-shadow:0 4px 32px rgba(77,166,255,.6)}}
+      @keyframes ctPop{0%{opacity:0;transform:scale(.85)}100%{opacity:1;transform:scale(1)}}
+      @keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
+      #ctWrap{position:fixed;bottom:24px;left:24px;z-index:99999;display:flex;flex-direction:column;align-items:flex-start;gap:10px;touch-action:none;user-select:none;}
+      #ctOrb{width:56px;height:56px;border-radius:50%;background:#080D18;border:2px solid rgba(77,166,255,.35);display:flex;align-items:center;justify-content:center;cursor:grab;animation:ctFloat 3s ease-in-out infinite,ctPulse 3s ease-in-out infinite;flex-shrink:0;}
+      #ctOrb:active{cursor:grabbing;animation:ctPulse 3s ease-in-out infinite;}
+      #ctTeaser{background:#0C1220;border:1px solid rgba(77,166,255,.25);border-radius:16px 16px 16px 4px;padding:10px 14px;font-size:13px;color:#F0F4FF;max-width:220px;line-height:1.5;cursor:pointer;animation:ctPop .3s ease;box-shadow:0 8px 24px rgba(0,0,0,.5);}
+      #ctTeaser b{color:#4DA6FF;}
+      #ctWindow{position:fixed;left:24px;width:340px;max-height:500px;background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.7);z-index:99998;display:flex;flex-direction:column;overflow:hidden;animation:ctPop .25s ease;}
+    `;
+    document.head.appendChild(s);
+  }
+
+  // State
+  var chatOpen=false, chatMsgs=[], chatLoading=false, teaserIdx=0, teaserDismissed=false;
+  var wrapX=24, wrapY=24; // distance from left, bottom
+
+  var TEASERS=['💬 <b>How does Clicktide work?</b>','🎁 <b>What gifts can I send?</b>','📈 <b>What is the average ROI?</b>','🔌 <b>Which platforms do you support?</b>','💳 <b>What does it cost?</b>'];
+
+  var SYSTEM=`You are Maya, Clicktide's enthusiastic sales assistant. Your #1 job is to get people excited about Clicktide and convert them into signups. Be warm, friendly, and genuinely helpful. Clicktide helps businesses automatically send physical gifts, digital rewards, and personal messages when customers hit key milestones. Key stats: 14x average ROI, 91% gift open rate, 34% churn reduction, 3.2x higher customer lifetime value. Plans from $29/month. Works with Square, Shopify, Clover, Stripe and more. Always end with a call to action to get started free. Keep responses to 2-3 sentences max.`;
+
+  function petalLogo(size,gid){
+    var p='M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z';
+    var petals=[0,51.4,102.8,154.2,205.6,257,308.4].map(function(r){return '<path d="'+p+'" fill="url(#'+gid+')" transform="rotate('+r+')" opacity=".9"/>';}).join('');
+    return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 44 44"><defs><linearGradient id="'+gid+'"><stop offset="0%" stop-color="#BAE6FD"/><stop offset="100%" stop-color="#4DA6FF"/></linearGradient></defs><g transform="translate(22,22)">'+petals+'<circle cx="0" cy="0" r="4.5" fill="#080D18"/></g></svg>';
+  }
+
+  function closeX(){return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4DA6FF" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';}
+
+  // Create persistent wrapper div (never destroyed)
+  var wrap=document.getElementById('ctWrap');
+  if(!wrap){
+    wrap=document.createElement('div');
+    wrap.id='ctWrap';
+    document.body.appendChild(wrap);
+  }
+
+  // Separate window div
+  var win=document.getElementById('ctWindow');
+  if(!win){
+    win=document.createElement('div');
+    win.id='ctWindow';
+    win.style.display='none';
+    document.body.appendChild(win);
+  }
+
+  function positionWindow(){
+    var orbBottom=wrapY+56+10;
+    win.style.bottom=orbBottom+'px';
+    win.style.left=wrapX+'px';
+  }
+
+  function render(){
+    // Update wrap position
+    wrap.style.left=wrapX+'px';
+    wrap.style.bottom=wrapY+'px';
+
+    // Render orb + teaser inside wrap
+    wrap.innerHTML=((!chatOpen&&!teaserDismissed)?'<div id="ctTeaser" onclick="window._ctToggle()">'+TEASERS[teaserIdx]+'</div>':'')
+      +'<div id="ctOrb">'+( chatOpen?closeX():petalLogo(32,'cgl'+Date.now()) )+'</div>';
+
+    // Attach click to orb (separate from drag)
+    var orb=document.getElementById('ctOrb');
+    if(orb) orb.addEventListener('click',function(e){if(!window._ctDragged)window._ctToggle();});
+
+    // Show/hide window
+    if(chatOpen){
+      positionWindow();
+      win.style.display='flex';
+      win.style.flexDirection='column';
+      renderWindow();
+    } else {
+      win.style.display='none';
+    }
+  }
+
+  function renderWindow(){
+  function renderWindow(){
+    var msgs=chatMsgs.map(function(m){
+      var isUser=m.role==="user";
+      return '<div style="display:flex;'+( isUser?'justify-content:flex-end':'' )+'"><div style="max-width:82%;padding:10px 13px;border-radius:'+( isUser?'14px 14px 4px 14px':'14px 14px 14px 4px' )+';background:'+( isUser?'linear-gradient(135deg,#4DA6FF,#2563EB)':'rgba(255,255,255,.07)' )+';font-size:13px;line-height:1.55;color:#F0F4FF">'+m.content.replace(/\n/g,"<br>")+'</div></div>';
+    }).join("");
+    var typing=chatLoading?'<div style="display:flex"><div style="padding:10px 14px;background:rgba(255,255,255,.07);border-radius:14px 14px 14px 4px;font-size:13px;color:rgba(240,244,255,.5);display:flex;align-items:center;gap:4px">Maya is typing<span style="display:inline-flex;gap:3px;margin-left:4px"><span style="width:5px;height:5px;border-radius:50%;background:rgba(240,244,255,.5);animation:bounce .8s infinite 0s"></span><span style="width:5px;height:5px;border-radius:50%;background:rgba(240,244,255,.5);animation:bounce .8s infinite .15s"></span><span style="width:5px;height:5px;border-radius:50%;background:rgba(240,244,255,.5);animation:bounce .8s infinite .3s"></span></span></div></div>':'';
+    win.innerHTML='<div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:10px;flex-shrink:0">'
+      +'<div style="width:32px;height:32px;border-radius:50%;background:#080D18;border:1.5px solid rgba(77,166,255,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0">'+petalLogo(20,'mgl')+'</div>'
+      +'<div><div style="font-size:13px;font-weight:700;color:#F0F4FF">Maya from Clicktide</div><div style="font-size:11px;color:#22C55E">● Online now</div></div>'
+      +'<button onclick="window._ctToggle()" style="margin-left:auto;background:transparent;border:none;color:rgba(240,244,255,.4);cursor:pointer;font-size:22px;line-height:1;padding:0">×</button>'
+      +'</div>'
+      +'<div id="ctMsgs" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;max-height:320px">'+msgs+typing+'</div>'
+      +'<div style="padding:12px;border-top:1px solid rgba(255,255,255,.07);display:flex;gap:8px;flex-shrink:0">'
+      +'<input id="ctInp" placeholder="Ask Maya anything..." onkeydown="if(event.key===\'Enter\')window._ctSend()" style="flex:1;padding:9px 13px;border-radius:100px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:#F0F4FF;font-size:13px;outline:none;font-family:Inter,sans-serif"/>'
+      +'<button onclick="window._ctSend()" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#4DA6FF,#2563EB);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>'
+      +'</div>';
+    var msgsEl=document.getElementById('ctMsgs');
+    if(msgsEl) msgsEl.scrollTop=msgsEl.scrollHeight;
+    var inp=document.getElementById('ctInp');
+    if(inp) setTimeout(function(){inp.focus();},50);
+  }
+
+  // Global toggle
+  window._ctToggle=function(){
+    chatOpen=!chatOpen;
+    teaserDismissed=true;
+    if(chatOpen&&chatMsgs.length===0){
+      chatMsgs=[{role:'assistant',content:"👋 Hey! I'm Maya. I help businesses like yours keep customers coming back automatically -- through branded gifts, personal messages, and digital rewards. What type of business do you run?"}];
+    }
+    render();
+  };
+
+  // Global send
+  window._ctSend=function(){
+    var inp=document.getElementById('ctInp');
+    if(!inp)return;
+    var msg=inp.value.trim();
+    if(!msg||chatLoading)return;
+    inp.value='';
+    chatMsgs.push({role:'user',content:msg});
+    chatLoading=true;
+    renderWindow();
+    fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,system:SYSTEM,messages:chatMsgs})
+    }).then(function(r){return r.json();}).then(function(d){
+      chatMsgs.push({role:'assistant',content:d.content?.[0]?.text||"I'm having trouble right now. Please try again!"});
+      chatLoading=false;
+      renderWindow();
+    }).catch(function(){
+      chatMsgs.push({role:'assistant',content:"Sorry, connection issue. Please try again!"});
+      chatLoading=false;
+      renderWindow();
+    });
+  };
+
+  // -- Drag logic on the ORB ---------------------------------------------------
+  window._ctDragged=false;
+  var dragStartX,dragStartY,dragOrigLeft,dragOrigBottom,dragging=false;
+
+  function dragStart(e){
+    var t=e.touches?e.touches[0]:e;
+    dragging=true;
+    window._ctDragged=false;
+    dragStartX=t.clientX;
+    dragStartY=t.clientY;
+    dragOrigLeft=wrapX;
+    dragOrigBottom=wrapY;
+    wrap.style.animation='none';
+    e.stopPropagation();
+  }
+
+  function dragMove(e){
+    if(!dragging)return;
+    var t=e.touches?e.touches[0]:e;
+    var dx=t.clientX-dragStartX;
+    var dy=t.clientY-dragStartY;
+    if(Math.abs(dx)>5||Math.abs(dy)>5) window._ctDragged=true;
+    wrapX=Math.max(8,Math.min(window.innerWidth-64,dragOrigLeft+dx));
+    wrapY=Math.max(8,Math.min(window.innerHeight-64,dragOrigBottom-dy));
+    wrap.style.left=wrapX+'px';
+    wrap.style.bottom=wrapY+'px';
+    if(chatOpen) positionWindow();
+    e.preventDefault();
+  }
+
+  function dragEnd(){
+    if(!dragging)return;
+    dragging=false;
+    // Snap to nearest side
+    var mid=window.innerWidth/2;
+    wrapX=wrapX+28<mid?16:window.innerWidth-72;
+    wrap.style.transition='left .25s ease';
+    wrap.style.left=wrapX+'px';
+    if(chatOpen) positionWindow();
+    setTimeout(function(){wrap.style.transition='';},300);
+    if(!window._ctDragged) window._ctToggle();
+  }
+
+  wrap.addEventListener('mousedown',dragStart);
+  wrap.addEventListener('touchstart',dragStart,{passive:false});
+  document.addEventListener('mousemove',dragMove);
+  document.addEventListener('touchmove',dragMove,{passive:false});
+  document.addEventListener('mouseup',dragEnd);
+  document.addEventListener('touchend',dragEnd);
+
+  // Rotate teasers
+  setInterval(function(){if(!chatOpen&&!teaserDismissed){teaserIdx=(teaserIdx+1)%TEASERS.length;render();}},5000);
+
+  // Init
+  render();
+  }
+})();
 </script>
 </body>
 </html>
