@@ -1316,6 +1316,32 @@ async function checkoutPlan(plan,email){
   else go('onboard');
 }
 
+var aiHint='';
+var aiHintLoading=false;
+
+async function getAIHint(step, context){
+  aiHintLoading=true;
+  var prompts={
+    0:'A merchant chose "'+context+'" as their business type on Clicktide. Give one short encouraging tip (1 sentence) about what gift or trigger works best for that business type.',
+    1:'A "'+context+'" business is choosing a payment platform on Clicktide. Give one short tip (1 sentence) about the best platform for this type of business.',
+    2:'A "'+context+'" business is picking a gift on Clicktide. Give one short tip (1 sentence) about what gift their customers love most.',
+    3:'A "'+context+'" business is setting up triggers on Clicktide. Give one short tip (1 sentence) about which trigger drives the most retention for this business type.',
+  };
+  var prompt=prompts[step];
+  if(!prompt){aiHintLoading=false;return;}
+  try{
+    var res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:100,system:'You are a helpful Clicktide onboarding assistant. Be concise, specific, and encouraging. One sentence only.',messages:[{role:'user',content:prompt}]})
+    });
+    var data=await res.json();
+    aiHint=data.content?.[0]?.text||'';
+  }catch(e){aiHint='';}
+  aiHintLoading=false;
+  R();
+}
+
 R();
 
 // -- AI Chat Widget ------------------------------------------------------------
@@ -1406,22 +1432,22 @@ async function sendChat() {
 
 // -- Chat Widget --------------------------------------------------------------
 (function initClicktideChat(){
+  function init(){
   // Inject styles once
   if(!document.getElementById('ctChatStyles')){
     var s=document.createElement('style');
     s.id='ctChatStyles';
-    s.textContent=`
-      @keyframes ctFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
-      @keyframes ctPulse{0%,100%{box-shadow:0 4px 20px rgba(77,166,255,.3)}50%{box-shadow:0 4px 32px rgba(77,166,255,.6)}}
-      @keyframes ctPop{0%{opacity:0;transform:scale(.85)}100%{opacity:1;transform:scale(1)}}
-      @keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
-      #ctWrap{position:fixed;bottom:24px;left:24px;z-index:99999;display:flex;flex-direction:column;align-items:flex-start;gap:10px;touch-action:none;user-select:none;}
-      #ctOrb{width:56px;height:56px;border-radius:50%;background:#080D18;border:2px solid rgba(77,166,255,.35);display:flex;align-items:center;justify-content:center;cursor:grab;animation:ctFloat 3s ease-in-out infinite,ctPulse 3s ease-in-out infinite;flex-shrink:0;}
-      #ctOrb:active{cursor:grabbing;animation:ctPulse 3s ease-in-out infinite;}
-      #ctTeaser{background:#0C1220;border:1px solid rgba(77,166,255,.25);border-radius:16px 16px 16px 4px;padding:10px 14px;font-size:13px;color:#F0F4FF;max-width:220px;line-height:1.5;cursor:pointer;animation:ctPop .3s ease;box-shadow:0 8px 24px rgba(0,0,0,.5);}
-      #ctTeaser b{color:#4DA6FF;}
-      #ctWindow{position:fixed;left:24px;width:340px;max-height:500px;background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.7);z-index:99998;display:flex;flex-direction:column;overflow:hidden;animation:ctPop .25s ease;}
-    `;
+    var css='@keyframes ctFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}';
+    css+='@keyframes ctPulse{0%,100%{box-shadow:0 4px 20px rgba(77,166,255,.3)}50%{box-shadow:0 4px 32px rgba(77,166,255,.6)}}';
+    css+='@keyframes ctPop{0%{opacity:0;transform:scale(.85)}100%{opacity:1;transform:scale(1)}}';
+    css+='@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}';
+    css+='#ctWrap{position:fixed;bottom:24px;left:24px;z-index:99999;display:flex;flex-direction:column;align-items:flex-start;gap:10px;touch-action:none;user-select:none;}';
+    css+='#ctOrb{width:56px;height:56px;border-radius:50%;background:#080D18;border:2px solid rgba(77,166,255,.35);display:flex;align-items:center;justify-content:center;cursor:grab;animation:ctFloat 3s ease-in-out infinite,ctPulse 3s ease-in-out infinite;flex-shrink:0;}';
+    css+='#ctOrb:active{cursor:grabbing;}';
+    css+='#ctTeaser{background:#0C1220;border:1px solid rgba(77,166,255,.25);border-radius:16px 16px 16px 4px;padding:10px 14px;font-size:13px;color:#F0F4FF;max-width:220px;line-height:1.5;cursor:pointer;animation:ctPop .3s ease;box-shadow:0 8px 24px rgba(0,0,0,.5);}';
+    css+='#ctTeaser b{color:#4DA6FF;}';
+    css+='#ctWindow{position:fixed;left:24px;width:340px;max-height:500px;background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.7);z-index:99998;display:flex;flex-direction:column;overflow:hidden;animation:ctPop .25s ease;}';
+    s.textContent=css;
     document.head.appendChild(s);
   }
 
@@ -1601,6 +1627,12 @@ async function sendChat() {
 
   // Init
   render();
+  } // end init
+  } // end extra
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
   }
 })();
 </script>
