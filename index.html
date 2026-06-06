@@ -296,21 +296,144 @@ const MSG={
   ]
 };
 const NT=[{e:"📦",t:"Package delivered!",s:"Sarah M. received her welcome kit"},{e:"⬛",t:"Square connected!",s:"Pete's Barbershop — 3 triggers live"},{e:"📈",t:"Retention up 41%!",s:"Bloom Yoga after 60 days"},{e:"💳",t:"Stripe triggered!",s:"Nova SaaS — gift shipped"}];
-// Handle Stripe redirect
-(function(){
+
+// ── Edge Function base URL ───────────────────────────────────────────────────
+const FN=`${SU}/functions/v1`;
+// ── Platform App IDs (public — safe in frontend) ────────────────────────────
+const SQ_APP_ID="sq0idp-lOwkDlbKD4OacOyioAOkZQ";
+const SH_CLIENT_ID="1e876d10b4e052fe9897dd45bd859eca";
+const CL_APP_ID="1YSBHCR5VTYZE";
+
+// ── Platform connections state (loaded from Supabase on dash) ────────────────
+let platConn={square:null,shopify:null,clover:null}; // null=unknown, false=disconnected, object=connected
+
+// ── CSRF state helpers (stored in sessionStorage so it survives redirects) ──
+function savePlatformState(platform,state,extra){
+  sessionStorage.setItem("ct_oauth_state",JSON.stringify({platform,state,...extra}));
+}
+function loadPlatformState(){
+  try{return JSON.parse(sessionStorage.getItem("ct_oauth_state")||"null");}catch{return null;}
+}
+function clearPlatformState(){sessionStorage.removeItem("ct_oauth_state");}
+
+// ── Generate a random state token client-side ────────────────────────────────
+function randomState(){
+  const arr=new Uint8Array(24);crypto.getRandomValues(arr);
+  return Array.from(arr,b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+// ── Store state in Supabase then return it ───────────────────────────────────
+async function createOAuthState(platform,metadata){
+  const state=randomState();
+  // Only persist to DB when the user is logged in — sessionStorage covers the unauthenticated onboard flow
+  if(S?.user?.id){
+    try{
+      const tok=S.token;
+      await fetch(`${SU}/rest/v1/oauth_states`,{
+        method:"POST",
+        headers:{...h(tok),Prefer:"return=minimal"},
+        body:JSON.stringify({state,user_id:S.user.id,platform,metadata,expires_at:new Date(Date.now()+10*60*1000).toISOString()})
+      });
+    }catch(e){console.warn("Could not persist state to DB",e);}
+  }
+  savePlatformState(platform,state,metadata||{});
+  return state;
+}
+
+// ── Redirect to Square OAuth ─────────────────────────────────────────────────
+async function squareConnect(){
+  console.log("squareConnect: start");
+  const state=await createOAuthState("square",{});
+  console.log("squareConnect: state=",state);
+  const redirectUri=`${FN}/square-oauth-callback`;
+  const params=new URLSearchParams({
+    client_id:SQ_APP_ID,
+    scope:"MERCHANT_PROFILE_READ ORDERS_READ ORDERS_WRITE PAYMENTS_READ CUSTOMERS_READ CUSTOMERS_WRITE LOYALTY_READ LOYALTY_WRITE",
+    redirect_uri:redirectUri,
+    state,
+    session:"false"
+  });
+  const authUrl=`https://connect.squareup.com/oauth2/authorize?${params}`;
+  console.log("squareConnect: redirecting to",authUrl);
+  window.location.href=authUrl;
+}
+
+// ── Redirect to Shopify OAuth ────────────────────────────────────────────────
+async function shopifyConnect(){
+  const shop=prompt("Enter your Shopify store domain:\ne.g. mystore.myshopify.com");
+  if(!shop||!shop.includes("myshopify.com")){alert("Please enter a valid .myshopify.com domain");return;}
+  const cleanShop=shop.trim().toLowerCase().replace(/https?:\/\//,"").replace(/\/+$/,"");
+  const state=await createOAuthState("shopify",{shop_domain:cleanShop});
+  const redirectUri=`${FN}/shopify-oauth-callback`;
+  const params=new URLSearchParams({
+    client_id:SH_CLIENT_ID,
+    scope:"read_orders,write_orders,read_customers,write_customers,read_products,read_analytics",
+    redirect_uri:redirectUri,
+    state
+  });
+  window.location.href=`https://${cleanShop}/admin/oauth/authorize?${params}`;
+}
+
+// ── Redirect to Clover OAuth ─────────────────────────────────────────────────
+async function cloverConnect(){
+  const state=await createOAuthState("clover",{});
+  const redirectUri=`${FN}/clover-oauth-callback`;
+  const params=new URLSearchParams({
+    client_id:CL_APP_ID,
+    redirect_uri:redirectUri,
+    state
+  });
+  window.location.href=`https://www.clover.com/oauth/authorize?${params}`;
+}
+
+// ── Handle OAuth callback redirect back to this page ────────────────────────
+// Edge functions redirect to: goclicktide.com?ct_platform=square&ct_merchant=xxx&ct_name=Yyy
+// or on error: goclicktide.com?ct_error=...
+(function handleOAuthReturn(){
   const params=new URLSearchParams(window.location.search);
+
+  // Stripe redirect
   if(params.get("session")==="success"){
     const plan=params.get("plan")||"Growth";
     const biz=params.get("biz")||"";
     obPl=plan;obN=biz;obS=6;
     history.replaceState({},"",window.location.pathname);
+    return;
   }
   if(params.get("session")==="cancelled"){
     history.replaceState({},"",window.location.pathname);
+    return;
+  }
+
+  // OAuth success redirect from Edge Function
+  if(params.get("ct_platform")){
+    const platform=params.get("ct_platform");
+    const merchantId=params.get("ct_merchant")||"";
+    const merchantName=params.get("ct_name")||platform;
+    const stored=loadPlatformState();
+    const returnTo=sessionStorage.getItem("ct_return")||"";
+    clearPlatformState();
+    sessionStorage.removeItem("ct_return");
+    // Set the connection in state
+    platConn[platform]={merchant_id:merchantId,merchant_name:decodeURIComponent(merchantName)};
+    // If we were mid-onboard, mark connected and jump to step 2 (gift)
+    if(stored&&obS<=1&&!returnTo){obP=platform;obC=true;obS=2;scr="onboard";}
+    else{scr="dash";dpg="settings";}
+    history.replaceState({},"",window.location.pathname);
+    return;
+  }
+
+  // OAuth error redirect from Edge Function
+  if(params.get("ct_error")){
+    const msg=decodeURIComponent(params.get("ct_error")||"Connection failed");
+    clearPlatformState();
+    history.replaceState({},"",window.location.pathname);
+    alert("Platform connection failed: "+msg+"\n\nPlease try again.");
   }
 })();
+
 let ntIdx=0,scr="land";
-let obS=0,obCat=null,obB=null,obP=null,obC=false,obG=null,obT=[],obE="",obPw="",obN="",obPl="Growth",obOther="",obImport=null,obGiftSearch="",obCustomGift=null;
+let obS=0,obCat=null,obB=null,obP=null,obC=false,obG=null,obT=[],obE="",obPw="",obN="",obPl="Growth",obOther="",obImport=null,obGiftSearch="",obCustomGift=null,obLogoFile=null,obLogoUrl=null,obLogoName="";
 let riS=0,riB=null,riCatSel=null,riCu=100,riAv=60,riCh=.20,riDy=60,riGf=7,riPl=99;
 let dpg="overview",cmT="message_only",cmN="",cmTr="",cmGN="",cmGC="",cmPf="Square",cmM="",cmTi=0,showCM=false,cmProt={delay:7,cancelOnRefund:true,minSpend:0,cooldown:90,productName:"",minOrderVal:0};
 
@@ -686,22 +809,20 @@ function oBiz(id){obB=id;R();}
 function oPlt(id){obP=id;R();}
 function oGft(i){obG=i;R();}
 function oTrg(t){obT.includes(t)?obT=obT.filter(x=>x!==t):obT.push(t);R();}
-function oCon(){
-  if(obP==="shopify"){
-    shopifyConnect();
-    return;
-  }
-  if(obP==="square"){
-    alert("Redirecting to Square to authorize Clicktide...");
-    squareConnect();
-    return;
-  }
-  if(obP==="clover"){
-    cloverConnect();
-    return;
-  }
+async function oCon(){
   const b=document.getElementById("cBtn");
   if(b){b.textContent="Connecting...";b.disabled=true;}
+  try{
+    if(obP==="square"){await squareConnect();return;}
+    if(obP==="shopify"){await shopifyConnect();return;}
+    if(obP==="clover"){await cloverConnect();return;}
+  }catch(e){
+    console.error("Connect error:",e);
+    if(b){b.textContent=`Connect ${obP} →`;b.disabled=false;}
+    alert("Connection failed: "+e.message+"\n\nCheck console for details.");
+    return;
+  }
+  // Stripe, Toast, Mindbody — simulate for now
   setTimeout(function(){obC=true;R();},1800);
 }
 function oNxt(){if(obS===1&&!obC)return;obS++;R();}
@@ -844,8 +965,60 @@ async function dLoad(){
       el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button class="btn btn-gold" onclick="oAS()">+ Add Shipment</button></div>${sh.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">📦</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No shipments yet</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Shipments appear automatically when campaigns fire.</div></div>`:`<div class="dc">${sh.map(s=>`<div class="dr"><div class="di" style="background:rgba(77,166,255,.1)">📦</div><div style="flex:1"><div class="dn">${s.customer_name}</div><div class="dsub">${s.gift} · ${s.campaign||""}</div></div><span class="bp">${s.status||"Processing"}</span></div>`).join("")}</div>`}`;
     }
     else if(dpg==="settings"){
-      el.innerHTML=`<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:16px;margin-bottom:16px;display:flex;align-items:center;gap:10px"><span style="font-size:22px">✅</span><div><div style="font-size:13px;font-weight:700;color:#22C55E">Supabase Connected</div><div style="font-size:11px;color:rgba(240,244,255,.45)">${SU}</div></div></div>
-      <div class="g2">${[["📦","Printful","Connect to ship gifts"],["💳","Stripe","Connect to accept payments"],["⬛","Square","Connect to track visits"],["📧","Resend","Connect to send emails"]].map(([i,t,d])=>`<div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">${i}</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">${t}</div><div style="font-size:11px;color:rgba(240,244,255,.45)">${d}</div></div><span style="font-size:10px;color:rgba(240,244,255,.35)">Not connected</span></div>`).join("")}</div>`;
+      // Load platform connections from Supabase
+      const tok=S?.token||SK;
+      let conns=[];
+      try{
+        const res=await fetch(`${SU}/rest/v1/platform_connections?select=platform,merchant_id,merchant_name,connected_at,is_active&is_active=eq.true`,{headers:h(tok)});
+        conns=await res.json();
+        if(!Array.isArray(conns))conns=[];
+        conns.forEach(c=>{platConn[c.platform]={merchant_id:c.merchant_id,merchant_name:c.merchant_name,connected_at:c.connected_at};});
+      }catch{}
+
+      const plDefs=[
+        {id:"square",i:"⬛",n:"Square",d:"Point-of-sale · in-person visits"},
+        {id:"shopify",i:"🛒",n:"Shopify",d:"E-commerce · online orders"},
+        {id:"clover",i:"🍀",n:"Clover",d:"Restaurant & retail POS"}
+      ];
+      const otherConn=[
+        {i:"📦",n:"Printful",d:"Ships physical gifts"},
+        {i:"💳",n:"Stripe",d:"Subscription billing"},
+        {i:"📧",n:"Resend",d:"Sends customer emails"}
+      ];
+
+      const platCards=plDefs.map(p=>{
+        const conn=platConn[p.id];
+        if(conn&&conn.merchant_id){
+          return`<div class="dc" style="display:flex;align-items:center;gap:12px;border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.04)">
+            <span style="font-size:22px">${p.i}</span>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;margin-bottom:2px">${p.n}</div>
+              <div style="font-size:11px;color:#22C55E;font-weight:600">● Connected · ${conn.merchant_name||conn.merchant_id}</div>
+            </div>
+            <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="disconnectPlatform('${p.id}')">Disconnect</button>
+          </div>`;
+        }
+        return`<div class="dc" style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:22px">${p.i}</span>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700;margin-bottom:2px">${p.n}</div>
+            <div style="font-size:11px;color:rgba(240,244,255,.45)">${p.d}</div>
+          </div>
+          <button class="btn btn-gold" style="font-size:11px;padding:7px 14px" onclick="connectPlatformDash('${p.id}')">Connect</button>
+        </div>`;
+      }).join("");
+
+      const otherCards=otherConn.map(p=>`<div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">${p.i}</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">${p.n}</div><div style="font-size:11px;color:rgba(240,244,255,.45)">${p.d}</div></div><span style="font-size:10px;color:rgba(240,244,255,.35)">Coming soon</span></div>`).join("");
+
+      el.innerHTML=`
+        <div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:16px;margin-bottom:20px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:22px">✅</span>
+          <div><div style="font-size:13px;font-weight:700;color:#22C55E">Supabase Connected</div><div style="font-size:11px;color:rgba(240,244,255,.45)">${SU}</div></div>
+        </div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.35);margin-bottom:10px">POS & E-commerce</div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">${platCards}</div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.35);margin-bottom:10px">Other integrations</div>
+        <div class="g2">${otherCards}</div>`;
     }
   }catch(ex){if(el)el.innerHTML=`<div class="empty"><div style="font-size:36px;margin-bottom:10px">⚠️</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">Error</div><div style="font-size:13px;color:rgba(240,244,255,.45)">${ex.message}</div></div>`;}
 }
@@ -853,6 +1026,29 @@ async function dLoad(){
 async function tCmp(id,st){await db.upd("campaigns",id,{status:st==="active"?"paused":"active"},S?.token||SK);dLoad();}
 async function dCmp(id){if(!confirm("Delete?"))return;await db.del("campaigns",id,S?.token||SK);dLoad();}
 async function dOut(){try{if(S?.token)await au.out(S.token);}catch{}S=null;localStorage.removeItem("ct");localStorage.removeItem("cu");go("land");}
+
+// Connect a platform from the Settings page (stores where to return)
+async function connectPlatformDash(platform){
+  sessionStorage.setItem("ct_return","settings");
+  if(platform==="square")await squareConnect();
+  else if(platform==="shopify")await shopifyConnect();
+  else if(platform==="clover")await cloverConnect();
+}
+
+// Disconnect (mark inactive in DB)
+async function disconnectPlatform(platform){
+  if(!confirm(`Disconnect ${platform}? Campaigns using it will be paused.`))return;
+  const tok=S?.token||SK;
+  try{
+    await fetch(`${SU}/rest/v1/platform_connections?platform=eq.${platform}`,{
+      method:"PATCH",
+      headers:{...h(tok),Prefer:"return=minimal"},
+      body:JSON.stringify({is_active:false})
+    });
+    platConn[platform]=false;
+    dLoad();
+  }catch(ex){alert("Failed to disconnect: "+ex.message);}
+}
 
 function oCM(){showCM=true;document.getElementById("app").innerHTML=dash();bind();dLoad();}
 function xCM(){showCM=false;cmT="message_only";cmN="";cmTr="";cmGN="";cmGC="";cmM="";cmTi=0;cmProt={delay:7,cancelOnRefund:true,minSpend:0,cooldown:90,productName:"",minOrderVal:0};document.getElementById("app").innerHTML=dash();bind();dLoad();}
