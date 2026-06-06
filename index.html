@@ -918,7 +918,7 @@ async function oSignup(){
 }
 
 function roi(){
-  let c="";
+  let roiC="";
   if(riS===0){
     var catCards="";
     CATS.filter(function(c){return c.id!=="other";}).forEach(function(cat){
@@ -945,7 +945,7 @@ function roi(){
         bizCards+="</div></div>";
       }
     }
-    c="<div style='text-align:center;margin-bottom:36px'><h1 style='font-size:clamp(28px,5vw,50px);font-weight:800;letter-spacing:-2px;line-height:1.05;margin-bottom:12px'>See exactly what<br><span class='gold'>Clicktide returns</span></h1><p style='font-size:15px;color:rgba(240,244,255,.45);max-width:420px;margin:0 auto;line-height:1.7'>Pick your business type for a personalized retention diagram.</p></div><div class='btg'>"+catCards+"</div>"+bizCards;
+    roiC="<div style='text-align:center;margin-bottom:36px'><h1 style='font-size:clamp(28px,5vw,50px);font-weight:800;letter-spacing:-2px;line-height:1.05;margin-bottom:12px'>See exactly what<br><span class='gold'>Clicktide returns</span></h1><p style='font-size:15px;color:rgba(240,244,255,.45);max-width:420px;margin:0 auto;line-height:1.7'>Pick your business type for a personalized retention diagram.</p></div><div class='btg'>"+catCards+"</div>"+bizCards;
   }
   else if(riS===1){
     var riBO=getBizById(riB)||{id:riB,l:'Your Business',i:'🏢',c:'#FFD166',lf:.30};
@@ -961,7 +961,7 @@ function roi(){
     var rc=sv*riAv;
     var ml=Math.round((riAv/riGf)*10)/10;
     var giftWarning=!giftOk?'<div style="background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.3);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#FF4D6D">⚠️ Your gift cost ($'+riGf+') is more than 45% of your avg sale ($'+riAv+'). We recommend a gift under $'+maxGift+' for best ROI.</div>':'';
-    c='<div class="rc"><div style="text-align:center;margin-bottom:24px"><div style="font-size:28px;margin-bottom:6px">'+B.i+'</div><h2 style="font-family:Space Grotesk,sans-serif;font-size:26px;font-weight:800;letter-spacing:-1px;margin-bottom:4px">About your <span style="color:'+B.c+'">'+B.l+'</span></h2><p style="font-size:12px;color:rgba(240,244,255,.4);margin-top:6px">Tell us about your business to see your personalized ROI</p></div>'
+    roiC='<div class="rc"><div style="text-align:center;margin-bottom:24px"><div style="font-size:28px;margin-bottom:6px">'+B.i+'</div><h2 style="font-family:Space Grotesk,sans-serif;font-size:26px;font-weight:800;letter-spacing:-1px;margin-bottom:4px">About your <span style="color:'+B.c+'">'+B.l+'</span></h2><p style="font-size:12px;color:rgba(240,244,255,.4);margin-top:6px">Tell us about your business to see your personalized ROI</p></div>'
     +[["riCu","Active customers",10,2000,10,"","",false],["riAv","Average sale value",5,500,5,"$","",false],["riVf","Visits per month per customer",1,8,1,"","x/mo",false],["riLm","Customer loyalty (months)",1,36,1,"","mo",false],["riCh","Monthly churn rate",.03,.50,.01,"","%",true],["riGf","Gift cost",5,80,1,"$","",false]].map(function(arr){
       var k=arr[0],l=arr[1],mn=arr[2],mx=arr[3],st=arr[4],pr=arr[5],sf=arr[6],pc=arr[7];
       var val=pc?Math.round(window[k]*100):window[k];
@@ -998,7 +998,7 @@ function roi(){
     var lowCost=sv*riGf,avgCost=sv*riGf,highCost=sv*riGf;
     var lowProfit=Math.round(lowRev-lowCost),avgProfit=Math.round(avgRev-avgCost),highProfit=Math.round(highRev-highCost);
     var breakEven=Math.round((riGf/riAv)*10)/10;
-    c='<div style="text-align:center;margin-bottom:24px"><div style="font-size:28px;margin-bottom:6px">'+B.i+'</div>'
+    roiC='<div style="text-align:center;margin-bottom:24px"><div style="font-size:28px;margin-bottom:6px">'+B.i+'</div>'
     +'<h2 style="font-family:Space Grotesk,sans-serif;font-size:clamp(20px,4vw,36px);font-weight:800;letter-spacing:-1px;margin-bottom:6px">Your Full ROI Breakdown</h2>'
     +'<p style="font-size:13px;color:rgba(240,244,255,.45)">'+riCu+' customers · $'+riAv+' avg sale · '+riVf+'x/mo visits · '+riLm+' month loyalty</p></div>'
     // CLV banner
@@ -1044,7 +1044,7 @@ function roi(){
     +'<div style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.15);border-radius:14px;padding:22px;text-align:center"><div style="font-size:24px;margin-bottom:6px">🚀</div><div style="font-family:Space Grotesk,sans-serif;font-size:18px;font-weight:800;margin-bottom:6px">Start free today</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:14px">No credit card required.</div><button class="btn btn-gold" style="width:100%;padding:11px" onclick="go(&quot;onboard&quot;)">Get started →</button></div>'
     +'<div class="card-s" style="border-radius:14px;text-align:center;padding:22px"><div style="font-size:24px;margin-bottom:6px">🔄</div><div style="font-family:Space Grotesk,sans-serif;font-size:18px;font-weight:800;margin-bottom:6px">Try different numbers</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:14px">Adjust for your business.</div><button class="btn btn-ghost" style="width:100%;padding:11px" onclick="riS=1;riR()">← Edit numbers</button></div>'
     +'</div>';
-  return`<div class="roi"><div class="roi-hd">${logoH(20)}<div style="display:flex;align-items:center;gap:12px"><div style="width:1px;height:18px;background:rgba(255,255,255,.07)"></div><span style="font-size:13px;color:rgba(240,244,255,.45)">ROI Calculator</span></div><button class="btn btn-outline" onclick="go('land')">← Back</button></div><div class="roi-body">${c}</div></div>`;
+  return`<div class="roi"><div class="roi-hd">${logoH(20)}<div style="display:flex;align-items:center;gap:12px"><div style="width:1px;height:18px;background:rgba(255,255,255,.07)"></div><span style="font-size:13px;color:rgba(240,244,255,.45)">ROI Calculator</span></div><button class="btn btn-outline" onclick="go('land')">← Back</button></div><div class="roi-body">${roiC}</div></div>`;
 }
 
 function riSlide(el,k){window[k]=parseFloat(el.value);riPrv();}
