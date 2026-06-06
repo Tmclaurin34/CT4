@@ -342,9 +342,9 @@ async function createOAuthState(platform,metadata){
 
 // -- Redirect to Square OAuth -------------------------------------------------
 async function squareConnect(){
-  console.log("squareConnect: start");
-  const state=await createOAuthState("square",{});
-  console.log("squareConnect: state=",state);
+  // Build URL synchronously first, then redirect
+  const state=randomState();
+  savePlatformState("square",state,{});
   const redirectUri=`${FN}/square-oauth-callback`;
   const params=new URLSearchParams({
     client_id:SQ_APP_ID,
@@ -354,8 +354,34 @@ async function squareConnect(){
     session:"false"
   });
   const authUrl=`https://connect.squareup.com/oauth2/authorize?${params}`;
-  console.log("squareConnect: redirecting to",authUrl);
+  // Persist state to DB in background (non-blocking)
+  if(S?.user?.id){
+    fetch(`${SU}/rest/v1/oauth_states`,{
+      method:"POST",
+      headers:{...h(S.token),Prefer:"return=minimal"},
+      body:JSON.stringify({state,user_id:S.user.id,platform:"square",metadata:{},expires_at:new Date(Date.now()+10*60*1000).toISOString()})
+    }).catch(()=>{});
+  }
   window.location.href=authUrl;
+}
+
+async function cloverConnect(){
+  const state=randomState();
+  savePlatformState("clover",state,{});
+  const redirectUri=`${FN}/clover-oauth-callback`;
+  const params=new URLSearchParams({
+    client_id:CL_APP_ID,
+    redirect_uri:redirectUri,
+    state
+  });
+  if(S?.user?.id){
+    fetch(`${SU}/rest/v1/oauth_states`,{
+      method:"POST",
+      headers:{...h(S.token),Prefer:"return=minimal"},
+      body:JSON.stringify({state,user_id:S.user.id,platform:"clover",metadata:{},expires_at:new Date(Date.now()+10*60*1000).toISOString()})
+    }).catch(()=>{});
+  }
+  window.location.href=`https://www.clover.com/oauth/authorize?${params}`;
 }
 
 // -- Redirect to Shopify OAuth ------------------------------------------------
@@ -394,7 +420,16 @@ async function shopifyConnect(){
       document.getElementById("shopConnectBtn").textContent="Connecting...";
       document.getElementById("shopConnectBtn").disabled=true;
       ov.remove();
-      const state=await createOAuthState("shopify",{shop_domain:raw});
+      // Build URL synchronously, persist state in background
+      const state=randomState();
+      savePlatformState("shopify",state,{shop_domain:raw});
+      if(S?.user?.id){
+        fetch(`${SU}/rest/v1/oauth_states`,{
+          method:"POST",
+          headers:{...h(S.token),Prefer:"return=minimal"},
+          body:JSON.stringify({state,user_id:S.user.id,platform:"shopify",metadata:{shop_domain:raw},expires_at:new Date(Date.now()+10*60*1000).toISOString()})
+        }).catch(()=>{});
+      }
       const redirectUri=`${FN}/shopify-oauth-callback`;
       const params=new URLSearchParams({
         client_id:SH_CLIENT_ID,
@@ -412,16 +447,6 @@ async function shopifyConnect(){
 }
 
 // -- Redirect to Clover OAuth -------------------------------------------------
-async function cloverConnect(){
-  const state=await createOAuthState("clover",{});
-  const redirectUri=`${FN}/clover-oauth-callback`;
-  const params=new URLSearchParams({
-    client_id:CL_APP_ID,
-    redirect_uri:redirectUri,
-    state
-  });
-  window.location.href=`https://www.clover.com/oauth/authorize?${params}`;
-}
 
 // -- Handle OAuth callback redirect back to this page ------------------------
 // Edge functions redirect to: goclicktide.com?ct_platform=square&ct_merchant=xxx&ct_name=Yyy
@@ -868,19 +893,12 @@ function oBiz(id){obB=id;R();}
 function oPlt(id){obP=id;R();}
 function oGft(i){obG=i;R();}
 function oTrg(t){obT.includes(t)?obT=obT.filter(x=>x!==t):obT.push(t);R();}
-async function oCon(){
+function oCon(){
   const b=document.getElementById("cBtn");
   if(b){b.textContent="Connecting...";b.disabled=true;}
-  try{
-    if(obP==="square"){await squareConnect();return;}
-    if(obP==="shopify"){await shopifyConnect();return;}
-    if(obP==="clover"){await cloverConnect();return;}
-  }catch(e){
-    console.error("Connect error:",e);
-    if(b){b.textContent=`Connect ${obP} →`;b.disabled=false;}
-    alert("Connection failed: "+e.message+"\n\nCheck console for details.");
-    return;
-  }
+  if(obP==="square"){squareConnect();return;}
+  if(obP==="shopify"){shopifyConnect();return;}
+  if(obP==="clover"){cloverConnect();return;}
   // Stripe, Toast, Mindbody -- simulate for now
   setTimeout(function(){obC=true;R();},1800);
 }
@@ -1067,11 +1085,11 @@ async function dCmp(id){if(!confirm("Delete?"))return;await db.del("campaigns",i
 async function dOut(){try{if(S?.token)await au.out(S.token);}catch{}S=null;localStorage.removeItem("ct");localStorage.removeItem("cu");go("land");}
 
 // Connect a platform from the Settings page (stores where to return)
-async function connectPlatformDash(platform){
+function connectPlatformDash(platform){
   sessionStorage.setItem("ct_return","settings");
-  if(platform==="square")await squareConnect();
-  else if(platform==="shopify")await shopifyConnect();
-  else if(platform==="clover")await cloverConnect();
+  if(platform==="square")squareConnect();
+  else if(platform==="shopify")shopifyConnect();
+  else if(platform==="clover")cloverConnect();
 }
 
 // Disconnect (mark inactive in DB)
