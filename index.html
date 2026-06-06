@@ -341,47 +341,18 @@ async function createOAuthState(platform,metadata){
 }
 
 // -- Redirect to Square OAuth -------------------------------------------------
-async function squareConnect(){
-  // Build URL synchronously first, then redirect
-  const state=randomState();
+function squareConnect(){
+  var state=randomState();
   savePlatformState("square",state,{});
-  const redirectUri=`${FN}/square-oauth-callback`;
-  const params=new URLSearchParams({
+  var redirectUri=FN+"/square-oauth-callback";
+  var params=new URLSearchParams({
     client_id:SQ_APP_ID,
     scope:"MERCHANT_PROFILE_READ ORDERS_READ ORDERS_WRITE PAYMENTS_READ CUSTOMERS_READ CUSTOMERS_WRITE LOYALTY_READ LOYALTY_WRITE",
     redirect_uri:redirectUri,
-    state,
+    state:state,
     session:"false"
   });
-  const authUrl=`https://connect.squareup.com/oauth2/authorize?${params}`;
-  // Persist state to DB in background (non-blocking)
-  if(S?.user?.id){
-    fetch(`${SU}/rest/v1/oauth_states`,{
-      method:"POST",
-      headers:{...h(S.token),Prefer:"return=minimal"},
-      body:JSON.stringify({state,user_id:S.user.id,platform:"square",metadata:{},expires_at:new Date(Date.now()+10*60*1000).toISOString()})
-    }).catch(()=>{});
-  }
-  window.location.href=authUrl;
-}
-
-async function cloverConnect(){
-  const state=randomState();
-  savePlatformState("clover",state,{});
-  const redirectUri=`${FN}/clover-oauth-callback`;
-  const params=new URLSearchParams({
-    client_id:CL_APP_ID,
-    redirect_uri:redirectUri,
-    state
-  });
-  if(S?.user?.id){
-    fetch(`${SU}/rest/v1/oauth_states`,{
-      method:"POST",
-      headers:{...h(S.token),Prefer:"return=minimal"},
-      body:JSON.stringify({state,user_id:S.user.id,platform:"clover",metadata:{},expires_at:new Date(Date.now()+10*60*1000).toISOString()})
-    }).catch(()=>{});
-  }
-  window.location.href=`https://www.clover.com/oauth/authorize?${params}`;
+  window.location.href="https://connect.squareup.com/oauth2/authorize?"+params;
 }
 
 // -- Redirect to Shopify OAuth ------------------------------------------------
@@ -420,24 +391,16 @@ async function shopifyConnect(){
       document.getElementById("shopConnectBtn").textContent="Connecting...";
       document.getElementById("shopConnectBtn").disabled=true;
       ov.remove();
-      // Build URL synchronously, persist state in background
-      const state=randomState();
+      var state=randomState();
       savePlatformState("shopify",state,{shop_domain:raw});
-      if(S?.user?.id){
-        fetch(`${SU}/rest/v1/oauth_states`,{
-          method:"POST",
-          headers:{...h(S.token),Prefer:"return=minimal"},
-          body:JSON.stringify({state,user_id:S.user.id,platform:"shopify",metadata:{shop_domain:raw},expires_at:new Date(Date.now()+10*60*1000).toISOString()})
-        }).catch(()=>{});
-      }
-      const redirectUri=`${FN}/shopify-oauth-callback`;
-      const params=new URLSearchParams({
+      var redirectUri=FN+"/shopify-oauth-callback";
+      var params=new URLSearchParams({
         client_id:SH_CLIENT_ID,
         scope:"read_orders,write_orders,read_customers,write_customers,read_products,read_analytics",
         redirect_uri:redirectUri,
-        state
+        state:state
       });
-      window.location.href=`https://${raw}/admin/oauth/authorize?${params}`;
+      window.location.href="https://"+raw+"/admin/oauth/authorize?"+params;
       resolve();
     }
     document.getElementById("shopConnectBtn").onclick=doConnect;
@@ -447,6 +410,17 @@ async function shopifyConnect(){
 }
 
 // -- Redirect to Clover OAuth -------------------------------------------------
+function cloverConnect(){
+  var state=randomState();
+  savePlatformState("clover",state,{});
+  var redirectUri=FN+"/clover-oauth-callback";
+  var params=new URLSearchParams({
+    client_id:CL_APP_ID,
+    redirect_uri:redirectUri,
+    state:state
+  });
+  window.location.href="https://www.clover.com/oauth/authorize?"+params;
+}
 
 // -- Handle OAuth callback redirect back to this page ------------------------
 // Edge functions redirect to: goclicktide.com?ct_platform=square&ct_merchant=xxx&ct_name=Yyy
@@ -894,12 +868,11 @@ function oPlt(id){obP=id;R();}
 function oGft(i){obG=i;R();}
 function oTrg(t){obT.includes(t)?obT=obT.filter(x=>x!==t):obT.push(t);R();}
 function oCon(){
-  const b=document.getElementById("cBtn");
+  var b=document.getElementById("cBtn");
   if(b){b.textContent="Connecting...";b.disabled=true;}
   if(obP==="square"){squareConnect();return;}
   if(obP==="shopify"){shopifyConnect();return;}
   if(obP==="clover"){cloverConnect();return;}
-  // Stripe, Toast, Mindbody -- simulate for now
   setTimeout(function(){obC=true;R();},1800);
 }
 function oNxt(){if(obS===1&&!obC)return;obS++;R();}
@@ -1057,15 +1030,40 @@ async function dLoad(){
         {id:"shopify",i:"🛒",n:"Shopify",d:"E-commerce · online orders"},
         {id:"clover",i:"🍀",n:"Clover",d:"Restaurant & retail POS"}
       ];
+      const otherCards=`
+        <div class="dc" style="display:flex;align-items:center;gap:9px;border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.04)">
+          <span style="font-size:20px">🖨️</span>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;margin-bottom:2px">Printify</div>
+            <div style="font-size:11px;color:#22C55E">● Active · Prints & ships gifts on demand</div>
+          </div>
+          <span style="font-size:10px;font-weight:700;color:#22C55E">Connected</span>
+        </div>
+        <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">💳</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Stripe</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Subscription billing</div></div><span style="font-size:10px;color:rgba(240,244,255,.35)">Coming soon</span></div>
+        <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">📧</span><div style="font-size:12px;font-weight:700;margin-bottom:2px">Resend</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Sends customer emails</div><span style="font-size:10px;color:rgba(240,244,255,.35)">Coming soon</span></div>
+      `;
+
       const platCards=plDefs.map(p=>{
         const conn=platConn[p.id];
         if(conn&&conn.merchant_id){
-          return`<div class="dc" style="display:flex;align-items:center;gap:12px;border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.04)"><span style="font-size:22px">${p.i}</span><div style="flex:1"><div style="font-size:13px;font-weight:700;margin-bottom:2px">${p.n}</div><div style="font-size:11px;color:#22C55E;font-weight:600">● Connected · ${conn.merchant_name||conn.merchant_id}</div></div><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="disconnectPlatform('${p.id}')">Disconnect</button></div>`;
+          return`<div class="dc" style="display:flex;align-items:center;gap:12px;border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.04)">
+            <span style="font-size:22px">${p.i}</span>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;margin-bottom:2px">${p.n}</div>
+              <div style="font-size:11px;color:#22C55E;font-weight:600">● Connected · ${conn.merchant_name||conn.merchant_id}</div>
+            </div>
+            <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="disconnectPlatform('${p.id}')">Disconnect</button>
+          </div>`;
         }
-        return`<div class="dc" style="display:flex;align-items:center;gap:12px"><span style="font-size:22px">${p.i}</span><div style="flex:1"><div style="font-size:13px;font-weight:700;margin-bottom:2px">${p.n}</div><div style="font-size:11px;color:rgba(240,244,255,.45)">${p.d}</div></div><button class="btn btn-gold" style="font-size:11px;padding:7px 14px" onclick="connectPlatformDash('${p.id}')">Connect</button></div>`;
+        return`<div class="dc" style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:22px">${p.i}</span>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700;margin-bottom:2px">${p.n}</div>
+            <div style="font-size:11px;color:rgba(240,244,255,.45)">${p.d}</div>
+          </div>
+          <button class="btn btn-gold" style="font-size:11px;padding:7px 14px" onclick="connectPlatformDash('${p.id}')">Connect</button>
+        </div>`;
       }).join("");
-      const otherCards='<div class="dc" style="display:flex;align-items:center;gap:9px;border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.04)"><span style="font-size:20px">🖨️</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Printify</div><div style="font-size:11px;color:#22C55E">● Active · Print on demand</div></div><span style="font-size:10px;font-weight:700;color:#22C55E">Connected</span></div><div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">💳</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Stripe</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Subscription billing</div></div><span style="font-size:10px;color:rgba(240,244,255,.35)">Coming soon</span></div><div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">📧</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Resend</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Sends emails</div></div><span style="font-size:10px;color:rgba(240,244,255,.35)">Coming soon</span></div>';
-
 
       el.innerHTML=`
         <div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:16px;margin-bottom:20px;display:flex;align-items:center;gap:10px">
@@ -1085,11 +1083,11 @@ async function dCmp(id){if(!confirm("Delete?"))return;await db.del("campaigns",i
 async function dOut(){try{if(S?.token)await au.out(S.token);}catch{}S=null;localStorage.removeItem("ct");localStorage.removeItem("cu");go("land");}
 
 // Connect a platform from the Settings page (stores where to return)
-function connectPlatformDash(platform){
+async function connectPlatformDash(platform){
   sessionStorage.setItem("ct_return","settings");
-  if(platform==="square")squareConnect();
-  else if(platform==="shopify")shopifyConnect();
-  else if(platform==="clover")cloverConnect();
+  if(platform==="square")await squareConnect();
+  else if(platform==="shopify")await shopifyConnect();
+  else if(platform==="clover")await cloverConnect();
 }
 
 // Disconnect (mark inactive in DB)
@@ -1224,10 +1222,10 @@ function pricingP(){
   }
   var note="<div style='background:#0C1220;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px;text-align:center;margin-top:0'>";
   note+="<div style='font-size:13px;color:rgba(240,244,255,.5);line-height:2'>";
-  note+="<b style='color:#F0F4FF'>Messages</b> &#8212; included in every plan &nbsp;&#183;&nbsp; ";
-  note+="<b style='color:#F0F4FF'>Promo codes</b> &#8212; included in every plan &nbsp;&#183;&nbsp; ";
-  note+="<b style='color:#F0F4FF'>Physical gifts</b> &#8212; from your wallet, only when you send one &nbsp;&#183;&nbsp; ";
-  note+="<b style='color:#F0F4FF'>Cancel anytime</b> &#8212; no contracts, no setup fees";
+  note+="<b style='color:#F0F4FF'>Messages</b> -- included in every plan &nbsp;&#183;&nbsp; ";
+  note+="<b style='color:#F0F4FF'>Promo codes</b> -- included in every plan &nbsp;&#183;&nbsp; ";
+  note+="<b style='color:#F0F4FF'>Physical gifts</b> -- from your wallet, only when you send one &nbsp;&#183;&nbsp; ";
+  note+="<b style='color:#F0F4FF'>Cancel anytime</b> -- no contracts, no setup fees";
   note+="</div></div>";
   var h="<nav>"+logoH(20)+"<button class=\"btn btn-outline\" onclick=\"go('land')\">&#8592; Back</button></nav>";
   var title="<div style='text-align:center;margin-bottom:48px'><h1 style='font-size:clamp(28px,5vw,50px);font-weight:800;letter-spacing:-2px;margin-bottom:14px'>Choose your <span class='gold'>plan</span></h1><p style='font-size:16px;color:rgba(240,244,255,.5);max-width:460px;margin:0 auto;line-height:1.7'>Messages and promo codes included. Only physical gifts cost extra.</p></div>";
