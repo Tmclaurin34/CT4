@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Clicktide — Send a gift. Start a tide.</title>
+<title>Clicktide -- Send a gift. Start a tide.</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -280,34 +280,34 @@ const GF={
 };
 const MSG={
   message_only:[
-    "Hey {{first_name}}, just checking in — the whole team at {{business_name}} has been thinking about you. Hope everything is going well!",
-    "{{first_name}}, we just wanted to reach out and say we appreciate you. No agenda — just a note from everyone at {{business_name}} to say thank you.",
+    "Hey {{first_name}}, just checking in -- the whole team at {{business_name}} has been thinking about you. Hope everything is going well!",
+    "{{first_name}}, we just wanted to reach out and say we appreciate you. No agenda -- just a note from everyone at {{business_name}} to say thank you.",
     "Hey {{first_name}}! It's been a little while and we wanted to say we miss you at {{business_name}}. Your spot is always waiting whenever you're ready."
   ],
   physical_gift:[
-    "Hey {{first_name}}, we put something together for you — keep an eye on your mailbox! A little something is heading your way from {{business_name}}.",
+    "Hey {{first_name}}, we put something together for you -- keep an eye on your mailbox! A little something is heading your way from {{business_name}}.",
     "{{first_name}}, there's a small surprise on its way from the team at {{business_name}}. Just a little token to say we're thinking of you. Watch for it!",
-    "Hey {{first_name}}! We wanted to do something thoughtful for you. Something is on its way from {{business_name}} — hope it puts a smile on your face."
+    "Hey {{first_name}}! We wanted to do something thoughtful for you. Something is on its way from {{business_name}} -- hope it puts a smile on your face."
   ],
   digital_gift:[
-    "Hey {{first_name}}, we put something special inside this email just for you from {{business_name}}. Tap below to claim it — it's completely on us!",
-    "{{first_name}}, the team at {{business_name}} wanted to show you some appreciation today. There's a little something inside this email — enjoy it on us!",
-    "Hey {{first_name}}! There's a special something from {{business_name}} waiting for you right below. Just tap to claim it — it's our gift to you!"
+    "Hey {{first_name}}, we put something special inside this email just for you from {{business_name}}. Tap below to claim it -- it's completely on us!",
+    "{{first_name}}, the team at {{business_name}} wanted to show you some appreciation today. There's a little something inside this email -- enjoy it on us!",
+    "Hey {{first_name}}! There's a special something from {{business_name}} waiting for you right below. Just tap to claim it -- it's our gift to you!"
   ]
 };
-const NT=[{e:"📦",t:"Package delivered!",s:"Sarah M. received her welcome kit"},{e:"⬛",t:"Square connected!",s:"Pete's Barbershop — 3 triggers live"},{e:"📈",t:"Retention up 41%!",s:"Bloom Yoga after 60 days"},{e:"💳",t:"Stripe triggered!",s:"Nova SaaS — gift shipped"}];
+const NT=[{e:"📦",t:"Package delivered!",s:"Sarah M. received her welcome kit"},{e:"⬛",t:"Square connected!",s:"Pete's Barbershop -- 3 triggers live"},{e:"📈",t:"Retention up 41%!",s:"Bloom Yoga after 60 days"},{e:"💳",t:"Stripe triggered!",s:"Nova SaaS -- gift shipped"}];
 
-// ── Edge Function base URL ───────────────────────────────────────────────────
+// -- Edge Function base URL ---------------------------------------------------
 const FN=`${SU}/functions/v1`;
-// ── Platform App IDs (public — safe in frontend) ────────────────────────────
+// -- Platform App IDs (public -- safe in frontend) ----------------------------
 const SQ_APP_ID="sq0idp-lOwkDlbKD4OacOyioAOkZQ";
 const SH_CLIENT_ID="1e876d10b4e052fe9897dd45bd859eca";
 const CL_APP_ID="1YSBHCR5VTYZE";
 
-// ── Platform connections state (loaded from Supabase on dash) ────────────────
+// -- Platform connections state (loaded from Supabase on dash) ----------------
 let platConn={square:null,shopify:null,clover:null}; // null=unknown, false=disconnected, object=connected
 
-// ── CSRF state helpers (stored in sessionStorage so it survives redirects) ──
+// -- CSRF state helpers (stored in sessionStorage so it survives redirects) --
 function savePlatformState(platform,state,extra){
   sessionStorage.setItem("ct_oauth_state",JSON.stringify({platform,state,...extra}));
 }
@@ -316,16 +316,16 @@ function loadPlatformState(){
 }
 function clearPlatformState(){sessionStorage.removeItem("ct_oauth_state");}
 
-// ── Generate a random state token client-side ────────────────────────────────
+// -- Generate a random state token client-side --------------------------------
 function randomState(){
   const arr=new Uint8Array(24);crypto.getRandomValues(arr);
   return Array.from(arr,b=>b.toString(16).padStart(2,"0")).join("");
 }
 
-// ── Store state in Supabase then return it ───────────────────────────────────
+// -- Store state in Supabase then return it -----------------------------------
 async function createOAuthState(platform,metadata){
   const state=randomState();
-  // Only persist to DB when the user is logged in — sessionStorage covers the unauthenticated onboard flow
+  // Only persist to DB when the user is logged in -- sessionStorage covers the unauthenticated onboard flow
   if(S?.user?.id){
     try{
       const tok=S.token;
@@ -340,7 +340,7 @@ async function createOAuthState(platform,metadata){
   return state;
 }
 
-// ── Redirect to Square OAuth ─────────────────────────────────────────────────
+// -- Redirect to Square OAuth -------------------------------------------------
 async function squareConnect(){
   console.log("squareConnect: start");
   const state=await createOAuthState("square",{});
@@ -358,7 +358,7 @@ async function squareConnect(){
   window.location.href=authUrl;
 }
 
-// ── Redirect to Shopify OAuth ────────────────────────────────────────────────
+// -- Redirect to Shopify OAuth ------------------------------------------------
 async function shopifyConnect(){
   // Show a styled modal instead of browser prompt
   return new Promise((resolve)=>{
@@ -411,7 +411,7 @@ async function shopifyConnect(){
   });
 }
 
-// ── Redirect to Clover OAuth ─────────────────────────────────────────────────
+// -- Redirect to Clover OAuth -------------------------------------------------
 async function cloverConnect(){
   const state=await createOAuthState("clover",{});
   const redirectUri=`${FN}/clover-oauth-callback`;
@@ -423,7 +423,7 @@ async function cloverConnect(){
   window.location.href=`https://www.clover.com/oauth/authorize?${params}`;
 }
 
-// ── Handle OAuth callback redirect back to this page ────────────────────────
+// -- Handle OAuth callback redirect back to this page ------------------------
 // Edge functions redirect to: goclicktide.com?ct_platform=square&ct_merchant=xxx&ct_name=Yyy
 // or on error: goclicktide.com?ct_error=...
 (function handleOAuthReturn(){
@@ -506,27 +506,27 @@ function land(){
   <div class="hero">
     <div class="badge"><span class="dot"></span>Shopify · Square · Stripe · 12+ platforms</div>
     <h1>Send a gift.<br><span class="gold">Start a tide.</span></h1>
-    <p class="sub">Clicktide automatically sends physical gifts, digital rewards, or personal messages when customers hit key milestones — turning churn into loyalty on autopilot.</p>
+    <p class="sub">Clicktide automatically sends physical gifts, digital rewards, or personal messages when customers hit key milestones -- turning churn into loyalty on autopilot.</p>
     <div class="input-row">
       <input class="email-inp" id="hE" placeholder="your@email.com" type="email"/>
       <button class="btn btn-gold" onclick="joinW()">Join Waitlist</button>
     </div>
     <div id="wOk" style="display:none;margin-bottom:14px"><span style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:100px;padding:13px 22px;font-size:14px;color:#22C55E;font-weight:600">🎉 You're on the list!</span></div>
-    <button class="link-btn" onclick="go('onboard')">→ Start free trial — no credit card needed</button>
+    <button class="link-btn" onclick="go('onboard')">→ Start free trial -- no credit card needed</button>
     <div class="pills">${PL.map(p=>`<div class="pill">${p.e} ${p.n}</div>`).join("")}</div>
   </div>
   <div class="notif" id="ntf"><span style="font-size:22px">${n.e}</span><div><div style="font-size:13px;font-weight:700">${n.t}</div><div style="font-size:11px;color:rgba(240,244,255,.45);margin-top:1px">${n.s}</div></div></div>
   <div class="sec sec-sur"><div style="max-width:900px;margin:0 auto;text-align:center">
     <h2 class="sec-title">Live in <span class="gold">10 minutes.</span></h2>
-    <div class="g4">${[["01","🔌","Connect","One-click OAuth on Square, Shopify, Stripe and 9 more."],["02","⚡","Trigger","First visit, birthday, churn risk — any milestone."],["03","💌","Choose","Message only, physical gift, or digital reward."],["04","📊","Track","See which messages and gifts drive repeat visits."]].map(([n,i,t,d])=>`<div class="card" style="position:relative;overflow:hidden"><div style="position:absolute;top:-6px;right:8px;font-family:'Space Grotesk',sans-serif;font-size:64px;font-weight:800;color:rgba(255,255,255,.03);line-height:1">${n}</div><div style="font-size:26px;margin-bottom:10px">${i}</div><div style="font-size:14px;font-weight:700;margin-bottom:5px">${t}</div><div style="font-size:12px;line-height:1.7;color:rgba(240,244,255,.5)">${d}</div></div>`).join("")}</div>
+    <div class="g4">${[["01","🔌","Connect","One-click OAuth on Square, Shopify, Stripe and 9 more."],["02","⚡","Trigger","First visit, birthday, churn risk -- any milestone."],["03","💌","Choose","Message only, physical gift, or digital reward."],["04","📊","Track","See which messages and gifts drive repeat visits."]].map(([n,i,t,d])=>`<div class="card" style="position:relative;overflow:hidden"><div style="position:absolute;top:-6px;right:8px;font-family:'Space Grotesk',sans-serif;font-size:64px;font-weight:800;color:rgba(255,255,255,.03);line-height:1">${n}</div><div style="font-size:26px;margin-bottom:10px">${i}</div><div style="font-size:14px;font-weight:700;margin-bottom:5px">${t}</div><div style="font-size:12px;line-height:1.7;color:rgba(240,244,255,.5)">${d}</div></div>`).join("")}</div>
   </div></div>
   <div class="sec"><div style="max-width:840px;margin:0 auto;text-align:center">
     <h2 class="sec-title">Three ways to <span class="gold">keep customers.</span></h2>
     
     <div class="g3">
-      <div class="tc"><div style="font-size:32px;margin-bottom:10px">💬</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#4DA6FF;margin-bottom:6px">Free forever</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Message Only</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#4DA6FF;margin-bottom:8px">Free</div><div style="font-size:12px;color:rgba(240,244,255,.5);line-height:1.7;margin-bottom:14px">A personal check-in or thank you. No gift mentioned. Just human connection.</div><div style="background:rgba(77,166,255,.06);border:1px solid rgba(77,166,255,.15);border-radius:10px;padding:10px 12px;font-size:11px;color:rgba(240,244,255,.5);font-style:italic;margin-bottom:16px">"Hey Sarah, just checking in — the team at Iron Forge misses you! Hope everything is going well."</div><button class="btn btn-ghost" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
-      <div class="tc pop"><div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#FFD166;color:#080D18;padding:3px 14px;border-radius:100px;font-size:11px;font-weight:700;white-space:nowrap">Most Powerful</div><div style="font-size:32px;margin-bottom:10px">📦</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#FFD166;margin-bottom:6px">From $7 per send</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Physical Gift</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#FFD166;margin-bottom:8px">From $7</div><div style="font-size:12px;color:rgba(240,244,255,.5);line-height:1.7;margin-bottom:14px">A branded item ships automatically. Message naturally mentions something is arriving.</div><div style="background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.15);border-radius:10px;padding:10px 12px;font-size:11px;color:rgba(240,244,255,.5);font-style:italic;margin-bottom:16px">"Hey Sarah, keep an eye on your mailbox — something is on its way from us. 🎁"</div><button class="btn btn-gold" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
-      <div class="tc"><div style="font-size:32px;margin-bottom:10px">💳</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#22C55E;margin-bottom:6px">Included in your plan</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Digital Gift</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#22C55E;margin-bottom:8px">Included</div><div style="font-size:12px;color:rgba(240,244,255,.5);line-height:1.7;margin-bottom:14px">You generate a promo code in your Square, Shopify, or Clover dashboard. Clicktide sends it to your customer automatically by email.</div><div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:10px;padding:10px 12px;font-size:11px;color:rgba(240,244,255,.5);font-style:italic;margin-bottom:16px">"Hey Sarah, here's something special from Iron Forge — use code SARAH20 on your next visit!"</div><button class="btn btn-ghost" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
+      <div class="tc"><div style="font-size:32px;margin-bottom:10px">💬</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#4DA6FF;margin-bottom:6px">Free forever</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Message Only</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#4DA6FF;margin-bottom:8px">Free</div><div style="font-size:12px;color:rgba(240,244,255,.5);line-height:1.7;margin-bottom:14px">A personal check-in or thank you. No gift mentioned. Just human connection.</div><div style="background:rgba(77,166,255,.06);border:1px solid rgba(77,166,255,.15);border-radius:10px;padding:10px 12px;font-size:11px;color:rgba(240,244,255,.5);font-style:italic;margin-bottom:16px">"Hey Sarah, just checking in -- the team at Iron Forge misses you! Hope everything is going well."</div><button class="btn btn-ghost" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
+      <div class="tc pop"><div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#FFD166;color:#080D18;padding:3px 14px;border-radius:100px;font-size:11px;font-weight:700;white-space:nowrap">Most Powerful</div><div style="font-size:32px;margin-bottom:10px">📦</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#FFD166;margin-bottom:6px">From $7 per send</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Physical Gift</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#FFD166;margin-bottom:8px">From $7</div><div style="font-size:12px;color:rgba(240,244,255,.5);line-height:1.7;margin-bottom:14px">A branded item ships automatically. Message naturally mentions something is arriving.</div><div style="background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.15);border-radius:10px;padding:10px 12px;font-size:11px;color:rgba(240,244,255,.5);font-style:italic;margin-bottom:16px">"Hey Sarah, keep an eye on your mailbox -- something is on its way from us. 🎁"</div><button class="btn btn-gold" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
+      <div class="tc"><div style="font-size:32px;margin-bottom:10px">💳</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#22C55E;margin-bottom:6px">Included in your plan</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Digital Gift</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#22C55E;margin-bottom:8px">Included</div><div style="font-size:12px;color:rgba(240,244,255,.5);line-height:1.7;margin-bottom:14px">You generate a promo code in your Square, Shopify, or Clover dashboard. Clicktide sends it to your customer automatically by email.</div><div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:10px;padding:10px 12px;font-size:11px;color:rgba(240,244,255,.5);font-style:italic;margin-bottom:16px">"Hey Sarah, here's something special from Iron Forge -- use code SARAH20 on your next visit!"</div><button class="btn btn-ghost" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
     </div>
   </div></div>
   <div class="sec sec-sur"><div style="max-width:900px;margin:0 auto;text-align:center">
@@ -557,7 +557,7 @@ function authP(mode){
     ${!il?`<div class="fg"><label class="fl">Business Name</label><input class="fi" id="aN" placeholder="Iron Forge Gym"/></div>`:""}
     <div class="fg"><label class="fl">Email</label><input class="fi" id="aE" type="email" placeholder="you@business.com"/></div>
     <div class="fg"><label class="fl">Password</label><input class="fi" id="aP" type="password" placeholder="••••••••"/></div>
-    ${!il?`<div class="fg"><label class="fl">Plan</label><select class="fi-sel" id="aPl"><option value="Local">Local — $29/mo</option><option value="Growth" selected>Growth — $99/mo ★</option><option value="Scale">Scale — $299/mo</option></select></div>`:""}
+    ${!il?`<div class="fg"><label class="fl">Plan</label><select class="fi-sel" id="aPl"><option value="Local">Local -- $29/mo</option><option value="Growth" selected>Growth -- $99/mo ★</option><option value="Scale">Scale -- $299/mo</option></select></div>`:""}
     <div class="err" id="aErr"></div>
     <button class="btn-full btn-gold" id="aSub" onclick="doAuth('${mode}')" style="margin-bottom:16px">${il?"Log in →":"Create my account →"}</button>
     <div style="text-align:center;font-size:13px;color:rgba(240,244,255,.45)">${il?"Don't have an account? ":"Already have an account? "}<button class="link-btn" onclick="go('${il?"onboard":"login"}')">${il?"Sign up free":"Log in"}</button></div>
@@ -630,7 +630,7 @@ function onboard(){
     var searchBar="<div style='position:relative;margin-bottom:14px'><input class='fi' id='gsearch' value='"+sq+"' placeholder='Search gifts (e.g. Shirt, Mug, Hoodie...)' oninput='obGiftSearch=this.value;updateGiftGrid()' onkeydown='giftEnter(event)' style='padding-right:90px'/><button onclick='updateGiftGrid()' style='position:absolute;right:6px;top:50%;transform:translateY(-50%);background:#FFD166;color:#080D18;border:none;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif'>Search</button></div>";
     var customRow="";
     if(sq.length>0&&filtG.length===0){
-      customRow="<div style='background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);border-radius:12px;padding:16px;margin-bottom:14px;text-align:center'><div style='font-size:13px;font-weight:700;margin-bottom:6px'>No results for \""+sq+"\"</div><div style='font-size:12px;color:rgba(240,244,255,.45);margin-bottom:12px'>Add it as a custom gift — we will source and ship it.</div><button class='btn btn-gold' data-q='"+sq+"' onclick='obCustomGift=this.dataset.q;obG=-1;obGiftSearch=String();R()' style='padding:8px 20px;font-size:12px'>+ Add \""+sq+"\" as my gift</button></div>";
+      customRow="<div style='background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);border-radius:12px;padding:16px;margin-bottom:14px;text-align:center'><div style='font-size:13px;font-weight:700;margin-bottom:6px'>No results for \""+sq+"\"</div><div style='font-size:12px;color:rgba(240,244,255,.45);margin-bottom:12px'>Add it as a custom gift -- we will source and ship it.</div><button class='btn btn-gold' data-q='"+sq+"' onclick='obCustomGift=this.dataset.q;obG=-1;obGiftSearch=String();R()' style='padding:8px 20px;font-size:12px'>+ Add \""+sq+"\" as my gift</button></div>";
     }
     if(obG===-1&&obCustomGift){
       customRow="<div style='background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px'><span style='font-size:20px'>✅</span><div style='flex:1'><div style='font-size:13px;font-weight:700'>Custom: "+obCustomGift+"</div><div style='font-size:11px;color:rgba(240,244,255,.45)'>We will source and ship this for you</div></div><button onclick='obG=null;obCustomGift=null;R()' style='background:transparent;border:none;color:rgba(240,244,255,.35);cursor:pointer;font-size:20px;padding:0'>×</button></div>";
@@ -662,7 +662,7 @@ function onboard(){
       logoSection=ls;
     } else {
       var ls2="<div style='margin-bottom:14px'>";
-      ls2+="<label style='font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.45);display:block;margin-bottom:6px'>Your Business Logo <span style='font-size:10px;font-weight:400;text-transform:none;color:rgba(240,244,255,.3)'>— optional but recommended</span></label>";
+      ls2+="<label style='font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.45);display:block;margin-bottom:6px'>Your Business Logo <span style='font-size:10px;font-weight:400;text-transform:none;color:rgba(240,244,255,.3)'>-- optional but recommended</span></label>";
       ls2+="<label id='logoDropZone' style='display:block;border:2px dashed rgba(255,255,255,.1);border-radius:10px;padding:18px;text-align:center;cursor:pointer;background:rgba(255,255,255,.02);transition:all .2s'>";
       ls2+="<input type='file' accept='.png,.jpg,.jpeg,.svg' style='display:none' onchange='handleLogoUpload(this)'/>";
       ls2+="<div style='font-size:22px;margin-bottom:6px'>🖼️</div>";
@@ -689,7 +689,7 @@ function onboard(){
     c="<div style='font-size:30px;margin-bottom:8px'>👥</div><h2 style='font-family:Space Grotesk,sans-serif;font-size:22px;font-weight:800;margin-bottom:6px'>Import your customers</h2><p style='color:rgba(240,244,255,.45);font-size:13px;margin-bottom:20px;line-height:1.6'>Do you have existing customers you'd like to bring in? You can always do this later.</p>"+importContent+"<div style='display:flex;flex-direction:column;gap:8px;margin-bottom:16px'>"+
     "<div data-imp='csv' onclick='setImport(this.dataset.imp)' style='display:flex;align-items:center;gap:12px;padding:14px;border:2px solid "+(obImport==="csv"?"#4DA6FF":"rgba(255,255,255,.07)")+";border-radius:12px;cursor:pointer;background:"+(obImport==="csv"?"rgba(77,166,255,.08)":"transparent")+"'><span style='font-size:22px'>📄</span><div><div style='font-size:13px;font-weight:700'>Upload a CSV file</div><div style='font-size:11px;color:rgba(240,244,255,.45);margin-top:1px'>Import from Excel, Google Sheets, or any spreadsheet</div></div></div>"+
     "<div data-imp='platform' onclick='setImport(this.dataset.imp)' style='display:flex;align-items:center;gap:12px;padding:14px;border:2px solid "+(obImport==="platform"?"#22C55E":"rgba(255,255,255,.07)")+";border-radius:12px;cursor:pointer;background:"+(obImport==="platform"?"rgba(34,197,94,.08)":"transparent")+"'><span style='font-size:22px'>🔄</span><div><div style='font-size:13px;font-weight:700'>Sync from my platform</div><div style='font-size:11px;color:rgba(240,244,255,.45);margin-top:1px'>Pull existing customers from Square, Shopify, or Clover automatically</div></div></div>"+
-    "<div data-imp='skip' onclick='setImport(this.dataset.imp)' style='display:flex;align-items:center;gap:12px;padding:14px;border:2px solid "+(obImport==="skip"?"rgba(255,255,255,.3)":"rgba(255,255,255,.07)")+";border-radius:12px;cursor:pointer'><span style='font-size:22px'>⏭️</span><div><div style='font-size:13px;font-weight:700'>Skip for now</div><div style='font-size:11px;color:rgba(240,244,255,.45);margin-top:1px'>Start fresh — add customers manually or import later from your dashboard</div></div></div>"+
+    "<div data-imp='skip' onclick='setImport(this.dataset.imp)' style='display:flex;align-items:center;gap:12px;padding:14px;border:2px solid "+(obImport==="skip"?"rgba(255,255,255,.3)":"rgba(255,255,255,.07)")+";border-radius:12px;cursor:pointer'><span style='font-size:22px'>⏭️</span><div><div style='font-size:13px;font-weight:700'>Skip for now</div><div style='font-size:11px;color:rgba(240,244,255,.45);margin-top:1px'>Start fresh -- add customers manually or import later from your dashboard</div></div></div>"+
     "</div><button class='btn-full btn-gold' "+(obImport?"":"disabled style='opacity:.4;cursor:not-allowed'")+" onclick='oNxt()'>"+( obImport==="csv"?"Continue →":obImport==="platform"?"Sync & Continue →":"Skip & Go Live →")+"</button>";
   }
   else if(obS===4)c=`<div style="font-size:30px;margin-bottom:6px">👤</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Create your account</h2><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:20px">Almost done!</p><div class="fg"><label class="fl">Business Name</label><input class="fi" id="oN" value="${obN}" placeholder="${B?.l||"Your Business"}" oninput="obN=this.value"/></div><div class="fg"><label class="fl">Email</label><input class="fi" id="oE" value="${obE}" type="email" placeholder="you@business.com" oninput="obE=this.value"/></div><div class="fg"><label class="fl">Password</label><input class="fi" id="oPw" value="${obPw}" type="password" placeholder="••••••••" oninput="obPw=this.value"/></div><div class="fg"><label class="fl">Choose Your Plan</label>
@@ -705,7 +705,7 @@ function onboard(){
   </div>`).join("")}
 </div>
 <input type="hidden" id="oPl" value="${obPl}"/></div><div class="err" id="oErr"></div><button class="btn-full btn-gold" id="oSub" onclick="oSignup()" style="margin-bottom:12px">Create account & go live →</button><div style="text-align:center;font-size:12px;color:rgba(240,244,255,.45)">Already have an account? <button class="link-btn" onclick="go('login')">Log in</button></div>`;
-  else if(obS===6){const g=obG!==null?GF[obB]?.[obG]:null;c=`<div style="text-align:center"><div style="font-size:52px;margin-bottom:12px">🚀</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">You're live!</h2><p style="color:rgba(240,244,255,.45);font-size:14px;line-height:1.7;margin-bottom:20px">Your Clicktide campaign is active and ready.</p><ul style="list-style:none;padding:0;background:#101828;border-radius:13px;padding:16px;margin-bottom:20px;text-align:left">${[`${B?.i} ${B?.l}`,`${P?.e} ${P?.n} connected`,`🎁 ${g?.n||"—"}`,`⚡ ${obT.length} trigger${obT.length!==1?"s":""}`,`💬 Message Only: Free`,`📦 Physical gifts: From $7`].map(i=>`<li style="font-size:12px;color:rgba(240,244,255,.45);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:8px"><span style="color:#22C55E">✓</span>${i}</li>`).join("")}</ul><div style="display:flex;gap:10px"><button class="btn btn-gold" style="flex:1;padding:12px" onclick="go('dash')">Open Dashboard →</button><button class="btn btn-ghost" style="flex:1;padding:12px" onclick="go('login')">Log in</button></div></div>`;}
+  else if(obS===6){const g=obG!==null?GF[obB]?.[obG]:null;c=`<div style="text-align:center"><div style="font-size:52px;margin-bottom:12px">🚀</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">You're live!</h2><p style="color:rgba(240,244,255,.45);font-size:14px;line-height:1.7;margin-bottom:20px">Your Clicktide campaign is active and ready.</p><ul style="list-style:none;padding:0;background:#101828;border-radius:13px;padding:16px;margin-bottom:20px;text-align:left">${[`${B?.i} ${B?.l}`,`${P?.e} ${P?.n} connected`,`🎁 ${g?.n||"--"}`,`⚡ ${obT.length} trigger${obT.length!==1?"s":""}`,`💬 Message Only: Free`,`📦 Physical gifts: From $7`].map(i=>`<li style="font-size:12px;color:rgba(240,244,255,.45);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:8px"><span style="color:#22C55E">✓</span>${i}</li>`).join("")}</ul><div style="display:flex;gap:10px"><button class="btn btn-gold" style="flex:1;padding:12px" onclick="go('dash')">Open Dashboard →</button><button class="btn btn-ghost" style="flex:1;padding:12px" onclick="go('login')">Log in</button></div></div>`;}
   return`<div class="ob">${logoH(22)}<div class="stbar">${steps.map((s,i)=>`<div class="sp ${i===obS?"on":i<obS?"dn":"pd"}">${s}</div>`).join("")}</div><div class="ob-card">${c}</div>${obS>0&&obS<5?`<button class="link-btn" style="margin-top:12px" onclick="oBck()">← Back</button>`:""}</div>`;
 }
 
@@ -790,7 +790,7 @@ async function uploadLogoToStorage(file){
 
 function giftEnter(e){if(e.key==='Enter'){updateGiftGrid();}}
 
-// ── Printify catalog ─────────────────────────────────────────────────────────
+// -- Printify catalog ---------------------------------------------------------
 // Curated list of Printify blank products merchants can brand
 const PRINTIFY_CATALOG=[
   {id:"5d15ca528cd8f30117000056",variant_id:17887,e:"👕",n:"Unisex T-Shirt",s:"Bella+Canvas 3001",p:18,pop:true,cat:"apparel"},
@@ -881,7 +881,7 @@ async function oCon(){
     alert("Connection failed: "+e.message+"\n\nCheck console for details.");
     return;
   }
-  // Stripe, Toast, Mindbody — simulate for now
+  // Stripe, Toast, Mindbody -- simulate for now
   setTimeout(function(){obC=true;R();},1800);
 }
 function oNxt(){if(obS===1&&!obC)return;obS++;R();}
@@ -963,7 +963,7 @@ function roi(){
     var ch=Math.round(riCu*riCh),sv=Math.round(ch*B.lf),rc=sv*riAv,gs=sv*riGf,ag=Math.max(0,(rc-gs-riPl)*12),ml=Math.round((riAv/riGf)*10)/10,pb=Math.max(1,Math.round((riPl+gs)/Math.max(rc,1)));
     c=`<div style="text-align:center;margin-bottom:24px"><div style="font-size:28px;margin-bottom:6px">${B.i}</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:clamp(20px,4vw,36px);font-weight:800;letter-spacing:-1px;margin-bottom:6px">Your Retention Diagram</h2><p style="font-size:13px;color:rgba(240,244,255,.45)">${riCu} customers · $${riAv} avg · $${riGf} gift</p></div>
     <div class="rg">${[{l:"Annual gain",v:`$${ag.toLocaleString()}`,s:"From retained customers",c:"#22C55E",bg:"rgba(34,197,94,.1)",bc:"rgba(34,197,94,.2)"},{l:"Saved/mo",v:sv,s:`Of ${ch} churning`,c:B.c,bg:`rgba(255,209,102,.1)`,bc:`rgba(255,209,102,.2)`},{l:"Return per $1",v:`${ml}×`,s:"Per gift",c:"#FFD166",bg:"rgba(255,209,102,.1)",bc:"rgba(255,209,102,.2)"},{l:"Payback",v:`${pb}mo`,s:"Until ROI positive",c:"#06B6D4",bg:"rgba(6,182,212,.1)",bc:"rgba(6,182,212,.2)"}].map(r=>`<div class="rcard" style="background:${r.bg};border-color:${r.bc}"><div class="rv" style="color:${r.c}">${r.v}</div><div style="font-size:11px;font-weight:700;margin-bottom:3px">${r.l}</div><div style="font-size:10px;color:rgba(240,244,255,.45);line-height:1.5">${r.s}</div></div>`).join("")}</div>
-    <div style="background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.15);border-radius:14px;padding:20px;margin-bottom:16px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#FFD166;margin-bottom:8px">💡 Key Insight</div><div style="font-size:14px;line-height:1.85">Right now <strong style="color:#FF4D6D">${ch} customers</strong> leave monthly costing <strong style="color:#FF4D6D">$${(ch*riAv).toLocaleString()}/mo</strong>. A <strong style="color:${B.c}">$${riGf} gift</strong> recovers <strong style="color:#22C55E">${sv} customers</strong> — turning $${riGf} into <strong style="color:#FFD166">$${riAv-riGf} net profit</strong>. Over 12 months: <strong style="color:#22C55E">$${ag.toLocaleString()}</strong> recovered.</div></div>
+    <div style="background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.15);border-radius:14px;padding:20px;margin-bottom:16px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#FFD166;margin-bottom:8px">💡 Key Insight</div><div style="font-size:14px;line-height:1.85">Right now <strong style="color:#FF4D6D">${ch} customers</strong> leave monthly costing <strong style="color:#FF4D6D">$${(ch*riAv).toLocaleString()}/mo</strong>. A <strong style="color:${B.c}">$${riGf} gift</strong> recovers <strong style="color:#22C55E">${sv} customers</strong> -- turning $${riGf} into <strong style="color:#FFD166">$${riAv-riGf} net profit</strong>. Over 12 months: <strong style="color:#22C55E">$${ag.toLocaleString()}</strong> recovered.</div></div>
     <div class="g2" style="max-width:860px;margin:0 auto"><div style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.15);border-radius:14px;padding:22px;text-align:center"><div style="font-size:24px;margin-bottom:6px">🚀</div><div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:800;margin-bottom:6px">Start free trial</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:14px">No credit card required.</div><button class="btn btn-gold" style="width:100%;padding:11px" onclick="go('onboard')">Get started →</button></div><div class="card-s" style="border-radius:14px;text-align:center;padding:22px"><div style="font-size:24px;margin-bottom:6px">🔄</div><div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:800;margin-bottom:6px">Try another type</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:14px">See ROI for different business.</div><button class="btn btn-ghost" style="width:100%;padding:11px" onclick="riS=0;riB=null;riR()">← Start over</button></div></div>`;
   }
   return`<div class="roi"><div class="roi-hd">${logoH(20)}<div style="display:flex;align-items:center;gap:12px"><div style="width:1px;height:18px;background:rgba(255,255,255,.07)"></div><span style="font-size:13px;color:rgba(240,244,255,.45)">ROI Calculator</span></div><button class="btn btn-outline" onclick="go('land')">← Back</button></div><div class="roi-body">${c}</div></div>`;
@@ -1011,7 +1011,7 @@ async function dLoad(){
     }
     else if(dpg==="customers"){
       const cu=await db.sel("customers","order=created_at.desc",tok).catch(()=>[]);
-      el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button class="btn btn-gold" onclick="oAC()">+ Add Customer</button></div>${cu.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">👥</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No customers yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Add your first customer.</div><button class="btn btn-gold" onclick="oAC()">Add Customer</button></div>`:`<div class="dc"><div style="display:grid;grid-template-columns:1fr 1fr 120px 90px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.07);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.15)"><span>Name</span><span>Email</span><span>Business</span><span>Spent</span></div>${cu.map(c=>`<div style="display:grid;grid-template-columns:1fr 1fr 120px 90px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.07);align-items:center"><div style="font-size:13px;font-weight:600">${c.name}</div><div style="font-size:12px;color:rgba(240,244,255,.45)">${c.email}</div><div style="font-size:12px;color:rgba(240,244,255,.45)">${c.business_id||"—"}</div><div style="font-size:13px;font-weight:600;color:#22C55E">$${c.total_spent||0}</div></div>`).join("")}</div>`}`;
+      el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button class="btn btn-gold" onclick="oAC()">+ Add Customer</button></div>${cu.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">👥</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No customers yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Add your first customer.</div><button class="btn btn-gold" onclick="oAC()">Add Customer</button></div>`:`<div class="dc"><div style="display:grid;grid-template-columns:1fr 1fr 120px 90px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.07);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.15)"><span>Name</span><span>Email</span><span>Business</span><span>Spent</span></div>${cu.map(c=>`<div style="display:grid;grid-template-columns:1fr 1fr 120px 90px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.07);align-items:center"><div style="font-size:13px;font-weight:600">${c.name}</div><div style="font-size:12px;color:rgba(240,244,255,.45)">${c.email}</div><div style="font-size:12px;color:rgba(240,244,255,.45)">${c.business_id||"--"}</div><div style="font-size:13px;font-weight:600;color:#22C55E">$${c.total_spent||0}</div></div>`).join("")}</div>`}`;
     }
     else if(dpg==="wallet"){
       const tx=await db.sel("wallet","order=created_at.desc",tok).catch(()=>[]);
@@ -1039,60 +1039,15 @@ async function dLoad(){
         {id:"shopify",i:"🛒",n:"Shopify",d:"E-commerce · online orders"},
         {id:"clover",i:"🍀",n:"Clover",d:"Restaurant & retail POS"}
       ];
-      const otherCards=`
-        <div class="dc" style="display:flex;align-items:center;gap:9px;border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.04)">
-          <span style="font-size:20px">🖨️</span>
-          <div style="flex:1">
-            <div style="font-size:12px;font-weight:700;margin-bottom:2px">Printify</div>
-            <div style="font-size:11px;color:#22C55E">● Active · Prints & ships gifts on demand</div>
-          </div>
-          <span style="font-size:10px;font-weight:700;color:#22C55E">Connected</span>
-        </div>
-        <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">💳</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Stripe</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Subscription billing</div></div><span style="font-size:10px;color:rgba(240,244,255,.35)">Coming soon</span></div>
-        <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">📧</span><div style="font-size:12px;font-weight:700;margin-bottom:2px">Resend</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Sends customer emails</div><span style="font-size:10px;color:rgba(240,244,255,.35)">Coming soon</span></div>
-      `;
-        const conn=platConn[p.id];
-        if(conn&&conn.merchant_id){
-          return`<div class="dc" style="display:flex;align-items:center;gap:12px;border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.04)">
-            <span style="font-size:22px">${p.i}</span>
-            <div style="flex:1">
-              <div style="font-size:13px;font-weight:700;margin-bottom:2px">${p.n}</div>
-              <div style="font-size:11px;color:#22C55E;font-weight:600">● Connected · ${conn.merchant_name||conn.merchant_id}</div>
-            </div>
-            <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="disconnectPlatform('${p.id}')">Disconnect</button>
-          </div>`;
-        }
-        return`<div class="dc" style="display:flex;align-items:center;gap:12px">
-          <span style="font-size:22px">${p.i}</span>
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:700;margin-bottom:2px">${p.n}</div>
-            <div style="font-size:11px;color:rgba(240,244,255,.45)">${p.d}</div>
-          </div>
-          <button class="btn btn-gold" style="font-size:11px;padding:7px 14px" onclick="connectPlatformDash('${p.id}')">Connect</button>
-        </div>`;
-      }).join("");
-
       const platCards=plDefs.map(p=>{
         const conn=platConn[p.id];
         if(conn&&conn.merchant_id){
-          return`<div class="dc" style="display:flex;align-items:center;gap:12px;border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.04)">
-            <span style="font-size:22px">${p.i}</span>
-            <div style="flex:1">
-              <div style="font-size:13px;font-weight:700;margin-bottom:2px">${p.n}</div>
-              <div style="font-size:11px;color:#22C55E;font-weight:600">● Connected · ${conn.merchant_name||conn.merchant_id}</div>
-            </div>
-            <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="disconnectPlatform('${p.id}')">Disconnect</button>
-          </div>`;
+          return`<div class="dc" style="display:flex;align-items:center;gap:12px;border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.04)"><span style="font-size:22px">${p.i}</span><div style="flex:1"><div style="font-size:13px;font-weight:700;margin-bottom:2px">${p.n}</div><div style="font-size:11px;color:#22C55E;font-weight:600">● Connected · ${conn.merchant_name||conn.merchant_id}</div></div><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="disconnectPlatform('${p.id}')">Disconnect</button></div>`;
         }
-        return`<div class="dc" style="display:flex;align-items:center;gap:12px">
-          <span style="font-size:22px">${p.i}</span>
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:700;margin-bottom:2px">${p.n}</div>
-            <div style="font-size:11px;color:rgba(240,244,255,.45)">${p.d}</div>
-          </div>
-          <button class="btn btn-gold" style="font-size:11px;padding:7px 14px" onclick="connectPlatformDash('${p.id}')">Connect</button>
-        </div>`;
+        return`<div class="dc" style="display:flex;align-items:center;gap:12px"><span style="font-size:22px">${p.i}</span><div style="flex:1"><div style="font-size:13px;font-weight:700;margin-bottom:2px">${p.n}</div><div style="font-size:11px;color:rgba(240,244,255,.45)">${p.d}</div></div><button class="btn btn-gold" style="font-size:11px;padding:7px 14px" onclick="connectPlatformDash('${p.id}')">Connect</button></div>`;
       }).join("");
+      const otherCards='<div class="dc" style="display:flex;align-items:center;gap:9px;border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.04)"><span style="font-size:20px">🖨️</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Printify</div><div style="font-size:11px;color:#22C55E">● Active · Print on demand</div></div><span style="font-size:10px;font-weight:700;color:#22C55E">Connected</span></div><div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">💳</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Stripe</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Subscription billing</div></div><span style="font-size:10px;color:rgba(240,244,255,.35)">Coming soon</span></div><div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">📧</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Resend</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Sends emails</div></div><span style="font-size:10px;color:rgba(240,244,255,.35)">Coming soon</span></div>';
+
 
       el.innerHTML=`
         <div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:16px;margin-bottom:20px;display:flex;align-items:center;gap:10px">
@@ -1134,7 +1089,7 @@ async function disconnectPlatform(platform){
   }catch(ex){alert("Failed to disconnect: "+ex.message);}
 }
 
-// ── Send a physical gift via Printify ────────────────────────────────────────
+// -- Send a physical gift via Printify ----------------------------------------
 async function sendPhysicalGift({campaignId,customerName,customerEmail,address,giftIndex,logoUrl,businessName}){
   const gift=PRINTIFY_CATALOG[giftIndex];
   if(!gift){console.error("Invalid gift index");return;}
@@ -1172,8 +1127,8 @@ function cModal(){
   <div class="fg"><label class="fl">Campaign Name</label><input class="fi" id="cN" value="${cmN}" placeholder="${cmT==="message_only"?"Birthday Check-in":"Welcome Kit"}" oninput="cmN=this.value"/></div>
   <div class="fg"><label class="fl">Platform</label><select class="fi-sel" id="cPf" onchange="cmPf=this.value">${["Square","Shopify","Stripe","Toast","Clover","Mindbody"].map(p=>`<option value="${p}" ${cmPf===p?"selected":""}>${p}</option>`).join("")}</select></div>
   <div class="fg"><label class="fl">Trigger</label><select class="fi-sel" id="cTr" onchange="cmTr=this.value"><option value="">Select trigger...</option>${["New Signup","First Purchase","5th Visit","30-day Inactive","Birthday","Churn Risk","Loyalty Milestone"].map(t=>`<option value="${t}" ${cmTr===t?"selected":""}>${t}</option>`).join("")}</select></div>
-  ${cmT!=="message_only"?`<div class="fg"><label class="fl">${cmT==="physical_gift"?"Gift Name":"Promo Code"}</label><div style="background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.15);border-radius:10px;padding:10px 14px;font-size:12px;color:rgba(240,244,255,.6);margin-bottom:10px;line-height:1.6">You generate the code in your Square, Shopify, or Clover dashboard. Clicktide sends it to your customer automatically.</div><input class="fi" id="cGN" value="${cmGN}" placeholder="e.g. WELCOME20 · SARAH15OFF · FREECOFFEE" oninput="cmGN=this.value"/></div>${cmT==="physical_gift"?`<div class="fg"><label class="fl">Gift Cost ($) <span style="font-size:10px;font-weight:400;color:rgba(240,244,255,.35)">— deducted from wallet</span></label><input class="fi" id="cGC" value="${cmGC}" type="number" placeholder="22" oninput="cmGC=this.value"/></div>`:`<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:10px 14px;font-size:12px;color:#22C55E;margin-bottom:16px">✓ Digital gifts are included in your plan — no extra cost per send</div>`}`:""}
-  <div class="fg"><label class="fl">Message <span style="font-size:10px;font-weight:400;text-transform:none;color:rgba(240,244,255,.3)">${cmT==="message_only"?"— no gift mentioned":cmT==="physical_gift"?"— mentions gift arriving":"— mentions digital reward"}</span></label>
+  ${cmT!=="message_only"?`<div class="fg"><label class="fl">${cmT==="physical_gift"?"Gift Name":"Promo Code"}</label><div style="background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.15);border-radius:10px;padding:10px 14px;font-size:12px;color:rgba(240,244,255,.6);margin-bottom:10px;line-height:1.6">You generate the code in your Square, Shopify, or Clover dashboard. Clicktide sends it to your customer automatically.</div><input class="fi" id="cGN" value="${cmGN}" placeholder="e.g. WELCOME20 · SARAH15OFF · FREECOFFEE" oninput="cmGN=this.value"/></div>${cmT==="physical_gift"?`<div class="fg"><label class="fl">Gift Cost ($) <span style="font-size:10px;font-weight:400;color:rgba(240,244,255,.35)">-- deducted from wallet</span></label><input class="fi" id="cGC" value="${cmGC}" type="number" placeholder="22" oninput="cmGC=this.value"/></div>`:`<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:10px 14px;font-size:12px;color:#22C55E;margin-bottom:16px">✓ Digital gifts are included in your plan -- no extra cost per send</div>`}`:""}
+  <div class="fg"><label class="fl">Message <span style="font-size:10px;font-weight:400;text-transform:none;color:rgba(240,244,255,.3)">${cmT==="message_only"?"-- no gift mentioned":cmT==="physical_gift"?"-- mentions gift arriving":"-- mentions digital reward"}</span></label>
   ${tpls.map((t,i)=>`<div class="tpl ${cmTi===i&&cmM===t?"sel":""}" onclick="sTP(${i},'${t.replace(/'/g,"\\'")}')">${t}</div>`).join("")}
   <textarea class="ta" id="cM" rows="3" placeholder="Or write your own..." oninput="cmM=this.value">${cmM}</textarea>
   <div style="font-size:10px;color:rgba(240,244,255,.35);margin-top:4px">Use {{first_name}} and {{business_name}} to personalize</div>
@@ -1249,6 +1204,18 @@ function pricingP(){
     cards+="<button class='"+btnCls+"' data-plan='"+pl.v+"' style='width:100%;padding:13px;font-size:14px' onclick='selPlan(this.dataset.plan)'>Get started</button>";
     cards+="</div>";
   }
+  var note="<div style='background:#0C1220;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px;text-align:center;margin-top:0'>";
+  note+="<div style='font-size:13px;color:rgba(240,244,255,.5);line-height:2'>";
+  note+="<b style='color:#F0F4FF'>Messages</b> &#8212; included in every plan &nbsp;&#183;&nbsp; ";
+  note+="<b style='color:#F0F4FF'>Promo codes</b> &#8212; included in every plan &nbsp;&#183;&nbsp; ";
+  note+="<b style='color:#F0F4FF'>Physical gifts</b> &#8212; from your wallet, only when you send one &nbsp;&#183;&nbsp; ";
+  note+="<b style='color:#F0F4FF'>Cancel anytime</b> &#8212; no contracts, no setup fees";
+  note+="</div></div>";
+  var h="<nav>"+logoH(20)+"<button class=\"btn btn-outline\" onclick=\"go('land')\">&#8592; Back</button></nav>";
+  var title="<div style='text-align:center;margin-bottom:48px'><h1 style='font-size:clamp(28px,5vw,50px);font-weight:800;letter-spacing:-2px;margin-bottom:14px'>Choose your <span class='gold'>plan</span></h1><p style='font-size:16px;color:rgba(240,244,255,.5);max-width:460px;margin:0 auto;line-height:1.7'>Messages and promo codes included. Only physical gifts cost extra.</p></div>";
+  var grid="<div style='display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px'>"+cards+"</div>";
+  return "<div style='min-height:100vh;background:#080D18;color:#F0F4FF;font-family:Inter,sans-serif'>"+h+"<div style='max-width:860px;margin:0 auto;padding:60px 24px'>"+title+grid+note+"</div></div>";
+}
 
 function renderProtectionFields(){
   var p=cmProt;
@@ -1263,7 +1230,7 @@ function renderProtectionFields(){
   html+="<div style='font-size:13px;font-weight:700;color:#FFD166'>"+p.delay+" days</div>";
   html+="</div>";
   html+="<input type='range' min='0' max='30' step='1' value='"+p.delay+"' oninput='cmProt.delay=parseInt(this.value);updateProtFields()' style='width:100%;accent-color:#FFD166'/>";
-  html+="<div style='font-size:11px;color:rgba(240,244,255,.35);margin-top:4px'>Gift won't ship until this many days after purchase. If customer refunds in this window — gift is cancelled automatically.</div>";
+  html+="<div style='font-size:11px;color:rgba(240,244,255,.35);margin-top:4px'>Gift won't ship until this many days after purchase. If customer refunds in this window -- gift is cancelled automatically.</div>";
   html+="</div>";
 
   // Cancel if refunded toggle
@@ -1312,18 +1279,6 @@ function updateProtFields(){
   if(el)el.innerHTML=renderProtectionFields();
 }
 
-  var note="<div style='background:#0C1220;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px;text-align:center;margin-top:0'>";
-  note+="<div style='font-size:13px;color:rgba(240,244,255,.5);line-height:2'>";
-  note+="<b style='color:#F0F4FF'>Messages</b> &#8212; included in every plan &nbsp;&#183;&nbsp; ";
-  note+="<b style='color:#F0F4FF'>Promo codes</b> &#8212; included in every plan &nbsp;&#183;&nbsp; ";
-  note+="<b style='color:#F0F4FF'>Physical gifts</b> &#8212; from your wallet, only when you send one &nbsp;&#183;&nbsp; ";
-  note+="<b style='color:#F0F4FF'>Cancel anytime</b> &#8212; no contracts, no setup fees";
-  note+="</div></div>";
-  var h="<nav>"+logoH(20)+"<button class=\"btn btn-outline\" onclick=\"go('land')\">&#8592; Back</button></nav>";
-  var title="<div style='text-align:center;margin-bottom:48px'><h1 style='font-size:clamp(28px,5vw,50px);font-weight:800;letter-spacing:-2px;margin-bottom:14px'>Choose your <span class='gold'>plan</span></h1><p style='font-size:16px;color:rgba(240,244,255,.5);max-width:460px;margin:0 auto;line-height:1.7'>Messages and promo codes included. Only physical gifts cost extra.</p></div>";
-  var grid="<div style='display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px'>"+cards+"</div>";
-  return "<div style='min-height:100vh;background:#080D18;color:#F0F4FF;font-family:Inter,sans-serif'>"+h+"<div style='max-width:860px;margin:0 auto;padding:60px 24px'>"+title+grid+note+"</div></div>";
-}
 
 
 function selPlan(plan){
