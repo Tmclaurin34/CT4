@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="6" fill="#080D18"/>
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#BAE6FD"/>
+      <stop offset="100%" stop-color="#4DA6FF"/>
+    </linearGradient>
+  </defs>
+  <!-- Clicktide wave petals -->
+  <g transform="translate(16,16)">
+    <path d="M0,-9 C1.2,-9 4,-5.5 3.5,-2 C3,0.5 1.2,2.5 0,2.5 C-1.2,2.5 -1.8,1.2 -1.8,0 C-1.8,-3 -1.2,-9 0,-9Z" fill="url(#g)" transform="rotate(0)" opacity="0.95"/>
+    <path d="M0,-9 C1.2,-9 4,-5.5 3.5,-2 C3,0.5 1.2,2.5 0,2.5 C-1.2,2.5 -1.8,1.2 -1.8,0 C-1.8,-3 -1.2,-9 0,-9Z" fill="url(#g)" transform="rotate(51.4)" opacity="0.95"/>
+    <path d="M0,-9 C1.2,-9 4,-5.5 3.5,-2 C3,0.5 1.2,2.5 0,2.5 C-1.2,2.5 -1.8,1.2 -1.8,0 C-1.8,-3 -1.2,-9 0,-9Z" fill="url(#g)" transform="rotate(102.8)" opacity="0.95"/>
+    <path d="M0,-9 C1.2,-9 4,-5.5 3.5,-2 C3,0.5 1.2,2.5 0,2.5 C-1.2,2.5 -1.8,1.2 -1.8,0 C-1.8,-3 -1.2,-9 0,-9Z" fill="url(#g)" transform="rotate(154.2)" opacity="0.95"/>
+    <path d="M0,-9 C1.2,-9 4,-5.5 3.5,-2 C3,0.5 1.2,2.5 0,2.5 C-1.2,2.5 -1.8,1.2 -1.8,0 C-1.8,-3 -1.2,-9 0,-9Z" fill="url(#g)" transform="rotate(205.6)" opacity="0.95"/>
+    <path d="M0,-9 C1.2,-9 4,-5.5 3.5,-2 C3,0.5 1.2,2.5 0,2.5 C-1.2,2.5 -1.8,1.2 -1.8,0 C-1.8,-3 -1.2,-9 0,-9Z" fill="url(#g)" transform="rotate(257)" opacity="0.95"/>
+    <path d="M0,-9 C1.2,-9 4,-5.5 3.5,-2 C3,0.5 1.2,2.5 0,2.5 C-1.2,2.5 -1.8,1.2 -1.8,0 C-1.8,-3 -1.2,-9 0,-9Z" fill="url(#g)" transform="rotate(308.4)" opacity="0.95"/>
+    <circle cx="0" cy="0" r="2.5" fill="#080D18"/>
+  </g>
+</svg>
