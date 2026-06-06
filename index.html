@@ -360,18 +360,55 @@ async function squareConnect(){
 
 // ── Redirect to Shopify OAuth ────────────────────────────────────────────────
 async function shopifyConnect(){
-  const shop=prompt("Enter your Shopify store domain:\ne.g. mystore.myshopify.com");
-  if(!shop||!shop.includes("myshopify.com")){alert("Please enter a valid .myshopify.com domain");return;}
-  const cleanShop=shop.trim().toLowerCase().replace(/https?:\/\//,"").replace(/\/+$/,"");
-  const state=await createOAuthState("shopify",{shop_domain:cleanShop});
-  const redirectUri=`${FN}/shopify-oauth-callback`;
-  const params=new URLSearchParams({
-    client_id:SH_CLIENT_ID,
-    scope:"read_orders,write_orders,read_customers,write_customers,read_products,read_analytics",
-    redirect_uri:redirectUri,
-    state
+  // Show a styled modal instead of browser prompt
+  return new Promise((resolve)=>{
+    const ov=document.createElement("div");
+    ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px";
+    ov.innerHTML=`
+      <div style="background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:28px;width:100%;max-width:400px">
+        <div style="font-size:28px;margin-bottom:10px;text-align:center">🛒</div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:800;text-align:center;margin-bottom:6px">Connect Shopify</div>
+        <div style="font-size:13px;color:rgba(240,244,255,.45);text-align:center;margin-bottom:20px">Enter your Shopify store domain</div>
+        <div style="position:relative;margin-bottom:6px">
+          <input id="shopDomainInp" placeholder="mystore.myshopify.com"
+            style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:#101828;color:#F0F4FF;font-size:14px;outline:none;font-family:'Inter',sans-serif;box-sizing:border-box"/>
+        </div>
+        <div style="font-size:11px;color:rgba(240,244,255,.3);margin-bottom:18px;padding-left:2px">e.g. mystore.myshopify.com</div>
+        <div id="shopDomainErr" style="background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.25);border-radius:8px;padding:8px 12px;font-size:12px;color:#FF4D6D;margin-bottom:14px;display:none"></div>
+        <div style="display:flex;gap:10px">
+          <button id="shopCancelBtn" style="flex:1;padding:12px;border-radius:100px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.07);color:#F0F4FF;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">Cancel</button>
+          <button id="shopConnectBtn" style="flex:1;padding:12px;border-radius:100px;border:none;background:#FFD166;color:#080D18;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">Connect →</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    const inp=document.getElementById("shopDomainInp");
+    const err=document.getElementById("shopDomainErr");
+    inp.focus();
+    async function doConnect(){
+      const raw=inp.value.trim().toLowerCase().replace(/https?:\/\//,"").replace(/\/+$/,"");
+      if(!raw||!raw.includes("myshopify.com")){
+        err.textContent="Please enter a valid .myshopify.com domain";
+        err.style.display="block";
+        return;
+      }
+      document.getElementById("shopConnectBtn").textContent="Connecting...";
+      document.getElementById("shopConnectBtn").disabled=true;
+      ov.remove();
+      const state=await createOAuthState("shopify",{shop_domain:raw});
+      const redirectUri=`${FN}/shopify-oauth-callback`;
+      const params=new URLSearchParams({
+        client_id:SH_CLIENT_ID,
+        scope:"read_orders,write_orders,read_customers,write_customers,read_products,read_analytics",
+        redirect_uri:redirectUri,
+        state
+      });
+      window.location.href=`https://${raw}/admin/oauth/authorize?${params}`;
+      resolve();
+    }
+    document.getElementById("shopConnectBtn").onclick=doConnect;
+    document.getElementById("shopCancelBtn").onclick=()=>{ov.remove();resolve();};
+    inp.onkeydown=(e)=>{if(e.key==="Enter")doConnect();};
   });
-  window.location.href=`https://${cleanShop}/admin/oauth/authorize?${params}`;
 }
 
 // ── Redirect to Clover OAuth ─────────────────────────────────────────────────
@@ -433,7 +470,7 @@ async function cloverConnect(){
 })();
 
 let ntIdx=0,scr="land";
-let obS=0,obCat=null,obB=null,obP=null,obC=false,obG=null,obT=[],obE="",obPw="",obN="",obPl="Growth",obOther="",obImport=null,obGiftSearch="",obCustomGift=null,obLogoFile=null,obLogoUrl=null,obLogoName="";
+let obS=0,obCat=null,obB=null,obP=null,obC=false,obG=null,obT=[],obE="",obPw="",obN="",obPl="Growth",obOther="",obImport=null,obGiftSearch="",obCustomGift=null,obLogoFile=null,obLogoUrl=null,obLogoName="",obLogoStorageUrl=null;
 let riS=0,riB=null,riCatSel=null,riCu=100,riAv=60,riCh=.20,riDy=60,riGf=7,riPl=99;
 let dpg="overview",cmT="message_only",cmN="",cmTr="",cmGN="",cmGC="",cmPf="Square",cmM="",cmTi=0,showCM=false,cmProt={delay:7,cancelOnRefund:true,minSpend:0,cooldown:90,productName:"",minOrderVal:0};
 
@@ -586,28 +623,27 @@ function onboard(){
   }
   else if(obS===1&&B)c=`<div style="font-size:30px;margin-bottom:8px">🔌</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Connect your platform</h2><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:14px">Best for <strong>${B.l}</strong>: ${B.pl}</p>${!obC?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">${PL.map(p=>`<div style="padding:12px;border:2px solid ${obP===p.id?"#4DA6FF":"rgba(255,255,255,.07)"};border-radius:12px;cursor:pointer;background:${obP===p.id?"rgba(77,166,255,.06)":"transparent"}" onclick="oPlt('${p.id}')"><div style="font-size:20px;margin-bottom:5px">${p.e}</div><div style="font-size:12px;font-weight:700;margin-bottom:1px">${p.n}</div><div style="font-size:10px;color:rgba(240,244,255,.45)">${p.d}</div></div>`).join("")}</div><button class="btn-full ${obP?"btn-gold":"btn-ghost"}" ${!obP?"disabled":""} id="cBtn" onclick="oCon()">${obP?`Connect ${P?.n} →`:"Select a platform"}</button>`:`<div class="conn-box"><span style="font-size:24px">${P?.e}</span><div><div style="font-weight:700;color:#22C55E;font-size:14px">${P?.n} connected!</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-top:2px">Webhooks live · Events streaming</div></div></div><button class="btn-full btn-gold" onclick="oNxt()">Continue → Pick your gift</button>`}`;
   else if(obS===2&&B){
-    var GS2=GF[obB]||GF[obCat]||GF.other||[];
     var sq=obGiftSearch||"";
-    var allG=GF.other.concat(GS2.filter(function(x){return!GF.other.find(function(o){return o.n===x.n;});}));
-    var filtG=sq.length>0?allG.filter(function(g){return g.n.toLowerCase().indexOf(sq.toLowerCase())>-1||g.s.toLowerCase().indexOf(sq.toLowerCase())>-1;}):GS2;
-    var searchBar="<div style='position:relative;margin-bottom:14px'><input class='fi' id='gsearch' value='"+sq+"' placeholder='Search any gift (e.g. Hoodie, Hat, Candle...)' oninput='obGiftSearch=this.value;updateGiftGrid()' onkeydown='giftEnter(event)' style='padding-right:90px'/><button onclick='updateGiftGrid()' style='position:absolute;right:6px;top:50%;transform:translateY(-50%);background:#FFD166;color:#080D18;border:none;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif'>Search</button></div>";
+    // Use Printify catalog as the real gift options
+    var allG=PRINTIFY_CATALOG;
+    var filtG=sq.length>0?allG.filter(function(g){return g.n.toLowerCase().indexOf(sq.toLowerCase())>-1||g.s.toLowerCase().indexOf(sq.toLowerCase())>-1||g.cat.indexOf(sq.toLowerCase())>-1;}):allG;
+    var searchBar="<div style='position:relative;margin-bottom:14px'><input class='fi' id='gsearch' value='"+sq+"' placeholder='Search gifts (e.g. Shirt, Mug, Hoodie...)' oninput='obGiftSearch=this.value;updateGiftGrid()' onkeydown='giftEnter(event)' style='padding-right:90px'/><button onclick='updateGiftGrid()' style='position:absolute;right:6px;top:50%;transform:translateY(-50%);background:#FFD166;color:#080D18;border:none;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif'>Search</button></div>";
     var customRow="";
     if(sq.length>0&&filtG.length===0){
-      var noR="No results for "+sq;var addL="+ Add "+sq+" as my gift";
-      customRow="<div style='background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);border-radius:12px;padding:16px;margin-bottom:14px;text-align:center'><div style='font-size:13px;font-weight:700;margin-bottom:6px'>"+noR+"</div><div style='font-size:12px;color:rgba(240,244,255,.45);margin-bottom:12px'>Add it as a custom gift - we will source and ship it.</div><button class='btn btn-gold' data-q='"+sq+"' onclick='obCustomGift=this.dataset.q;obG=-1;obGiftSearch=String();R()' style='padding:8px 20px;font-size:12px'>"+addL+"</button></div>";
+      customRow="<div style='background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);border-radius:12px;padding:16px;margin-bottom:14px;text-align:center'><div style='font-size:13px;font-weight:700;margin-bottom:6px'>No results for \""+sq+"\"</div><div style='font-size:12px;color:rgba(240,244,255,.45);margin-bottom:12px'>Add it as a custom gift — we will source and ship it.</div><button class='btn btn-gold' data-q='"+sq+"' onclick='obCustomGift=this.dataset.q;obG=-1;obGiftSearch=String();R()' style='padding:8px 20px;font-size:12px'>+ Add \""+sq+"\" as my gift</button></div>";
     }
     if(obG===-1&&obCustomGift){
-      customRow="<div style='background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px'><span style='font-size:20px'>✅</span><div style='flex:1'><div style='font-size:13px;font-weight:700'>Custom: "+obCustomGift+"</div><div style='font-size:11px;color:rgba(240,244,255,.45)'>We will source and ship this for you</div></div><button data-x='1' onclick='obG=null;obCustomGift=null;R()' style='background:transparent;border:none;color:rgba(240,244,255,.35);cursor:pointer;font-size:20px;padding:0'>×</button></div>";
+      customRow="<div style='background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px'><span style='font-size:20px'>✅</span><div style='flex:1'><div style='font-size:13px;font-weight:700'>Custom: "+obCustomGift+"</div><div style='font-size:11px;color:rgba(240,244,255,.45)'>We will source and ship this for you</div></div><button onclick='obG=null;obCustomGift=null;R()' style='background:transparent;border:none;color:rgba(240,244,255,.35);cursor:pointer;font-size:20px;padding:0'>×</button></div>";
     }
     var gCards="";
     filtG.forEach(function(g,i){
       var sel=obG===i;
       gCards+="<div class='gcard "+(sel?"on":"")+"' data-gi='"+i+"' onclick='obG=parseInt(this.dataset.gi);obCustomGift=null;R()'>";
-      gCards+=(g.pop?"<div class='gift-popular'>★</div>":"");
+      gCards+=(g.pop?"<div style='position:absolute;top:4px;right:4px;font-size:9px;font-weight:700;color:#FFD166;background:rgba(255,209,102,.15);border-radius:100px;padding:2px 5px'>★ Popular</div>":"");
       gCards+="<div style='font-size:26px;margin-bottom:4px'>"+g.e+"</div>";
       gCards+="<div style='font-size:11px;font-weight:700;margin-bottom:2px'>"+g.n+"</div>";
       gCards+="<div style='font-size:10px;color:rgba(240,244,255,.45);margin-bottom:4px'>"+g.s+"</div>";
-      gCards+="<div style='font-size:11px;font-weight:700;color:"+(sel?"#FFD166":"rgba(255,209,102,.6)")+"'>$"+g.p+"</div>";
+      gCards+="<div style='font-size:11px;font-weight:700;color:"+(sel?"#FFD166":"rgba(255,209,102,.6)")+"'>~$"+g.p+"</div>";
       gCards+="</div>";
     });
     var canGo=obG!==null;
@@ -618,21 +654,24 @@ function onboard(){
       var ls="<div style='background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:10px'>";
       ls+="<img src='"+obLogoUrl+"' style='width:40px;height:40px;object-fit:contain;border-radius:6px;background:rgba(255,255,255,.05);padding:4px'/>";
       ls+="<div style='flex:1'><div style='font-size:13px;font-weight:700;color:#22C55E'>Logo uploaded!</div>";
-      ls+="<div style='font-size:11px;color:rgba(240,244,255,.45);margin-top:1px'>"+obLogoName+"</div></div>";
+      ls+="<div style='font-size:11px;color:rgba(240,244,255,.45);margin-top:1px'>"+obLogoName+"</div>";
+      if(obLogoStorageUrl)ls+="<div style='font-size:10px;color:#4DA6FF;margin-top:2px'>✓ Saved · ready for Printify</div>";
+      ls+="</div>";
       ls+="<button onclick='clearLogo()' style='background:transparent;border:none;color:rgba(240,244,255,.35);cursor:pointer;font-size:20px;padding:0'>×</button>";
       ls+="</div>";
       logoSection=ls;
     } else {
       var ls2="<div style='margin-bottom:14px'>";
-      ls2+="<label style='font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.45);display:block;margin-bottom:6px'>Your Business Logo <span style='font-size:10px;font-weight:400;text-transform:none;color:rgba(240,244,255,.3)'>— optional</span></label>";
-      ls2+="<label style='display:block;border:2px dashed rgba(255,255,255,.1);border-radius:10px;padding:18px;text-align:center;cursor:pointer;background:rgba(255,255,255,.02);transition:all .2s'>";
+      ls2+="<label style='font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.45);display:block;margin-bottom:6px'>Your Business Logo <span style='font-size:10px;font-weight:400;text-transform:none;color:rgba(240,244,255,.3)'>— optional but recommended</span></label>";
+      ls2+="<label id='logoDropZone' style='display:block;border:2px dashed rgba(255,255,255,.1);border-radius:10px;padding:18px;text-align:center;cursor:pointer;background:rgba(255,255,255,.02);transition:all .2s'>";
       ls2+="<input type='file' accept='.png,.jpg,.jpeg,.svg' style='display:none' onchange='handleLogoUpload(this)'/>";
       ls2+="<div style='font-size:22px;margin-bottom:6px'>🖼️</div>";
       ls2+="<div style='font-size:13px;font-weight:600;margin-bottom:4px'>Click to upload your logo</div>";
-      ls2+="<div style='font-size:11px;color:rgba(240,244,255,.45)'>PNG or JPG · Will be printed on all gifts</div>";
+      ls2+="<div style='font-size:11px;color:rgba(240,244,255,.45);margin-bottom:4px'>PNG · JPG · SVG</div>";
+      ls2+="<div style='font-size:10px;color:rgba(240,244,255,.3)'>Recommended: 2048×2048px · Max: 100MB (PNG/JPG) · 20MB (SVG)</div>";
       ls2+="</label>";
       ls2+="<div style='background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);border-radius:8px;padding:10px 12px;margin-top:8px;font-size:11px;color:rgba(240,244,255,.6);line-height:1.6'>";
-      ls2+="&#9888;&#65039; <strong style='color:#FFD166'>No logo uploaded?</strong> No problem — we will print your business name on the gift instead.";
+      ls2+="&#9888;&#65039; <strong style='color:#FFD166'>No logo?</strong> We will print your business name on the gift instead.";
       ls2+="</div></div>";
       logoSection=ls2;
     }
@@ -707,47 +746,67 @@ function updateGiftGrid(){
 }
 
 
-function clearLogo(){obLogoFile=null;obLogoUrl=null;obLogoName='';R();}
+function clearLogo(){obLogoFile=null;obLogoUrl=null;obLogoName='';obLogoStorageUrl=null;R();}
+
 function handleLogoUpload(input){
   if(!input.files||!input.files[0])return;
   var file=input.files[0];
+
+  // Validate size
+  var maxSize=file.name.endsWith('.svg')?20*1024*1024:100*1024*1024;
+  if(file.size>maxSize){alert('File too large. Max size: '+(file.name.endsWith('.svg')?'20MB':'100MB'));return;}
+
   obLogoName=file.name;
+  obLogoFile=file;
+
+  // Preview immediately
   var reader=new FileReader();
   reader.onload=function(e){
     obLogoUrl=e.target.result;
-    obLogoFile=file;
     R();
-    // Refocus the gift step
-    setTimeout(function(){
-      var el=document.getElementById('gsearch');
-      if(el)el.focus();
-    },100);
+    // Upload to Supabase Storage in background
+    uploadLogoToStorage(file);
   };
   reader.readAsDataURL(file);
 }
 
-function giftEnter(e){if(e.key==='Enter'){updateGiftGrid();}}
-
-function clearLogo(){obLogoFile=null;obLogoUrl=null;obLogoName='';R();}
-function handleLogoUpload(input){
-  if(!input.files||!input.files[0])return;
-  var file=input.files[0];
-  obLogoName=file.name;
-  var reader=new FileReader();
-  reader.onload=function(e){
-    obLogoUrl=e.target.result;
-    obLogoFile=file;
-    R();
-    // Refocus the gift step
-    setTimeout(function(){
-      var el=document.getElementById('gsearch');
-      if(el)el.focus();
-    },100);
-  };
-  reader.readAsDataURL(file);
+async function uploadLogoToStorage(file){
+  try{
+    const ext=file.name.split('.').pop();
+    const path=`logos/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const res=await fetch(`${SU}/storage/v1/object/logos/${path}`,{
+      method:'POST',
+      headers:{apikey:SK,Authorization:`Bearer ${S?.token||SK}`,'Content-Type':file.type,'Cache-Control':'3600'},
+      body:file
+    });
+    if(res.ok){
+      obLogoStorageUrl=`${SU}/storage/v1/object/public/logos/${path}`;
+      // Refresh logo section to show "Saved" indicator
+      var logoZone=document.getElementById('logoDropZone');
+      if(!logoZone)R(); // full re-render if not found
+    }
+  }catch(e){console.warn('Logo storage upload failed:',e);}
 }
 
 function giftEnter(e){if(e.key==='Enter'){updateGiftGrid();}}
+
+// ── Printify catalog ─────────────────────────────────────────────────────────
+// Curated list of Printify blank products merchants can brand
+const PRINTIFY_CATALOG=[
+  {id:"5d15ca528cd8f30117000056",variant_id:17887,e:"👕",n:"Unisex T-Shirt",s:"Bella+Canvas 3001",p:18,pop:true,cat:"apparel"},
+  {id:"5d15ca528cd8f30117000056",variant_id:17888,e:"👕",n:"Premium T-Shirt",s:"Next Level 3600",p:22,pop:false,cat:"apparel"},
+  {id:"5d15ca528cd8f3011700006b",variant_id:18105,e:"🧢",n:"Snapback Hat",s:"Classic structured",p:24,pop:true,cat:"accessories"},
+  {id:"5d15ca528cd8f30117000067",variant_id:18098,e:"🧢",n:"Dad Hat",s:"Low profile cotton",p:20,pop:false,cat:"accessories"},
+  {id:"64f1f3719b3bc6bb9a0f7a34",variant_id:72588,e:"☕",n:"11oz Mug",s:"Ceramic white glossy",p:14,pop:true,cat:"drinkware"},
+  {id:"5d15ca528cd8f30117000053",variant_id:17876,e:"🥤",n:"20oz Tumbler",s:"Stainless steel",p:28,pop:true,cat:"drinkware"},
+  {id:"5d15ca528cd8f30117000058",variant_id:17896,e:"👜",n:"Tote Bag",s:"Heavy cotton canvas",p:16,pop:true,cat:"bags"},
+  {id:"5d15ca528cd8f30117000057",variant_id:17892,e:"🎒",n:"Drawstring Bag",s:"Lightweight polyester",p:18,pop:false,cat:"bags"},
+  {id:"5d15ca528cd8f30117000065",variant_id:18090,e:"📓",n:"Spiral Notebook",s:"A5 matte cover",p:17,pop:true,cat:"stationery"},
+  {id:"5d15ca528cd8f30117000064",variant_id:18086,e:"🖊️",n:"Pen+Notebook Set",s:"Premium combo",p:24,pop:false,cat:"stationery"},
+  {id:"5d15ca528cd8f3011700005a",variant_id:17904,e:"🧥",n:"Pullover Hoodie",s:"Gildan 18500",p:38,pop:true,cat:"apparel"},
+  {id:"5d15ca528cd8f3011700005e",variant_id:17920,e:"🩱",n:"Tank Top",s:"Bella+Canvas 3480",p:20,pop:false,cat:"apparel"},
+];
+
 function addCustomGift(btn){
   obCustomGift=btn.dataset.q;
   obG=-1;
@@ -980,11 +1039,38 @@ async function dLoad(){
         {id:"shopify",i:"🛒",n:"Shopify",d:"E-commerce · online orders"},
         {id:"clover",i:"🍀",n:"Clover",d:"Restaurant & retail POS"}
       ];
-      const otherConn=[
-        {i:"📦",n:"Printful",d:"Ships physical gifts"},
-        {i:"💳",n:"Stripe",d:"Subscription billing"},
-        {i:"📧",n:"Resend",d:"Sends customer emails"}
-      ];
+      const otherCards=`
+        <div class="dc" style="display:flex;align-items:center;gap:9px;border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.04)">
+          <span style="font-size:20px">🖨️</span>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;margin-bottom:2px">Printify</div>
+            <div style="font-size:11px;color:#22C55E">● Active · Prints & ships gifts on demand</div>
+          </div>
+          <span style="font-size:10px;font-weight:700;color:#22C55E">Connected</span>
+        </div>
+        <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">💳</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Stripe</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Subscription billing</div></div><span style="font-size:10px;color:rgba(240,244,255,.35)">Coming soon</span></div>
+        <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">📧</span><div style="font-size:12px;font-weight:700;margin-bottom:2px">Resend</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Sends customer emails</div><span style="font-size:10px;color:rgba(240,244,255,.35)">Coming soon</span></div>
+      `;
+        const conn=platConn[p.id];
+        if(conn&&conn.merchant_id){
+          return`<div class="dc" style="display:flex;align-items:center;gap:12px;border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.04)">
+            <span style="font-size:22px">${p.i}</span>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;margin-bottom:2px">${p.n}</div>
+              <div style="font-size:11px;color:#22C55E;font-weight:600">● Connected · ${conn.merchant_name||conn.merchant_id}</div>
+            </div>
+            <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="disconnectPlatform('${p.id}')">Disconnect</button>
+          </div>`;
+        }
+        return`<div class="dc" style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:22px">${p.i}</span>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700;margin-bottom:2px">${p.n}</div>
+            <div style="font-size:11px;color:rgba(240,244,255,.45)">${p.d}</div>
+          </div>
+          <button class="btn btn-gold" style="font-size:11px;padding:7px 14px" onclick="connectPlatformDash('${p.id}')">Connect</button>
+        </div>`;
+      }).join("");
 
       const platCards=plDefs.map(p=>{
         const conn=platConn[p.id];
@@ -1007,8 +1093,6 @@ async function dLoad(){
           <button class="btn btn-gold" style="font-size:11px;padding:7px 14px" onclick="connectPlatformDash('${p.id}')">Connect</button>
         </div>`;
       }).join("");
-
-      const otherCards=otherConn.map(p=>`<div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">${p.i}</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">${p.n}</div><div style="font-size:11px;color:rgba(240,244,255,.45)">${p.d}</div></div><span style="font-size:10px;color:rgba(240,244,255,.35)">Coming soon</span></div>`).join("");
 
       el.innerHTML=`
         <div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:16px;margin-bottom:20px;display:flex;align-items:center;gap:10px">
@@ -1048,6 +1132,32 @@ async function disconnectPlatform(platform){
     platConn[platform]=false;
     dLoad();
   }catch(ex){alert("Failed to disconnect: "+ex.message);}
+}
+
+// ── Send a physical gift via Printify ────────────────────────────────────────
+async function sendPhysicalGift({campaignId,customerName,customerEmail,address,giftIndex,logoUrl,businessName}){
+  const gift=PRINTIFY_CATALOG[giftIndex];
+  if(!gift){console.error("Invalid gift index");return;}
+
+  const res=await fetch(`${FN}/printify-create-order`,{
+    method:"POST",
+    headers:{"Content-Type":"application/json",apikey:SK,Authorization:`Bearer ${S?.token||SK}`},
+    body:JSON.stringify({
+      campaign_id:campaignId,
+      customer_name:customerName,
+      customer_email:customerEmail,
+      address,
+      printify_product_id:gift.id,
+      printify_variant_id:gift.variant_id,
+      logo_url:logoUrl||null,
+      business_name:businessName||"",
+      gift_name:gift.n,
+    })
+  });
+
+  const data=await res.json();
+  if(!res.ok){throw new Error(data.error||"Printify order failed");}
+  return data;
 }
 
 function oCM(){showCM=true;document.getElementById("app").innerHTML=dash();bind();dLoad();}
