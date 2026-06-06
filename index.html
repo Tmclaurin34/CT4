@@ -1330,7 +1330,7 @@ async function getAIHint(step, context){
   var prompt=prompts[step];
   if(!prompt){aiHintLoading=false;return;}
   try{
-    var res=await fetch('https://api.anthropic.com/v1/messages',{
+    var res=await fetch('https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1/ai-proxy',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:100,system:'You are a helpful Clicktide onboarding assistant. Be concise, specific, and encouraging. One sentence only.',messages:[{role:'user',content:prompt}]})
@@ -1406,7 +1406,7 @@ async function sendChat() {
   chatLoading = true;
   renderChat();
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1/ai-proxy', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
@@ -1457,7 +1457,7 @@ async function sendChat() {
 
   var TEASERS=['💬 <b>How does Clicktide work?</b>','🎁 <b>What gifts can I send?</b>','📈 <b>What is the average ROI?</b>','🔌 <b>Which platforms do you support?</b>','💳 <b>What does it cost?</b>'];
 
-  var SYSTEM=`You are Maya, Clicktide's enthusiastic sales assistant. Your #1 job is to get people excited about Clicktide and convert them into signups. Be warm, friendly, and genuinely helpful. Clicktide helps businesses automatically send physical gifts, digital rewards, and personal messages when customers hit key milestones. Key stats: 14x average ROI, 91% gift open rate, 34% churn reduction, 3.2x higher customer lifetime value. Plans from $29/month. Works with Square, Shopify, Clover, Stripe and more. Always end with a call to action to get started free. Keep responses to 2-3 sentences max.`;
+  var SYSTEM="You are Maya, Clicktide's enthusiastic sales assistant. Your #1 job is to get people excited about Clicktide and convert them into signups. Be warm, friendly, and genuinely helpful. Clicktide helps businesses automatically send physical gifts, digital rewards, and personal messages when customers hit key milestones. Key stats: 14x average ROI, 91% gift open rate, 34% churn reduction, 3.2x higher customer lifetime value. Plans from $29/month. Works with Square, Shopify, Clover, Stripe and more. Always end with a call to action to get started free. Keep responses to 2-3 sentences max.";
 
   function petalLogo(size,gid){
     var p='M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z';
@@ -1515,7 +1515,6 @@ async function sendChat() {
   }
 
   function renderWindow(){
-  function renderWindow(){
     var msgs=chatMsgs.map(function(m){
       var isUser=m.role==="user";
       return '<div style="display:flex;'+( isUser?'justify-content:flex-end':'' )+'"><div style="max-width:82%;padding:10px 13px;border-radius:'+( isUser?'14px 14px 4px 14px':'14px 14px 14px 4px' )+';background:'+( isUser?'linear-gradient(135deg,#4DA6FF,#2563EB)':'rgba(255,255,255,.07)' )+';font-size:13px;line-height:1.55;color:#F0F4FF">'+m.content.replace(/\n/g,"<br>")+'</div></div>';
@@ -1557,7 +1556,7 @@ async function sendChat() {
     chatMsgs.push({role:'user',content:msg});
     chatLoading=true;
     renderWindow();
-    fetch('https://api.anthropic.com/v1/messages',{
+    fetch('https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1/ai-proxy',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,system:SYSTEM,messages:chatMsgs})
@@ -1628,7 +1627,6 @@ async function sendChat() {
   // Init
   render();
   } // end init
-  } // end extra
   if(document.readyState==='loading'){
     document.addEventListener('DOMContentLoaded', init);
   } else {
