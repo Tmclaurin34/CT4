@@ -296,6 +296,19 @@ const MSG={
   ]
 };
 const NT=[{e:"📦",t:"Package delivered!",s:"Sarah M. received her welcome kit"},{e:"⬛",t:"Square connected!",s:"Pete's Barbershop — 3 triggers live"},{e:"📈",t:"Retention up 41%!",s:"Bloom Yoga after 60 days"},{e:"💳",t:"Stripe triggered!",s:"Nova SaaS — gift shipped"}];
+// Handle Stripe redirect
+(function(){
+  const params=new URLSearchParams(window.location.search);
+  if(params.get("session")==="success"){
+    const plan=params.get("plan")||"Growth";
+    const biz=params.get("biz")||"";
+    obPl=plan;obN=biz;obS=6;
+    history.replaceState({},"",window.location.pathname);
+  }
+  if(params.get("session")==="cancelled"){
+    history.replaceState({},"",window.location.pathname);
+  }
+})();
 let ntIdx=0,scr="land";
 let obS=0,obCat=null,obB=null,obP=null,obC=false,obG=null,obT=[],obE="",obPw="",obN="",obPl="Growth",obOther="",obImport=null,obGiftSearch="",obCustomGift=null;
 let riS=0,riB=null,riCatSel=null,riCu=100,riAv=60,riCh=.20,riDy=60,riGf=7,riPl=99;
@@ -617,9 +630,28 @@ async function oSignup(){
   const err=document.getElementById("oErr");
   const btn=document.getElementById("oSub");
   if(!e||!p||!n){err.textContent="Please fill all fields";err.style.display="block";return;}
-  btn.textContent="Creating...";btn.disabled=true;err.style.display="none";
-  try{const r=await au.up(e,p,{business_name:n,plan:obPl});if(r.access_token){S={token:r.access_token,user:r.user||{email:e}};localStorage.setItem("ct",r.access_token);localStorage.setItem("cu",JSON.stringify(S.user));}obS=5;R();}
-  catch(ex){err.textContent=ex.message;err.style.display="block";btn.disabled=false;btn.textContent="Create account & go live →";}
+  btn.textContent="Creating account...";btn.disabled=true;err.style.display="none";
+  try{
+    // 1. Create Supabase account
+    const r=await au.up(e,p,{business_name:n,plan:obPl});
+    if(r.access_token){
+      S={token:r.access_token,user:r.user||{email:e}};
+      localStorage.setItem("ct",r.access_token);
+      localStorage.setItem("cu",JSON.stringify(S.user));
+    }
+    // 2. Create Stripe checkout session
+    btn.textContent="Redirecting to payment...";
+    const checkoutUrl=await createCheckoutSession(obPl,e,n);
+    if(checkoutUrl){
+      window.location.href=checkoutUrl;
+    }else{
+      // If Stripe fails just go to go live screen
+      obS=5;R();
+    }
+  }catch(ex){
+    err.textContent=ex.message;err.style.display="block";
+    btn.disabled=false;btn.textContent="Create account & go live →";
+  }
 }
 
 function roi(){
@@ -908,6 +940,17 @@ function updateProtFields(){
 function selPlan(plan){
   obPl=plan;
   go('onboard');
+}
+
+async function checkoutPlan(plan,email){
+  if(!email){
+    const e=prompt("Enter your email to get started:");
+    if(!e)return;
+    email=e;
+  }
+  const url=await createCheckoutSession(plan,email,"New Business");
+  if(url)window.location.href=url;
+  else go('onboard');
 }
 
 R();
