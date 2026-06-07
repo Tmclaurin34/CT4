@@ -155,12 +155,11 @@ select option{background:#101828}
 <body>
 <div id="app"></div>
 <script>
-
 const SU="https://hmihfncvahsdlmefyxyg.supabase.co";
 const SK="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtaWhmbmN2YWhzZGxtZWZ5eHlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1OTgzNDksImV4cCI6MjA5NjE3NDM0OX0.GP-4tYnKlNP9iSklJyXCSatz3I7gtQQJz7xOUQdXKWk";
 const h=(t)=>({apikey:SK,Authorization:`Bearer ${t||SK}`,"Content-Type":"application/json"});
 const db={
-  async sel(t,f,tok){const r=await fetch(`${SU}/rest/v1/${t}?select=*${f?`&${f}`:""}`,{headers:h(tok)});return r.json();},
+  async sel(t,f,tok){const url=SU+'/rest/v1/'+t+'?select=*'+(f?'&'+f:'');const r=await fetch(url,{headers:h(tok)});return r.json();},
   async ins(t,d,tok){const r=await fetch(`${SU}/rest/v1/${t}`,{method:"POST",headers:{...h(tok),Prefer:"return=representation"},body:JSON.stringify(d)});return r.json();},
   async upd(t,id,d,tok){await fetch(`${SU}/rest/v1/${t}?id=eq.${id}`,{method:"PATCH",headers:{...h(tok),Prefer:"return=representation"},body:JSON.stringify(d)});},
   async del(t,id,tok){await fetch(`${SU}/rest/v1/${t}?id=eq.${id}`,{method:"DELETE",headers:h(tok)});}
@@ -715,7 +714,9 @@ function onboard(){
   else if(obS===6){const g=obG!==null?GF[obB]?.[obG]:null;c=`<div style="text-align:center"><div style="font-size:52px;margin-bottom:12px">🚀</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">You're live!</h2><p style="color:rgba(240,244,255,.45);font-size:14px;line-height:1.7;margin-bottom:20px">Your Clicktide campaign is active and ready.</p><ul style="list-style:none;padding:0;background:#101828;border-radius:13px;padding:16px;margin-bottom:20px;text-align:left">${[`${B?.i} ${B?.l}`,`${P?.e} ${P?.n} connected`,`🎁 ${g?.n||"--"}`,`⚡ ${obT.length} trigger${obT.length!==1?"s":""}`,`💬 Message Only: Free`,`📦 Physical gifts: From $7`].map(i=>`<li style="font-size:12px;color:rgba(240,244,255,.45);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:8px"><span style="color:#22C55E">✓</span>${i}</li>`).join("")}</ul><div style="display:flex;gap:10px"><button class="btn btn-gold" style="flex:1;padding:12px" onclick="go('dash')">Open Dashboard →</button><button class="btn btn-ghost" style="flex:1;padding:12px" onclick="go('login')">Log in</button></div></div>`;}
   var aiHintHtml='';
   if(aiHint||aiHintLoading){aiHintHtml="<div style='background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.2);border-radius:12px;padding:12px 14px;margin-top:12px;display:flex;align-items:flex-start;gap:9px'><div style='font-size:16px;flex-shrink:0'>✨</div><div style='font-size:12px;color:rgba(240,244,255,.7);line-height:1.6'>"+(aiHintLoading?"<span style='color:rgba(240,244,255,.35)'>AI thinking...</span>":aiHint)+"</div></div>";}
-  return`<div class="ob">${logoH(22)}<div class="stbar">${steps.map((s,i)=>`<div class="sp ${i===obS?"on":i<obS?"dn":"pd"}">${s}</div>`).join("")}</div><div class="ob-card">${c}${aiHintHtml}</div>${obS>0&&obS<5?`<button class="link-btn" style="margin-top:12px" onclick="oBck()">← Back</button>`:""}</div>`;
+  var stBarH=steps.map(function(s,i){return '<div class="sp '+(i===obS?'on':i<obS?'dn':'pd')+'">'+s+'</div>';}).join('');
+  var bckBtn=obS>0&&obS<5?'<button class="link-btn" style="margin-top:12px" onclick="oBck()">← Back</button>':'';
+  return '<div class="ob">'+logoH(22)+'<div class="stbar">'+stBarH+'</div><div class="ob-card">'+c+aiHintHtml+'</div>'+bckBtn+'</div>';
 }
 
 
@@ -951,32 +952,30 @@ function roi(){
   else if(riS===1){
     var riBO=getBizById(riB)||{id:riB,l:'Your Business',i:'🏢',c:'#FFD166',lf:.30};
     var B=riBO;
-    // Smart CLV calculation
-    var clv=riCu*riAv*riVf*riLm; // total customer base value
-    var maxGift=Math.round(riAv*0.45); // gift should not exceed 45% of avg sale
-    var recGift=riAv<=30?18:riAv<=50?22:riAv<=75?28:riAv<=100?35:45;
+    var clv=riCu*riAv*riVf*riLm;
+    var maxGift=Math.round(riAv*0.45);
     var giftOk=riGf<=maxGift;
     var breakEven=Math.round((riGf/riAv)*10)/10;
     var ch=Math.round(riCu*riCh);
     var sv=Math.round(ch*B.lf);
     var rc=sv*riAv;
     var ml=Math.round((riAv/riGf)*10)/10;
-    var giftWarning=!giftOk?'<div style="background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.3);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#FF4D6D">⚠️ Your gift cost ($'+riGf+') is more than 45% of your avg sale ($'+riAv+'). We recommend a gift under $'+maxGift+' for best ROI.</div>':'';
+    var giftWarn=!giftOk?'<div style="background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.3);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#FF4D6D">⚠️ Gift cost ($'+riGf+') exceeds 45% of avg sale ($'+riAv+'). Recommend gift under $'+maxGift+'.</div>':'';
+    var sliders='';
+    var sliderDefs=[['riCu','Active customers',10,2000,10,'','',false],['riAv','Average sale value',5,500,5,'$','',false],['riVf','Visits per month',1,8,1,'','x/mo',false],['riLm','Loyalty months',1,36,1,'','mo',false],['riCh','Monthly churn rate',.03,.50,.01,'','%',true],['riGf','Gift cost',5,80,1,'$','',false]];
+    for(var si=0;si<sliderDefs.length;si++){
+      var sd=sliderDefs[si];
+      var sk=sd[0],sl2=sd[1],smn=sd[2],smx=sd[3],sst=sd[4],spr=sd[5],ssf=sd[6],spc=sd[7];
+      var sval=spc?Math.round(window[sk]*100):window[sk];
+      sliders+='<div class="sl-row"><div class="sl-lr"><div class="sl-l">'+sl2+'</div><div class="sl-v" style="color:'+B.c+'">'+spr+sval+ssf+'</div></div><input type="range" style="accent-color:'+B.c+'" min="'+smn+'" max="'+smx+'" step="'+sst+'" value="'+window[sk]+'" oninput="riSlide(this,String.fromCharCode(39)+String.fromCharCode(39))" data-key="'+sk+'"/></div>';
+    }
     roiC='<div class="rc"><div style="text-align:center;margin-bottom:24px"><div style="font-size:28px;margin-bottom:6px">'+B.i+'</div><h2 style="font-family:Space Grotesk,sans-serif;font-size:26px;font-weight:800;letter-spacing:-1px;margin-bottom:4px">About your <span style="color:'+B.c+'">'+B.l+'</span></h2><p style="font-size:12px;color:rgba(240,244,255,.4);margin-top:6px">Tell us about your business to see your personalized ROI</p></div>'
-    +[["riCu","Active customers",10,2000,10,"","",false],["riAv","Average sale value",5,500,5,"$","",false],["riVf","Visits per month per customer",1,8,1,"","x/mo",false],["riLm","Customer loyalty (months)",1,36,1,"","mo",false],["riCh","Monthly churn rate",.03,.50,.01,"","%",true],["riGf","Gift cost",5,80,1,"$","",false]].map(function(arr){
-      var k=arr[0],l=arr[1],mn=arr[2],mx=arr[3],st=arr[4],pr=arr[5],sf=arr[6],pc=arr[7];
-      var val=pc?Math.round(window[k]*100):window[k];
-      return '<div class="sl-row"><div class="sl-lr"><div class="sl-l">'+l+'</div><div class="sl-v" style="color:'+B.c+'">'+pr+val+sf+'</div></div><input type="range" style="accent-color:'+B.c+'" min="'+mn+'" max="'+mx+'" step="'+st+'" value="'+window[k]+'" oninput="riSlide(this,String.fromCharCode(39)+k+String.fromCharCode(39))"/></div>';
-    }).join("")
-    +giftWarning
-    +'<div style="background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.2);border-radius:12px;padding:14px;margin-bottom:16px">'
-    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#4DA6FF;margin-bottom:10px">🎁 Smart Gift Recommendation</div>'
-    +'<div style="font-size:13px;color:rgba(240,244,255,.7);margin-bottom:6px">Based on your $'+riAv+' avg sale, we recommend a <strong style="color:#F0F4FF">gift under $'+maxGift+'</strong></div>'
-    +'<div style="font-size:12px;color:rgba(240,244,255,.45)">Break-even: customer only needs to visit <strong style="color:#22C55E">'+breakEven+'x</strong> to pay for the gift</div>'
-    +'</div>'
-    +'<div id="riPv" class="roi-pr" style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.15)"><div><div style="font-family:Space Grotesk,sans-serif;font-size:18px;font-weight:800;color:'+B.c+';margin-bottom:2px">'+sv+'</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Saved/mo</div></div><div><div style="font-family:Space Grotesk,sans-serif;font-size:18px;font-weight:800;color:#22C55E;margin-bottom:2px">$'+rc.toLocaleString()+'</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Recovered</div></div><div><div style="font-family:Space Grotesk,sans-serif;font-size:18px;font-weight:800;color:#FFD166;margin-bottom:2px">'+ml+'x</div><div style="font-size:11px;color:rgba(240,244,255,.45)">ROI</div></div></div>'
-    +'<button class="btn-full btn-gold" onclick="riShow()" style="margin-bottom:10px">Show my full ROI breakdown →</button>'
-    +'<button class="btn btn-ghost" style="width:100%;padding:10px" onclick="riS=0;riB=null;riR()">← Change type</button></div>';
+      +sliders
+      +giftWarn
+      +'<div style="background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.2);border-radius:12px;padding:14px;margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:#4DA6FF;margin-bottom:6px">🎁 Smart Gift Recommendation</div><div style="font-size:13px;color:rgba(240,244,255,.7);margin-bottom:6px">Based on your $'+riAv+' avg sale, recommend gift under <strong style="color:#F0F4FF">$'+maxGift+'</strong></div><div style="font-size:12px;color:rgba(240,244,255,.45)">Break-even: customer needs only <strong style="color:#22C55E">'+breakEven+' visit(s)</strong> to pay for the gift</div></div>'
+      +'<div id="riPv" class="roi-pr" style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.15)"><div><div style="font-family:Space Grotesk,sans-serif;font-size:18px;font-weight:800;color:'+B.c+';margin-bottom:2px">'+sv+'</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Saved/mo</div></div><div><div style="font-family:Space Grotesk,sans-serif;font-size:18px;font-weight:800;color:#22C55E;margin-bottom:2px">$'+rc.toLocaleString()+'</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Recovered</div></div><div><div style="font-family:Space Grotesk,sans-serif;font-size:18px;font-weight:800;color:#FFD166;margin-bottom:2px">'+ml+'x</div><div style="font-size:11px;color:rgba(240,244,255,.45)">ROI</div></div></div>'
+      +'<button class="btn-full btn-gold" onclick="riShow()" style="margin-bottom:10px">Show my full ROI breakdown →</button>'
+      +'<button class="btn btn-ghost" style="width:100%;padding:10px" onclick="riS=0;riB=null;riR()">← Change type</button></div>';
   }
   else if(riS===2){
     var riBO2=getBizById(riB)||{id:riB,l:'Your Business',i:'🏢',c:'#FFD166',lf:.30};
@@ -1680,7 +1679,6 @@ function _ctInit(){
   _ctRender();
 }
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',_ctInit);}else{_ctInit();}
-
 </script>
 </body>
 </html>
