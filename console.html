@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Clicktide · Mission Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070B14; --panel:#0C1220; --panel2:#101A2E; --line:rgba(255,255,255,.08);
+  --ink:#EAF0FF; --mut:rgba(234,240,255,.5); --mut2:rgba(234,240,255,.32);
+  --gold:#FFD166; --blue:#4DA6FF; --green:#22C55E; --red:#FF4D6D; --orange:#FF9F4D; --violet:#A98BFF;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink);font-family:'Archivo',sans-serif;-webkit-font-smoothing:antialiased}
+body{
+  min-height:100vh;
+  background-image:
+    radial-gradient(900px 500px at 85% -5%, rgba(77,166,255,.10), transparent 60%),
+    radial-gradient(700px 500px at 10% 0%, rgba(255,209,102,.07), transparent 55%),
+    linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px);
+  background-size:auto,auto,44px 44px,44px 44px;
+}
+.mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:1320px;margin:0 auto;padding:22px 26px 80px}
+/* header */
+header{display:flex;align-items:center;gap:16px;padding:14px 0 22px;border-bottom:1px solid var(--line);margin-bottom:24px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.logo-mark{filter:drop-shadow(0 0 10px rgba(77,166,255,.45))}
+.logo-text{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;line-height:1}
+.logo-text .white{color:#EAF0FF}
+.logo-text .blue{color:var(--blue)}
+.brand .sub{font-size:9.5px;letter-spacing:.28em;text-transform:uppercase;color:var(--mut2);font-family:'IBM Plex Mono',monospace;margin-top:5px}
+.live{display:flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--green);padding:6px 11px;border:1px solid rgba(34,197,94,.25);border-radius:100px;background:rgba(34,197,94,.06)}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(34,197,94,.6);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)}70%{box-shadow:0 0 0 7px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+.spacer{flex:1}
+.hbtn{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 14px;cursor:pointer;transition:.15s}
+.hbtn:hover{border-color:var(--blue);color:var(--blue)}
+.stamp{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--mut2)}
+/* kpi */
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:26px}
+.kpi{background:linear-gradient(160deg,var(--panel),rgba(12,18,32,.5));border:1px solid var(--line);border-radius:15px;padding:16px 16px 14px;position:relative;overflow:hidden;opacity:0;transform:translateY(10px);animation:rise .5s forwards}
+.kpi::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent,var(--blue));opacity:.8}
+@keyframes rise{to{opacity:1;transform:none}}
+.kpi .lab{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--mut2);margin-bottom:9px;display:flex;align-items:center;gap:6px}
+.kpi .val{font-family:'IBM Plex Mono',monospace;font-size:27px;font-weight:700;line-height:1;color:var(--accent,var(--ink))}
+.kpi .meta{font-size:11px;color:var(--mut);margin-top:7px}
+/* layout */
+.grid{display:grid;grid-template-columns:1.55fr 1fr;gap:18px;margin-bottom:18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 18px 16px;opacity:0;transform:translateY(10px);animation:rise .5s forwards}
+.card h2{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--mut);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card h2 .ic{font-size:13px}
+.full{grid-column:1/-1}
+/* bars */
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:12.5px}
+.bar-row .nm{width:108px;display:flex;align-items:center;gap:7px;color:var(--ink);font-weight:500}
+.bar-track{flex:1;height:9px;background:var(--panel2);border-radius:6px;overflow:hidden}
+.bar-fill{height:100%;border-radius:6px;transition:width .8s cubic-bezier(.2,.7,.2,1)}
+.bar-row .ct{width:54px;text-align:right;font-family:'IBM Plex Mono',monospace;color:var(--mut)}
+.plchip{width:14px;height:14px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-size:9px}
+/* table */
+table{width:100%;border-collapse:collapse}
+th{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut2);text-align:left;padding:0 12px 11px;font-weight:600}
+th.r,td.r{text-align:right}
+td{padding:12px;border-top:1px solid var(--line);font-size:13px;vertical-align:middle}
+tbody tr{transition:.12s}
+tbody tr:hover{background:rgba(77,166,255,.04)}
+.bizname{font-weight:600;display:flex;align-items:center;gap:9px}
+.avatar{width:26px;height:26px;border-radius:7px;background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--blue);flex-shrink:0}
+.bid{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--mut2)}
+.pill{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:3px 8px;border-radius:6px;font-weight:600;white-space:nowrap}
+.mono-num{font-family:'IBM Plex Mono',monospace;font-weight:600}
+/* feed */
+.feed-item{display:flex;gap:11px;padding:10px 0;border-bottom:1px solid var(--line)}
+.feed-item:last-child{border-bottom:none}
+.fic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;background:var(--panel2)}
+.feed-item .ft{font-size:12.5px;font-weight:500}
+.feed-item .fs{font-size:11px;color:var(--mut)}
+.feed-item .fw{flex:1}
+.feed-item time{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--mut2);white-space:nowrap}
+/* misc */
+.tierwrap{display:flex;height:13px;border-radius:7px;overflow:hidden;margin:4px 0 14px;background:var(--panel2)}
+.tierwrap span{height:100%;transition:width .8s}
+.legend{display:flex;flex-wrap:wrap;gap:10px 16px;font-size:11.5px}
+.legend div{display:flex;align-items:center;gap:6px;color:var(--mut)}
+.lg-dot{width:9px;height:9px;border-radius:3px}
+.empty{text-align:center;padding:30px;color:var(--mut2);font-size:13px}
+.alert-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;margin-bottom:8px;font-size:12.5px;border:1px solid}
+.config{display:none;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:18px;gap:10px;align-items:center;flex-wrap:wrap}
+.config.open{display:flex}
+.config input{flex:1;min-width:220px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px;color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:12px;outline:none}
+.config input:focus{border-color:var(--blue)}
+.loadbar{height:2px;background:linear-gradient(90deg,transparent,var(--blue),transparent);background-size:200% 100%;animation:slide 1.1s infinite linear;border-radius:2px;margin-bottom:18px}
+@keyframes slide{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.hidden{display:none!important}
+/* login gate */
+#gate{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:
+    radial-gradient(800px 500px at 50% -10%, rgba(77,166,255,.16), transparent 60%),
+    var(--bg)}
+.gatecard{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:30px 28px;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.gatecard .gl{display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:6px}
+.gatecard .gsub{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.26em;text-transform:uppercase;color:var(--mut2);margin-bottom:22px}
+.gatecard input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:13px 14px;color:var(--ink);font-family:'Archivo',sans-serif;font-size:14px;outline:none;margin-bottom:11px}
+.gatecard input:focus{border-color:var(--blue)}
+.gatecard button{width:100%;background:var(--gold);color:#080D18;border:none;border-radius:100px;padding:13px;font-family:'Archivo',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:.15s}
+.gatecard button:hover{filter:brightness(1.06)}
+.gatecard button:disabled{opacity:.6;cursor:default}
+.gerr{background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.25);border-radius:9px;padding:9px 12px;font-size:12px;color:var(--red);margin-bottom:12px;display:none}
+.logout{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--mut);background:transparent;border:1px solid var(--line);border-radius:9px;padding:9px 12px;cursor:pointer}
+.logout:hover{border-color:var(--red);color:var(--red)}
+@media(max-width:1040px){.kpis{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:1fr}}
+@media(max-width:560px){.kpis{grid-template-columns:repeat(2,1fr)}.wrap{padding:16px}}
+</style>
+</head>
+<body>
+<div id="gate">
+  <div class="gatecard">
+    <div class="gl">
+      <svg class="logo-mark" width="46" height="46" viewBox="0 0 44 44"><defs><linearGradient id="lg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#BAE6FD"/><stop offset="100%" stop-color="#4DA6FF"/></linearGradient><filter id="gw2"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g transform="translate(22,22)" filter="url(#gw2)">
+      <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg2)" transform="rotate(0)" opacity=".9"/>
+      <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg2)" transform="rotate(51.4)" opacity=".9"/>
+      <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg2)" transform="rotate(102.8)" opacity=".9"/>
+      <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg2)" transform="rotate(154.2)" opacity=".9"/>
+      <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg2)" transform="rotate(205.6)" opacity=".9"/>
+      <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg2)" transform="rotate(257)" opacity=".9"/>
+      <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg2)" transform="rotate(308.4)" opacity=".9"/>
+      <circle cx="0" cy="0" r="4.5" fill="#070B14"/></g></svg>
+      <div class="logo-text" style="font-size:22px"><span class="white">CLICK</span><span class="blue">TIDE</span></div>
+    </div>
+    <div class="gsub">Founder · Mission Control</div>
+    <div class="gerr" id="gerr"></div>
+    <input id="gEmail" type="email" placeholder="Email" autocomplete="username"/>
+    <input id="gPass" type="password" placeholder="Password" autocomplete="current-password"/>
+    <button id="gBtn">Enter Mission Control →</button>
+  </div>
+</div>
+<div class="wrap hidden" id="wrap">
+  <header>
+    <div class="brand">
+      <svg class="logo-mark" width="40" height="40" viewBox="0 0 44 44"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#BAE6FD"/><stop offset="100%" stop-color="#4DA6FF"/></linearGradient><filter id="gw"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g transform="translate(22,22)" filter="url(#gw)">
+      <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(0)" opacity=".9"/>
+      <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(51.4)" opacity=".9"/>
+      <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(102.8)" opacity=".9"/>
+      <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(154.2)" opacity=".9"/>
+      <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(205.6)" opacity=".9"/>
+      <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(257)" opacity=".9"/>
+      <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(308.4)" opacity=".9"/>
+      <circle cx="0" cy="0" r="4.5" fill="#070B14"/></g></svg>
+      <div>
+        <div class="logo-text"><span class="white">CLICK</span><span class="blue">TIDE</span></div>
+        <div class="sub">Mission Control</div>
+      </div>
+    </div>
+    <div class="live"><span class="pulse"></span><span id="liveTxt">CONNECTING…</span></div>
+    <div class="spacer"></div>
+    <span class="stamp" id="stamp"></span>
+    <button class="hbtn" id="cfgBtn">⚙ Config</button>
+    <button class="hbtn" id="refreshBtn">↻ Refresh</button>
+    <button class="logout" id="logoutBtn">Log out</button>
+  </header>
+
+  <div class="config" id="config">
+    <input id="cfgUrl" placeholder="Supabase URL"/>
+    <input id="cfgKey" placeholder="Supabase key (anon or service_role)"/>
+    <button class="hbtn" id="cfgSave">Save & reload</button>
+    <span class="stamp">Tip: paste your <b>service_role</b> key for full read access if RLS blocks the anon key.</span>
+  </div>
+
+  <div class="loadbar" id="loadbar"></div>
+
+  <!-- KPIs -->
+  <div class="kpis" id="kpis"></div>
+
+  <!-- Row 1 -->
+  <div class="grid">
+    <div class="card" style="animation-delay:.05s">
+      <h2><span class="ic">📈</span> Business signups · last 12 weeks</h2>
+      <div id="growth"></div>
+    </div>
+    <div class="card" style="animation-delay:.1s">
+      <h2><span class="ic">🔌</span> Platform connections</h2>
+      <div id="connections"></div>
+    </div>
+  </div>
+
+  <!-- Row 2 -->
+  <div class="grid">
+    <div class="card" style="animation-delay:.15s">
+      <h2><span class="ic">💗</span> Platform-wide loyalty health</h2>
+      <div id="loyalty"></div>
+    </div>
+    <div class="card" style="animation-delay:.2s">
+      <h2><span class="ic">⚡</span> Live activity</h2>
+      <div id="feed"></div>
+    </div>
+  </div>
+
+  <!-- Alerts -->
+  <div class="card full" style="animation-delay:.22s;margin-bottom:18px">
+    <h2><span class="ic">🚨</span> Needs attention</h2>
+    <div id="alerts"></div>
+  </div>
+
+  <!-- Businesses table -->
+  <div class="card full" style="animation-delay:.25s">
+    <h2><span class="ic">🏢</span> All businesses</h2>
+    <div id="bizTable"></div>
+  </div>
+</div>
+
+<script>
+// ---- Config (pre-filled with your project; editable via ⚙) -------------------
+const DEFAULTS={
+  url:"https://hmihfncvahsdlmefyxyg.supabase.co",
+  key:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtaWhmbmN2YWhzZGxtZWZ5eHlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1OTgzNDksImV4cCI6MjA5NjE3NDM0OX0.GP-4tYnKlNP9iSklJyXCSatz3I7gtQQJz7xOUQdXKWk"
+};
+let SU=sessionStorage.getItem("mc_url")||DEFAULTS.url;
+let KEY=sessionStorage.getItem("mc_key")||DEFAULTS.key;
+
+const PLATFORMS={
+  square:{n:"Square",e:"⬛",c:"#EAEAEA"}, shopify:{n:"Shopify",e:"🛒",c:"#95BF47"},
+  clover:{n:"Clover",e:"🍀",c:"#22C55E"}, stripe:{n:"Stripe",e:"💳",c:"#A98BFF"},
+  toast:{n:"Toast",e:"🍞",c:"#FF9F4D"}, mindbody:{n:"Mindbody",e:"🧘",c:"#4DA6FF"}
+};
+const TIERS={
+  "Loyal":"#22C55E","Win-back VIP":"#16A34A","Recovered ★":"#4ADE80",
+  "Regular":"#4DA6FF","Win-back":"#3B82F6","Building":"#FFD166",
+  "At risk":"#FF4D6D","Drifting":"#FF9F4D"
+};
+
+// ---- Data layer --------------------------------------------------------------
+async function fetchTable(t,q=""){
+  try{
+    const r=await fetch(`${SU}/rest/v1/${t}?select=*${q?"&"+q:""}`,{
+      headers:{apikey:KEY,Authorization:`Bearer ${KEY}`}
+    });
+    if(!r.ok)return {ok:false,rows:[],status:r.status};
+    const rows=await r.json();
+    return {ok:true,rows:Array.isArray(rows)?rows:[]};
+  }catch(e){return {ok:false,rows:[],err:e.message};}
+}
+
+// ---- Loyalty scoring (mirrors the product) -----------------------------------
+function daysSince(d){ if(!d)return null; const t=new Date(d).getTime(); if(isNaN(t))return null; return Math.max(0,Math.floor((Date.now()-t)/864e5)); }
+function score(c,ctx){
+  const churn=ctx.churn||60, avgS=ctx.avgSpend||500, avgV=ctx.avgVisits||5;
+  const sat=c.satisfaction_score||0, prev=c.prev_satisfaction_score||0;
+  const recovered=(prev>0&&prev<=2&&sat>=4);
+  const spend=c.total_spent||0, visits=c.visits||c.order_count||0;
+  let since=daysSince(c.last_visit_at||c.last_order_at); if(since===null)since=churn;
+  const sN=Math.min(spend/(avgS*2),1)*100, fN=Math.min(visits/(avgV*2),1)*100, rN=Math.max(0,1-since/churn)*100;
+  let s=Math.round(sN*.33+rN*.34+fN*.33); if(recovered)s=Math.min(100,s+10);
+  const hi=(sN>=60||fN>=60), slip=(since>=churn);
+  if(sat>0&&sat<=2)return {s,t:"At risk"};
+  if(recovered&&!slip)return {s,t:"Recovered ★"};
+  if(slip){ if(hi)return {s,t:"Win-back VIP"}; if(sN>=30||fN>=30)return {s,t:"Win-back"}; return {s,t:"Drifting"}; }
+  if(s>=75)return {s,t:"Loyal"}; if(s>=50)return {s,t:"Regular"}; return {s,t:"Building"};
+}
+
+// ---- Helpers -----------------------------------------------------------------
+const $=id=>document.getElementById(id);
+const fmt=n=>n>=1000?(n/1000).toFixed(n>=10000?0:1)+"k":(""+n);
+const money=n=>"$"+Number(n||0).toLocaleString(undefined,{maximumFractionDigits:0});
+function ago(d){ const s=daysSince(d); if(s===null)return ""; if(s===0)return "today"; if(s===1)return "1d ago"; if(s<30)return s+"d ago"; if(s<365)return Math.floor(s/30)+"mo ago"; return Math.floor(s/365)+"y ago"; }
+function bizName(b){ return b.business_name||b.name||b.company||b.biz_name||null; }
+function bizPlan(b){ return b.plan||b.tier||b.subscription||"—"; }
+function bizCreated(b){ return b.created_at||b.inserted_at||null; }
+function bizId(b){ return b.business_id||b.id||b.user_id||""; }
+
+// ---- Main render -------------------------------------------------------------
+async function load(){
+  $("loadbar").classList.remove("hidden");
+  $("liveTxt").textContent="SYNCING…";
+  const [biz,cust,ship,wallet,conns,camps,alerts]=await Promise.all([
+    fetchTable("clicktide"),fetchTable("customers"),fetchTable("shipments"),
+    fetchTable("wallet"),fetchTable("platform_connections"),fetchTable("campaigns"),fetchTable("alerts")
+  ]);
+
+  // Build business universe = clicktide rows + any business_id seen in customers
+  const bizMap={};
+  biz.rows.forEach(b=>{ const id=bizId(b); if(id)bizMap[id]=Object.assign({},b,{_src:"clicktide"}); });
+  cust.rows.forEach(c=>{ const id=c.business_id; if(id&&!bizMap[id])bizMap[id]={business_id:id,_src:"customers-only"}; });
+  const businesses=Object.values(bizMap);
+
+  // group customers by business
+  const byBiz={};
+  cust.rows.forEach(c=>{ const id=c.business_id||"unknown"; (byBiz[id]=byBiz[id]||[]).push(c); });
+
+  // global loyalty context
+  const spends=cust.rows.map(c=>c.total_spent||0).filter(x=>x>0);
+  const vis=cust.rows.map(c=>c.visits||c.order_count||0).filter(x=>x>0);
+  const ctx={churn:60,
+    avgSpend:spends.length?spends.reduce((a,b)=>a+b,0)/spends.length:500,
+    avgVisits:vis.length?vis.reduce((a,b)=>a+b,0)/vis.length:5};
+
+  // wallet pool: latest balance per business_id, else sum of all latest
+  let walletPool=0;
+  if(wallet.rows.length){
+    const wByBiz={};
+    wallet.rows.forEach(w=>{ const id=w.business_id||"_global"; const t=new Date(w.created_at||0).getTime();
+      if(!wByBiz[id]||t>=wByBiz[id].t)wByBiz[id]={t,bal:Number(w.balance||0)}; });
+    walletPool=Object.values(wByBiz).reduce((a,b)=>a+b.bal,0);
+  }
+
+  const activeConns=conns.rows.filter(c=>c.is_active!==false);
+
+  // ---------- KPIs ----------
+  const kpis=[
+    {lab:"Businesses",val:fmt(businesses.length),accent:"var(--blue)",meta:newThisWeek(businesses)+" new this week"},
+    {lab:"Customers",val:fmt(cust.rows.length),accent:"var(--violet)",meta:"across "+Object.keys(byBiz).length+" businesses"},
+    {lab:"Gifts sent",val:fmt(ship.rows.length),accent:"var(--gold)",meta:countStatus(ship.rows)},
+    {lab:"Wallet pool",val:money(walletPool),accent:"var(--green)",meta:"funds available for gifts"},
+    {lab:"Connections",val:fmt(activeConns.length),accent:"var(--orange)",meta:Object.keys(groupBy(activeConns,"platform")).length+" platforms live"},
+    {lab:"Campaigns",val:fmt(camps.rows.length),accent:"#EAF0FF",meta:camps.rows.filter(c=>c.status==="active").length+" active"}
+  ];
+  $("kpis").innerHTML=kpis.map((k,i)=>`<div class="kpi" style="--accent:${k.accent};animation-delay:${i*.04}s">
+    <div class="lab">${k.lab}</div><div class="val">${k.val}</div><div class="meta">${k.meta}</div></div>`).join("");
+
+  // ---------- Growth (12 weeks) ----------
+  renderGrowth(businesses);
+
+  // ---------- Connections ----------
+  const connGroups=groupBy(activeConns,"platform");
+  const maxConn=Math.max(1,...Object.values(connGroups).map(a=>a.length));
+  $("connections").innerHTML=Object.keys(PLATFORMS).map(pid=>{
+    const p=PLATFORMS[pid], n=(connGroups[pid]||[]).length;
+    return `<div class="bar-row"><div class="nm"><span class="plchip" style="background:${p.c}22">${p.e}</span>${p.n}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${n/maxConn*100}%;background:${p.c}"></div></div>
+      <div class="ct">${n}</div></div>`;
+  }).join("") || `<div class="empty">No connections yet</div>`;
+
+  // ---------- Loyalty health ----------
+  if(cust.rows.length){
+    const tc={}; cust.rows.forEach(c=>{ const {t}=score(c,ctx); tc[t]=(tc[t]||0)+1; });
+    const total=cust.rows.length;
+    const order=["Loyal","Win-back VIP","Recovered ★","Regular","Win-back","Building","At risk","Drifting"];
+    const present=order.filter(t=>tc[t]);
+    $("loyalty").innerHTML=
+      `<div class="tierwrap">${present.map(t=>`<span style="width:${tc[t]/total*100}%;background:${TIERS[t]}" title="${t}: ${tc[t]}"></span>`).join("")}</div>
+       <div class="legend">${present.map(t=>`<div><span class="lg-dot" style="background:${TIERS[t]}"></span>${t} · <b class="mono">${tc[t]}</b></div>`).join("")}</div>
+       <div style="margin-top:14px;font-size:12px;color:var(--mut)">${tc["At risk"]||0} unhappy (gifts blocked) · ${(tc["Win-back VIP"]||0)+(tc["Win-back"]||0)} slipping · ${tc["Recovered ★"]||0} recovered</div>`;
+  } else $("loyalty").innerHTML=`<div class="empty">No customers yet</div>`;
+
+  // ---------- Activity feed ----------
+  renderFeed(businesses,activeConns,ship.rows);
+
+  // ---------- Alerts ----------
+  renderAlerts(businesses,byBiz,activeConns,cust.rows,ctx,alerts.rows);
+
+  // ---------- Business table ----------
+  renderBizTable(businesses,byBiz,activeConns,ctx);
+
+  // status
+  $("loadbar").classList.add("hidden");
+  $("liveTxt").textContent="LIVE";
+  $("stamp").textContent="synced "+new Date().toLocaleTimeString();
+  if(!biz.ok && !cust.ok){
+    $("liveTxt").textContent="READ BLOCKED";
+    $("alerts").innerHTML=`<div class="alert-row" style="border-color:rgba(255,77,109,.3);background:rgba(255,77,109,.08);color:var(--red)">
+      ⚠ Supabase returned no data (likely Row-Level Security). Open ⚙ Config and paste your <b>&nbsp;service_role&nbsp;</b> key for full founder access.</div>`;
+  }
+}
+
+// ---- sub-renderers -----------------------------------------------------------
+function groupBy(arr,k){const o={};arr.forEach(x=>{const v=x[k]||"_";(o[v]=o[v]||[]).push(x);});return o;}
+function newThisWeek(biz){return biz.filter(b=>{const s=daysSince(bizCreated(b));return s!==null&&s<=7;}).length;}
+function countStatus(ship){const d=ship.filter(s=>/deliver|complete|sent/i.test(s.status||"")).length;return d+" delivered / "+ship.length+" total";}
+
+function renderGrowth(biz){
+  const weeks=12, now=Date.now(), buckets=new Array(weeks).fill(0);
+  biz.forEach(b=>{const s=daysSince(bizCreated(b));if(s===null)return;const w=Math.floor(s/7);if(w<weeks)buckets[weeks-1-w]++;});
+  const max=Math.max(1,...buckets);
+  const W=100/weeks;
+  $("growth").innerHTML=`<svg viewBox="0 0 100 46" preserveAspectRatio="none" style="width:100%;height:120px">
+    ${buckets.map((v,i)=>{const h=v/max*38;return `<rect x="${i*W+W*.18}" y="${42-h}" width="${W*.64}" height="${h}" rx="0.8" fill="${i===weeks-1?'var(--gold)':'var(--blue)'}" opacity="${i===weeks-1?1:.55}"/>`;}).join("")}
+    <line x1="0" y1="42" x2="100" y2="42" stroke="rgba(255,255,255,.1)" stroke-width="0.3"/>
+  </svg>
+  <div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--mut2);margin-top:4px">
+    <span>12 wks ago</span><span>${biz.length} total · ${buckets[weeks-1]} this wk</span><span>now</span></div>`;
+}
+
+function renderFeed(biz,conns,ship){
+  const items=[];
+  biz.forEach(b=>{const d=bizCreated(b);if(d)items.push({d,e:"🏢",t:(bizName(b)||shortId(bizId(b)))+" signed up",s:"New business on Clicktide"});});
+  conns.forEach(c=>{const d=c.connected_at||c.created_at;if(d){const p=PLATFORMS[c.platform];items.push({d,e:p?p.e:"🔌",t:(c.merchant_name||shortId(c.merchant_id||""))+" connected "+(p?p.n:c.platform),s:"Platform linked"});}});
+  ship.forEach(s=>{const d=s.created_at;if(d)items.push({d,e:"📦",t:(s.customer_name||"A customer")+" — "+(s.gift||s.gift_type||"gift"),s:"Gift "+(s.status||"queued")});});
+  items.sort((a,b)=>new Date(b.d)-new Date(a.d));
+  const top=items.slice(0,9);
+  $("feed").innerHTML=top.length?top.map(i=>`<div class="feed-item">
+    <div class="fic">${i.e}</div><div class="fw"><div class="ft">${esc(i.t)}</div><div class="fs">${esc(i.s)}</div></div><time>${ago(i.d)}</time></div>`).join("")
+    :`<div class="empty">No activity yet</div>`;
+}
+
+function renderAlerts(biz,byBiz,conns,cust,ctx,dbAlerts){
+  const out=[];
+  const connBiz=new Set(conns.map(c=>c.business_id).filter(Boolean));
+  // businesses with no connection
+  biz.forEach(b=>{const id=bizId(b);if(b._src==="clicktide"&&!connBiz.has(id)){out.push({c:"var(--orange)",t:`${bizName(b)||shortId(id)} has no POS connected — no data flowing in`});}});
+  // unhappy customers (blocked) platform-wide
+  let unhappy=0,slipVIP=0; cust.forEach(c=>{const {t}=score(c,ctx);if(t==="At risk")unhappy++;if(t==="Win-back VIP")slipVIP++;});
+  if(unhappy)out.push({c:"var(--red)",t:`${unhappy} customer${unhappy>1?"s":""} rated 1–2★ across the platform — gifts auto-blocked`});
+  if(slipVIP)out.push({c:"var(--orange)",t:`${slipVIP} high-value customer${slipVIP>1?"s":""} slipping away — win-back gifts queued`});
+  (dbAlerts||[]).filter(a=>!a.resolved).slice(0,5).forEach(a=>out.push({c:"var(--gold)",t:a.message||a.type||"Alert"}));
+  if(!out.length){$("alerts").innerHTML=`<div class="empty">✓ All clear — nothing needs attention</div>`;return;}
+  $("alerts").innerHTML=out.map(o=>`<div class="alert-row" style="border-color:${o.c}33;background:${o.c}12;color:${o.c}">● <span style="color:var(--ink)">${esc(o.t)}</span></div>`).join("");
+}
+
+function renderBizTable(biz,byBiz,conns,ctx){
+  const connByBiz=groupBy(conns,"business_id");
+  const rows=biz.map(b=>{
+    const id=bizId(b);
+    const cs=byBiz[id]||[];
+    const tiers={}; cs.forEach(c=>{const {t}=score(c,ctx);tiers[t]=(tiers[t]||0)+1;});
+    const loyal=(tiers["Loyal"]||0)+(tiers["Win-back VIP"]||0)+(tiers["Recovered ★"]||0);
+    const risk=(tiers["At risk"]||0)+(tiers["Drifting"]||0);
+    const conn=(connByBiz[id]||[]).filter(c=>c.is_active!==false);
+    const spent=cs.reduce((a,c)=>a+(c.total_spent||0),0);
+    return {id,name:bizName(b),plan:bizPlan(b),created:bizCreated(b),demo:b._src!=="clicktide",
+      n:cs.length,loyal,risk,spent,conn:conn.map(c=>c.platform),churn:b.churn_days};
+  }).sort((a,b)=>b.n-a.n);
+  if(!rows.length){$("bizTable").innerHTML=`<div class="empty">No businesses yet</div>`;return;}
+  $("bizTable").innerHTML=`<table><thead><tr>
+    <th>Business</th><th>Plan</th><th class="r">Customers</th><th class="r">Loyal</th><th class="r">At risk</th>
+    <th class="r">Revenue tracked</th><th>Connections</th><th>Churn win.</th><th class="r">Joined</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr>
+      <td><div class="bizname"><div class="avatar">${(r.name||r.id||"?").slice(0,1).toUpperCase()}</div>
+        <div><div>${esc(r.name||"Unnamed")}${r.demo?' <span class="pill" style="background:rgba(169,139,255,.15);color:var(--violet)">demo</span>':''}</div>
+        <div class="bid">${esc(shortId(r.id))}</div></div></div></td>
+      <td><span class="pill" style="background:rgba(255,209,102,.13);color:var(--gold)">${esc(String(r.plan))}</span></td>
+      <td class="r mono-num">${r.n}</td>
+      <td class="r mono-num" style="color:var(--green)">${r.loyal||"·"}</td>
+      <td class="r mono-num" style="color:${r.risk?'var(--red)':'var(--mut2)'}">${r.risk||"·"}</td>
+      <td class="r mono-num">${money(r.spent)}</td>
+      <td>${r.conn.length?r.conn.map(p=>`<span class="plchip" title="${p}" style="background:${(PLATFORMS[p]||{}).c||'#888'}22;margin-right:3px">${(PLATFORMS[p]||{}).e||"🔌"}</span>`).join(""):'<span class="bid">none</span>'}</td>
+      <td class="bid">${r.churn?r.churn+"d":"—"}</td>
+      <td class="r bid">${r.created?ago(r.created):"—"}</td>
+    </tr>`).join("")}
+  </tbody></table>`;
+}
+
+function shortId(id){id=String(id||"");return id.length>12?id.slice(0,6)+"…"+id.slice(-4):id;}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+// ---- wire up -----------------------------------------------------------------
+$("refreshBtn").onclick=load;
+$("cfgBtn").onclick=()=>$("config").classList.toggle("open");
+$("cfgUrl").value=SU; $("cfgKey").value=KEY;
+$("cfgSave").onclick=()=>{
+  SU=$("cfgUrl").value.trim().replace(/\/+$/,""); KEY=$("cfgKey").value.trim();
+  sessionStorage.setItem("mc_url",SU); sessionStorage.setItem("mc_key",KEY);
+  $("config").classList.remove("open"); load();
+};
+
+// ---- Auth gate ---------------------------------------------------------------
+// Optional: lock the console to ONE account. Leave "" to allow any valid login.
+// To restrict to only you, put your email here, e.g. "you@email.com".
+const FOUNDER_EMAIL="";
+const ANON=DEFAULTS.key; // anon key is required to call the auth endpoint
+let refreshTimer=null;
+
+function enterApp(){
+  $("gate").classList.add("hidden");
+  $("wrap").classList.remove("hidden");
+  load();
+  if(refreshTimer)clearInterval(refreshTimer);
+  refreshTimer=setInterval(load,60000);
+}
+function showGate(){
+  if(refreshTimer)clearInterval(refreshTimer);
+  $("wrap").classList.add("hidden");
+  $("gate").classList.remove("hidden");
+  $("gEmail").focus();
+}
+async function doLogin(){
+  const email=$("gEmail").value.trim().toLowerCase();
+  const pass=$("gPass").value;
+  const err=$("gerr");
+  err.style.display="none";
+  if(!email||!pass){err.textContent="Enter your email and password.";err.style.display="block";return;}
+  if(FOUNDER_EMAIL&&email!==FOUNDER_EMAIL.toLowerCase()){err.textContent="This console is restricted to the founder account.";err.style.display="block";return;}
+  const btn=$("gBtn");btn.disabled=true;btn.textContent="Signing in…";
+  try{
+    const r=await fetch(`${SU}/auth/v1/token?grant_type=password`,{
+      method:"POST",headers:{apikey:ANON,"Content-Type":"application/json"},
+      body:JSON.stringify({email,password:pass})
+    });
+    const d=await r.json();
+    if(!r.ok||d.error||!d.access_token)throw new Error(d.error_description||d.msg||d.error||"Invalid email or password.");
+    sessionStorage.setItem("mc_session",JSON.stringify({email,exp:Date.now()+1000*60*60*8}));
+    enterApp();
+  }catch(e){
+    err.textContent=e.message;err.style.display="block";
+    btn.disabled=false;btn.textContent="Enter Mission Control →";
+  }
+}
+$("gBtn").onclick=doLogin;
+$("gPass").onkeydown=e=>{if(e.key==="Enter")doLogin();};
+$("gEmail").onkeydown=e=>{if(e.key==="Enter")$("gPass").focus();};
+$("logoutBtn").onclick=()=>{sessionStorage.removeItem("mc_session");$("gPass").value="";showGate();};
+
+// Stay signed in for the session (until tab closes or 8h pass)
+(function(){
+  try{
+    const s=JSON.parse(sessionStorage.getItem("mc_session")||"null");
+    if(s&&s.exp>Date.now()){enterApp();return;}
+  }catch{}
+  showGate();
+})();
+</script>
+</body>
+</html>
