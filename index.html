@@ -188,6 +188,23 @@ async function ensureBizProfile(tok,user,extra){
     },tok);
   }catch(e){/* never block sign-in on profile creation */}
 }
+
+// --- multi-tenant helpers (Part 3) ---
+function myId(){return (S&&S.user&&S.user.id)?S.user.id:null;}
+// Build a PostgREST filter scoped to the logged-in business; appends any extra params.
+function scope(extra){const id=myId();const f=id?("user_id=eq."+id):"";return f?(extra?f+"&"+extra:f):(extra||"");}
+// Read the logged-in business's profile row.
+async function loadBiz(){const tok=S?.token||SK;const id=myId();if(!id)return null;try{const rows=await db.sel("clicktide","user_id=eq."+id,tok);return Array.isArray(rows)&&rows[0]?rows[0]:null;}catch(e){return null;}}
+// Update fields on the logged-in business's profile row.
+async function setBizFields(fields){const tok=S?.token||SK;const id=myId();if(!id)return false;try{const r=await fetch(`${SU}/rest/v1/clicktide?user_id=eq.${id}`,{method:"PATCH",headers:{...h(tok),Prefer:"return=representation"},body:JSON.stringify(fields)});return r.ok;}catch(e){return false;}}
+// Save the business profile form (Settings).
+async function saveBizProfile(){
+  const g=id=>document.getElementById(id)?.value||"";
+  const st=document.getElementById("pfStatus");
+  if(st){st.textContent="Saving...";st.style.color="rgba(240,244,255,.45)";}
+  const ok=await setBizFields({business_name:g("pfName"),business_type:g("pfType"),phone:g("pfPhone"),website:g("pfSite"),address:g("pfAddr"),city:g("pfCity"),state:g("pfState"),zip:g("pfZip")});
+  if(st){st.textContent=ok?"Saved ✓":"Couldn't save — please try again";st.style.color=ok?"#22C55E":"#FF6B6B";}
+}
 let S=null;
 try{const t=localStorage.getItem("ct");const u=localStorage.getItem("cu");if(t&&u){S={token:t,user:JSON.parse(u)};ensureBizProfile(t,S.user);}}catch{}
 const CATS=[
@@ -991,7 +1008,7 @@ function handleCSV(input){
     for(var i=1;i<Math.min(lines.length,501);i++){
       var cols=lines[i].split(',');
       if(cols[emailIdx]&&cols[emailIdx].includes('@')){
-        promises.push(db.ins('customers',{name:(cols[nameIdx]||'').trim(),email:(cols[emailIdx]||'').trim(),status:'active'},tok));
+        promises.push(db.ins('customers',{name:(cols[nameIdx]||'').trim(),email:(cols[emailIdx]||'').trim(),status:'active',user_id:myId()},tok));
         imported++;
       }
     }
@@ -1039,6 +1056,7 @@ async function oSignup(){
       localStorage.setItem("ct_churn",String(obDy||60));
       localStorage.setItem("ct_biztype",obB||obCat||"other");
       await ensureBizProfile(r.access_token,S.user,{business_name:n,plan:obPl,churn_days:obDy||60,business_type:obB||obCat||"other",email:e});
+      sessionStorage.setItem("ct_justonboarded","1");
     }
     // 2. Create Stripe checkout session
     btn.textContent="Redirecting to payment...";
@@ -1213,20 +1231,21 @@ function dGo(p){dpg=p;document.getElementById("app").innerHTML=dash();bind();dLo
 
 async function dLoad(){
   const tok=S?.token||SK;const el=document.getElementById("dC");if(!el)return;
+  if(sessionStorage.getItem("ct_justonboarded")){sessionStorage.removeItem("ct_justonboarded");setBizFields({onboarding_complete:true});}
   try{
     if(dpg==="overview"){
-      const[uR,cR,shR,wR]=await Promise.all([db.sel("clicktide","",tok).catch(()=>[]),db.sel("campaigns","order=created_at.desc",tok).catch(()=>[]),db.sel("shipments","order=created_at.desc&limit=5",tok).catch(()=>[]),db.sel("wallet","order=created_at.desc&limit=1",tok).catch(()=>[])]);
+      const[uR,cR,shR,wR]=await Promise.all([db.sel("clicktide",scope(""),tok).catch(()=>[]),db.sel("campaigns",scope("order=created_at.desc"),tok).catch(()=>[]),db.sel("shipments",scope("order=created_at.desc&limit=5"),tok).catch(()=>[]),db.sel("wallet",scope("order=created_at.desc&limit=1"),tok).catch(()=>[])]);
       const u=Array.isArray(uR)?uR:[],c=Array.isArray(cR)?cR:[],sh=Array.isArray(shR)?shR:[],w=Array.isArray(wR)?wR:[];      const bal=w[0]?.balance||0;
       el.innerHTML=`<div class="sg">${[["Businesses",u.length,"#FFD166"],["Campaigns",c.length,"#22C55E"],["Gifts Sent",sh.length,"#4DA6FF"],["Wallet","$"+bal,"#06B6D4"]].map(([l,v,cc])=>`<div class="sc"><div class="sl">${l}</div><div class="sn" style="color:${cc}">${v}</div></div>`).join("")}</div>
       <div class="dc"><div class="dch"><div class="dct">Campaigns</div><button class="link-btn" onclick="oCM()">+ New →</button></div>${c.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">⚡</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No campaigns yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Create your first campaign.</div><button class="btn btn-gold" onclick="oCM()">Create Campaign</button></div>`:c.slice(0,4).map(cc=>`<div class="dr"><div class="di" style="background:rgba(255,209,102,.1)">${cc.campaign_type==="message_only"?"💬":cc.campaign_type==="digital_gift"?"💳":cc.campaign_type==="survey"?"⭐":"📦"}</div><div style="flex:1"><div class="dn">${cc.name}</div><div class="dsub">${cc.trigger} · ${cc.gift_name}</div></div><span class="${cc.status==="active"?"ba":"bp"}">${cc.status==="active"?"● Active":"⏸ Paused"}</span></div>`).join("")}</div>
       <div class="dc"><div class="dch"><div class="dct">Recent Shipments</div></div>${sh.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">📦</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No shipments yet</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Shipments appear when campaigns fire.</div></div>`:sh.map(s=>`<div class="dr"><div class="di" style="background:rgba(77,166,255,.1)">📦</div><div style="flex:1"><div class="dn">${s.customer_name}</div><div class="dsub">${s.gift}</div></div><span class="bp">${s.status||"Processing"}</span></div>`).join("")}</div>`;
     }
     else if(dpg==="campaigns"){
-      const c=await db.sel("campaigns","order=created_at.desc",tok).catch(()=>[]);
+      const c=await db.sel("campaigns",scope("order=created_at.desc"),tok).catch(()=>[]);
       el.innerHTML=c.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">⚡</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No campaigns yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Create your first campaign.</div><button class="btn btn-gold" onclick="oCM()">Create Campaign</button></div>`:c.map(cc=>`<div class="dc" style="margin-bottom:11px"><div style="display:flex;align-items:flex-start;gap:12px"><div class="di" style="background:rgba(255,209,102,.1);width:40px;height:40px;font-size:18px;flex-shrink:0">${cc.campaign_type==="message_only"?"💬":cc.campaign_type==="digital_gift"?"💳":cc.campaign_type==="survey"?"⭐":"📦"}</div><div style="flex:1"><div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><div style="font-size:13px;font-weight:700">${cc.name}</div><span class="${cc.status==="active"?"ba":"bp"}">${cc.status==="active"?"● Active":"⏸ Paused"}</span></div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:6px">Trigger: ${cc.trigger} · ${cc.gift_name}</div>${cc.message?`<div style="font-size:11px;color:rgba(240,244,255,.45);background:#101828;border-radius:8px;padding:8px 10px;line-height:1.6;font-style:italic">"${cc.message.substring(0,100)}${cc.message.length>100?"...":""}"</div>`:""}</div><div style="display:flex;gap:7px;flex-shrink:0"><button class="btn btn-ghost" style="padding:6px 11px;font-size:11px" onclick="tCmp('${cc.id}','${cc.status}')">${cc.status==="active"?"Pause":"Resume"}</button><button class="btn" style="background:rgba(255,77,109,.1);color:#FF4D6D;border:1px solid rgba(255,77,109,.2);padding:6px 11px;font-size:11px" onclick="dCmp('${cc.id}')">Delete</button></div></div></div>`).join("");
     }
     else if(dpg==="customers"){
-      const cu=await db.sel("customers","order=created_at.desc",tok).catch(()=>[]);
+      const cu=await db.sel("customers",scope("order=created_at.desc"),tok).catch(()=>[]);
       const cuArr=Array.isArray(cu)?cu:[];
       var _churn=parseInt(localStorage.getItem("ct_churn"))||60;
       var _spends=cuArr.map(function(c){return c.total_spent||0;}).filter(function(x){return x>0;});
@@ -1243,13 +1262,13 @@ async function dLoad(){
       el.innerHTML=alertBanner+'<div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button class="btn btn-gold" onclick="oAC()">+ Add Customer</button></div>'+(cuArr.length===0?'<div class="empty"><div style="font-size:36px;margin-bottom:10px">👥</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No customers yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Add your first customer.</div><button class="btn btn-gold" onclick="oAC()">Add Customer</button></div>':'<div class="dc"><div style="display:grid;grid-template-columns:1.1fr 1.3fr 70px 110px 110px 80px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.07);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.3)"><span>Name</span><span>Email</span><span>Score</span><span>Status</span><span>Action</span><span>Spent</span></div>'+_scored.map(function(x){var c=x.c,r=x.s;return '<div style="display:grid;grid-template-columns:1.1fr 1.3fr 70px 110px 110px 80px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.07);align-items:center"><div style="font-size:13px;font-weight:600">'+c.name+'</div><div style="font-size:12px;color:rgba(240,244,255,.45);overflow:hidden;text-overflow:ellipsis">'+c.email+'</div><div style="font-size:14px;font-weight:800;color:'+tierColor(r.tier)+'">'+r.score+'</div><div style="font-size:11px;font-weight:600;color:'+tierColor(r.tier)+'">'+r.tier+'</div><div>'+giftLabel(r.gift)+'</div><div style="font-size:13px;font-weight:600;color:#22C55E">$'+(c.total_spent||0)+'</div></div>';}).join('')+'</div>');
     }
     else if(dpg==="wallet"){
-      const tx=await db.sel("wallet","order=created_at.desc",tok).catch(()=>[]);
+      const tx=await db.sel("wallet",scope("order=created_at.desc"),tok).catch(()=>[]);
       const bal=tx[0]?.balance||0;
       el.innerHTML=`<div class="g2" style="margin-bottom:16px"><div style="background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.2);border-radius:14px;padding:20px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#FFD166;margin-bottom:8px">Gift Wallet</div><div style="font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:800;color:#FFD166;margin-bottom:6px">$${bal.toFixed(2)}</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:12px">Available for gifts</div><button class="btn btn-gold" onclick="oAF()">Add Funds</button></div><div class="dc">${[["Transactions",tx.length],["Total spent","$"+tx.filter(t=>t.amount<0).reduce((a,t)=>a+Math.abs(t.amount),0).toFixed(2)],["Total added","$"+tx.filter(t=>t.amount>0).reduce((a,t)=>a+t.amount,0).toFixed(2)]].map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.07)"><span style="font-size:12px;color:rgba(240,244,255,.45)">${l}</span><span style="font-size:13px;font-weight:700">${v}</span></div>`).join("")}</div></div>
       <div class="dc"><div class="dch"><div class="dct">Transactions</div><button class="link-btn" onclick="oAF()">+ Add</button></div>${tx.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">💳</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No transactions yet</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Add funds to start sending gifts.</div></div>`:tx.map(t=>`<div style="display:grid;grid-template-columns:1fr 70px 80px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07);align-items:center"><div style="font-size:12px;font-weight:600">${t.desc}</div><div style="font-size:12px;font-weight:700;color:${t.amount>0?"#22C55E":"#FF4D6D"};text-align:right">${t.amount>0?"+$"+t.amount:"-$"+Math.abs(t.amount)}</div><div style="font-size:12px;font-weight:600;text-align:right">$${t.balance}</div></div>`).join("")}</div>`;
     }
     else if(dpg==="shipments"){
-      const sh=await db.sel("shipments","order=created_at.desc",tok).catch(()=>[]);
+      const sh=await db.sel("shipments",scope("order=created_at.desc"),tok).catch(()=>[]);
       el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button class="btn btn-gold" onclick="oAS()">+ Add Shipment</button></div>${sh.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">📦</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No shipments yet</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Shipments appear automatically when campaigns fire.</div></div>`:`<div class="dc">${sh.map(s=>`<div class="dr"><div class="di" style="background:rgba(77,166,255,.1)">📦</div><div style="flex:1"><div class="dn">${s.customer_name}</div><div class="dsub">${s.gift} · ${s.campaign||""}</div></div><span class="bp">${s.status||"Processing"}</span></div>`).join("")}</div>`}`;
     }
     else if(dpg==="settings"){
@@ -1257,11 +1276,30 @@ async function dLoad(){
       const tok=S?.token||SK;
       let conns=[];
       try{
-        const res=await fetch(`${SU}/rest/v1/platform_connections?select=platform,merchant_id,merchant_name,connected_at,is_active&is_active=eq.true`,{headers:h(tok)});
+        const res=await fetch(`${SU}/rest/v1/platform_connections?select=platform,merchant_id,merchant_name,connected_at,is_active&is_active=eq.true&${scope("")}`,{headers:h(tok)});
         conns=await res.json();
         if(!Array.isArray(conns))conns=[];
         conns.forEach(c=>{platConn[c.platform]={merchant_id:c.merchant_id,merchant_name:c.merchant_name,connected_at:c.connected_at};});
       }catch{}
+      const biz=await loadBiz()||{};
+      const pv=v=>(v==null?"":String(v)).replace(/"/g,"&quot;");
+      const profileCard=`
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.35);margin-bottom:10px">Business profile</div>
+        <div class="dc" style="margin-bottom:24px">
+          <div class="fg"><label class="fl">Business name</label><input class="fi" id="pfName" value="${pv(biz.business_name)}" placeholder="Your business name"/></div>
+          <div class="g2">
+            <div class="fg"><label class="fl">Business type</label><input class="fi" id="pfType" value="${pv(biz.business_type)}" placeholder="e.g. Cafe, Salon, Gym"/></div>
+            <div class="fg"><label class="fl">Phone</label><input class="fi" id="pfPhone" value="${pv(biz.phone)}" placeholder="(555) 555-5555"/></div>
+          </div>
+          <div class="fg"><label class="fl">Website</label><input class="fi" id="pfSite" value="${pv(biz.website)}" placeholder="https://"/></div>
+          <div class="fg"><label class="fl">Street address</label><input class="fi" id="pfAddr" value="${pv(biz.address)}" placeholder="123 Main St"/></div>
+          <div class="g2">
+            <div class="fg"><label class="fl">City</label><input class="fi" id="pfCity" value="${pv(biz.city)}" placeholder="City"/></div>
+            <div class="fg"><label class="fl">State</label><input class="fi" id="pfState" value="${pv(biz.state)}" placeholder="State"/></div>
+          </div>
+          <div class="fg"><label class="fl">ZIP</label><input class="fi" id="pfZip" value="${pv(biz.zip)}" placeholder="ZIP"/></div>
+          <div style="display:flex;align-items:center;gap:12px"><button class="btn btn-gold" style="padding:10px 20px" onclick="saveBizProfile()">Save profile</button><span id="pfStatus" style="font-size:12px;color:rgba(240,244,255,.45)"></span></div>
+        </div>`;
 
       const plDefs=[
         {id:"square",i:"⬛",n:"Square",d:"Point-of-sale · in-person visits",state:"ready"},
@@ -1314,6 +1352,7 @@ async function dLoad(){
           <span style="font-size:22px">✅</span>
           <div><div style="font-size:13px;font-weight:700;color:#22C55E">Supabase Connected</div><div style="font-size:11px;color:rgba(240,244,255,.45)">${SU}</div></div>
         </div>
+        ${profileCard}
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.35);margin-bottom:10px">POS & E-commerce</div>
         <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">${platCards}</div>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.35);margin-bottom:10px">Other integrations</div>
@@ -1427,20 +1466,20 @@ async function svCM(){
   const err=document.getElementById("cErr");
   if(!n||!tr){err.textContent="Please enter a name and select a trigger";err.style.display="block";return;}
   if(cmT!=="message_only"&&!gn){err.textContent="Please enter a gift name";err.style.display="block";return;}
-  try{await db.ins("campaigns",{name:n,trigger:tr,gift_name:cmT==="message_only"?"Message Only":gn,gift_cost:parseFloat(cmGC)||0,platform:cmPf,campaign_type:cmT,message:m,status:"active",delay_days:cmProt.delay,cancel_on_refund:cmProt.cancelOnRefund,min_spend:cmProt.minSpend,cooldown_days:cmProt.cooldown,product_trigger:cmProt.productName||null,min_order_val:cmProt.minOrderVal},tok);xCM();}
+  try{await db.ins("campaigns",{name:n,trigger:tr,gift_name:cmT==="message_only"?"Message Only":gn,gift_cost:parseFloat(cmGC)||0,platform:cmPf,campaign_type:cmT,message:m,status:"active",delay_days:cmProt.delay,cancel_on_refund:cmProt.cancelOnRefund,min_spend:cmProt.minSpend,cooldown_days:cmProt.cooldown,product_trigger:cmProt.productName||null,min_order_val:cmProt.minOrderVal,user_id:myId()},tok);xCM();}
   catch(ex){err.textContent=ex.message;err.style.display="block";}
 }
 
 function modal(title,body){return`<div class="ov" onclick="if(event.target===this)this.remove()"><div class="mb"><div class="mh"><div class="mt">${title}</div><button class="mc" onclick="this.closest('.ov').remove()">✕</button></div><div class="mbody">${body}</div></div></div>`;}
 
 function oAC(){document.body.insertAdjacentHTML("beforeend",modal("Add Customer",`<div class="fg"><label class="fl">Full Name</label><input class="fi" id="cNm" placeholder="Sarah Mitchell"/></div><div class="fg"><label class="fl">Email</label><input class="fi" id="cEm" type="email" placeholder="sarah@example.com"/></div><div class="fg"><label class="fl">Business</label><input class="fi" id="cBz" placeholder="Iron Forge Gym"/></div><div class="fg"><label class="fl">Total Spent ($)</label><input class="fi" id="cSp" type="number" placeholder="0"/></div><div style="display:flex;gap:10px"><button class="btn-full btn-gold" onclick="svCust()">Save</button><button class="btn btn-ghost" style="padding:10px 20px" onclick="this.closest('.ov').remove()">Cancel</button></div>`));}
-async function svCust(){const tok=S?.token||SK;const n=document.getElementById("cNm")?.value,e=document.getElementById("cEm")?.value;if(!n||!e)return;try{await db.ins("customers",{name:n,email:e,business_id:document.getElementById("cBz")?.value||"",total_spent:parseFloat(document.getElementById("cSp")?.value)||0,status:"active"},tok);document.querySelector(".ov")?.remove();dLoad();}catch(ex){alert(ex.message);}}
+async function svCust(){const tok=S?.token||SK;const n=document.getElementById("cNm")?.value,e=document.getElementById("cEm")?.value;if(!n||!e)return;try{await db.ins("customers",{name:n,email:e,business_id:document.getElementById("cBz")?.value||"",total_spent:parseFloat(document.getElementById("cSp")?.value)||0,status:"active",user_id:myId()},tok);document.querySelector(".ov")?.remove();dLoad();}catch(ex){alert(ex.message);}}
 
 function oAF(){document.body.insertAdjacentHTML("beforeend",modal("Add Funds",`<div class="fg"><label class="fl">Description</label><input class="fi" id="fDs" value="Top-up" placeholder="Top-up"/></div><div class="fg"><label class="fl">Amount ($)</label><input class="fi" id="fAm" type="number" placeholder="200"/></div><div style="display:flex;gap:10px"><button class="btn-full btn-gold" onclick="svFunds()">Add Funds</button><button class="btn btn-ghost" style="padding:10px 20px" onclick="this.closest('.ov').remove()">Cancel</button></div>`));}
-async function svFunds(){const tok=S?.token||SK;const a=parseFloat(document.getElementById("fAm")?.value)||0;const d=document.getElementById("fDs")?.value||"Top-up";const tx=await db.sel("wallet","order=created_at.desc&limit=1",tok).catch(()=>[]);const b=(tx[0]?.balance||0)+a;try{await db.ins("wallet",{desc:d,amount:a,balance:b},tok);document.querySelector(".ov")?.remove();dLoad();}catch(ex){alert(ex.message);}}
+async function svFunds(){const tok=S?.token||SK;const a=parseFloat(document.getElementById("fAm")?.value)||0;const d=document.getElementById("fDs")?.value||"Top-up";const tx=await db.sel("wallet",scope("order=created_at.desc&limit=1"),tok).catch(()=>[]);const b=(tx[0]?.balance||0)+a;try{await db.ins("wallet",{desc:d,amount:a,balance:b,user_id:myId()},tok);document.querySelector(".ov")?.remove();dLoad();}catch(ex){alert(ex.message);}}
 
 function oAS(){document.body.insertAdjacentHTML("beforeend",modal("Add Shipment",`<div class="fg"><label class="fl">Customer Name</label><input class="fi" id="sNm" placeholder="Sarah Mitchell"/></div><div class="fg"><label class="fl">Gift</label><input class="fi" id="sGf" placeholder="Branded Water Bottle"/></div><div class="fg"><label class="fl">Campaign</label><input class="fi" id="sCp" placeholder="Welcome Kit"/></div><div style="display:flex;gap:10px"><button class="btn-full btn-gold" onclick="svShip()">Save</button><button class="btn btn-ghost" style="padding:10px 20px" onclick="this.closest('.ov').remove()">Cancel</button></div>`));}
-async function svShip(){const tok=S?.token||SK;const n=document.getElementById("sNm")?.value,g=document.getElementById("sGf")?.value;if(!n||!g)return;try{await db.ins("shipments",{customer_name:n,gift:g,campaign:document.getElementById("sCp")?.value||"",status:"processing"},tok);document.querySelector(".ov")?.remove();dLoad();}catch(ex){alert(ex.message);}}
+async function svShip(){const tok=S?.token||SK;const n=document.getElementById("sNm")?.value,g=document.getElementById("sGf")?.value;if(!n||!g)return;try{await db.ins("shipments",{customer_name:n,gift:g,campaign:document.getElementById("sCp")?.value||"",status:"processing",user_id:myId()},tok);document.querySelector(".ov")?.remove();dLoad();}catch(ex){alert(ex.message);}}
 
 function bind(){
   if(scr==="dash")setTimeout(dLoad,50);
