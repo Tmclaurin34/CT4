@@ -169,8 +169,27 @@ const au={
   async in(e,p){const r=await fetch(`${SU}/auth/v1/token?grant_type=password`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e,password:p})});const d=await r.json();if(d.error)throw new Error(d.error.message);return d;},
   async out(t){await fetch(`${SU}/auth/v1/logout`,{method:"POST",headers:{apikey:SK,Authorization:`Bearer ${t}`}});}
 };
+
+// Ensure a logged-in user has a business profile row in clicktide (safe to call every time).
+async function ensureBizProfile(tok,user,extra){
+  if(!user||!user.id)return;
+  try{
+    const ex=await db.sel("clicktide","user_id=eq."+user.id,tok);
+    if(Array.isArray(ex)&&ex.length>0)return; // already has a profile
+    const m=user.user_metadata||{};
+    await db.ins("clicktide",{
+      user_id:user.id,
+      created_at:new Date().toISOString(),
+      email:user.email||(extra&&extra.email)||"",
+      business_name:(extra&&extra.business_name)||m.business_name||"",
+      plan:(extra&&extra.plan)||m.plan||"Growth",
+      churn_days:(extra&&extra.churn_days)||m.churn_days||60,
+      business_type:(extra&&extra.business_type)||m.business_type||"other"
+    },tok);
+  }catch(e){/* never block sign-in on profile creation */}
+}
 let S=null;
-try{const t=localStorage.getItem("ct");const u=localStorage.getItem("cu");if(t&&u)S={token:t,user:JSON.parse(u)};}catch{}
+try{const t=localStorage.getItem("ct");const u=localStorage.getItem("cu");if(t&&u){S={token:t,user:JSON.parse(u)};ensureBizProfile(t,S.user);}}catch{}
 const CATS=[
   {id:"fitness",l:"Health & Fitness",i:"💪",c:"#FF4D6D",biz:[
     {id:"gym",l:"Gym",i:"🏋️",pl:"Square/Mindbody",lf:.38,ch:.18,av:65,dy:45,gf:7,cu:120},
@@ -366,9 +385,14 @@ const FN=`${SU}/functions/v1`;
 const SQ_APP_ID="sq0idp-lOwkDlbKD4OacOyioAOkZQ";
 const SH_CLIENT_ID="1e876d10b4e052fe9897dd45bd859eca";
 const CL_APP_ID="1YSBHCR5VTYZE";
+// Add these once you register the apps (see setup checklist). Empty = "needs setup".
+const ST_CLIENT_ID="";   // Stripe Connect client id (starts with ca_...)
+// Toast & Mindbody connect via partner approval, not a public client id.
+const TOAST_READY=false; // flip true once Toast partner access is approved
+const MB_READY=false;    // flip true once Mindbody partner access is approved
 
 // -- Platform connections state (loaded from Supabase on dash) ----------------
-let platConn={square:null,shopify:null,clover:null}; // null=unknown, false=disconnected, object=connected
+let platConn={square:null,shopify:null,clover:null,stripe:null,toast:null,mindbody:null}; // null=unknown, false=disconnected, object=connected
 
 // -- CSRF state helpers (stored in sessionStorage so it survives redirects) --
 function savePlatformState(platform,state,extra){
@@ -483,6 +507,42 @@ function cloverConnect(){
     state:state
   });
   window.location.href="https://www.clover.com/oauth/authorize?"+params;
+}
+
+// -- Redirect to Stripe Connect OAuth ----------------------------------------
+function stripeConnect(){
+  if(!ST_CLIENT_ID){
+    alert("Stripe isn't set up yet.\n\nOnce you create a Stripe Connect app and add its client id (ca_...) to the site, this button will connect your account automatically.");
+    return;
+  }
+  var state=randomState();
+  savePlatformState("stripe",state,{});
+  var params=new URLSearchParams({
+    response_type:"code",
+    client_id:ST_CLIENT_ID,
+    scope:"read_write",
+    redirect_uri:FN+"/oauth-callback?platform=stripe",
+    state:state
+  });
+  window.location.href="https://connect.stripe.com/oauth/authorize?"+params;
+}
+
+// -- Toast (partner-approved) -------------------------------------------------
+function toastConnect(){
+  if(!TOAST_READY){
+    alert("Toast requires partner approval before it can connect.\n\nWe've requested access — Toast reviews integration partners before turning on data access. Once approved, this connects automatically.");
+    return;
+  }
+  window.location.href=FN+"/oauth-callback?platform=toast&state="+randomState();
+}
+
+// -- Mindbody (partner-approved) ---------------------------------------------
+function mindbodyConnect(){
+  if(!MB_READY){
+    alert("Mindbody requires partner approval before it can connect.\n\nWe've requested access — Mindbody reviews integration partners before enabling data access. Once approved, this connects automatically.");
+    return;
+  }
+  window.location.href=FN+"/oauth-callback?platform=mindbody&state="+randomState();
 }
 
 // -- Handle OAuth callback redirect back to this page ------------------------
@@ -640,7 +700,7 @@ async function doAuth(mode){
   btn.textContent=il?"Logging in...":"Creating account...";btn.disabled=true;err.style.display="none";
   try{
     const r=il?await au.in(e,p):await au.up(e,p,{business_name:n,plan:pl});
-    if(r.access_token){S={token:r.access_token,user:r.user||{email:e}};localStorage.setItem("ct",r.access_token);localStorage.setItem("cu",JSON.stringify(S.user));go("dash");}
+    if(r.access_token){S={token:r.access_token,user:r.user||{email:e}};localStorage.setItem("ct",r.access_token);localStorage.setItem("cu",JSON.stringify(S.user));await ensureBizProfile(r.access_token,S.user,{business_name:n,plan:pl,email:e});go("dash");}
     else{err.textContent=il?"Invalid credentials":"Account created! Please log in.";err.style.display="block";}
   }catch(ex){err.textContent=ex.message;err.style.display="block";}
   btn.disabled=false;btn.textContent=il?"Log in →":"Create my account →";
@@ -954,6 +1014,9 @@ function oCon(){
   if(obP==="square"){squareConnect();return;}
   if(obP==="shopify"){shopifyConnect();return;}
   if(obP==="clover"){cloverConnect();return;}
+  if(obP==="stripe"){stripeConnect();if(b){b.textContent="Connect Stripe →";b.disabled=false;}return;}
+  if(obP==="toast"){toastConnect();if(b){b.textContent="Connect Toast →";b.disabled=false;}return;}
+  if(obP==="mindbody"){mindbodyConnect();if(b){b.textContent="Connect Mindbody →";b.disabled=false;}return;}
   setTimeout(function(){obC=true;R();},1800);
 }
 function oNxt(){if(obS===1&&!obC)return;obS++;R();}
@@ -975,6 +1038,7 @@ async function oSignup(){
       localStorage.setItem("cu",JSON.stringify(S.user));
       localStorage.setItem("ct_churn",String(obDy||60));
       localStorage.setItem("ct_biztype",obB||obCat||"other");
+      await ensureBizProfile(r.access_token,S.user,{business_name:n,plan:obPl,churn_days:obDy||60,business_type:obB||obCat||"other",email:e});
     }
     // 2. Create Stripe checkout session
     btn.textContent="Redirecting to payment...";
@@ -1200,9 +1264,12 @@ async function dLoad(){
       }catch{}
 
       const plDefs=[
-        {id:"square",i:"⬛",n:"Square",d:"Point-of-sale · in-person visits"},
-        {id:"shopify",i:"🛒",n:"Shopify",d:"E-commerce · online orders"},
-        {id:"clover",i:"🍀",n:"Clover",d:"Restaurant & retail POS"}
+        {id:"square",i:"⬛",n:"Square",d:"Point-of-sale · in-person visits",state:"ready"},
+        {id:"shopify",i:"🛒",n:"Shopify",d:"E-commerce · online orders",state:"ready"},
+        {id:"clover",i:"🍀",n:"Clover",d:"Restaurant & retail POS",state:"ready"},
+        {id:"stripe",i:"💳",n:"Stripe",d:"Subscriptions & online payments",state:ST_CLIENT_ID?"ready":"setup"},
+        {id:"toast",i:"🍞",n:"Toast",d:"Restaurant POS",state:TOAST_READY?"ready":"approval"},
+        {id:"mindbody",i:"🧘",n:"Mindbody",d:"Gyms, studios & spas",state:MB_READY?"ready":"approval"}
       ];
       const otherCards=`
         <div class="dc" style="display:flex;align-items:center;gap:9px;border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.04)">
@@ -1213,8 +1280,7 @@ async function dLoad(){
           </div>
           <span style="font-size:10px;font-weight:700;color:#22C55E">Connected</span>
         </div>
-        <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">💳</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Stripe</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Subscription billing</div></div><span style="font-size:10px;color:rgba(240,244,255,.35)">Coming soon</span></div>
-        <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">📧</span><div style="font-size:12px;font-weight:700;margin-bottom:2px">Resend</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Sends customer emails</div><span style="font-size:10px;color:rgba(240,244,255,.35)">Coming soon</span></div>
+        <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">📧</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Resend</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Sends customer emails</div></div><span style="font-size:10px;color:rgba(240,244,255,.35)">Coming soon</span></div>
       `;
 
       const platCards=plDefs.map(p=>{
@@ -1229,13 +1295,17 @@ async function dLoad(){
             <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="disconnectPlatform('${p.id}')">Disconnect</button>
           </div>`;
         }
+        var btn;
+        if(p.state==="approval") btn=`<span style="font-size:10px;font-weight:700;color:#FFD166;white-space:nowrap">⏳ Approval pending</span>`;
+        else if(p.state==="setup") btn=`<button class="btn btn-ghost" style="font-size:11px;padding:7px 14px" onclick="connectPlatformDash('${p.id}')">Set up</button>`;
+        else btn=`<button class="btn btn-gold" style="font-size:11px;padding:7px 14px" onclick="connectPlatformDash('${p.id}')">Connect</button>`;
         return`<div class="dc" style="display:flex;align-items:center;gap:12px">
           <span style="font-size:22px">${p.i}</span>
           <div style="flex:1">
             <div style="font-size:13px;font-weight:700;margin-bottom:2px">${p.n}</div>
             <div style="font-size:11px;color:rgba(240,244,255,.45)">${p.d}</div>
           </div>
-          <button class="btn btn-gold" style="font-size:11px;padding:7px 14px" onclick="connectPlatformDash('${p.id}')">Connect</button>
+          ${btn}
         </div>`;
       }).join("");
 
@@ -1262,6 +1332,9 @@ async function connectPlatformDash(platform){
   if(platform==="square")await squareConnect();
   else if(platform==="shopify")await shopifyConnect();
   else if(platform==="clover")await cloverConnect();
+  else if(platform==="stripe")stripeConnect();
+  else if(platform==="toast")toastConnect();
+  else if(platform==="mindbody")mindbodyConnect();
 }
 
 // Disconnect (mark inactive in DB)
