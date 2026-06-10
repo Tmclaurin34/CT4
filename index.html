@@ -1198,7 +1198,7 @@ async function doAuth(mode){
         if(_vrd.access_token){r.access_token=_vrd.access_token;if(_vrd.user)r.user=_vrd.user;}
       }
       S={token:r.access_token,user:r.user||{email:e}};localStorage.setItem("ct",r.access_token);localStorage.setItem("cu",JSON.stringify(S.user));await ensureBizProfile(r.access_token,S.user,{...meta,email:e});go("dash");}
-    else{err.textContent=il?"Invalid credentials":"Account created! Please log in.";err.style.display="block";}
+    else{err.textContent=il?"Invalid credentials":"Account created! Check your email for the activation link, then log in.";err.style.display="block";}
   }catch(ex){err.textContent=ex.message;err.style.display="block";}
   btn.disabled=false;btn.textContent=il?"Log in →":"Create my account →";
 }
