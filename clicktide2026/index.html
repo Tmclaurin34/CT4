@@ -1952,6 +1952,7 @@ async function oSignup(){
       // Email confirmation required — show the check-your-email screen
       localStorage.setItem("ct_plan",obPl);
       obAwaitConfirm=true;R();
+    }
   }catch(ex){
     err.textContent=ex.message;err.style.display="block";
     btn.disabled=false;btn.textContent="Create account →";
