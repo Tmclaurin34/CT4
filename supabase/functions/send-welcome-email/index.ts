@@ -44,7 +44,7 @@ function esc(v: string) {
 function welcomeHtml(contactName: string, businessName: string) {
   const first = (contactName || "there").trim().split(/\s+/)[0];
   const steps = [
-    ["1", "Connect your platform", "Square, Shopify, Clover, or Stripe. Once connected, your customers and their visits flow in automatically — nothing to type."],
+    ["1", "Connect your platform", "Square, Shopify, Clover, Stripe, Mindbody — with more added all the time. Once connected, your customers and their visits flow in automatically — nothing to type."],
     ["2", "Your customer list builds itself", "Synced from your platform, or grown by your QR check-in code as customers scan it. (Prefer hands-on? CSV import and manual add are always there.)"],
     ["3", "Make it yours", "Upload your logo in Brand Studio and design your email in Email Studio — gifts and messages ship in your brand, not ours."],
     ["4", "Top up your gift wallet", "Prepaid funds that cover gifts and postcards. Start small — a $1.50 postcard works wonders."],
