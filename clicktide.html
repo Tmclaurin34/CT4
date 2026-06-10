@@ -2056,7 +2056,28 @@ async function dLoad(){
     else if(dpg==="campaigns"){
       const cR=await db.sel("campaigns",scope("order=created_at.desc"),tok).catch(()=>[]);
       const c=Array.isArray(cR)?cR:[];
-      el.innerHTML=paidBanner+(c.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">⚡</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No campaigns yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Create your first campaign.</div><button class="btn btn-gold" onclick="oCM()">Create Campaign</button></div>`:c.map(cc=>`<div class="dc" style="margin-bottom:11px"><div style="display:flex;align-items:flex-start;gap:12px"><div class="di" style="background:rgba(255,209,102,.1);width:40px;height:40px;font-size:18px;flex-shrink:0">${cc.campaign_type==="message_only"?"💬":cc.campaign_type==="digital_gift"?"💳":cc.campaign_type==="survey"?"⭐":"📦"}</div><div style="flex:1"><div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><div style="font-size:13px;font-weight:700">${cc.name}</div><span class="${cc.status==="active"?"ba":"bp"}">${cc.status==="active"?"● Active":"⏸ Paused"}</span></div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:6px">Trigger: ${cc.trigger} · ${cc.gift_name}</div>${cc.message?`<div style="font-size:11px;color:rgba(240,244,255,.45);background:#101828;border-radius:8px;padding:8px 10px;line-height:1.6;font-style:italic">"${cc.message.substring(0,100)}${cc.message.length>100?"...":""}"</div>`:""}</div><div style="display:flex;gap:7px;flex-shrink:0"><button class="btn btn-ghost" style="padding:6px 11px;font-size:11px" onclick="tCmp('${cc.id}','${cc.status}')">${cc.status==="active"?"Pause":"Resume"}</button><button class="btn" style="background:rgba(255,77,109,.1);color:#FF4D6D;border:1px solid rgba(255,77,109,.2);padding:6px 11px;font-size:11px" onclick="dCmp('${cc.id}')">Delete</button></div></div></div>`).join(""));
+      // Email engagement stats per campaign (message_events via Resend webhook)
+      var evMap={};
+      try{
+        var evR=await fetch(SU+"/rest/v1/message_events?"+scope("select=campaign_id,event_type"),{headers:h(tok)});
+        var ev=await evR.json();
+        if(Array.isArray(ev))ev.forEach(function(e){var k=e.campaign_id||0;evMap[k]=evMap[k]||{};evMap[k][e.event_type]=(evMap[k][e.event_type]||0)+1;});
+      }catch(e){}
+      var evChips=function(id){
+        var s=evMap[id];if(!s)return"";
+        var sent=s["email.sent"]||0,delivered=s["email.delivered"]||0,opened=s["email.opened"]||0,clicked=s["email.clicked"]||0,bounced=s["email.bounced"]||0;
+        var base=Math.max(sent,delivered);
+        if(!base&&!opened&&!clicked)return"";
+        var pct=function(n){return base?" · "+Math.round(n*100/base)+"%":"";};
+        var chip=function(label,color,bg){return '<span style="font-size:10px;background:'+bg+';border:1px solid '+bg.replace("0.08","0.2")+';color:'+color+';border-radius:100px;padding:3px 9px;font-weight:700">'+label+'</span>';};
+        var out='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">'
+          +chip("📤 Sent "+base,"#4DA6FF","rgba(77,166,255,0.08)")
+          +chip("👁 Opened "+opened+pct(opened),"#22C55E","rgba(34,197,94,0.08)")
+          +chip("🖱 Clicked "+clicked+pct(clicked),"#FFD166","rgba(255,209,102,0.08)");
+        if(bounced)out+=chip("⚠ Bounced "+bounced,"#FF4D6D","rgba(255,77,109,0.08)");
+        return out+'</div>';
+      };
+      el.innerHTML=paidBanner+(c.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">⚡</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No campaigns yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Create your first campaign.</div><button class="btn btn-gold" onclick="oCM()">Create Campaign</button></div>`:c.map(cc=>`<div class="dc" style="margin-bottom:11px"><div style="display:flex;align-items:flex-start;gap:12px"><div class="di" style="background:rgba(255,209,102,.1);width:40px;height:40px;font-size:18px;flex-shrink:0">${cc.campaign_type==="message_only"?"💬":cc.campaign_type==="digital_gift"?"💳":cc.campaign_type==="survey"?"⭐":"📦"}</div><div style="flex:1"><div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><div style="font-size:13px;font-weight:700">${cc.name}</div><span class="${cc.status==="active"?"ba":"bp"}">${cc.status==="active"?"● Active":"⏸ Paused"}</span></div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:6px">Trigger: ${cc.trigger} · ${cc.gift_name}</div>${evChips(cc.id)}${cc.message?`<div style="font-size:11px;color:rgba(240,244,255,.45);background:#101828;border-radius:8px;padding:8px 10px;line-height:1.6;font-style:italic">"${cc.message.substring(0,100)}${cc.message.length>100?"...":""}"</div>`:""}</div><div style="display:flex;gap:7px;flex-shrink:0"><button class="btn btn-ghost" style="padding:6px 11px;font-size:11px" onclick="tCmp('${cc.id}','${cc.status}')">${cc.status==="active"?"Pause":"Resume"}</button><button class="btn" style="background:rgba(255,77,109,.1);color:#FF4D6D;border:1px solid rgba(255,77,109,.2);padding:6px 11px;font-size:11px" onclick="dCmp('${cc.id}')">Delete</button></div></div></div>`).join(""));
     }
     else if(dpg==="customers"){
       const cu=await db.sel("customers",scope("order=created_at.desc"),tok).catch(()=>[]);
