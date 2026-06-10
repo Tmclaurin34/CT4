@@ -39,10 +39,12 @@ async function printify(path: string, init: RequestInit = {}) {
 type Target = { key: string; title: string; desc: string; match: RegExp; avoid?: RegExp; prefer?: RegExp; price: number };
 
 const TARGETS: Target[] = [
-  { key: "mug", title: "Branded Mug 11oz", desc: "Ceramic mug with your logo, printed on demand.", match: /mug/i, avoid: /aop|accent|enamel|espresso|travel/i, prefer: /11\s*oz/i, price: 1499 },
-  { key: "bottle", title: "Branded Water Bottle", desc: "Stainless steel water bottle with your logo.", match: /water bottle/i, avoid: /aop|kids/i, prefer: /stainless/i, price: 2499 },
-  { key: "tote", title: "Branded Tote Bag", desc: "Cotton tote bag with your logo, screen-quality print.", match: /tote bag/i, avoid: /aop|all.?over/i, price: 1899 },
-  { key: "notebook", title: "Branded Spiral Notebook", desc: "Spiral notebook with your logo on the cover.", match: /spiral notebook/i, avoid: /aop/i, price: 1599 },
+  { key: "stickers", title: "Branded Stickers", desc: "Kiss-cut stickers with your logo — the perfect micro-gift.", match: /kiss[- ]?cut sticker/i, avoid: /sheet|holographic|clear|transparent/i, price: 499 },
+  { key: "postcard", title: "Branded Postcards", desc: "Printed postcards with your logo for thank-you notes.", match: /postcard/i, avoid: /aop/i, price: 399 },
+  { key: "socks", title: "Branded Crew Socks", desc: "One-size crew socks with your logo — everyone's favorite gift.", match: /crew socks/i, avoid: /baby|toddler|kids|ankle|low/i, price: 1499 },
+  { key: "candle", title: "Branded Scented Candle", desc: "Soy candle with your logo label.", match: /candle/i, avoid: /tin|holder/i, prefer: /soy|9oz/i, price: 1999 },
+  { key: "tumbler", title: "Branded Tumbler 20oz", desc: "Stainless tumbler with your logo, printed on demand.", match: /tumbler/i, avoid: /kids|wine|aop|12oz/i, prefer: /20\s*oz|skinny/i, price: 2299 },
+  { key: "magnet", title: "Branded Magnet", desc: "Die-cut fridge magnet with your logo — daily brand visibility.", match: /magnet/i, avoid: /car|sheet|calendar/i, prefer: /die[- ]?cut|kiss[- ]?cut|round|square/i, price: 599 },
 ];
 
 Deno.serve(async (req) => {
