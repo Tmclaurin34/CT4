@@ -11,6 +11,8 @@ const resendFrom = Deno.env.get("RESEND_FROM_EMAIL") || "Clicktide <support@gocl
 const twilioSid = Deno.env.get("TWILIO_ACCOUNT_SID") || "";
 const twilioToken = Deno.env.get("TWILIO_AUTH_TOKEN") || "";
 const twilioFrom = Deno.env.get("TWILIO_FROM_NUMBER") || "";
+const lobKey = Deno.env.get("LOB_API_KEY") || "";
+const POSTCARD_PRICE = 1.5; // debited from the gift wallet per mailed postcard
 
 const MAX_SENDS_PER_BUSINESS = 25;
 // Monthly SMS included per plan; extra messages debit the gift wallet.
@@ -54,6 +56,10 @@ type Customer = {
   last_order_at?: string;
   sms_consent?: boolean;
   sms_unsubscribed_at?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
 };
 
 type Business = {
@@ -268,6 +274,42 @@ async function sendSms(campaign: Campaign, customer: Customer, body: string) {
   return { ok: response.ok, detail: response.ok ? String(data.sid || "") : String(data.message || "Twilio failed") };
 }
 
+function postcardFront(businessName: string) {
+  return `<div style="width:6.25in;height:4.25in;background:#0B62D6;display:flex;align-items:center;justify-content:center;font-family:Helvetica,Arial,sans-serif">
+    <div style="text-align:center;color:#fff"><div style="font-size:34px;font-weight:bold;letter-spacing:1px">${escapeHtml(businessName)}</div>
+    <div style="font-size:15px;margin-top:10px;opacity:.85">A little something, just for you</div></div></div>`;
+}
+
+function postcardBack(message: string, businessName: string, whiteLabel: boolean) {
+  // Right half stays clear for Lob's address + postage block.
+  return `<div style="width:6.25in;height:4.25in;padding:0.35in;font-family:Helvetica,Arial,sans-serif;box-sizing:border-box">
+    <div style="width:2.9in;font-size:12px;line-height:1.6;color:#111">${escapeHtml(message).replaceAll("\n", "<br>")}
+    <div style="margin-top:14px;font-weight:bold">— ${escapeHtml(businessName)}</div>
+    ${whiteLabel ? "" : '<div style="font-size:7px;color:#999;margin-top:16px">Sent via Clicktide</div>'}</div></div>`;
+}
+
+async function sendPostcard(customer: Customer, businessName: string, message: string, whiteLabel: boolean) {
+  if (!lobKey) return { ok: false, detail: "LOB_API_KEY is not configured" };
+  const form = new URLSearchParams({
+    description: `Clicktide postcard for ${businessName}`,
+    size: "4x6",
+    "to[name]": (customer.name || "Customer").slice(0, 40),
+    "to[address_line1]": String(customer.address || ""),
+    "to[address_city]": String(customer.city || ""),
+    "to[address_state]": String(customer.state || ""),
+    "to[address_zip]": String(customer.zip || ""),
+    front: postcardFront(businessName),
+    back: postcardBack(message, businessName, whiteLabel),
+  });
+  const r = await fetch("https://api.lob.com/v1/postcards", {
+    method: "POST",
+    headers: { Authorization: "Basic " + btoa(lobKey + ":"), "Content-Type": "application/x-www-form-urlencoded" },
+    body: form,
+  });
+  const d = await r.json().catch(() => ({}));
+  return { ok: r.ok, detail: r.ok ? String(d.id || "") : String(d?.error?.message || "Lob request failed") };
+}
+
 async function recordSend(campaign: Campaign, customer: Customer, channel: string, status: string, detail: string) {
   await rest("/rest/v1/campaign_sends", {
     method: "POST",
@@ -329,6 +371,8 @@ Deno.serve(async (req) => {
       missing_contact: 0,
       no_sms_consent: 0,
       sms_budget: 0,
+      postcard_no_address: 0,
+      postcard_wallet: 0,
       send_cap: 0,
     },
   };
@@ -448,6 +492,49 @@ Deno.serve(async (req) => {
             lastSend.set(key, Date.now());
             summary.queued_physical++;
             bizSends++;
+            continue;
+          }
+
+          // Mailed postcards: fully automatic via Lob, paid from the wallet.
+          if (campaign.campaign_type === "postcard") {
+            if (!customer.address || !customer.city || !customer.state || !customer.zip) {
+              summary.skipped.postcard_no_address++;
+              continue;
+            }
+            if (!dryRun) {
+              if ((await walletBalance(userId)) < POSTCARD_PRICE) {
+                summary.skipped.postcard_wallet++;
+                continue;
+              }
+              const pcMessage = fillTemplate(campaign.message || "We miss you, {{first_name}}! Come see us at {{business_name}} soon.", customer, businessName);
+              const result = await sendPostcard(customer, businessName, pcMessage, whiteLabel);
+              await recordSend(campaign, customer, "postcard", result.ok ? "sent" : "failed", result.detail);
+              if (result.ok) {
+                await debitWallet(userId, POSTCARD_PRICE, `Postcard: ${campaign.name || campaign.trigger}`, String(campaign.id)).catch(() => {});
+                await rest("/rest/v1/shipments", {
+                  method: "POST",
+                  headers: { Prefer: "return=minimal" },
+                  body: JSON.stringify({
+                    user_id: userId,
+                    merchant_id: userId,
+                    customer_name: customer.name || "Customer",
+                    customer_id: customer.id,
+                    gift: "Mailed Postcard",
+                    campaign: String(campaign.id),
+                    status: "mailed",
+                    platform: "lob",
+                    gift_type: "postcard",
+                  }),
+                }).catch(() => {});
+                lastSend.set(key, Date.now());
+                summary.sent++;
+                bizSends++;
+              } else {
+                summary.failed++;
+              }
+            } else {
+              summary.sent++;
+            }
             continue;
           }
 
