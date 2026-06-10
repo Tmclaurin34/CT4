@@ -710,7 +710,7 @@ function stripeConnect(){
   var params=new URLSearchParams({
     response_type:"code",
     client_id:ST_CLIENT_ID,
-    scope:"read_only",
+    scope:"read_write",
     redirect_uri:FN+"/stripe-oauth-callback",
     state:state
   });
