@@ -843,7 +843,7 @@ function showMindbodyActivationResult(d){
 let ntIdx=0,scr="land";
 let obS=0,obCat=null,obB=null,obP=null,obC=false,obG=null,obT=[],obE="",obPw="",obN="",obNm="",obPh="",obBph="",obBem="",obAddr="",obAddr2="",obAddrOverride=false,obCity="",obState="",obZip="",obPl="Growth",obOther="",obImport=null,obGiftSearch="",obCustomGift=null,obLogoFile=null,obLogoUrl=null,obLogoName="",obLogoStorageUrl=null,obLogoQuality=null,obDy=null;
 let riS=0,riB=null,riCatSel=null,riOther="",riSize="small",riFreqDays=15,riRiskMode="miss2",riCu=100,riAv=60,riCh=.20,riDy=30,riGf=22,riPl=99,riVf=2,riLm=12;
-let dpg="overview",cmT="message_only",cmN="",cmTr="",cmGN="",cmGC="",cmG=null,cmPf="Square",cmCh="email",cmM="",cmTi=0,showCM=false,cmProt={delay:7,cancelOnRefund:true,minSpend:0,cooldown:90,productName:"",minOrderVal:0};
+let dpg="overview",cmT="message_only",cmN="",cmTr="",cmGN="",cmGC="",cmG=null,cmPf="Square",cmCh="email",cmM="",cmTi=0,cmPcDesign="bold",cmAiOpts=[],showCM=false,cmProt={delay:7,cancelOnRefund:true,minSpend:0,cooldown:90,productName:"",minOrderVal:0};
 
 // -- Handle OAuth callback redirect back to this page ------------------------
 // Edge functions redirect to: goclicktide.com?ct_platform=square&ct_merchant=xxx&ct_name=Yyy
@@ -2362,7 +2362,7 @@ async function startWalletTopup(){
 }
 
 async function oCM(){if(!await requirePaidAction())return;await loadGiftCatalog();showCM=true;document.getElementById("app").innerHTML=dash();bind();dLoad();}
-function xCM(){showCM=false;cmT="message_only";cmN="";cmTr="";cmGN="";cmGC="";cmG=null;cmCh="email";cmM="";cmTi=0;cmProt={delay:7,cancelOnRefund:true,minSpend:0,cooldown:90,productName:"",minOrderVal:0};document.getElementById("app").innerHTML=dash();bind();dLoad();}
+function xCM(){showCM=false;cmT="message_only";cmN="";cmTr="";cmGN="";cmGC="";cmG=null;cmCh="email";cmM="";cmTi=0;cmPcDesign="bold";cmAiOpts=[];cmProt={delay:7,cancelOnRefund:true,minSpend:0,cooldown:90,productName:"",minOrderVal:0};document.getElementById("app").innerHTML=dash();bind();dLoad();}
 
 function cModal(){
   const tpls=MSG[cmT]||MSG.message_only;
@@ -2390,6 +2390,9 @@ function cModal(){
   `:""}
   ${cmT==="physical_gift"?campaignGiftPicker():""}
   <div class="fg"><label class="fl">Message <span style="font-size:10px;font-weight:400;text-transform:none;color:rgba(240,244,255,.3)">${cmT==="message_only"?"-- no gift mentioned":cmT==="physical_gift"?"-- mentions gift arriving":"-- mentions digital reward"}</span></label>
+  ${cmT==="postcard"?`<div class="fg"><label class="fl">Card design</label><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${[["bold","Bold"],["minimal","Minimal"],["banner","Banner"],["framed","Framed"]].map(([did,dl])=>`<div onclick="cmPcDesign='${did}';document.getElementById('app').innerHTML=dash();bind();dLoad()" style="cursor:pointer;border:2px solid ${cmPcDesign===did?"#FFD166":"rgba(255,255,255,.07)"};border-radius:10px;padding:6px;text-align:center"><div style="height:44px;border-radius:6px;${did==="bold"?"background:#0B62D6":did==="minimal"?"background:#fff;box-shadow:inset 0 0 0 2px #0B62D6":did==="banner"?"background:linear-gradient(180deg,#0B62D6 38%,#fff 38%)":"background:#0B62D6;box-shadow:inset 0 0 0 7px #0B62D6,inset 0 0 0 11px #fff"};display:flex;align-items:center;justify-content:center"><span style="font-size:8px;font-weight:800;color:${did==="minimal"?"#0B62D6":did==="banner"?"#fff":"#fff"}">${dl}</span></div><div style="font-size:10px;margin-top:4px;color:rgba(240,244,255,.6)">${dl}</div></div>`).join("")}</div><div style="font-size:10px;color:rgba(240,244,255,.35);margin-top:6px">Printed in your brand color with your logo. Your message goes on the back.</div></div>`:""}
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.45)">Pick a message</span><button type="button" class="link-btn" id="aiWriteBtn" onclick="aiWriteMsg()">✨ Write with AI</button></div>
+  ${cmAiOpts.length?'<div style="font-size:10px;font-weight:800;letter-spacing:1px;color:#A78BFA;margin-bottom:6px">AI SUGGESTIONS</div>'+cmAiOpts.map(function(t,i){return '<div class="tpl '+(cmM===t?"sel":"")+'" style="border-color:rgba(167,139,250,.35)" onclick="sAI('+i+')">'+giftEsc(t)+'</div>';}).join(""):""}
   ${tpls.map(function(t,i){return '<div class="tpl '+(cmTi===i&&cmM===t?"sel":"")+'" onclick="sTP('+i+',\''+t.replace(/'/g,"\\'")+'\')">'+t+'</div>';}).join("")}
   <textarea class="ta" id="cM" rows="3" placeholder="Or write your own..." oninput="cmM=this.value">${cmM}</textarea>
   <div style="font-size:10px;color:rgba(240,244,255,.35);margin-top:4px">Use {{first_name}} and {{business_name}} to personalize</div>
@@ -2413,7 +2416,7 @@ async function svCM(){
   const err=document.getElementById("cErr");
   if(!n||!tr){err.textContent="Please enter a name and select a trigger";err.style.display="block";return;}
   if((cmT==="physical_gift"||cmT==="survey")&&!selectedGift){err.textContent="Please choose a gift from the catalog";err.style.display="block";return;}
-  try{await db.ins("campaigns",{name:n,trigger:tr,gift_name:cmT==="message_only"?"Message Only":cmT==="postcard"?"Mailed Postcard":gn,gift_cost:cmT==="postcard"?1.5:(selectedGift?Number(selectedGift.p||0):(parseFloat(cmGC)||0)),gift_catalog_id:selectedGift?.catalog_id||null,printify_product_id:selectedGift?.id||null,printify_variant_id:selectedGift?.variant_id||null,gift_image_url:selectedGift?.image_url||null,platform:cmPf,campaign_type:cmT,delivery_channel:cmCh,message:m,sms_message:cmCh.includes("sms")?m:null,status:"active",delay_days:cmProt.delay,cancel_on_refund:cmProt.cancelOnRefund,min_spend:cmProt.minSpend,cooldown_days:cmProt.cooldown,product_trigger:cmProt.productName||null,min_order_val:cmProt.minOrderVal,user_id:myId()},tok);xCM();}
+  try{await db.ins("campaigns",{name:n,trigger:tr,gift_name:cmT==="message_only"?"Message Only":cmT==="postcard"?"Mailed Postcard":gn,postcard_design:cmT==="postcard"?cmPcDesign:null,gift_cost:cmT==="postcard"?1.5:(selectedGift?Number(selectedGift.p||0):(parseFloat(cmGC)||0)),gift_catalog_id:selectedGift?.catalog_id||null,printify_product_id:selectedGift?.id||null,printify_variant_id:selectedGift?.variant_id||null,gift_image_url:selectedGift?.image_url||null,platform:cmPf,campaign_type:cmT,delivery_channel:cmCh,message:m,sms_message:cmCh.includes("sms")?m:null,status:"active",delay_days:cmProt.delay,cancel_on_refund:cmProt.cancelOnRefund,min_spend:cmProt.minSpend,cooldown_days:cmProt.cooldown,product_trigger:cmProt.productName||null,min_order_val:cmProt.minOrderVal,user_id:myId()},tok);xCM();}
   catch(ex){err.textContent=ex.message;err.style.display="block";}
 }
 

@@ -44,6 +44,7 @@ type Campaign = {
   min_spend?: number;
   cooldown_days?: number;
   status?: string;
+  postcard_design?: string;
 };
 
 type Customer = {
@@ -73,6 +74,7 @@ type Business = {
   churn_days?: number;
   stripe_subscription_status?: string;
   plan?: string;
+  logo_url?: string;
 };
 
 function json(body: unknown, status = 200) {
@@ -279,10 +281,20 @@ async function sendSms(campaign: Campaign, customer: Customer, body: string) {
   return { ok: response.ok, detail: response.ok ? String(data.sid || "") : String(data.message || "Twilio failed") };
 }
 
-function postcardFront(businessName: string, brandColor = "#0B62D6") {
-  return `<div style="width:6.25in;height:4.25in;background:${brandColor};display:flex;align-items:center;justify-content:center;font-family:Helvetica,Arial,sans-serif">
-    <div style="text-align:center;color:#fff"><div style="font-size:34px;font-weight:bold;letter-spacing:1px">${escapeHtml(businessName)}</div>
-    <div style="font-size:15px;margin-top:10px;opacity:.85">A little something, just for you</div></div></div>`;
+function postcardFront(businessName: string, brandColor = "#0B62D6", logoUrl = "", design = "bold") {
+  const logo = logoUrl ? `<img src="${escapeHtml(logoUrl)}" style="max-height:0.9in;max-width:2.4in;display:block;margin:0 auto 14px"/>` : "";
+  const name = `<div style="font-size:32px;font-weight:bold;letter-spacing:1px">${escapeHtml(businessName)}</div>`;
+  const tag = `<div style="font-size:15px;margin-top:10px;opacity:.85">A little something, just for you</div>`;
+  if (design === "minimal") {
+    return `<div style="width:6.25in;height:4.25in;background:#fff;display:flex;align-items:center;justify-content:center;font-family:Helvetica,Arial,sans-serif"><div style="text-align:center;color:${brandColor};border:3px solid ${brandColor};padding:0.4in 0.55in">${logo}${name}${tag}</div></div>`;
+  }
+  if (design === "banner") {
+    return `<div style="width:6.25in;height:4.25in;background:#fff;font-family:Helvetica,Arial,sans-serif"><div style="background:${brandColor};height:1.5in;display:flex;align-items:center;justify-content:center;color:#fff">${name}</div><div style="height:2.75in;display:flex;align-items:center;justify-content:center;text-align:center;color:#333"><div>${logo}<div style="font-size:16px">A little something, just for you</div></div></div></div>`;
+  }
+  if (design === "framed") {
+    return `<div style="width:6.25in;height:4.25in;background:${brandColor};padding:0.3in;box-sizing:border-box;font-family:Helvetica,Arial,sans-serif"><div style="background:#fff;height:100%;display:flex;align-items:center;justify-content:center;text-align:center;color:${brandColor}"><div>${logo}${name}${tag}</div></div></div>`;
+  }
+  return `<div style="width:6.25in;height:4.25in;background:${brandColor};display:flex;align-items:center;justify-content:center;font-family:Helvetica,Arial,sans-serif"><div style="text-align:center;color:#fff">${logo}${name}${tag}</div></div>`;
 }
 
 function postcardBack(message: string, businessName: string, whiteLabel: boolean) {
@@ -293,7 +305,7 @@ function postcardBack(message: string, businessName: string, whiteLabel: boolean
     ${whiteLabel ? "" : '<div style="font-size:7px;color:#999;margin-top:16px">Sent via Clicktide</div>'}</div></div>`;
 }
 
-async function sendPostcard(customer: Customer, businessName: string, message: string, whiteLabel: boolean, brandColor = "#0B62D6") {
+async function sendPostcard(customer: Customer, businessName: string, message: string, whiteLabel: boolean, brandColor = "#0B62D6", logoUrl = "", design = "bold") {
   if (!lobKey) return { ok: false, detail: "LOB_API_KEY is not configured" };
   const firstName = (customer.name || "there").trim().split(/\s+/)[0];
   const form = new URLSearchParams({
@@ -305,7 +317,7 @@ async function sendPostcard(customer: Customer, businessName: string, message: s
     "to[address_city]": String(customer.city || ""),
     "to[address_state]": String(customer.state || ""),
     "to[address_zip]": String(customer.zip || ""),
-    front: lobFrontTpl || postcardFront(businessName, brandColor),
+    front: lobFrontTpl || postcardFront(businessName, brandColor, logoUrl, design),
     back: lobBackTpl || postcardBack(message, businessName, whiteLabel),
   });
   if (lobFrontTpl || lobBackTpl) {
@@ -398,7 +410,7 @@ Deno.serve(async (req) => {
 
     const userIds = [...new Set(campaigns.map((c) => c.user_id).filter(Boolean))];
     const businesses = await rest(
-      `/rest/v1/clicktide?user_id=in.(${userIds.join(",")})&select=user_id,business_name,churn_days,stripe_subscription_status,plan`,
+      `/rest/v1/clicktide?user_id=in.(${userIds.join(",")})&select=user_id,business_name,churn_days,stripe_subscription_status,plan,logo_url`,
     ) as Business[];
     const bizByUser = new Map(businesses.map((b) => [b.user_id, b]));
     summary.businesses = userIds.length;
@@ -519,7 +531,7 @@ Deno.serve(async (req) => {
                 continue;
               }
               const pcMessage = fillTemplate(campaign.message || "We miss you, {{first_name}}! Come see us at {{business_name}} soon.", customer, businessName);
-              const result = await sendPostcard(customer, businessName, pcMessage, whiteLabel, String(emailTpl?.brand?.color || "#0B62D6"));
+              const result = await sendPostcard(customer, businessName, pcMessage, whiteLabel, String(emailTpl?.brand?.color || "#0B62D6"), String(biz?.logo_url || ""), String(campaign.postcard_design || "bold"));
               await recordSend(campaign, customer, "postcard", result.ok ? "sent" : "failed", result.detail);
               if (result.ok) {
                 await debitWallet(userId, POSTCARD_PRICE, `Postcard: ${campaign.name || campaign.trigger}`, String(campaign.id)).catch(() => {});
