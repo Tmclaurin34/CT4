@@ -869,7 +869,7 @@ let dpg="overview",cmT="message_only",cmN="",cmTr="",cmGN="",cmGC="",cmG=null,cm
     // Set the connection in state
     platConn[platform]={merchant_id:merchantId,merchant_name:decodeURIComponent(merchantName)};
     // If we were mid-onboard, mark connected and jump to step 2 (gift)
-    if(stored&&obS<=1&&!returnTo){obP=platform;obC=true;obS=2;scr="onboard";}
+    if(stored&&obS<=1&&!returnTo){obP=platform;obC=true;obS=3;scr="onboard";}
     else{scr="dash";dpg="settings";}
     history.replaceState({},"",window.location.pathname);
     return;
@@ -1100,7 +1100,7 @@ async function doAuth(mode){
 }
 
 function onboard(){
-  const steps=["Business","Platform","Gift","Triggers","Account","Go Live"];
+  const steps=["Business","Account","Platform","Gift","Triggers","Go Live"];
   var B=getBizById(obB);if(obB==="other")B={id:"other",l:obOther||"Your Business",i:"🏢",c:"#94A3B8",pl:"Square/Shopify",lf:.30,ch:.20,av:50,dy:60,gf:7,cu:100};const P=PL.find(p=>p.id===obP);const GS=obB?GF[obB]||GF[obCat]||GF.other||[]:[];
   let c="";
   if(obS===0){
@@ -1136,8 +1136,8 @@ function onboard(){
     var canCont=obB||(obCat==="other"&&obOther.length>1);
     c="<div style='font-size:30px;margin-bottom:8px'>🏢</div><h2 style='font-family:Space Grotesk,sans-serif;font-size:22px;font-weight:800;margin-bottom:6px'>What type of business?</h2><p style='color:rgba(240,244,255,.45);font-size:13px;margin-bottom:16px;line-height:1.6'>Pick a category then your specific type.</p><div class='bg'>"+catGrid+"</div>"+bizWrap+"<button class='btn-full btn-gold' style='margin-top:16px;"+(canCont?"":"opacity:.4;cursor:not-allowed")+"' "+(canCont?"":"disabled")+" onclick='oNxt()'>Continue →</button>";
   }
-  else if(obS===1&&B)c=`<div style="font-size:30px;margin-bottom:8px">🔌</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Connect your platform</h2><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:14px">Best for <strong>${B.l}</strong>: ${B.pl}</p>${!obC?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">${PL.map(p=>`<div style="padding:12px;border:2px solid ${obP===p.id?"#4DA6FF":"rgba(255,255,255,.07)"};border-radius:12px;cursor:pointer;background:${obP===p.id?"rgba(77,166,255,.06)":"transparent"}" onclick="oPlt('${p.id}')"><div style="font-size:20px;margin-bottom:5px">${p.e}</div><div style="font-size:12px;font-weight:700;margin-bottom:1px">${p.n}</div><div style="font-size:10px;color:rgba(240,244,255,.45)">${p.d}</div></div>`).join("")}</div><button class="btn-full ${obP?"btn-gold":"btn-ghost"}" ${!obP?"disabled":""} id="cBtn" onclick="oCon()">${obP?`Connect ${P?.n} →`:"Select a platform"}</button>`:`<div class="conn-box"><span style="font-size:24px">${P?.e}</span><div><div style="font-weight:700;color:#22C55E;font-size:14px">${P?.n} connected!</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-top:2px">${platformConnectNote()}</div></div></div><button class="btn-full btn-gold" onclick="oNxt()">Continue → Pick your gift</button>`}`;
-  else if(obS===2&&B){
+  else if(obS===2&&B)c=`<div style="font-size:30px;margin-bottom:8px">🔌</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Connect your platform</h2><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:14px">Best for <strong>${B.l}</strong>: ${B.pl}</p>${!obC?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">${PL.map(p=>`<div style="padding:12px;border:2px solid ${obP===p.id?"#4DA6FF":"rgba(255,255,255,.07)"};border-radius:12px;cursor:pointer;background:${obP===p.id?"rgba(77,166,255,.06)":"transparent"}" onclick="oPlt('${p.id}')"><div style="font-size:20px;margin-bottom:5px">${p.e}</div><div style="font-size:12px;font-weight:700;margin-bottom:1px">${p.n}</div><div style="font-size:10px;color:rgba(240,244,255,.45)">${p.d}</div></div>`).join("")}</div><button class="btn-full ${obP?"btn-gold":"btn-ghost"}" ${!obP?"disabled":""} id="cBtn" onclick="oCon()">${obP?`Connect ${P?.n} →`:"Select a platform"}</button>`:`<div class="conn-box"><span style="font-size:24px">${P?.e}</span><div><div style="font-weight:700;color:#22C55E;font-size:14px">${P?.n} connected!</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-top:2px">${platformConnectNote()}</div></div></div><button class="btn-full btn-gold" onclick="oNxt()">Continue → Pick your gift</button>`}`;
+  else if(obS===3&&B){
     var sq=obGiftSearch||"";
     // Use the fulfillment catalog as the real gift options
     var allG=PRINTIFY_CATALOG;
@@ -1193,7 +1193,7 @@ function onboard(){
 
     c="<div style='font-size:30px;margin-bottom:6px'>🎁</div><h2 style='font-family:Space Grotesk,sans-serif;font-size:22px;font-weight:800;margin-bottom:4px'>Pick your gift</h2><p style='color:rgba(240,244,255,.45);font-size:13px;margin-bottom:14px'>Curated for <strong style='color:"+B.c+"'>"+B.l+"</strong>. Don't see yours? Search below.</p>"+searchBar+customRow+"<div class='gc'>"+gCards+"</div>"+logoSection+"<button class='btn-full "+(canGo?"btn-gold":"btn-ghost")+"' "+(canGo?"":"disabled")+" onclick='oNxt()'>Continue → Set triggers</button>";
   }
-    else if(obS===3&&P){
+    else if(obS===4&&P){
       var _bz=getBizById(obB)||{dy:60};
       if(obDy===null) obDy=_bz.dy||60;
       var _presets = obDy<=35 ? [[14,"2 weeks"],[30,"1 month"],[60,"2 months"]] : obDy<=90 ? [[30,"1 month"],[60,"2 months"],[90,"3 months"]] : [[90,"3 months"],[180,"6 months"],[365,"1 year"]];
@@ -1206,7 +1206,7 @@ function onboard(){
         <div style="display:flex;gap:8px;margin-bottom:10px">${_presetBtns}</div>
         <div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:rgba(240,244,255,.45)">Custom:</span><input type="number" min="3" max="730" value="${obDy}" oninput="obDy=parseInt(this.value)||60" style="width:80px;padding:7px 10px;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:#101828;color:#F0F4FF;font-size:13px"/><span style="font-size:12px;color:rgba(240,244,255,.45)">days</span></div>
       </div>
-      <button class="btn-full ${obT.length?"btn-gold":"btn-ghost"}" ${!obT.length?"disabled":""} onclick="oNxt()">Continue → Create account</button>`;
+      <button class="btn-full ${obT.length?"btn-gold":"btn-ghost"}" ${!obT.length?"disabled":""} onclick="oPay()" id="oPayBtn">Continue → Payment</button>`;
     }
   else if(obS===5){
     var importContent="";
@@ -1221,7 +1221,7 @@ function onboard(){
     "<div data-imp='skip' onclick='setImport(this.dataset.imp)' style='display:flex;align-items:center;gap:12px;padding:14px;border:2px solid "+(obImport==="skip"?"rgba(255,255,255,.3)":"rgba(255,255,255,.07)")+";border-radius:12px;cursor:pointer'><span style='font-size:22px'>⏭️</span><div><div style='font-size:13px;font-weight:700'>Skip for now</div><div style='font-size:11px;color:rgba(240,244,255,.45);margin-top:1px'>Start fresh -- add customers manually or import later from your dashboard</div></div></div>"+
     "</div><button class='btn-full btn-gold' "+(obImport?"":"disabled style='opacity:.4;cursor:not-allowed'")+" onclick='oNxt()'>"+( obImport==="csv"?"Continue →":obImport==="platform"?"Sync & Continue →":"Skip & Go Live →")+"</button>";
   }
-  else if(obS===4)c=`<div style="font-size:30px;margin-bottom:6px">👤</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Create your account</h2><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:16px">Almost done!</p><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin-bottom:8px">Your details</div><div class="fg"><label class="fl">Your Name</label><input class="fi" id="oNm" value="${obNm}" placeholder="Jane Smith" oninput="obNm=this.value"/></div><div class="fg"><label class="fl">Personal Email (your login)</label><input class="fi" id="oE" value="${obE}" type="email" placeholder="you@email.com" oninput="obE=this.value"/></div><div class="fg"><label class="fl">Password</label><input class="fi" id="oPw" value="${obPw}" type="password" placeholder="••••••••" oninput="obPw=this.value"/></div><div class="fg"><label class="fl">Personal Phone</label><input class="fi" id="oPh" value="${obPh}" type="tel" placeholder="(555) 555-5555" oninput="obPh=this.value"/></div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin:14px 0 8px">Business details</div><div class="fg"><label class="fl">Business Name</label><input class="fi" id="oN" value="${obN}" placeholder="${B?.l||"Your Business"}" oninput="obN=this.value"/></div><div class="fg"><label class="fl">Business Phone</label><input class="fi" id="oBph" value="${obBph}" type="tel" placeholder="(555) 555-5555" oninput="obBph=this.value"/></div><div class="fg"><label class="fl">Business Email</label><input class="fi" id="oBem" value="${obBem}" type="email" placeholder="hello@business.com" oninput="obBem=this.value"/></div><div class="fg"><label class="fl">Street Address</label><input class="fi" id="oAddr" value="${obAddr}" placeholder="123 Main St" oninput="obAddr=this.value"/></div><div class="fg" style="display:flex;gap:8px"><div style="flex:2"><label class="fl">City</label><input class="fi" id="oCity" value="${obCity}" placeholder="City" oninput="obCity=this.value"/></div><div style="flex:1"><label class="fl">State</label><input class="fi" id="oState" value="${obState}" placeholder="NY" oninput="obState=this.value"/></div><div style="flex:1"><label class="fl">ZIP</label><input class="fi" id="oZip" value="${obZip}" placeholder="11542" oninput="obZip=this.value"/></div></div><div class="fg"><label class="fl">Choose Your Plan</label>
+  else if(obS===1)c=`<div style="font-size:30px;margin-bottom:6px">👤</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Create your account</h2><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:16px">Create your login — then connect your platform.</p><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin-bottom:8px">Your details</div><div class="fg"><label class="fl">Your Name</label><input class="fi" id="oNm" value="${obNm}" placeholder="Jane Smith" oninput="obNm=this.value"/></div><div class="fg"><label class="fl">Personal Email (your login)</label><input class="fi" id="oE" value="${obE}" type="email" placeholder="you@email.com" oninput="obE=this.value"/></div><div class="fg"><label class="fl">Password</label><input class="fi" id="oPw" value="${obPw}" type="password" placeholder="••••••••" oninput="obPw=this.value"/></div><div class="fg"><label class="fl">Personal Phone</label><input class="fi" id="oPh" value="${obPh}" type="tel" placeholder="(555) 555-5555" oninput="obPh=this.value"/></div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin:14px 0 8px">Business details</div><div class="fg"><label class="fl">Business Name</label><input class="fi" id="oN" value="${obN}" placeholder="${B?.l||"Your Business"}" oninput="obN=this.value"/></div><div class="fg"><label class="fl">Business Phone</label><input class="fi" id="oBph" value="${obBph}" type="tel" placeholder="(555) 555-5555" oninput="obBph=this.value"/></div><div class="fg"><label class="fl">Business Email</label><input class="fi" id="oBem" value="${obBem}" type="email" placeholder="hello@business.com" oninput="obBem=this.value"/></div><div class="fg"><label class="fl">Street Address</label><input class="fi" id="oAddr" value="${obAddr}" placeholder="123 Main St" oninput="obAddr=this.value"/></div><div class="fg" style="display:flex;gap:8px"><div style="flex:2"><label class="fl">City</label><input class="fi" id="oCity" value="${obCity}" placeholder="City" oninput="obCity=this.value"/></div><div style="flex:1"><label class="fl">State</label><input class="fi" id="oState" value="${obState}" placeholder="NY" oninput="obState=this.value"/></div><div style="flex:1"><label class="fl">ZIP</label><input class="fi" id="oZip" value="${obZip}" placeholder="11542" oninput="obZip=this.value"/></div></div><div class="fg"><label class="fl">Choose Your Plan</label>
 <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:4px">
   ${[{v:"Local",p:"$29/mo",d:"200 customers/mo",f:["Messages included","Promo codes included","Physical gifts from wallet","Square & Clover"]},{v:"Growth",p:"$99/mo",d:"1,000 customers/mo",pop:true,f:["Messages included","Promo codes included","Physical gifts from wallet","All 12 integrations","Retention analytics"]},{v:"Scale",p:"$299/mo",d:"Unlimited customers",f:["Messages included","Promo codes included","Physical gifts from wallet","AI triggers","White-label"]}].map(pl=>`
   <div onclick="obPl='${pl.v}';document.querySelectorAll('.pl-opt').forEach(e=>e.classList.remove('on'));this.classList.add('on')" class="pl-opt ${obPl===pl.v?"on":""}" style="padding:14px;border:2px solid ${obPl===pl.v?"#FFD166":"rgba(255,255,255,.07)"};border-radius:12px;cursor:pointer;background:${obPl===pl.v?"rgba(255,209,102,.08)":"transparent"};transition:all .15s">
@@ -1233,7 +1233,7 @@ function onboard(){
     <div style="display:flex;flex-wrap:wrap;gap:4px">${pl.f.map(f=>`<span style="font-size:10px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.15);color:#22C55E;padding:2px 7px;border-radius:100px">✓ ${f}</span>`).join("")}</div>
   </div>`).join("")}
 </div>
-<input type="hidden" id="oPl" value="${obPl}"/></div>${legalConsent("oAgree")}<div class="err" id="oErr"></div><button class="btn-full btn-gold" id="oSub" onclick="oSignup()" style="margin-bottom:12px">Create account & go live →</button><div style="text-align:center;font-size:12px;color:rgba(240,244,255,.45)">Already have an account? <button class="link-btn" onclick="go('login')">Log in</button></div>`;
+<input type="hidden" id="oPl" value="${obPl}"/></div>${legalConsent("oAgree")}<div class="err" id="oErr"></div><button class="btn-full btn-gold" id="oSub" onclick="oSignup()" style="margin-bottom:12px">Create account →</button><div style="text-align:center;font-size:12px;color:rgba(240,244,255,.45)">Already have an account? <button class="link-btn" onclick="go('login')">Log in</button></div>`;
   else if(obS===6){const g=obG!==null?GF[obB]?.[obG]:null;c=`<div style="text-align:center"><div style="font-size:52px;margin-bottom:12px">🚀</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">You're live!</h2><p style="color:rgba(240,244,255,.45);font-size:14px;line-height:1.7;margin-bottom:20px">Your Clicktide campaign is active and ready.</p><ul style="list-style:none;padding:0;background:#101828;border-radius:13px;padding:16px;margin-bottom:20px;text-align:left">${[`${B?.i} ${B?.l}`,`${P?.e} ${P?.n} connected`,`🎁 ${g?.n||"--"}`,`⚡ ${obT.length} trigger${obT.length!==1?"s":""}`,`💬 Message Only: Free`,`📦 Physical gifts: From $7`].map(i=>`<li style="font-size:12px;color:rgba(240,244,255,.45);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:8px"><span style="color:#22C55E">✓</span>${i}</li>`).join("")}</ul><div style="display:flex;gap:10px"><button class="btn btn-gold" style="flex:1;padding:12px" onclick="go('dash')">Open Dashboard →</button><button class="btn btn-ghost" style="flex:1;padding:12px" onclick="go('login')">Log in</button></div></div>`;}
   var aiHintHtml='';
   if(aiHint||aiHintLoading){aiHintHtml="<div style='background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.2);border-radius:12px;padding:12px 14px;margin-top:12px;display:flex;align-items:flex-start;gap:9px'><div style='font-size:16px;flex-shrink:0'>✨</div><div style='font-size:12px;color:rgba(240,244,255,.7);line-height:1.6'>"+(aiHintLoading?"<span style='color:rgba(240,244,255,.35)'>AI thinking...</span>":aiHint)+"</div></div>";}
@@ -1727,8 +1727,16 @@ function oCon(){
   if(obP==="mindbody"){mindbodyConnect();if(b){b.textContent="Connect Mindbody →";b.disabled=false;}return;}
   setTimeout(function(){obC=true;R();},1800);
 }
-function oNxt(){if(obS===1&&!obC)return;obS++;R();}
-function oBck(){obS--;if(obS===1)obC=false;R();}
+async function oPay(){
+  var btn=document.getElementById("oPayBtn");
+  if(btn){btn.textContent="Redirecting to payment...";btn.disabled=true;}
+  obPl=localStorage.getItem("ct_plan")||obPl;
+  const checkoutUrl=await createCheckoutSession(obPl,S?.user?.email||obE,obN);
+  if(checkoutUrl){window.location.href=checkoutUrl;}
+  else{if(btn){btn.textContent="Continue \u2192 Payment";btn.disabled=false;}obS=5;R();}
+}
+function oNxt(){if(obS===2&&!obC)return;obS++;R();}
+function oBck(){obS--;if(obS===2)obC=false;R();}
 async function oSignup(){
   const e=document.getElementById("oE")?.value||obE;
   const p=document.getElementById("oPw")?.value||obPw;
@@ -1760,18 +1768,12 @@ async function oSignup(){
       await finishPendingMindbodyActivation();
       sessionStorage.setItem("ct_justonboarded","1");
     }
-    // 2. Create Stripe checkout session
-    btn.textContent="Redirecting to payment...";
-    const checkoutUrl=await createCheckoutSession(obPl,e,n);
-    if(checkoutUrl){
-      window.location.href=checkoutUrl;
-    }else{
-      // If Stripe fails just go to go live screen
-      obS=5;R();
-    }
+    // 2. Continue to platform connect; payment happens after triggers (oPay)
+    localStorage.setItem("ct_plan",obPl);
+    obS=2;R();
   }catch(ex){
     err.textContent=ex.message;err.style.display="block";
-    btn.disabled=false;btn.textContent="Create account & go live →";
+    btn.disabled=false;btn.textContent="Create account →";
   }
 }
 
