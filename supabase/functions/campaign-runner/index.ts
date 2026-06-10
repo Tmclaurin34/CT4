@@ -13,6 +13,11 @@ const twilioToken = Deno.env.get("TWILIO_AUTH_TOKEN") || "";
 const twilioFrom = Deno.env.get("TWILIO_FROM_NUMBER") || "";
 const lobKey = Deno.env.get("LOB_API_KEY") || "";
 const POSTCARD_PRICE = 1.5; // debited from the gift wallet per mailed postcard
+// Optional: design cards in Lob's dashboard (Creative > Templates) and set
+// these to the tmpl_... ids; merge variables {{message}}, {{business_name}},
+// {{first_name}} are passed. Unset = built-in design below.
+const lobFrontTpl = Deno.env.get("LOB_FRONT_TEMPLATE") || "";
+const lobBackTpl = Deno.env.get("LOB_BACK_TEMPLATE") || "";
 
 const MAX_SENDS_PER_BUSINESS = 25;
 // Monthly SMS included per plan; extra messages debit the gift wallet.
@@ -274,8 +279,8 @@ async function sendSms(campaign: Campaign, customer: Customer, body: string) {
   return { ok: response.ok, detail: response.ok ? String(data.sid || "") : String(data.message || "Twilio failed") };
 }
 
-function postcardFront(businessName: string) {
-  return `<div style="width:6.25in;height:4.25in;background:#0B62D6;display:flex;align-items:center;justify-content:center;font-family:Helvetica,Arial,sans-serif">
+function postcardFront(businessName: string, brandColor = "#0B62D6") {
+  return `<div style="width:6.25in;height:4.25in;background:${brandColor};display:flex;align-items:center;justify-content:center;font-family:Helvetica,Arial,sans-serif">
     <div style="text-align:center;color:#fff"><div style="font-size:34px;font-weight:bold;letter-spacing:1px">${escapeHtml(businessName)}</div>
     <div style="font-size:15px;margin-top:10px;opacity:.85">A little something, just for you</div></div></div>`;
 }
@@ -288,8 +293,9 @@ function postcardBack(message: string, businessName: string, whiteLabel: boolean
     ${whiteLabel ? "" : '<div style="font-size:7px;color:#999;margin-top:16px">Sent via Clicktide</div>'}</div></div>`;
 }
 
-async function sendPostcard(customer: Customer, businessName: string, message: string, whiteLabel: boolean) {
+async function sendPostcard(customer: Customer, businessName: string, message: string, whiteLabel: boolean, brandColor = "#0B62D6") {
   if (!lobKey) return { ok: false, detail: "LOB_API_KEY is not configured" };
+  const firstName = (customer.name || "there").trim().split(/\s+/)[0];
   const form = new URLSearchParams({
     description: `Clicktide postcard for ${businessName}`,
     size: "4x6",
@@ -299,9 +305,14 @@ async function sendPostcard(customer: Customer, businessName: string, message: s
     "to[address_city]": String(customer.city || ""),
     "to[address_state]": String(customer.state || ""),
     "to[address_zip]": String(customer.zip || ""),
-    front: postcardFront(businessName),
-    back: postcardBack(message, businessName, whiteLabel),
+    front: lobFrontTpl || postcardFront(businessName, brandColor),
+    back: lobBackTpl || postcardBack(message, businessName, whiteLabel),
   });
+  if (lobFrontTpl || lobBackTpl) {
+    form.set("merge_variables[message]", message);
+    form.set("merge_variables[business_name]", businessName);
+    form.set("merge_variables[first_name]", firstName);
+  }
   const r = await fetch("https://api.lob.com/v1/postcards", {
     method: "POST",
     headers: { Authorization: "Basic " + btoa(lobKey + ":"), "Content-Type": "application/x-www-form-urlencoded" },
@@ -508,7 +519,7 @@ Deno.serve(async (req) => {
                 continue;
               }
               const pcMessage = fillTemplate(campaign.message || "We miss you, {{first_name}}! Come see us at {{business_name}} soon.", customer, businessName);
-              const result = await sendPostcard(customer, businessName, pcMessage, whiteLabel);
+              const result = await sendPostcard(customer, businessName, pcMessage, whiteLabel, String(emailTpl?.brand?.color || "#0B62D6"));
               await recordSend(campaign, customer, "postcard", result.ok ? "sent" : "failed", result.detail);
               if (result.ok) {
                 await debitWallet(userId, POSTCARD_PRICE, `Postcard: ${campaign.name || campaign.trigger}`, String(campaign.id)).catch(() => {});
