@@ -2723,14 +2723,27 @@ function _ctInit(){
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',_ctInit);}else{_ctInit();}
 </script>
 <script>
-// ---- Clicktide Brand Studio (Fabric.js) ----
+// ---- Clicktide Brand Studio (Fabric.js) v2 ----
 var stuCanvas=null,stuProduct=null,stuLogoObj=null,stuFont="Inter",stuColor="#FFD166",stuPrintRect=null,stuStep=1;
 var STU_PRINT_W=3000,STU_PRINT_H=2400;
+var STU_FONTS=["Inter","Roboto","Open Sans","Montserrat","Poppins","Lato","Oswald","Raleway","Bebas Neue","Anton","Archivo Black","Righteous","Alfa Slab One","Bangers","Playfair Display","Merriweather","Lora","Abril Fatface","Cormorant Garamond","Pacifico","Dancing Script","Great Vibes","Caveat","Satisfy","Lobster","Sacramento","Amatic SC","Permanent Marker","Shadows Into Light","Space Mono"];
+var STU_COLORS=["#FFFFFF","#000000","#FFD166","#4DA6FF","#22C55E","#FF4D6D","#A78BFA","#FF9F4D","#0B62D6","#111827","#E11D48","#0EA5E9","#84CC16","#F59E0B","#EC4899","#14B8A6"];
+
+function studioLoadFonts(){
+  if(document.getElementById("stuFonts"))return;
+  var fams=STU_FONTS.filter(function(f){return f!=="Inter";}).map(function(f){return "family="+f.trim().replace(/ /g,"+");}).join("&");
+  var l=document.createElement("link");
+  l.id="stuFonts";l.rel="stylesheet";
+  l.href="https://fonts.googleapis.com/css2?"+fams+"&display=swap";
+  document.head.appendChild(l);
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){if(stuCanvas)stuCanvas.requestRenderAll();});
+}
 
 function studioPage(){
   var gifts=giftOptions();
   var opts=gifts.map(function(g,i){return '<option value="'+i+'">'+giftEsc(g.n)+' (~$'+Number(g.p||0).toFixed(0)+')</option>';}).join('');
-  var fonts=['Inter','Space Grotesk','Georgia','Courier New','Arial Black'].map(function(f){return '<option'+(f===stuFont?' selected':'')+'>'+f+'</option>';}).join('');
+  var fonts=STU_FONTS.map(function(f){return '<option style="font-family:\''+f+'\'"'+(f===stuFont?' selected':'')+'>'+f+'</option>';}).join('');
+  var swatches=STU_COLORS.map(function(c){return '<div onclick="studioColor(\''+c+'\')" title="'+c+'" style="width:24px;height:24px;border-radius:6px;background:'+c+';cursor:pointer;border:2px solid '+(c===stuColor?'#FFD166':'rgba(255,255,255,.15)')+'"></div>';}).join('');
   var rail=[[1,'Upload','Add artwork'],[2,'Text','Brand message'],[3,'Product','Choose gift'],[4,'Proof','Review & save']].map(function(s){
     return '<div onclick="stuStep='+s[0]+';studioRefreshRail()" id="stuStep'+s[0]+'" style="display:flex;gap:10px;align-items:center;padding:10px;border-radius:10px;cursor:pointer;margin-bottom:4px;background:'+(stuStep===s[0]?'rgba(255,209,102,.1)':'transparent')+'">'
       +'<div style="width:24px;height:24px;border-radius:50%;background:#FFD166;color:#080D18;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0">'+s[0]+'</div>'
@@ -2750,8 +2763,9 @@ function studioPage(){
     +'</div>'
     +'<div class="dc" style="padding:14px">'
       +'<div class="fg"><label class="fl">Product</label><select class="fi-sel" id="stuProdSel" onchange="studioPickProduct(this.value)">'+opts+'</select></div>'
-      +'<div class="fg"><label class="fl">Brand font</label><select class="fi-sel" onchange="studioFont(this.value)">'+fonts+'</select></div>'
-      +'<div class="fg"><label class="fl">Brand color</label><input type="color" value="'+stuColor+'" onchange="studioColor(this.value)" style="width:100%;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:#101828"/></div>'
+      +'<div class="fg"><label class="fl">Brand font ('+STU_FONTS.length+')</label><select class="fi-sel" id="stuFontSel" onchange="studioFont(this.value)" style="font-family:\''+stuFont+'\'">'+fonts+'</select></div>'
+      +'<div class="fg"><label class="fl">Brand color</label><div id="stuSwatches" style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-bottom:8px">'+swatches+'</div>'
+      +'<div style="display:flex;align-items:center;gap:8px"><input type="color" id="stuColorPick" value="'+stuColor+'" oninput="studioColor(this.value)" style="width:38px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:#101828;padding:0"/><span style="font-size:11px;color:rgba(240,244,255,.45)">Custom color</span></div></div>'
       +'<div id="stuQuality" style="font-size:11px;color:rgba(240,244,255,.5);margin-bottom:12px;line-height:1.5"></div>'
       +'<button class="btn-full btn-gold" onclick="studioSaveProof()" style="margin-bottom:8px">Save & approve proof</button>'
       +'<button class="btn-full btn-ghost" onclick="studioDownloadPrint()">Download print file</button>'
@@ -2761,6 +2775,7 @@ function studioPage(){
 }
 function studioInit(){
   if(typeof fabric==="undefined"){var s=document.getElementById("stuStatus");if(s){s.style.color="#FF4D6D";s.textContent="Editor library failed to load — refresh the page.";}return;}
+  studioLoadFonts();
   stuCanvas=new fabric.Canvas("stuCanvasEl",{backgroundColor:"#101828",preserveObjectStacking:true});
   var w=420,h=Math.round(w*STU_PRINT_H/STU_PRINT_W);
   stuPrintRect=new fabric.Rect({left:(640-w)/2,top:(520-h)/2,width:w,height:h,fill:"rgba(255,255,255,0.02)",stroke:"rgba(255,255,255,0.5)",strokeDashArray:[6,5],selectable:false,evented:false});
@@ -2801,12 +2816,26 @@ function studioUploadLogo(e){
 }
 function studioAddText(){
   if(!stuCanvas)return;
-  var t=new fabric.IText("Thank you",{left:stuPrintRect.left+40,top:stuPrintRect.top+stuPrintRect.height-70,fontFamily:stuFont,fill:stuColor,fontSize:34,fontWeight:"700"});
+  var t=new fabric.IText("Thank you",{left:stuPrintRect.left+40,top:stuPrintRect.top+stuPrintRect.height-70,fontFamily:stuFont,fill:stuColor,fontSize:34,fontWeight:"400"});
   stuCanvas.add(t);stuCanvas.setActiveObject(t);stuCanvas.renderAll();
 }
 function studioRemoveSelected(){var o=stuCanvas&&stuCanvas.getActiveObject();if(o&&o!==stuPrintRect){if(o===stuLogoObj)stuLogoObj=null;stuCanvas.remove(o);stuCanvas.renderAll();}}
-function studioFont(v){stuFont=v;var o=stuCanvas&&stuCanvas.getActiveObject();if(o&&o.type==="i-text"){o.set("fontFamily",v);stuCanvas.renderAll();}}
-function studioColor(v){stuColor=v;var o=stuCanvas&&stuCanvas.getActiveObject();if(o&&o.type==="i-text"){o.set("fill",v);stuCanvas.renderAll();}}
+function studioFont(v){
+  stuFont=v;
+  var sel=document.getElementById("stuFontSel");if(sel)sel.style.fontFamily="'"+v+"'";
+  var o=stuCanvas&&stuCanvas.getActiveObject();
+  var apply=function(){if(o&&o.type==="i-text"){o.set("fontFamily",v);}if(stuCanvas)stuCanvas.requestRenderAll();};
+  if(document.fonts&&document.fonts.load)document.fonts.load('20px "'+v+'"').then(apply).catch(apply);
+  else apply();
+}
+function studioColor(v){
+  stuColor=v;
+  var pick=document.getElementById("stuColorPick");if(pick)pick.value=v;
+  var sw=document.getElementById("stuSwatches");
+  if(sw){var kids=sw.children;for(var i=0;i<kids.length;i++){kids[i].style.borderColor=(STU_COLORS[i]===v)?"#FFD166":"rgba(255,255,255,.15)";}}
+  var o=stuCanvas&&stuCanvas.getActiveObject();
+  if(o&&o.type==="i-text"){o.set("fill",v);stuCanvas.renderAll();}
+}
 function studioArtwork(){return stuCanvas?stuCanvas.getObjects().filter(function(o){return o!==stuPrintRect;}):[];}
 function studioSaveProof(){
   if(!stuCanvas||!stuProduct)return;
