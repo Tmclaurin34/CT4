@@ -519,6 +519,71 @@ const MSG={
     "Hey {{first_name}}! There's a special something from {{business_name}} waiting for you right below. Just tap to claim it -- it's our gift to you!"
   ]
 };
+const MSG_X={
+  birthday:[
+    "Happy birthday, {{first_name}}! Everyone at {{business_name}} hopes your day is as wonderful as you are. Come celebrate with us soon — there might be a little something waiting.",
+    "{{first_name}}, it's your day! The whole {{business_name}} family wishes you the happiest of birthdays. Treat yourself — you've earned it.",
+    "A very happy birthday from all of us at {{business_name}}, {{first_name}}! We're so glad you're part of our story. Here's to another great year."
+  ],
+  milestone:[
+    "{{first_name}}, this visit makes it official — you're one of our favorites! Thank you for coming back to {{business_name}} again and again. This one's on us.",
+    "Look at you, {{first_name}} — another milestone with {{business_name}}! Customers like you are the reason we love what we do. Thank you for sticking with us.",
+    "{{first_name}}, you've hit a milestone at {{business_name}} and we noticed. Consider this our standing ovation — see you at the next visit!"
+  ],
+  holiday:[
+    "Happy holidays, {{first_name}}! As the year winds down, all of us at {{business_name}} wanted to say thank you for being part of it. Wishing you a warm and wonderful season.",
+    "{{first_name}}, 'tis the season for gratitude — and we're grateful for you. From everyone at {{business_name}}, happy holidays!",
+    "Warmest wishes from {{business_name}}, {{first_name}}! May your season be merry, bright, and full of good things. See you in the new year!"
+  ]
+};
+const MSG_V={
+  gym:[
+    "{{first_name}}, the weights miss you and honestly so do we. Your spot at {{business_name}} is right where you left it — come get that next session in!",
+    "Hey {{first_name}}, progress isn't lost — it's just waiting. The {{business_name}} crew is ready to spot you whenever you're ready to get back at it."
+  ],
+  yoga:[
+    "{{first_name}}, your mat misses you. Whenever life allows, your practice — and your {{business_name}} family — will be here waiting. Breathe easy.",
+    "Hey {{first_name}}, consider this your sign to slow down and come back to the studio. {{business_name}} isn't the same without you."
+  ],
+  salon:[
+    "{{first_name}}, your chair at {{business_name}} has been asking about you. Come treat yourself — you deserve a little refresh.",
+    "Hey {{first_name}}, it's been a minute (and probably a few inches). The {{business_name}} team would love to get you back in the chair."
+  ],
+  barber:[
+    "{{first_name}}, that fresh-cut feeling is calling. The {{business_name}} chair is ready when you are — come get sharp.",
+    "Hey {{first_name}}, looking a little shaggy out there? {{business_name}} has your spot waiting — walk out feeling brand new."
+  ],
+  cafe:[
+    "{{first_name}}, your usual is ready to be made. The {{business_name}} crew misses your face — swing by soon!",
+    "Hey {{first_name}}, the espresso machine asked about you this morning. Come reclaim your table at {{business_name}}."
+  ],
+  resto:[
+    "{{first_name}}, the table's set and the kitchen's warm. Everyone at {{business_name}} would love to see you again soon — come hungry.",
+    "Hey {{first_name}}, we've been cooking up things we think you'd love. Your seat at {{business_name}} is waiting."
+  ],
+  petgrooming:[
+    "{{first_name}}, someone fluffy is due for a spa day! {{business_name}} misses you both — bring them in for a fresh look.",
+    "Hey {{first_name}}, we miss that wagging tail around {{business_name}}. Time for a freshen-up?"
+  ],
+  medspa:[
+    "{{first_name}}, a little self-care goes a long way. Your next glow-up at {{business_name}} is overdue — come treat yourself.",
+    "Hey {{first_name}}, you take care of everyone else — let {{business_name}} take care of you for an hour."
+  ]
+};
+const MSG_V_ALIAS={boxing:"gym",cycling:"gym",swimming:"gym",wellness:"yoga",nails:"salon",bakery:"cafe",bar:"resto",fastcasual:"resto",petstore:"petgrooming"};
+function tplsFor(t){
+  var list=(MSG[t]||MSG.message_only).slice();
+  var tr=(cmTr||"").toLowerCase();
+  if(/birthday/.test(tr))list=MSG_X.birthday.concat(list);
+  else if(/milestone|5th|10th|100th|class|anniversary|loyalty/.test(tr))list=MSG_X.milestone.concat(list);
+  else if(/holiday|seasonal/.test(tr))list=MSG_X.holiday.concat(list);
+  if(t==="message_only"||t==="postcard"){
+    var bt=localStorage.getItem("ct_biztype")||obB||"";
+    var v=MSG_V[bt]||MSG_V[MSG_V_ALIAS[bt]]||null;
+    if(v)list=v.concat(list);
+  }
+  return list;
+}
 const NT=[{e:"📦",t:"Package delivered!",s:"Sarah M. received her welcome kit"},{e:"⬛",t:"Square connected!",s:"Pete's Barbershop -- 3 triggers live"},{e:"📈",t:"Retention up 41%!",s:"Bloom Yoga after 60 days"},{e:"💳",t:"Stripe triggered!",s:"Nova SaaS -- gift shipped"}];
 
 // -- Edge Function base URL ---------------------------------------------------
@@ -2365,7 +2430,7 @@ async function oCM(){if(!await requirePaidAction())return;await loadGiftCatalog(
 function xCM(){showCM=false;cmT="message_only";cmN="";cmTr="";cmGN="";cmGC="";cmG=null;cmCh="email";cmM="";cmTi=0;cmPcDesign="bold";cmAiOpts=[];cmProt={delay:7,cancelOnRefund:true,minSpend:0,cooldown:90,productName:"",minOrderVal:0};document.getElementById("app").innerHTML=dash();bind();dLoad();}
 
 function cModal(){
-  const tpls=MSG[cmT]||MSG.message_only;
+  const tpls=tplsFor(cmT);
   return`<div class="ov" onclick="if(event.target===this)xCM()"><div class="mb"><div class="mh"><div class="mt">✨ New Campaign</div><button class="mc" onclick="xCM()">✕</button></div><div class="mbody">
   <div style="margin-bottom:16px"><label class="fl">Campaign Type</label>
   ${[["survey","⭐","Satisfaction Survey","Rate experience. Smart gift routing.","sel-p"],["message_only","💬","Message Only","Personal message, no gift. Free.","sel-b"],["postcard","📮","Mailed Postcard","Real postcard mailed to their door. $1.50 from wallet.","sel-b"],["physical_gift","📦","Physical Gift","Branded item ships + message.","sel-g"],["digital_gift","💳","Digital Gift","Discount or gift card by email.","sel-e"]].map(([id,ic,lb,dc,sc])=>`<div class="to ${cmT===id?sc:""}" onclick="sCT('${id}')"><span style="font-size:22px;flex-shrink:0">${ic}</span><div style="flex:1"><div style="font-size:13px;font-weight:700">${lb}</div><div style="font-size:11px;color:rgba(240,244,255,.45);margin-top:1px">${dc}</div></div><div style="width:18px;height:18px;border-radius:50%;border:2px solid ${cmT===id?"#FFD166":"rgba(255,255,255,.2)"};background:${cmT===id?"#FFD166":"transparent"};color:#080D18;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${cmT===id?"✓":""}</div></div>`).join("")}
@@ -2403,6 +2468,23 @@ function cModal(){
 }
 
 function sCT(t){cmT=t;cmM="";cmTi=0;document.getElementById("app").innerHTML=dash();bind();dLoad();}
+function sAI(i){var t=cmAiOpts[i]||"";cmM=t;cmTi=-1;document.getElementById("app").innerHTML=dash();bind();dLoad();}
+async function aiWriteMsg(){
+  var b=document.getElementById("aiWriteBtn");if(b){b.textContent="Thinking...";b.disabled=true;}
+  try{
+    var biz=await loadBiz()||{};
+    var kind=cmT==="postcard"?"a mailed postcard":cmT==="physical_gift"?"a note announcing a physical gift on its way":cmT==="digital_gift"?"an email delivering a digital gift":cmT==="survey"?"a satisfaction survey request asking for a 1-5 reply":"a friendly check-in message";
+    var tone={gym:"an energetic, motivational fitness tone",boxing:"an energetic, motivational fitness tone",cycling:"an energetic, motivational fitness tone",swimming:"an energetic, motivational fitness tone",yoga:"a calm, mindful tone",wellness:"a calm, mindful tone",salon:"a warm, pampering beauty tone",nails:"a warm, pampering beauty tone",medspa:"a polished, indulgent self-care tone",barber:"a friendly, classic barbershop tone",cafe:"a cozy, neighborly coffee-shop tone",bakery:"a cozy, neighborly bakery tone",resto:"an appetizing, hospitable restaurant tone",bar:"a lively, social tone",fastcasual:"an upbeat, quick-bite tone",petgrooming:"a playful pet-lover tone",petstore:"a playful pet-lover tone",autoshop:"a trustworthy, no-nonsense tone",saas:"a professional, appreciative tone",consulting:"a professional, appreciative tone",agency:"a professional, appreciative tone"}[biz.business_type]||"a warm local-business tone";
+    var prompt="Write 3 short customer-retention messages for "+kind+" from a "+(biz.business_type||"local")+" business called \""+(biz.business_name||"the business")+"\". Campaign trigger: "+(cmTr||"winning back lapsed customers")+". Use "+tone+". If the trigger mentions a birthday, holiday, or visit milestone, celebrate that occasion specifically. Each message 2-3 sentences, may use {{first_name}} and {{business_name}} placeholders, no emojis, no hashtags. Respond ONLY with a JSON array of exactly 3 strings.";
+    var r=await fetch(FN+"/ai-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({max_tokens:600,messages:[{role:"user",content:prompt}]})});
+    var d=await r.json();
+    var txt=(d&&d.content&&d.content[0]&&d.content[0].text)||"";
+    var m=txt.match(/\[[\s\S]*\]/);
+    cmAiOpts=m?JSON.parse(m[0]).slice(0,3).map(String):[];
+    if(!cmAiOpts.length)alert("AI couldn't write suggestions right now — try again.");
+  }catch(e){cmAiOpts=[];alert("AI writing failed: "+e.message);}
+  document.getElementById("app").innerHTML=dash();bind();dLoad();
+}
 function sTP(i,t){cmTi=i;cmM=t;const el=document.getElementById("cM");if(el)el.value=t;document.querySelectorAll(".tpl").forEach((e,idx)=>e.classList.toggle("sel",idx===i));}
 
 async function svCM(){
