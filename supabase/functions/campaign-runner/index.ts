@@ -293,6 +293,7 @@ async function sendPostcard(customer: Customer, businessName: string, message: s
   const form = new URLSearchParams({
     description: `Clicktide postcard for ${businessName}`,
     size: "4x6",
+    use_type: "marketing",
     "to[name]": (customer.name || "Customer").slice(0, 40),
     "to[address_line1]": String(customer.address || ""),
     "to[address_city]": String(customer.city || ""),
