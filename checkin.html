@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Check in</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#080D18;color:#F0F4FF;font-family:'Inter',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{width:100%;max-width:380px;background:#0C1220;border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:30px;text-align:center}
+h1{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin:10px 0 4px}
+.sub{font-size:13px;color:rgba(240,244,255,.5);margin-bottom:22px;line-height:1.6}
+.fi{width:100%;padding:13px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:#101828;color:#F0F4FF;font-size:15px;outline:none;font-family:'Inter',sans-serif;margin-bottom:10px}
+.btn{width:100%;padding:14px;border-radius:100px;font-size:15px;font-weight:700;cursor:pointer;border:none;background:#FFD166;color:#080D18;font-family:'Inter',sans-serif}
+.btn:disabled{opacity:.6}
+.consent{display:flex;gap:9px;align-items:flex-start;text-align:left;font-size:11px;color:rgba(240,244,255,.55);line-height:1.6;margin:4px 0 16px}
+.err{background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.25);border-radius:10px;padding:10px;font-size:12px;color:#FF4D6D;margin-bottom:12px;display:none}
+.done{font-size:46px;margin-bottom:8px}
+.power{margin-top:20px;font-size:10px;color:rgba(240,244,255,.3)}
+.power b{color:#4DA6FF}
+#nameWrap{display:none}
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <div style="font-size:34px">👋</div>
+  <h1 id="bizName">Check in</h1>
+  <div class="sub">Tap in your phone number and you're done.</div>
+  <div class="err" id="err"></div>
+  <form id="form" onsubmit="return go(event)">
+    <input class="fi" id="phone" type="tel" placeholder="Your phone number" autocomplete="tel" required/>
+    <div id="nameWrap">
+      <input class="fi" id="name" placeholder="Your name"/>
+      <label class="consent"><input type="checkbox" id="consent" style="margin-top:2px"/>
+        <span>Text me about rewards and gifts from this business (optional). Msg &amp; data rates may apply. Reply STOP anytime.</span></label>
+    </div>
+    <button class="btn" id="btn" type="submit">Check in →</button>
+  </form>
+  <div class="power">Powered by <b>CLICKTIDE</b> · goclicktide.com</div>
+</div>
+<script>
+var FN="https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1/checkin";
+var b=new URLSearchParams(location.search).get("b")||"";
+
+(function init(){
+  if(!b){fail("This check-in link is missing its code. Ask the business for a fresh QR.");return;}
+  fetch(FN+"?b="+encodeURIComponent(b)).then(function(r){return r.json();}).then(function(d){
+    if(d&&d.business_name)document.getElementById("bizName").textContent="Check in at "+d.business_name;
+    else fail("This check-in link doesn't look right. Ask the business for a fresh QR.");
+  }).catch(function(){});
+})();
+
+function fail(msg){var e=document.getElementById("err");e.textContent=msg;e.style.display="block";}
+
+function go(ev){
+  ev.preventDefault();
+  var btn=document.getElementById("btn");
+  var err=document.getElementById("err");
+  err.style.display="none";btn.disabled=true;btn.textContent="Checking in...";
+  fetch(FN,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+    b:b,
+    phone:document.getElementById("phone").value,
+    name:document.getElementById("name").value,
+    consent:document.getElementById("consent").checked
+  })}).then(function(r){return r.json().then(function(d){return{s:r.status,d:d};});}).then(function(x){
+    if(x.d&&x.d.ok){
+      var who=x.d.first_name||"there";
+      document.getElementById("card").innerHTML=
+        '<div class="done">'+(x.d.already?"✅":"🎉")+'</div>'+
+        '<h1>'+(x.d.already?"Already checked in!":"You\'re checked in, "+who+"!")+'</h1>'+
+        '<div class="sub">'+(x.d.already?"We counted your visit earlier today.":"Thanks for coming back to "+(x.d.business_name||"us")+". See you next time!")+'</div>'+
+        '<div class="power">Powered by <b>CLICKTIDE</b> · goclicktide.com</div>';
+      return;
+    }
+    if(x.d&&x.d.error==="first_visit_needs_name"){
+      document.getElementById("nameWrap").style.display="block";
+      document.getElementById("name").required=true;
+      document.getElementById("name").focus();
+      fail("First time here? Add your name so they know who you are.");
+    }else{
+      fail((x.d&&x.d.error)||"Something went wrong — try again.");
+    }
+    btn.disabled=false;btn.textContent="Check in →";
+  }).catch(function(){
+    fail("Network hiccup — try again.");
+    btn.disabled=false;btn.textContent="Check in →";
+  });
+  return false;
+}
+</script>
+</body>
+</html>
