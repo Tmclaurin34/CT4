@@ -45,7 +45,14 @@ var b=new URLSearchParams(location.search).get("b")||"";
 var WL=false;
 
 (function init(){
-  if(!b){fail("This check-in link is missing its code. Ask the business for a fresh QR.");return;}
+  if(!b){
+    document.getElementById("bizName").textContent="Customer check-in (demo)";
+    document.querySelector(".sub").textContent="This is the check-in page customers see when they scan a business's QR code. SMS consent is always optional and unchecked by default.";
+    document.getElementById("nameWrap").style.display="block";
+    document.getElementById("btn").disabled=true;
+    document.getElementById("btn").textContent="Demo only — scan a business QR to check in";
+    return;
+  }
   fetch(FN+"?b="+encodeURIComponent(b)).then(function(r){return r.json();}).then(function(d){
     if(d&&d.business_name){
       document.getElementById("bizName").textContent="Check in at "+d.business_name;
