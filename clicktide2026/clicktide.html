@@ -445,7 +445,8 @@ const PL=[
   {id:"stripe",n:"Stripe",e:"💳",d:"SaaS payments",tr:["Subscription created","First payment","Plan upgraded","Annual renewal","Churn risk","Payment failed"]},
   {id:"clover",n:"Clover",e:"🍀",d:"Restaurants",tr:["First visit","Loyalty earned","Birthday","60-day inactive","VIP tier","Special occasion"]},
   {id:"toast",n:"Toast",e:"🍞",d:"Restaurant POS",tr:["First order","100th order","Birthday month","Seasonal","Loyalty milestone","Win-back"]},
-  {id:"mindbody",n:"Mindbody",e:"🧘",d:"Gyms & spas",tr:["First class","10-class milestone","Membership renewal","Birthday","Inactive 30 days","Package purchase"]}
+  {id:"mindbody",n:"Mindbody",e:"🧘",d:"Gyms & spas",tr:["First class","10-class milestone","Membership renewal","Birthday","Inactive 30 days","Package purchase"]},
+  {id:"manual",n:"No POS — Manual",e:"✍️",d:"Zelle, Cash App, cash",tr:["New customer","5th visit","10th visit","30-day inactive","Win-back","VIP"]}
 ];
 const GF={
   gym:[{e:"💧",n:"Water Bottle",s:"32oz insulated",p:28,pop:true},{e:"🏋️",n:"Gym Towel",s:"Microfiber logo",p:19,pop:true},{e:"👜",n:"Gym Bag",s:"Canvas duffel",p:35,pop:true}],
@@ -1736,6 +1737,15 @@ function oCon(){
   if(obP==="mindbody"){mindbodyConnect();if(b){b.textContent="Connect Mindbody →";b.disabled=false;}return;}
   setTimeout(function(){obC=true;R();},1800);
 }
+async function logVisit(id,v,s){
+  var amt=prompt("Log a visit — how much did they spend? (0 is fine)","0");
+  if(amt===null)return;
+  var a=parseFloat(amt)||0;
+  try{
+    await fetch(SU+"/rest/v1/customers?id=eq."+id,{method:"PATCH",headers:Object.assign({},h(S?.token),{Prefer:"return=minimal"}),body:JSON.stringify({visits:(v||0)+1,total_spent:(s||0)+a,last_visit_at:new Date().toISOString(),last_order_at:new Date().toISOString()})});
+  }catch(e){alert("Could not log the visit: "+e.message);return;}
+  dLoad();
+}
 async function oPay(){
   var btn=document.getElementById("oPayBtn");
   if(btn){btn.textContent="Redirecting to payment...";btn.disabled=true;}
@@ -2096,7 +2106,7 @@ async function dLoad(){
       var alertBanner="";
       if(_atRisk.length>0){alertBanner+='<div style="background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.25);border-radius:12px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:10px"><div style="font-size:20px">⛔</div><div><div style="font-size:13px;font-weight:700;color:#FF4D6D;margin-bottom:2px">'+_atRisk.length+' unhappy customer'+(_atRisk.length>1?"s":"")+' — gifts blocked</div><div style="font-size:12px;color:rgba(240,244,255,.5)">'+_atRisk.map(function(x){return x.c.name;}).join(", ")+'. Rated 1-2 stars. A gift would feel hollow — reach out personally instead.</div></div></div>';}
       if(_winback.length>0){alertBanner+='<div style="background:rgba(255,159,77,.1);border:1px solid rgba(255,159,77,.25);border-radius:12px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:10px"><div style="font-size:20px">🎯</div><div><div style="font-size:13px;font-weight:700;color:#FF9F4D;margin-bottom:2px">'+_winback.length+' valuable customer'+(_winback.length>1?"s":"")+' slipping away — win-back gift queued</div><div style="font-size:12px;color:rgba(240,244,255,.5)">'+_winback.map(function(x){return x.c.name;}).join(", ")+'. High spenders going quiet. Auto-sending a gift to bring them back.</div></div></div>';}
-      el.innerHTML=alertBanner+'<div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button class="btn btn-gold" onclick="oAC()">+ Add Customer</button></div>'+(cuArr.length===0?'<div class="empty"><div style="font-size:36px;margin-bottom:10px">👥</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No customers yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Add your first customer.</div><button class="btn btn-gold" onclick="oAC()">Add Customer</button></div>':'<div class="dc"><div style="display:grid;grid-template-columns:1.1fr 1.3fr 70px 110px 110px 80px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.07);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.3)"><span>Name</span><span>Email</span><span>Score</span><span>Status</span><span>Action</span><span>Spent</span></div>'+_scored.map(function(x){var c=x.c,r=x.s;return '<div style="display:grid;grid-template-columns:1.1fr 1.3fr 70px 110px 110px 80px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.07);align-items:center"><div style="font-size:13px;font-weight:600">'+c.name+'</div><div style="font-size:12px;color:rgba(240,244,255,.45);overflow:hidden;text-overflow:ellipsis">'+c.email+'</div><div style="font-size:14px;font-weight:800;color:'+tierColor(r.tier)+'">'+r.score+'</div><div style="font-size:11px;font-weight:600;color:'+tierColor(r.tier)+'">'+r.tier+'</div><div>'+giftLabel(r.gift)+'</div><div style="font-size:13px;font-weight:600;color:#22C55E">$'+(c.total_spent||0)+'</div></div>';}).join('')+'</div>');
+      el.innerHTML=alertBanner+'<div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button class="btn btn-gold" onclick="oAC()">+ Add Customer</button></div>'+(cuArr.length===0?'<div class="empty"><div style="font-size:36px;margin-bottom:10px">👥</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No customers yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Add your first customer.</div><button class="btn btn-gold" onclick="oAC()">Add Customer</button></div>':'<div class="dc"><div style="display:grid;grid-template-columns:1.1fr 1.3fr 70px 110px 110px 80px 70px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.07);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.3)"><span>Name</span><span>Email</span><span>Score</span><span>Status</span><span>Action</span><span>Spent</span><span></span></div>'+_scored.map(function(x){var c=x.c,r=x.s;return '<div style="display:grid;grid-template-columns:1.1fr 1.3fr 70px 110px 110px 80px 70px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.07);align-items:center"><div style="font-size:13px;font-weight:600">'+c.name+'</div><div style="font-size:12px;color:rgba(240,244,255,.45);overflow:hidden;text-overflow:ellipsis">'+c.email+'</div><div style="font-size:14px;font-weight:800;color:'+tierColor(r.tier)+'">'+r.score+'</div><div style="font-size:11px;font-weight:600;color:'+tierColor(r.tier)+'">'+r.tier+'</div><div>'+giftLabel(r.gift)+'</div><div style="font-size:13px;font-weight:600;color:#22C55E">$'+(c.total_spent||0)+'</div><button class="btn btn-ghost" style="padding:5px 8px;font-size:10px" onclick="logVisit('+c.id+','+(c.visits||0)+','+(c.total_spent||0)+')">+ Visit</button></div>';}).join('')+'</div>');
     }
     else if(dpg==="wallet"){
       const txR=await db.sel("wallet",scope("order=created_at.desc"),tok).catch(()=>[]);
