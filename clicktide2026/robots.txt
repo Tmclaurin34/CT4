@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /backoffice
+
+Sitemap: https://goclicktide.com/sitemap.xml
