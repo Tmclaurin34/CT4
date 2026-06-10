@@ -1320,6 +1320,8 @@ async function uploadLogoToStorage(file){
     });
     if(res.ok){
       obLogoStorageUrl=`${SU}/storage/v1/object/public/logos/${path}`;
+      // Persist to the business profile so gift orders print THEIR logo
+      if(S?.user?.id)setBizFields({logo_url:obLogoStorageUrl});
       // Refresh logo section to show "Saved" indicator
       var logoZone=document.getElementById('logoDropZone');
       if(!logoZone)R(); // full re-render if not found
