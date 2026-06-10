@@ -1157,7 +1157,7 @@ function authP(mode){
     <div class="fg" style="display:flex;gap:8px"><div style="flex:2"><label class="fl">City</label><input class="fi" id="aCity" placeholder="City"/></div><div style="flex:1"><label class="fl">State</label><input class="fi" id="aState" placeholder="NY"/></div><div style="flex:1"><label class="fl">ZIP</label><input class="fi" id="aZip" placeholder="11542"/></div></div>`:""}
     ${!il?`<div class="fg"><label class="fl">Plan</label><select class="fi-sel" id="aPl"><option value="Local">Local -- $29/mo</option><option value="Growth" selected>Growth -- $99/mo ★</option><option value="Scale">Scale -- $299/mo</option></select></div>${legalConsent("aAgree")}`:""}
     <div class="err" id="aErr"></div>
-    <button class="btn-full btn-gold" id="aSub" onclick="doAuth('${mode}')" style="margin-bottom:16px">${il?"Log in →":"Create my account →"}</button>
+    <button class="btn-full btn-gold" id="aSub" onclick="doAuth('${mode}')" style="margin-bottom:16px">${il?"Log in →":"Create my account →"}</button><div style="text-align:center;margin-top:10px"><button type="button" class="link-btn" onclick="forgotPw()" style="font-size:12px">Forgot password?</button></div>
     <div style="text-align:center;font-size:13px;color:rgba(240,244,255,.45)">${il?"Don't have an account? ":"Already have an account? "}<button class="link-btn" onclick="go('${il?"onboard":"login"}')">${il?"Sign up free":"Log in"}</button></div>
   </div>
   <button class="link-btn" style="margin-top:18px" onclick="go('land')">← Back to site</button></div>`;
@@ -1185,7 +1185,19 @@ async function doAuth(mode){
   try{
     const meta={business_name:n,contact_name:nm,phone:ph,business_phone:bph,business_email:bem,address:addr,city:city,state:state,zip:zip,plan:pl,legal_terms_accepted_at:new Date().toISOString(),legal_terms_version:"2026-06-08",legal_authorized_services:true};
     const r=il?await au.in(e,p):await au.up(e,p,meta);
-    if(r.access_token){S={token:r.access_token,user:r.user||{email:e}};localStorage.setItem("ct",r.access_token);localStorage.setItem("cu",JSON.stringify(S.user));await ensureBizProfile(r.access_token,S.user,{...meta,email:e});go("dash");}
+    if(r.access_token){
+      var _fs=((r.user&&r.user.factors)||[]).filter(function(f){return f.status==="verified"&&f.factor_type==="totp";});
+      if(_fs.length){
+        var _code=prompt("Two-step verification: enter the 6-digit code from your authenticator app");
+        if(!_code){err.textContent="2-step code required to log in.";err.style.display="block";btn.disabled=false;btn.textContent=il?"Log in →":"Create my account →";return;}
+        var _ch=await fetch(SU+"/auth/v1/factors/"+_fs[0].id+"/challenge",{method:"POST",headers:{apikey:SK,Authorization:"Bearer "+r.access_token,"Content-Type":"application/json"},body:"{}"});
+        var _chd=await _ch.json();
+        var _vr=await fetch(SU+"/auth/v1/factors/"+_fs[0].id+"/verify",{method:"POST",headers:{apikey:SK,Authorization:"Bearer "+r.access_token,"Content-Type":"application/json"},body:JSON.stringify({challenge_id:_chd.id,code:String(_code).trim()})});
+        var _vrd=await _vr.json();
+        if(!_vr.ok){err.textContent="Wrong 2-step code — try again.";err.style.display="block";btn.disabled=false;btn.textContent=il?"Log in →":"Create my account →";return;}
+        if(_vrd.access_token){r.access_token=_vrd.access_token;if(_vrd.user)r.user=_vrd.user;}
+      }
+      S={token:r.access_token,user:r.user||{email:e}};localStorage.setItem("ct",r.access_token);localStorage.setItem("cu",JSON.stringify(S.user));await ensureBizProfile(r.access_token,S.user,{...meta,email:e});go("dash");}
     else{err.textContent=il?"Invalid credentials":"Account created! Please log in.";err.style.display="block";}
   }catch(ex){err.textContent=ex.message;err.style.display="block";}
   btn.disabled=false;btn.textContent=il?"Log in →":"Create my account →";
@@ -2492,6 +2504,77 @@ function cModal(){
 }
 
 function sCT(t){cmT=t;cmM="";cmTi=0;document.getElementById("app").innerHTML=dash();bind();dLoad();}
+async function forgotPw(){
+  var e=document.getElementById("aE")?.value||prompt("Enter your account email:")||"";
+  if(!e||e.indexOf("@")<0){alert("Enter a valid email first.");return;}
+  try{
+    await fetch(SU+"/auth/v1/recover",{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e})});
+    alert("Reset link sent to "+e+" — check your inbox and spam. It comes from support@goclicktide.com.");
+  }catch(ex){alert("Could not send reset email: "+ex.message);}
+}
+async function doPwReset(btn){
+  var p=document.getElementById("rcPw")?.value||"";
+  var er=document.getElementById("rcErr");
+  if(p.length<6){if(er){er.textContent="Password must be at least 6 characters.";er.style.display="block";}return;}
+  if(btn){btn.disabled=true;btn.textContent="Updating...";}
+  try{
+    var r=await fetch(SU+"/auth/v1/user",{method:"PUT",headers:{apikey:SK,Authorization:"Bearer "+window.__rcTok,"Content-Type":"application/json"},body:JSON.stringify({password:p})});
+    var d=await r.json();
+    if(!r.ok)throw new Error(d.message||d.error_description||"Could not update password");
+    document.querySelector(".ov")?.remove();
+    alert("Password updated! Log in with your new password.");
+    go("login");
+  }catch(ex){if(er){er.textContent=ex.message;er.style.display="block";}if(btn){btn.disabled=false;btn.textContent="Update password →";}}
+}
+function securityCard(){
+  setTimeout(loadMfaStatus,300);
+  return '<div class="dc" style="margin-bottom:24px"><div class="dch"><div class="dct">🔐 Security — Two-step verification</div></div><div style="font-size:12px;color:rgba(240,244,255,.5);line-height:1.7;margin-bottom:12px">Add an authenticator app (Google Authenticator, 1Password, Authy). After your password, we\'ll ask for a 6-digit code at login.</div><div id="mfaStatus" style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:12px">Checking status...</div><button class="btn btn-gold" id="mfaBtn" style="display:none" onclick="mfaEnroll(this)">Enable 2-step verification</button><button class="btn btn-outline" id="mfaOffBtn" style="display:none" onclick="mfaDisable()">Turn off 2-step verification</button></div>';
+}
+async function loadMfaStatus(){
+  var st=document.getElementById("mfaStatus"),on=document.getElementById("mfaBtn"),off=document.getElementById("mfaOffBtn");
+  if(!st||!S||!S.token)return;
+  try{
+    var r=await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+S.token}});
+    var u=await r.json();
+    var f=(u.factors||[]).filter(function(x){return x.status==="verified"&&x.factor_type==="totp";})[0];
+    window.__mfaFactor=f||null;
+    if(f){st.innerHTML='<span style="color:#22C55E">● 2-step verification is ON</span>';if(off)off.style.display="inline-block";if(on)on.style.display="none";}
+    else{st.innerHTML='<span style="color:#FF9F4D">○ Not enabled</span>';if(on)on.style.display="inline-block";if(off)off.style.display="none";}
+  }catch(e){if(st)st.textContent="Could not check status.";}
+}
+async function mfaEnroll(btn){
+  if(btn){btn.disabled=true;btn.textContent="Setting up...";}
+  try{
+    var r=await fetch(SU+"/auth/v1/factors",{method:"POST",headers:{apikey:SK,Authorization:"Bearer "+S.token,"Content-Type":"application/json"},body:JSON.stringify({factor_type:"totp",friendly_name:"Authenticator"})});
+    var d=await r.json();
+    if(!r.ok)throw new Error(d.message||d.msg||"Could not start enrollment");
+    var qr=(d.totp&&d.totp.qr_code)||"";
+    var img=qr.indexOf("data:")===0?qr:"data:image/svg+xml;utf8,"+encodeURIComponent(qr);
+    document.body.insertAdjacentHTML("beforeend",modal("Scan with your authenticator app",'<div style="text-align:center"><img src="'+img+'" style="width:190px;height:190px;background:#fff;border-radius:12px;padding:8px"/><div style="font-size:11px;color:rgba(240,244,255,.45);margin:10px 0 4px">Or enter this secret manually:</div><div style="font-size:11px;font-family:monospace;background:#101828;border-radius:8px;padding:8px;word-break:break-all;margin-bottom:14px">'+((d.totp&&d.totp.secret)||"")+'</div><div class="fg"><label class="fl">6-digit code from the app</label><input class="fi" id="mfaCode" inputmode="numeric" maxlength="6" placeholder="123456"/></div><div id="mfaErr" style="display:none;color:#FF6B6B;font-size:12px;margin-bottom:10px"></div><button class="btn-full btn-gold" onclick="mfaVerify(\''+d.id+'\',this)">Verify &amp; enable →</button></div>'));
+  }catch(ex){alert(ex.message);}
+  if(btn){btn.disabled=false;btn.textContent="Enable 2-step verification";}
+}
+async function mfaVerify(fid,btn){
+  var code=(document.getElementById("mfaCode")?.value||"").trim();
+  var er=document.getElementById("mfaErr");
+  if(code.length!==6){if(er){er.textContent="Enter the 6-digit code.";er.style.display="block";}return;}
+  if(btn){btn.disabled=true;btn.textContent="Verifying...";}
+  try{
+    var c=await fetch(SU+"/auth/v1/factors/"+fid+"/challenge",{method:"POST",headers:{apikey:SK,Authorization:"Bearer "+S.token,"Content-Type":"application/json"},body:"{}"});
+    var cd=await c.json();if(!c.ok)throw new Error(cd.message||"Challenge failed");
+    var v=await fetch(SU+"/auth/v1/factors/"+fid+"/verify",{method:"POST",headers:{apikey:SK,Authorization:"Bearer "+S.token,"Content-Type":"application/json"},body:JSON.stringify({challenge_id:cd.id,code:code})});
+    var vd=await v.json();if(!v.ok)throw new Error(vd.message||vd.msg||"Wrong code — try again");
+    if(vd.access_token){S.token=vd.access_token;localStorage.setItem("ct",vd.access_token);}
+    document.querySelector(".ov")?.remove();
+    alert("2-step verification is ON ✓ You'll be asked for a code at every login.");
+    loadMfaStatus();
+  }catch(ex){if(er){er.textContent=ex.message;er.style.display="block";}if(btn){btn.disabled=false;btn.textContent="Verify & enable →";}}
+}
+async function mfaDisable(){
+  var f=window.__mfaFactor;if(!f)return;
+  if(!confirm("Turn off 2-step verification?"))return;
+  try{await fetch(SU+"/auth/v1/factors/"+f.id,{method:"DELETE",headers:{apikey:SK,Authorization:"Bearer "+S.token}});loadMfaStatus();}catch(ex){alert(ex.message);}
+}
 function sAI(i){var t=cmAiOpts[i]||"";cmM=t;cmTi=-1;document.getElementById("app").innerHTML=dash();bind();dLoad();}
 async function aiWriteMsg(){
   var b=document.getElementById("aiWriteBtn");if(b){b.textContent="Thinking...";b.disabled=true;}
