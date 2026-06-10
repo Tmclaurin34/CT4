@@ -1746,6 +1746,27 @@ function showCheckinQR(){
    +'<input class="fi" value="'+link+'" readonly onclick="this.select()" style="margin-bottom:10px"/>'
    +'<button class="btn-full btn-gold" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.previousElementSibling.value);this.textContent=&quot;Copied ✓&quot;">Copy link</button></div>'));
 }
+async function aiSugGenerate(btn){
+  if(btn){btn.disabled=true;btn.textContent="Thinking...";}
+  try{await fetch(FN+"/ai-suggest-campaigns",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(S?.token||"")},body:"{}"});}catch(e){}
+  dLoad();
+}
+async function aiSugApprove(id,btn){
+  var g=window._aiSug&&window._aiSug[id];if(!g)return;
+  if(btn){btn.disabled=true;btn.textContent="Activating...";}
+  var tok=S?.token||SK;
+  try{
+    var res=await db.ins("campaigns",{name:g.title,trigger:g.trigger_text,gift_name:g.gift_name||"Message Only",gift_cost:Number(g.gift_cost)||0,campaign_type:g.campaign_type||"message_only",delivery_channel:"email",message:g.message||"",status:"active",cooldown_days:90,delay_days:0,user_id:myId()},tok);
+    if(res&&res.message){alert(res.message);if(btn){btn.disabled=false;btn.textContent="Approve & activate →";}return;}
+    await fetch(SU+"/rest/v1/ai_suggestions?id=eq."+id,{method:"PATCH",headers:Object.assign({},h(tok),{Prefer:"return=minimal"}),body:JSON.stringify({status:"approved"})});
+  }catch(e){alert(e.message);}
+  dLoad();
+}
+async function aiSugDismiss(id){
+  var tok=S?.token||SK;
+  try{await fetch(SU+"/rest/v1/ai_suggestions?id=eq."+id,{method:"PATCH",headers:Object.assign({},h(tok),{Prefer:"return=minimal"}),body:JSON.stringify({status:"dismissed"})});}catch(e){}
+  dLoad();
+}
 async function logVisit(id,v,s){
   var amt=prompt("Log a visit — how much did they spend? (0 is fine)","0");
   if(amt===null)return;
@@ -2098,7 +2119,30 @@ async function dLoad(){
         if(bounced)out+=chip("⚠ Bounced "+bounced,"#FF4D6D","rgba(255,77,109,0.08)");
         return out+'</div>';
       };
-      el.innerHTML=paidBanner+(c.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">⚡</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No campaigns yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Create your first campaign.</div><button class="btn btn-gold" onclick="oCM()">Create Campaign</button></div>`:c.map(cc=>`<div class="dc" style="margin-bottom:11px"><div style="display:flex;align-items:flex-start;gap:12px"><div class="di" style="background:rgba(255,209,102,.1);width:40px;height:40px;font-size:18px;flex-shrink:0">${cc.campaign_type==="message_only"?"💬":cc.campaign_type==="digital_gift"?"💳":cc.campaign_type==="survey"?"⭐":"📦"}</div><div style="flex:1"><div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><div style="font-size:13px;font-weight:700">${cc.name}</div><span class="${cc.status==="active"?"ba":"bp"}">${cc.status==="active"?"● Active":"⏸ Paused"}</span></div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:6px">Trigger: ${cc.trigger} · ${cc.gift_name}</div>${evChips(cc.id)}${cc.message?`<div style="font-size:11px;color:rgba(240,244,255,.45);background:#101828;border-radius:8px;padding:8px 10px;line-height:1.6;font-style:italic">"${cc.message.substring(0,100)}${cc.message.length>100?"...":""}"</div>`:""}</div><div style="display:flex;gap:7px;flex-shrink:0"><button class="btn btn-ghost" style="padding:6px 11px;font-size:11px" onclick="tCmp('${cc.id}','${cc.status}')">${cc.status==="active"?"Pause":"Resume"}</button><button class="btn" style="background:rgba(255,77,109,.1);color:#FF4D6D;border:1px solid rgba(255,77,109,.2);padding:6px 11px;font-size:11px" onclick="dCmp('${cc.id}')">Delete</button></div></div></div>`).join(""));
+      var isScale=String(bizLock?.plan||"").toLowerCase()==="scale";
+      var aiSugHtml="";
+      window._aiSug={};
+      if(isScale){
+        try{
+          var sugR=await fetch(SU+"/rest/v1/ai_suggestions?"+scope("status=eq.suggested&select=*&order=created_at.desc"),{headers:h(tok)});
+          var sug=await sugR.json();
+          if(Array.isArray(sug)&&sug.length){
+            aiSugHtml='<div class="dc" style="margin-bottom:14px;border-color:rgba(167,139,250,.3)"><div class="dch"><div class="dct">✨ AI-suggested campaigns <span style="font-size:10px;color:rgba(240,244,255,.4);font-weight:400">from your customer patterns</span></div><button class="link-btn" onclick="aiSugGenerate(this)">Refresh ↻</button></div>'
+              +sug.map(function(g){window._aiSug[g.id]=g;return '<div style="border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:14px;margin-bottom:10px">'
+                +'<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px"><div style="font-size:13px;font-weight:700">'+giftEsc(g.title)+'</div><div style="font-size:11px;color:#A78BFA;font-weight:700">'+giftEsc(g.trigger_text)+' · '+giftEsc(g.gift_name||"")+(Number(g.gift_cost)>0?' ($'+Number(g.gift_cost).toFixed(2)+')':'')+'</div></div>'
+                +'<div style="font-size:12px;color:rgba(240,244,255,.55);line-height:1.6;margin-bottom:6px">'+giftEsc(g.rationale||"")+'</div>'
+                +(g.projected?'<div style="font-size:11px;color:#22C55E;margin-bottom:10px">📈 '+giftEsc(g.projected)+'</div>':'')
+                +(g.message?'<div style="font-size:11px;color:rgba(240,244,255,.45);background:#101828;border-radius:8px;padding:8px 10px;line-height:1.6;font-style:italic;margin-bottom:10px">"'+giftEsc(g.message)+'"</div>':'')
+                +'<div style="display:flex;gap:8px"><button class="btn btn-gold" style="padding:7px 14px;font-size:11px" onclick="aiSugApprove(\''+g.id+'\',this)">Approve &amp; activate →</button><button class="btn btn-outline" style="padding:7px 14px;font-size:11px" onclick="aiSugDismiss(\''+g.id+'\')">Dismiss</button></div></div>';}).join("")
+              +'</div>';
+          } else {
+            aiSugHtml='<div class="dc" style="margin-bottom:14px;border-color:rgba(167,139,250,.3);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><div class="dct">✨ AI campaign suggestions</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-top:3px">Let AI study your customer patterns and propose ready-to-run campaigns.</div></div><button class="btn btn-gold" style="padding:8px 16px" onclick="aiSugGenerate(this)">Generate suggestions</button></div>';
+          }
+        }catch(e){}
+      } else if(paid){
+        aiSugHtml='<div class="dc" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><div class="dct">✨ AI campaign suggestions</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-top:3px">AI studies your customer patterns and proposes ready-to-run campaigns. A Scale plan feature.</div></div><button class="btn btn-ghost" style="padding:8px 16px" onclick="go(\'pricing\')">Upgrade to Scale</button></div>';
+      }
+      el.innerHTML=paidBanner+aiSugHtml+(c.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">⚡</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No campaigns yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Create your first campaign.</div><button class="btn btn-gold" onclick="oCM()">Create Campaign</button></div>`:c.map(cc=>`<div class="dc" style="margin-bottom:11px"><div style="display:flex;align-items:flex-start;gap:12px"><div class="di" style="background:rgba(255,209,102,.1);width:40px;height:40px;font-size:18px;flex-shrink:0">${cc.campaign_type==="message_only"?"💬":cc.campaign_type==="digital_gift"?"💳":cc.campaign_type==="survey"?"⭐":"📦"}</div><div style="flex:1"><div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><div style="font-size:13px;font-weight:700">${cc.name}</div><span class="${cc.status==="active"?"ba":"bp"}">${cc.status==="active"?"● Active":"⏸ Paused"}</span></div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:6px">Trigger: ${cc.trigger} · ${cc.gift_name}</div>${evChips(cc.id)}${cc.message?`<div style="font-size:11px;color:rgba(240,244,255,.45);background:#101828;border-radius:8px;padding:8px 10px;line-height:1.6;font-style:italic">"${cc.message.substring(0,100)}${cc.message.length>100?"...":""}"</div>`:""}</div><div style="display:flex;gap:7px;flex-shrink:0"><button class="btn btn-ghost" style="padding:6px 11px;font-size:11px" onclick="tCmp('${cc.id}','${cc.status}')">${cc.status==="active"?"Pause":"Resume"}</button><button class="btn" style="background:rgba(255,77,109,.1);color:#FF4D6D;border:1px solid rgba(255,77,109,.2);padding:6px 11px;font-size:11px" onclick="dCmp('${cc.id}')">Delete</button></div></div></div>`).join(""));
     }
     else if(dpg==="customers"){
       const cu=await db.sel("customers",scope("order=created_at.desc"),tok).catch(()=>[]);
