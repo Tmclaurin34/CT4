@@ -229,6 +229,7 @@ select option{background:#101828}
 </style>
 </head>
 <body>
+<script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
 <div id="app"></div>
 <script>
 const SU="https://hmihfncvahsdlmefyxyg.supabase.co";
@@ -2024,7 +2025,7 @@ function riPrv(){
 }
 
 function dash(){
-  const nav=[{id:"overview",i:"📊",l:"Overview"},{id:"customers",i:"👥",l:"Customers"},{id:"campaigns",i:"⚡",l:"Campaigns"},{id:"shipments",i:"📦",l:"Shipments"},{id:"wallet",i:"💳",l:"Wallet"},{id:"settings",i:"⚙️",l:"Settings"}];
+  const nav=[{id:"overview",i:"📊",l:"Overview"},{id:"customers",i:"👥",l:"Customers"},{id:"campaigns",i:"⚡",l:"Campaigns"},{id:"shipments",i:"📦",l:"Shipments"},{id:"wallet",i:"💳",l:"Wallet"},{id:"studio",i:"🎨",l:"Brand Studio"},{id:"settings",i:"⚙️",l:"Settings"}];
   return`<div class="dash">
   <div class="sb"><div class="sb-logo">${logoH(18)}</div>
   <div class="sb-nav">${nav.map(n=>`<button class="ni ${dpg===n.id?"on":""}" onclick="dGo('${n.id}')"><span style="font-size:14px">${n.i}</span>${n.l}</button>`).join("")}</div>
@@ -2085,6 +2086,11 @@ async function dLoad(){
       const shR=await db.sel("shipments",scope("order=created_at.desc"),tok).catch(()=>[]);
       const sh=Array.isArray(shR)?shR:[];
       el.innerHTML=paidBanner+`${sh.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">📦</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No shipments yet</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Shipments appear here automatically when campaigns send gifts.</div></div>`:`<div class="dc">${sh.map(s=>`<div class="dr"><div class="di" style="background:rgba(77,166,255,.1)">📦</div><div style="flex:1"><div class="dn">${s.customer_name}</div><div class="dsub">${s.gift} · ${s.campaign||""}</div></div><span class="bp">${s.status||"Processing"}</span></div>`).join("")}</div>`}`;
+    }
+    else if(dpg==="studio"){
+      await loadGiftCatalog();
+      el.innerHTML=paid?studioPage():paidBanner+'<div class="empty"><div style="font-size:36px;margin-bottom:10px">🎨</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">Brand Studio unlocks with an active plan</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Choose a plan to design your gift proofs.</div></div>';
+      if(paid)setTimeout(studioInit,0);
     }
     else if(dpg==="settings"){
       // Load platform connections from Supabase
@@ -2715,6 +2721,123 @@ function _ctInit(){
   _ctRender();
 }
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',_ctInit);}else{_ctInit();}
+</script>
+<script>
+// ---- Clicktide Brand Studio (Fabric.js) ----
+var stuCanvas=null,stuProduct=null,stuLogoObj=null,stuFont="Inter",stuColor="#FFD166",stuPrintRect=null,stuStep=1;
+var STU_PRINT_W=3000,STU_PRINT_H=2400;
+
+function studioPage(){
+  var gifts=giftOptions();
+  var opts=gifts.map(function(g,i){return '<option value="'+i+'">'+giftEsc(g.n)+' (~$'+Number(g.p||0).toFixed(0)+')</option>';}).join('');
+  var fonts=['Inter','Space Grotesk','Georgia','Courier New','Arial Black'].map(function(f){return '<option'+(f===stuFont?' selected':'')+'>'+f+'</option>';}).join('');
+  var rail=[[1,'Upload','Add artwork'],[2,'Text','Brand message'],[3,'Product','Choose gift'],[4,'Proof','Review & save']].map(function(s){
+    return '<div onclick="stuStep='+s[0]+';studioRefreshRail()" id="stuStep'+s[0]+'" style="display:flex;gap:10px;align-items:center;padding:10px;border-radius:10px;cursor:pointer;margin-bottom:4px;background:'+(stuStep===s[0]?'rgba(255,209,102,.1)':'transparent')+'">'
+      +'<div style="width:24px;height:24px;border-radius:50%;background:#FFD166;color:#080D18;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0">'+s[0]+'</div>'
+      +'<div><div style="font-size:12px;font-weight:700">'+s[1]+'</div><div style="font-size:10px;color:rgba(240,244,255,.45)">'+s[2]+'</div></div></div>';
+  }).join('');
+  return '<div class="dh"><div><div class="dt">Brand Studio</div><div class="ds">Design how your logo and message print on each gift.</div></div></div>'
+  +'<div style="display:grid;grid-template-columns:180px minmax(0,1fr) 250px;gap:14px;align-items:start">'
+    +'<div class="dc" style="padding:10px">'+rail
+      +'<div style="border-top:1px solid rgba(255,255,255,.07);margin-top:8px;padding-top:10px">'
+      +'<label class="btn btn-gold" style="display:block;text-align:center;font-size:12px;cursor:pointer">Upload logo<input type="file" accept="image/png,image/jpeg,image/svg+xml" style="display:none" onchange="studioUploadLogo(event)"/></label>'
+      +'<button class="btn btn-ghost" style="width:100%;margin-top:8px;font-size:12px" onclick="studioAddText()">+ Add text</button>'
+      +'<button class="btn btn-outline" style="width:100%;margin-top:8px;font-size:12px" onclick="studioRemoveSelected()">Remove selected</button>'
+      +'</div></div>'
+    +'<div class="dc" style="display:flex;flex-direction:column;align-items:center;padding:14px;overflow:auto">'
+      +'<canvas id="stuCanvasEl" width="640" height="520" style="border-radius:12px;max-width:100%"></canvas>'
+      +'<div style="font-size:11px;color:rgba(240,244,255,.4);margin-top:8px">Dashed box = print area ('+STU_PRINT_W+' × '+STU_PRINT_H+' px). Drag and resize your logo and text inside it.</div>'
+    +'</div>'
+    +'<div class="dc" style="padding:14px">'
+      +'<div class="fg"><label class="fl">Product</label><select class="fi-sel" id="stuProdSel" onchange="studioPickProduct(this.value)">'+opts+'</select></div>'
+      +'<div class="fg"><label class="fl">Brand font</label><select class="fi-sel" onchange="studioFont(this.value)">'+fonts+'</select></div>'
+      +'<div class="fg"><label class="fl">Brand color</label><input type="color" value="'+stuColor+'" onchange="studioColor(this.value)" style="width:100%;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:#101828"/></div>'
+      +'<div id="stuQuality" style="font-size:11px;color:rgba(240,244,255,.5);margin-bottom:12px;line-height:1.5"></div>'
+      +'<button class="btn-full btn-gold" onclick="studioSaveProof()" style="margin-bottom:8px">Save & approve proof</button>'
+      +'<button class="btn-full btn-ghost" onclick="studioDownloadPrint()">Download print file</button>'
+      +'<div id="stuStatus" style="font-size:11px;margin-top:10px;color:#22C55E"></div>'
+    +'</div>'
+  +'</div>';
+}
+function studioInit(){
+  if(typeof fabric==="undefined"){var s=document.getElementById("stuStatus");if(s){s.style.color="#FF4D6D";s.textContent="Editor library failed to load — refresh the page.";}return;}
+  stuCanvas=new fabric.Canvas("stuCanvasEl",{backgroundColor:"#101828",preserveObjectStacking:true});
+  var w=420,h=Math.round(w*STU_PRINT_H/STU_PRINT_W);
+  stuPrintRect=new fabric.Rect({left:(640-w)/2,top:(520-h)/2,width:w,height:h,fill:"rgba(255,255,255,0.02)",stroke:"rgba(255,255,255,0.5)",strokeDashArray:[6,5],selectable:false,evented:false});
+  stuCanvas.add(stuPrintRect);
+  var sel=document.getElementById("stuProdSel");
+  studioPickProduct(sel?sel.value:0);
+}
+function studioPickProduct(i){
+  var gifts=giftOptions();stuProduct=gifts[Number(i)||0]||gifts[0];
+  if(!stuCanvas)return;
+  if(stuProduct&&stuProduct.image_url){
+    fabric.Image.fromURL(giftImgSrc(stuProduct.image_url),function(img){
+      if(!img||!img.width)return;
+      var scale=Math.min(640/img.width,520/img.height);
+      stuCanvas.setBackgroundImage(img,stuCanvas.renderAll.bind(stuCanvas),{scaleX:scale,scaleY:scale,left:(640-img.width*scale)/2,top:(520-img.height*scale)/2,opacity:0.92});
+    },{crossOrigin:"anonymous"});
+  }else{
+    stuCanvas.setBackgroundImage(null,stuCanvas.renderAll.bind(stuCanvas));
+    stuCanvas.backgroundColor="#101828";stuCanvas.renderAll();
+  }
+}
+function studioUploadLogo(e){
+  var f=e.target.files&&e.target.files[0];if(!f||!stuCanvas)return;
+  var r=new FileReader();
+  r.onload=function(){
+    fabric.Image.fromURL(String(r.result),function(img){
+      if(stuLogoObj)stuCanvas.remove(stuLogoObj);
+      img.scaleToWidth(stuPrintRect.width*0.6);
+      img.set({left:stuPrintRect.left+(stuPrintRect.width-img.getScaledWidth())/2,top:stuPrintRect.top+24});
+      stuLogoObj=img;stuCanvas.add(img);stuCanvas.setActiveObject(img);stuCanvas.renderAll();
+      var q=document.getElementById("stuQuality");
+      if(q)q.innerHTML=img.width>=2000?'<span style="color:#22C55E">✓ Logo resolution looks great ('+img.width+'px wide)</span>'
+        :img.width>=1000?'<span style="color:#FFD166">△ Logo is '+img.width+'px wide — 2000px+ prints sharper</span>'
+        :'<span style="color:#FF4D6D">✗ Logo is only '+img.width+'px wide — it will likely print blurry. Use the original file, not a screenshot.</span>';
+    });
+  };
+  r.readAsDataURL(f);
+}
+function studioAddText(){
+  if(!stuCanvas)return;
+  var t=new fabric.IText("Thank you",{left:stuPrintRect.left+40,top:stuPrintRect.top+stuPrintRect.height-70,fontFamily:stuFont,fill:stuColor,fontSize:34,fontWeight:"700"});
+  stuCanvas.add(t);stuCanvas.setActiveObject(t);stuCanvas.renderAll();
+}
+function studioRemoveSelected(){var o=stuCanvas&&stuCanvas.getActiveObject();if(o&&o!==stuPrintRect){if(o===stuLogoObj)stuLogoObj=null;stuCanvas.remove(o);stuCanvas.renderAll();}}
+function studioFont(v){stuFont=v;var o=stuCanvas&&stuCanvas.getActiveObject();if(o&&o.type==="i-text"){o.set("fontFamily",v);stuCanvas.renderAll();}}
+function studioColor(v){stuColor=v;var o=stuCanvas&&stuCanvas.getActiveObject();if(o&&o.type==="i-text"){o.set("fill",v);stuCanvas.renderAll();}}
+function studioArtwork(){return stuCanvas?stuCanvas.getObjects().filter(function(o){return o!==stuPrintRect;}):[];}
+function studioSaveProof(){
+  if(!stuCanvas||!stuProduct)return;
+  if(!studioArtwork().length){alert("Add your logo or some text before saving a proof.");return;}
+  try{
+    localStorage.setItem("ct_proof_"+(stuProduct.id||stuProduct.n),JSON.stringify({product:stuProduct.n,design:stuCanvas.toJSON(),approved:true,at:new Date().toISOString()}));
+    var s=document.getElementById("stuStatus");if(s)s.textContent="Proof saved & approved for "+stuProduct.n+" ✓";
+  }catch(e){alert("Could not save proof: "+e.message);}
+}
+function studioDownloadPrint(){
+  var arts=studioArtwork();
+  if(!arts.length){alert("Add your logo or some text first.");return;}
+  var mult=STU_PRINT_W/stuPrintRect.width;
+  var off=new fabric.StaticCanvas(null,{width:STU_PRINT_W,height:STU_PRINT_H});
+  var done=0;
+  arts.forEach(function(o){
+    o.clone(function(c){
+      c.set({left:(o.left-stuPrintRect.left)*mult,top:(o.top-stuPrintRect.top)*mult,scaleX:(o.scaleX||1)*mult,scaleY:(o.scaleY||1)*mult});
+      off.add(c);done++;
+      if(done===arts.length){
+        off.renderAll();
+        var a=document.createElement("a");
+        a.download=(stuProduct&&stuProduct.n?stuProduct.n.replace(/\s+/g,"-").toLowerCase():"clicktide")+"-print-file.png";
+        a.href=off.toDataURL({format:"png"});
+        a.click();
+        var s=document.getElementById("stuStatus");if(s)s.textContent="Print file downloaded at "+STU_PRINT_W+"×"+STU_PRINT_H+"px ✓";
+      }
+    });
+  });
+}
+function studioRefreshRail(){for(var i=1;i<=4;i++){var el=document.getElementById("stuStep"+i);if(el)el.style.background=(i===Number(stuStep))?"rgba(255,209,102,.1)":"transparent";}}
 </script>
 </body>
 </html>
