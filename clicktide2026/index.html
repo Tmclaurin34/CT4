@@ -1536,6 +1536,12 @@ function brandQualityLabel(){
   return {t:"Logo uploaded",c:"#22C55E"};
 }
 function brandProofCard(biz){
+  if(!hasPaidAccess(biz))return `<div class="dc" style="margin-bottom:24px;text-align:center;padding:34px 24px">
+    <div style="font-size:34px;margin-bottom:10px">🔒</div>
+    <div style="font-size:15px;font-weight:800;margin-bottom:6px">Brand Kit & Proof Preview</div>
+    <div style="font-size:13px;color:rgba(240,244,255,.5);line-height:1.7;max-width:420px;margin:0 auto 18px">Upload your logo, preview it on real products, and approve print quality before gifts ship. Unlocks with an active plan.</div>
+    <button class="btn btn-gold" onclick="go('pricing')">Choose a plan →</button>
+  </div>`;
   const g=brandProduct();
   const img=giftImgSrc(g.image_url||"");
   const q=brandQualityLabel();
