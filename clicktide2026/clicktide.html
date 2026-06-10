@@ -690,9 +690,8 @@ async function createOAuthState(platform,metadata){
 }
 
 // -- Redirect to Square OAuth -------------------------------------------------
-function squareConnect(){
-  var state=randomState();
-  savePlatformState("square",state,{});
+async function squareConnect(){
+  var state=await createOAuthState("square",{});
   var redirectUri=FN+"/square-oauth-callback";
   var params=new URLSearchParams({
     client_id:SQ_APP_ID,
@@ -740,8 +739,7 @@ async function shopifyConnect(){
       document.getElementById("shopConnectBtn").textContent="Connecting...";
       document.getElementById("shopConnectBtn").disabled=true;
       ov.remove();
-      var state=randomState();
-      savePlatformState("shopify",state,{shop_domain:raw});
+      var state=await createOAuthState("shopify",{shop_domain:raw});
       var redirectUri=FN+"/shopify-oauth-callback";
       var params=new URLSearchParams({
         client_id:SH_CLIENT_ID,
@@ -759,9 +757,8 @@ async function shopifyConnect(){
 }
 
 // -- Redirect to Clover OAuth -------------------------------------------------
-function cloverConnect(){
-  var state=randomState();
-  savePlatformState("clover",state,{});
+async function cloverConnect(){
+  var state=await createOAuthState("clover",{});
   var redirectUri=FN+"/clover-oauth-callback";
   var params=new URLSearchParams({
     client_id:CL_APP_ID,
