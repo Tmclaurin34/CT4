@@ -1,0 +1,19 @@
+<svg width="2000" height="2000" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
+  <rect x="-1" y="-1" width="46" height="46" fill="#080D18"/>
+  <defs>
+    <linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#BAE6FD"/>
+      <stop offset="100%" stop-color="#4DA6FF"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(22,22)">
+    <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(0)" opacity=".95"/>
+    <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(51.4)" opacity=".95"/>
+    <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(102.8)" opacity=".95"/>
+    <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(154.2)" opacity=".95"/>
+    <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(205.6)" opacity=".95"/>
+    <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(257)" opacity=".95"/>
+    <path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(308.4)" opacity=".95"/>
+    <circle cx="0" cy="0" r="4.5" fill="#FFFFFF"/>
+  </g>
+</svg>
