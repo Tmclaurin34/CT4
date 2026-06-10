@@ -700,13 +700,12 @@ function cloverConnect(){
 }
 
 // -- Redirect to Stripe Connect OAuth ----------------------------------------
-function stripeConnect(){
+async function stripeConnect(){
   if(!ST_CLIENT_ID){
     alert("Stripe isn't set up yet.\n\nOnce you create a Stripe Connect app and add its client id (ca_...) to the site, this button will connect your account automatically.");
     return;
   }
-  var state=randomState();
-  savePlatformState("stripe",state,{});
+  var state=await createOAuthState("stripe",{});
   var params=new URLSearchParams({
     response_type:"code",
     client_id:ST_CLIENT_ID,
@@ -832,6 +831,13 @@ function showMindbodyActivationResult(d){
   `));
 }
 
+
+
+let ntIdx=0,scr="land";
+let obS=0,obCat=null,obB=null,obP=null,obC=false,obG=null,obT=[],obE="",obPw="",obN="",obNm="",obPh="",obBph="",obBem="",obAddr="",obCity="",obState="",obZip="",obPl="Growth",obOther="",obImport=null,obGiftSearch="",obCustomGift=null,obLogoFile=null,obLogoUrl=null,obLogoName="",obLogoStorageUrl=null,obLogoQuality=null,obDy=null;
+let riS=0,riB=null,riCatSel=null,riOther="",riSize="small",riFreqDays=15,riRiskMode="miss2",riCu=100,riAv=60,riCh=.20,riDy=30,riGf=22,riPl=99,riVf=2,riLm=12;
+let dpg="overview",cmT="message_only",cmN="",cmTr="",cmGN="",cmGC="",cmG=null,cmPf="Square",cmCh="email",cmM="",cmTi=0,showCM=false,cmProt={delay:7,cancelOnRefund:true,minSpend:0,cooldown:90,productName:"",minOrderVal:0};
+
 // -- Handle OAuth callback redirect back to this page ------------------------
 // Edge functions redirect to: goclicktide.com?ct_platform=square&ct_merchant=xxx&ct_name=Yyy
 // or on error: goclicktide.com?ct_error=...
@@ -878,10 +884,6 @@ function showMindbodyActivationResult(d){
   }
 })();
 
-let ntIdx=0,scr="land";
-let obS=0,obCat=null,obB=null,obP=null,obC=false,obG=null,obT=[],obE="",obPw="",obN="",obNm="",obPh="",obBph="",obBem="",obAddr="",obCity="",obState="",obZip="",obPl="Growth",obOther="",obImport=null,obGiftSearch="",obCustomGift=null,obLogoFile=null,obLogoUrl=null,obLogoName="",obLogoStorageUrl=null,obLogoQuality=null,obDy=null;
-let riS=0,riB=null,riCatSel=null,riOther="",riSize="small",riFreqDays=15,riRiskMode="miss2",riCu=100,riAv=60,riCh=.20,riDy=30,riGf=22,riPl=99,riVf=2,riLm=12;
-let dpg="overview",cmT="message_only",cmN="",cmTr="",cmGN="",cmGC="",cmG=null,cmPf="Square",cmCh="email",cmM="",cmTi=0,showCM=false,cmProt={delay:7,cancelOnRefund:true,minSpend:0,cooldown:90,productName:"",minOrderVal:0};
 
 function logoH(s=20){
   return`<div class="logo" onclick="go('land')">
