@@ -2025,7 +2025,7 @@ function riPrv(){
 }
 
 function dash(){
-  const nav=[{id:"overview",i:"📊",l:"Overview"},{id:"customers",i:"👥",l:"Customers"},{id:"campaigns",i:"⚡",l:"Campaigns"},{id:"shipments",i:"📦",l:"Shipments"},{id:"wallet",i:"💳",l:"Wallet"},{id:"studio",i:"🎨",l:"Brand Studio"},{id:"settings",i:"⚙️",l:"Settings"}];
+  const nav=[{id:"overview",i:"📊",l:"Overview"},{id:"customers",i:"👥",l:"Customers"},{id:"campaigns",i:"⚡",l:"Campaigns"},{id:"shipments",i:"📦",l:"Shipments"},{id:"wallet",i:"💳",l:"Wallet"},{id:"studio",i:"🎨",l:"Brand Studio"},{id:"emails",i:"✉️",l:"Email Studio"},{id:"settings",i:"⚙️",l:"Settings"}];
   return`<div class="dash">
   <div class="sb"><div class="sb-logo">${logoH(18)}</div>
   <div class="sb-nav">${nav.map(n=>`<button class="ni ${dpg===n.id?"on":""}" onclick="dGo('${n.id}')"><span style="font-size:14px">${n.i}</span>${n.l}</button>`).join("")}</div>
@@ -2091,6 +2091,10 @@ async function dLoad(){
       await loadGiftCatalog();
       el.innerHTML=paid?studioPage():paidBanner+'<div class="empty"><div style="font-size:36px;margin-bottom:10px">🎨</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">Brand Studio unlocks with an active plan</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Choose a plan to design your gift proofs.</div></div>';
       if(paid)setTimeout(studioInit,0);
+    }
+    else if(dpg==="emails"){
+      el.innerHTML=paid?emailStudioPage():paidBanner+'<div class="empty"><div style="font-size:36px;margin-bottom:10px">✉️</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">Email Studio unlocks with an active plan</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Choose a plan to design your customer emails.</div></div>';
+      if(paid){await emLoad();emRedraw();}
     }
     else if(dpg==="settings"){
       // Load platform connections from Supabase
@@ -2867,6 +2871,111 @@ function studioDownloadPrint(){
   });
 }
 function studioRefreshRail(){for(var i=1;i<=4;i++){var el=document.getElementById("stuStep"+i);if(el)el.style.background=(i===Number(stuStep))?"rgba(255,209,102,.1)":"transparent";}}
+</script>
+<script>
+// ---- Clicktide Email Studio ----
+var emBlocks=[],emBrand={color:"#0B62D6",btn:"#0B62D6",font:"Arial",logo:""},emSubject="A little something from {{business_name}}",emSelIdx=-1,emW=600,emRowId=null;
+var EM_FONTS=["Arial","Helvetica","Georgia","Times New Roman","Verdana","Trebuchet MS","Courier New"];
+
+function emDefaults(){
+  emBlocks=[
+    {t:"text",v:"Hi {{first_name}},",s:"greet"},
+    {t:"text",v:"The whole team at {{business_name}} wanted to say thank you for being one of our favorite customers. A little something is on its way to you!",s:"body"},
+    {t:"button",v:"Claim your gift",url:"https://goclicktide.com"},
+    {t:"divider"},
+    {t:"text",v:"See you soon!",s:"body"}
+  ];
+}
+async function emLoad(){
+  emDefaults();emRowId=null;emSelIdx=-1;
+  try{
+    var r=await fetch(SU+"/rest/v1/email_templates?name=eq.Default&select=*&limit=1",{headers:h(S&&S.token)});
+    var rows=await r.json();
+    if(Array.isArray(rows)&&rows[0]){
+      emRowId=rows[0].id;
+      if(Array.isArray(rows[0].blocks)&&rows[0].blocks.length)emBlocks=rows[0].blocks;
+      if(rows[0].brand&&typeof rows[0].brand==="object")emBrand=Object.assign(emBrand,rows[0].brand);
+      if(rows[0].subject)emSubject=rows[0].subject;
+    }
+  }catch(e){}
+}
+function emailStudioPage(){
+  var palette=[["text","📝 Text"],["button","🔘 Button"],["image","🖼 Image"],["divider","— Divider"]].map(function(x){
+    return '<button class="btn btn-ghost" style="width:100%;margin-bottom:6px;font-size:12px;text-align:left" onclick="emAdd(\''+x[0]+'\')">'+x[1]+'</button>';
+  }).join("");
+  return '<div class="dh"><div><div class="dt">Email Studio</div><div class="ds">Design the email your customers receive. {{first_name}} and {{business_name}} fill in automatically.</div></div>'
+  +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn btn-ghost" style="padding:7px 12px;font-size:11px" onclick="emToggleW(600)">🖥 Desktop</button><button class="btn btn-ghost" style="padding:7px 12px;font-size:11px" onclick="emToggleW(360)">📱 Mobile</button><button class="btn btn-gold" onclick="emSave()">Save template</button></div></div>'
+  +'<div id="emStatus" style="font-size:11px;margin-bottom:10px"></div>'
+  +'<div style="display:grid;grid-template-columns:160px minmax(0,1fr) 250px;gap:14px;align-items:start">'
+    +'<div class="dc" style="padding:10px"><div style="font-size:10px;font-weight:800;letter-spacing:1px;color:rgba(240,244,255,.4);margin-bottom:8px">ADD BLOCKS</div>'+palette+'</div>'
+    +'<div id="emCanvasWrap"></div>'
+    +'<div class="dc" style="padding:14px" id="emProps"></div>'
+  +'</div>';
+}
+function emBlockHtml(b,i){
+  var sel=(i===emSelIdx);
+  var wrap='style="position:relative;outline:'+(sel?'2px solid #FFD166':'none')+';outline-offset:2px;border-radius:6px;cursor:pointer"';
+  var click=b.t==="text"?'':' onclick="if(emSelIdx!=='+i+'){emSelIdx='+i+';emRedraw();}"';
+  var inner='';
+  if(b.t==="text")inner='<div contenteditable="true" oninput="emBlocks['+i+'].v=this.innerText" onfocus="emSelIdx='+i+';emProps()" style="font-family:'+emBrand.font+';font-size:'+(b.s==="greet"?'16px':'14px')+';line-height:1.7;color:#111827;padding:6px 4px;outline:none;white-space:pre-wrap;cursor:text">'+giftEsc(b.v||"")+'</div>';
+  else if(b.t==="button")inner='<div style="text-align:center;padding:10px 0"><span style="display:inline-block;background:'+emBrand.btn+';color:#FFFFFF;font-family:'+emBrand.font+';font-size:14px;font-weight:bold;padding:12px 28px;border-radius:8px">'+giftEsc(b.v||"Button")+'</span></div>';
+  else if(b.t==="divider")inner='<div style="border-top:1px solid #E5E7EB;margin:14px 0"></div>';
+  else if(b.t==="image")inner=b.url?'<img src="'+giftEsc(b.url)+'" style="max-width:100%;border-radius:8px;display:block;margin:8px auto"/>':'<div style="background:#F3F4F6;border:1px dashed #D1D5DB;border-radius:8px;padding:26px;text-align:center;color:#9CA3AF;font-size:12px;font-family:Arial">Image — set the URL in the panel →</div>';
+  return '<div '+wrap+click+'>'+inner+'</div>';
+}
+function emCanvasHtml(){
+  var blocks=emBlocks.map(emBlockHtml).join("");
+  var logo=emBrand.logo?'<img src="'+giftEsc(emBrand.logo)+'" style="max-height:46px;max-width:200px;display:block;margin:0 auto 14px"/>':'<div style="font-family:'+emBrand.font+';font-size:20px;font-weight:bold;color:'+emBrand.color+';text-align:center;margin-bottom:14px">{{business_name}}</div>';
+  return '<div style="background:#EEF2F7;padding:26px 12px;border-radius:14px;display:flex;justify-content:center">'
+    +'<div style="width:'+emW+'px;max-width:100%;background:#FFFFFF;border-radius:12px;padding:28px 26px;box-shadow:0 10px 30px rgba(15,23,42,.12);transition:width .2s">'
+    +logo+blocks
+    +'<div style="border-top:1px solid #F3F4F6;margin-top:18px;padding-top:12px;font-family:Arial;font-size:11px;color:#9CA3AF;text-align:center">Sent by Clicktide on behalf of {{business_name}} · Reply STOP to opt out</div>'
+  +'</div></div>';
+}
+function emPropsHtml(){
+  var fonts=EM_FONTS.map(function(f){return '<option style="font-family:\''+f+'\'"'+(f===emBrand.font?' selected':'')+'>'+f+'</option>';}).join("");
+  var html='<div class="fg"><label class="fl">Subject line</label><input class="fi" value="'+giftEsc(emSubject)+'" oninput="emSubject=this.value"/></div>'
+   +'<div class="fg"><label class="fl">Brand color</label><input type="color" value="'+emBrand.color+'" oninput="emBrandSet(\'color\',this.value)" style="width:100%;height:34px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:#101828;padding:0"/></div>'
+   +'<div class="fg"><label class="fl">Button color</label><input type="color" value="'+emBrand.btn+'" oninput="emBrandSet(\'btn\',this.value)" style="width:100%;height:34px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:#101828;padding:0"/></div>'
+   +'<div class="fg"><label class="fl">Email font</label><select class="fi-sel" onchange="emBrandSet(\'font\',this.value)">'+fonts+'</select></div>'
+   +'<div class="fg"><label class="fl">Logo URL <span style="opacity:.5;text-transform:none">(optional)</span></label><input class="fi" value="'+giftEsc(emBrand.logo||"")+'" placeholder="https://..." onchange="emBrandSet(\'logo\',this.value)"/></div>';
+  var b=emBlocks[emSelIdx];
+  if(b){
+    html+='<div style="border-top:1px solid rgba(255,255,255,.08);margin:14px 0 10px"></div><div style="font-size:10px;font-weight:800;letter-spacing:1px;color:#FFD166;margin-bottom:10px">SELECTED: '+b.t.toUpperCase()+'</div>';
+    if(b.t==="button")html+='<div class="fg"><label class="fl">Button text</label><input class="fi" value="'+giftEsc(b.v||"")+'" oninput="emBlocks['+emSelIdx+'].v=this.value" onchange="emRedraw()"/></div>'
+      +'<div class="fg"><label class="fl">Button link</label><input class="fi" value="'+giftEsc(b.url||"")+'" onchange="emBlocks['+emSelIdx+'].url=this.value"/></div>';
+    if(b.t==="image")html+='<div class="fg"><label class="fl">Image URL</label><input class="fi" value="'+giftEsc(b.url||"")+'" onchange="emBlocks['+emSelIdx+'].url=this.value;emRedraw()"/></div>';
+    html+='<div style="display:flex;gap:6px"><button class="btn btn-ghost" style="flex:1;font-size:11px;padding:7px" onclick="emMove(-1)">↑</button><button class="btn btn-ghost" style="flex:1;font-size:11px;padding:7px" onclick="emMove(1)">↓</button><button class="btn" style="flex:1;background:rgba(255,77,109,.12);color:#FF4D6D;border:1px solid rgba(255,77,109,.2);font-size:11px;padding:7px" onclick="emDelBlock()">Delete</button></div>';
+  }else{
+    html+='<div style="font-size:11px;color:rgba(240,244,255,.4);line-height:1.6;border-top:1px solid rgba(255,255,255,.08);padding-top:12px">Click any block in the email to edit, move, or delete it. Text edits happen right in the email.</div>';
+  }
+  return html;
+}
+function emAdd(t){
+  var b=t==="text"?{t:"text",v:"New text — click to edit"}:t==="button"?{t:"button",v:"Click me",url:"https://goclicktide.com"}:t==="image"?{t:"image",url:""}:{t:"divider"};
+  emBlocks.push(b);emSelIdx=emBlocks.length-1;emRedraw();
+}
+function emMove(d){var i=emSelIdx,j=i+d;if(i<0||j<0||j>=emBlocks.length)return;var x=emBlocks[i];emBlocks[i]=emBlocks[j];emBlocks[j]=x;emSelIdx=j;emRedraw();}
+function emDelBlock(){if(emSelIdx<0)return;emBlocks.splice(emSelIdx,1);emSelIdx=-1;emRedraw();}
+function emBrandSet(k,v){emBrand[k]=v;emRedraw();}
+function emToggleW(w){emW=w;emRedraw();}
+function emProps(){var p=document.getElementById("emProps");if(p)p.innerHTML=emPropsHtml();}
+function emRedraw(){var c=document.getElementById("emCanvasWrap");if(c)c.innerHTML=emCanvasHtml();emProps();}
+async function emSave(){
+  var st=document.getElementById("emStatus");
+  if(!S||!S.token){if(st){st.textContent="Log in to save your template.";st.style.color="#FF6B6B";}return;}
+  if(st){st.textContent="Saving...";st.style.color="rgba(240,244,255,.5)";}
+  var payload={user_id:myId(),name:"Default",subject:emSubject,blocks:emBlocks,brand:emBrand,updated_at:new Date().toISOString()};
+  try{
+    var r;
+    var hdrs=Object.assign({},h(S.token),{Prefer:"return=representation"});
+    if(emRowId)r=await fetch(SU+"/rest/v1/email_templates?id=eq."+emRowId,{method:"PATCH",headers:hdrs,body:JSON.stringify(payload)});
+    else r=await fetch(SU+"/rest/v1/email_templates",{method:"POST",headers:hdrs,body:JSON.stringify(payload)});
+    var rows=await r.json().catch(function(){return null;});
+    if(r.ok&&Array.isArray(rows)&&rows[0])emRowId=rows[0].id;
+    if(st){st.textContent=r.ok?"Template saved ✓ — campaign emails will use this design.":"Couldn't save — please try again.";st.style.color=r.ok?"#22C55E":"#FF6B6B";}
+  }catch(e){if(st){st.textContent="Couldn't save: "+e.message;st.style.color="#FF6B6B";}}
+}
 </script>
 </body>
 </html>
