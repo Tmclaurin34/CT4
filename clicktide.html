@@ -576,7 +576,7 @@ const SQ_APP_ID="sq0idp-lOwkDlbKD4OacOyioAOkZQ";
 const SH_CLIENT_ID="1e876d10b4e052fe9897dd45bd859eca";
 const CL_APP_ID="1YSBHCR5VTYZE";
 // Add these once you register the apps (see setup checklist). Empty = "needs setup".
-const ST_CLIENT_ID="";   // Stripe Connect client id (starts with ca_...)
+const ST_CLIENT_ID="ca_Ug1GQfGHiUMO3TeLjwyBv2YnQ9XlfMTV";   // Stripe Connect client id (live)
 // Toast connects via partner approval, Mindbody connects with a site activation code.
 const TOAST_READY=false; // flip true once Toast partner access is approved
 const MB_READY=true;
@@ -710,8 +710,8 @@ function stripeConnect(){
   var params=new URLSearchParams({
     response_type:"code",
     client_id:ST_CLIENT_ID,
-    scope:"read_write",
-    redirect_uri:FN+"/oauth-callback?platform=stripe",
+    scope:"read_only",
+    redirect_uri:FN+"/stripe-oauth-callback",
     state:state
   });
   window.location.href="https://connect.stripe.com/oauth/authorize?"+params;
