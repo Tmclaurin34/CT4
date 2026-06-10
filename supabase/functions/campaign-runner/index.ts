@@ -13,6 +13,9 @@ const twilioToken = Deno.env.get("TWILIO_AUTH_TOKEN") || "";
 const twilioFrom = Deno.env.get("TWILIO_FROM_NUMBER") || "";
 
 const MAX_SENDS_PER_BUSINESS = 25;
+// Monthly SMS included per plan; extra messages debit the gift wallet.
+const PLAN_SMS_LIMITS: Record<string, number> = { local: 200, growth: 1000, scale: 5000 };
+const SMS_OVERAGE_PRICE = 0.05;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -58,6 +61,7 @@ type Business = {
   business_name?: string;
   churn_days?: number;
   stripe_subscription_status?: string;
+  plan?: string;
 };
 
 function json(body: unknown, status = 200) {
@@ -81,6 +85,22 @@ async function rest(path: string, init: RequestInit = {}) {
   const data = text ? JSON.parse(text) : null;
   if (!response.ok) throw new Error(data?.message || data?.error || response.statusText);
   return data;
+}
+
+async function walletBalance(userId: string) {
+  try {
+    const data = await rest("/rest/v1/rpc/clicktide_wallet_balance", { method: "POST", body: JSON.stringify({ client_id: userId }) });
+    return Number(data || 0);
+  } catch {
+    return 0;
+  }
+}
+
+async function debitWallet(userId: string, amount: number, description: string, reference: string | null) {
+  await rest("/rest/v1/rpc/clicktide_debit_gift_wallet_server", {
+    method: "POST",
+    body: JSON.stringify({ client_id: userId, debit_amount: amount, description, reference }),
+  });
 }
 
 async function expectedCronKey() {
@@ -173,7 +193,7 @@ type EmailTemplate = {
   brand?: { color?: string; btn?: string; font?: string; logo?: string };
 };
 
-function renderTemplate(tpl: EmailTemplate, message: string, businessName: string, firstName: string) {
+function renderTemplate(tpl: EmailTemplate, message: string, businessName: string, firstName: string, whiteLabel = false) {
   const brand = tpl.brand || {};
   const font = brand.font || "Arial";
   const fill = (s: string) =>
@@ -189,17 +209,17 @@ function renderTemplate(tpl: EmailTemplate, message: string, businessName: strin
     return "";
   }).join("");
   return `<div style="max-width:600px;margin:0 auto;background:#FFFFFF;padding:28px 26px">${header}${body}
-    <div style="border-top:1px solid #F3F4F6;margin-top:18px;padding-top:12px;font-family:Arial;font-size:11px;color:#9CA3AF;text-align:center">Sent by Clicktide on behalf of ${escapeHtml(businessName)}.</div></div>`;
+    ${whiteLabel ? "" : `<div style="border-top:1px solid #F3F4F6;margin-top:18px;padding-top:12px;font-family:Arial;font-size:11px;color:#9CA3AF;text-align:center">Sent by Clicktide on behalf of ${escapeHtml(businessName)}.</div>`}</div>`;
 }
 
-async function sendEmail(to: string, subject: string, message: string, businessName: string, customerName: string, htmlOverride?: string) {
+async function sendEmail(to: string, subject: string, message: string, businessName: string, customerName: string, htmlOverride?: string, whiteLabel = false) {
   if (!resendApiKey) return { ok: false, detail: "RESEND_API_KEY is not configured" };
   const html = htmlOverride || `
     <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:28px;color:#111827;line-height:1.6">
       <h1 style="font-size:22px;margin:0 0 14px;color:#111827">${escapeHtml(businessName)}</h1>
       <p style="margin:0 0 18px">Hi ${escapeHtml(customerName.split(/\s+/)[0] || "there")},</p>
       <p style="margin:0 0 22px">${escapeHtml(message).replaceAll("\n", "<br>")}</p>
-      <p style="font-size:12px;color:#6B7280;margin:28px 0 0">Sent by Clicktide on behalf of ${escapeHtml(businessName)}.</p>
+      ${whiteLabel ? "" : `<p style="font-size:12px;color:#6B7280;margin:28px 0 0">Sent by Clicktide on behalf of ${escapeHtml(businessName)}.</p>`}
     </div>`;
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -308,6 +328,7 @@ Deno.serve(async (req) => {
       unhappy_customer: 0,
       missing_contact: 0,
       no_sms_consent: 0,
+      sms_budget: 0,
       send_cap: 0,
     },
   };
@@ -321,7 +342,7 @@ Deno.serve(async (req) => {
 
     const userIds = [...new Set(campaigns.map((c) => c.user_id).filter(Boolean))];
     const businesses = await rest(
-      `/rest/v1/clicktide?user_id=in.(${userIds.join(",")})&select=user_id,business_name,churn_days,stripe_subscription_status`,
+      `/rest/v1/clicktide?user_id=in.(${userIds.join(",")})&select=user_id,business_name,churn_days,stripe_subscription_status,plan`,
     ) as Business[];
     const bizByUser = new Map(businesses.map((b) => [b.user_id, b]));
     summary.businesses = userIds.length;
@@ -365,6 +386,18 @@ Deno.serve(async (req) => {
       let bizSends = 0;
       const churnDays = biz?.churn_days || 60;
       const businessName = biz?.business_name || "your favorite local business";
+      const plan = String(biz?.plan || "").toLowerCase();
+      const smsLimit = PLAN_SMS_LIMITS[plan] ?? 200;
+      const whiteLabel = plan === "scale";
+      let smsUsed = 0;
+      try {
+        const monthStart = new Date();
+        monthStart.setUTCDate(1); monthStart.setUTCHours(0, 0, 0, 0);
+        const used = await rest(
+          `/rest/v1/sms_messages?user_id=eq.${encodeURIComponent(userId)}&status=eq.sent&sent_at=gte.${monthStart.toISOString()}&select=id&limit=10000`,
+        );
+        smsUsed = Array.isArray(used) ? used.length : 0;
+      } catch (_) { /* fail open on the counter, budget check below still guards */ }
 
       for (const campaign of userCampaigns) {
         for (const customer of customers) {
@@ -434,7 +467,7 @@ Deno.serve(async (req) => {
                 ? emailTpl.subject.replaceAll("{{first_name}}", firstName).replaceAll("{{business_name}}", businessName)
                 : `A message from ${businessName}`;
               const override = emailTpl?.blocks?.length
-                ? renderTemplate(emailTpl, message, businessName, firstName)
+                ? renderTemplate(emailTpl, message, businessName, firstName, whiteLabel)
                 : undefined;
               const result = await sendEmail(
                 customer.email,
@@ -443,6 +476,7 @@ Deno.serve(async (req) => {
                 businessName,
                 customer.name || "there",
                 override,
+                whiteLabel,
               );
               if (result.ok) sentSomething = true;
               else failure = result.detail;
@@ -457,11 +491,19 @@ Deno.serve(async (req) => {
               summary.skipped.no_sms_consent++;
             } else if (!normalizePhone(customer.phone)) {
               summary.skipped.missing_contact++;
+            } else if (smsUsed >= smsLimit && (await walletBalance(userId)) < SMS_OVERAGE_PRICE) {
+              summary.skipped.sms_budget++;
             } else if (!dryRun) {
+              const smsOverage = smsUsed >= smsLimit;
               const smsBody = fillTemplate(campaign.sms_message || template, customer, businessName);
               const result = await sendSms(campaign, customer, smsBody);
-              if (result.ok) sentSomething = true;
-              else failure = result.detail;
+              if (result.ok) {
+                sentSomething = true;
+                smsUsed++;
+                if (smsOverage) {
+                  await debitWallet(userId, SMS_OVERAGE_PRICE, "SMS overage (plan limit reached)", String(campaign.id)).catch(() => {});
+                }
+              } else failure = result.detail;
               await recordSend(campaign, customer, "sms", result.ok ? "sent" : "failed", result.detail);
             } else {
               sentSomething = true;

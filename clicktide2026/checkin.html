@@ -42,11 +42,15 @@ h1{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin:
 <script>
 var FN="https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1/checkin";
 var b=new URLSearchParams(location.search).get("b")||"";
+var WL=false;
 
 (function init(){
   if(!b){fail("This check-in link is missing its code. Ask the business for a fresh QR.");return;}
   fetch(FN+"?b="+encodeURIComponent(b)).then(function(r){return r.json();}).then(function(d){
-    if(d&&d.business_name)document.getElementById("bizName").textContent="Check in at "+d.business_name;
+    if(d&&d.business_name){
+      document.getElementById("bizName").textContent="Check in at "+d.business_name;
+      if(d.white_label){WL=true;var p=document.querySelector(".power");if(p)p.style.display="none";}
+    }
     else fail("This check-in link doesn't look right. Ask the business for a fresh QR.");
   }).catch(function(){});
 })();
@@ -70,7 +74,7 @@ function go(ev){
         '<div class="done">'+(x.d.already?"✅":"🎉")+'</div>'+
         '<h1>'+(x.d.already?"Already checked in!":"You\'re checked in, "+who+"!")+'</h1>'+
         '<div class="sub">'+(x.d.already?"We counted your visit earlier today.":"Thanks for coming back to "+(x.d.business_name||"us")+". See you next time!")+'</div>'+
-        '<div class="power">Powered by <b>CLICKTIDE</b> · goclicktide.com</div>';
+        (WL?'':'<div class="power">Powered by <b>CLICKTIDE</b> · goclicktide.com</div>');
       return;
     }
     if(x.d&&x.d.error==="first_visit_needs_name"){

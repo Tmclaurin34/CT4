@@ -46,11 +46,15 @@ function normalizePhone(value: string) {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function businessName(userId: string) {
+async function businessInfo(userId: string) {
   const rows = await rest(
-    `/rest/v1/clicktide?user_id=eq.${encodeURIComponent(userId)}&select=business_name&limit=1`,
+    `/rest/v1/clicktide?user_id=eq.${encodeURIComponent(userId)}&select=business_name,plan&limit=1`,
   );
-  return Array.isArray(rows) && rows[0] ? String(rows[0].business_name || "this business") : null;
+  if (!Array.isArray(rows) || !rows[0]) return null;
+  return {
+    name: String(rows[0].business_name || "this business"),
+    whiteLabel: String(rows[0].plan || "").toLowerCase() === "scale",
+  };
 }
 
 Deno.serve(async (req) => {
@@ -62,9 +66,9 @@ Deno.serve(async (req) => {
   if (req.method === "GET") {
     const b = url.searchParams.get("b") || "";
     if (!UUID.test(b)) return json({ error: "Invalid link" }, 400);
-    const name = await businessName(b);
-    if (!name) return json({ error: "Business not found" }, 404);
-    return json({ business_name: name });
+    const info = await businessInfo(b);
+    if (!info) return json({ error: "Business not found" }, 404);
+    return json({ business_name: info.name, white_label: info.whiteLabel });
   }
 
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -78,8 +82,9 @@ Deno.serve(async (req) => {
 
   const b = String(body.b || "");
   if (!UUID.test(b)) return json({ error: "Invalid link" }, 400);
-  const bizName = await businessName(b);
-  if (!bizName) return json({ error: "Business not found" }, 404);
+  const info = await businessInfo(b);
+  if (!info) return json({ error: "Business not found" }, 404);
+  const bizName = info.name;
 
   const phone = normalizePhone(String(body.phone || ""));
   if (!phone) return json({ error: "Please enter a valid phone number" }, 400);
@@ -133,6 +138,20 @@ Deno.serve(async (req) => {
     });
     return json({ ok: true, created: true, first_name: name.split(/\s+/)[0], business_name: bizName });
   } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("PLAN_CUSTOMER_LIMIT_REACHED")) {
+      rest("/rest/v1/alerts", {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          user_id: b,
+          type: "plan_limit",
+          message: "A new customer tried to check in, but your plan's customer limit is reached. Upgrade to keep growing your list.",
+          resolved: false,
+        }),
+      }).catch(() => {});
+      return json({ error: "This business's customer list is full right now — let them know you stopped by!" }, 403);
+    }
     console.error("checkin error:", e);
     return json({ error: "Check-in failed — please try again" }, 500);
   }
