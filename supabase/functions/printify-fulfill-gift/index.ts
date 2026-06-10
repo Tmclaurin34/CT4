@@ -150,25 +150,63 @@ async function printify(path: string, init: RequestInit = {}) {
   return data;
 }
 
-async function createPrintifyOrder(body: Record<string, unknown>, address: Address) {
+// Resolve the business's saved logo (clicktide.logo_url) when the request
+// doesn't carry one.
+async function businessLogoUrl(userId: string) {
+  try {
+    const rows = await supabaseFetch(
+      `/rest/v1/clicktide?user_id=eq.${encodeURIComponent(userId)}&select=logo_url&limit=1`,
+    );
+    return Array.isArray(rows) && rows[0]?.logo_url ? String(rows[0].logo_url) : "";
+  } catch {
+    return "";
+  }
+}
+
+// Build the order line item. With a business logo we place an ad-hoc print
+// order (blueprint + provider + variant + the logo as the print file), so the
+// gift ships with the BUSINESS's branding. Without one we fall back to the
+// catalog product as designed.
+async function buildLineItem(body: Record<string, unknown>, logoUrl: string) {
+  const productId = String(body.printify_product_id || "");
+  const variantId = Number(body.printify_variant_id || 0);
+  if (!productId || !variantId) throw new AppError("Printify product and variant are required", 400);
+
+  if (logoUrl) {
+    try {
+      const rows = await supabaseFetch(
+        `/rest/v1/gift_catalog?printify_product_id=eq.${encodeURIComponent(productId)}&select=printify_blueprint_id,print_provider_id&limit=1`,
+      );
+      const row = Array.isArray(rows) ? rows[0] : null;
+      const blueprintId = Number(row?.printify_blueprint_id || 0);
+      const providerId = Number(row?.print_provider_id || 0);
+      if (blueprintId && providerId) {
+        return {
+          blueprint_id: blueprintId,
+          print_provider_id: providerId,
+          variant_id: variantId,
+          quantity: 1,
+          print_areas: { front: logoUrl },
+        };
+      }
+    } catch (_) { /* fall back to the catalog design */ }
+  }
+
+  return { product_id: productId, variant_id: variantId, quantity: 1 };
+}
+
+async function createPrintifyOrder(body: Record<string, unknown>, address: Address, logoUrl: string) {
   if (!printifyToken || !printifyShopId) {
     throw new Error("Printify is not configured");
   }
-
-  const productId = String(body.printify_product_id || "");
-  const variantId = Number(body.printify_variant_id || 0);
-  if (!productId || !variantId) throw new Error("Printify product and variant are required");
+  const lineItem = await buildLineItem(body, logoUrl);
 
   return printify(`/shops/${printifyShopId}/orders.json`, {
     method: "POST",
     body: JSON.stringify({
       external_id: String(body.campaign_id || crypto.randomUUID()),
       label: String(body.gift_name || "Clicktide gift"),
-      line_items: [{
-        product_id: productId,
-        variant_id: variantId,
-        quantity: 1,
-      }],
+      line_items: [lineItem],
       shipping_method: 1,
       send_shipping_notification: false,
       address_to: address,
@@ -205,6 +243,9 @@ Deno.serve(async (req) => {
     const address = normalizeAddress(body.address, customerName, customerEmail);
     const giftCost = dollars(body.gift_cost);
 
+    // Business branding: request logo wins, then the saved profile logo.
+    const logoUrl = String(body.logo_url || "") || await businessLogoUrl(userId);
+
     if (giftCost <= 0) throw new AppError("Gift cost is required", 400);
     const startingBalance = await walletBalance(userId);
     if (startingBalance < giftCost) throw new AppError("Insufficient gift wallet balance", 402);
@@ -212,7 +253,7 @@ Deno.serve(async (req) => {
     const newBalance = await debitWallet(userId, giftCost, `Gift sent: ${giftName}`, campaignId);
     let order: Record<string, unknown>;
     try {
-      order = await createPrintifyOrder(body, address);
+      order = await createPrintifyOrder(body, address, logoUrl);
     } catch (error) {
       await creditWallet(userId, giftCost, error instanceof Error ? error.message : "Printify order failed");
       throw error;
@@ -237,6 +278,7 @@ Deno.serve(async (req) => {
       shipment,
       printify_order_id: order.id || null,
       wallet_balance: newBalance,
+      branded_with: logoUrl ? "business_logo" : "catalog_design",
       status: "processing",
     });
   } catch (error) {
