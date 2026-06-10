@@ -925,7 +925,9 @@ let dpg="overview",cmT="message_only",cmN="",cmTr="",cmGN="",cmGC="",cmG=null,cm
           if(u&&u.id){
             S={token:at,user:u};
             localStorage.setItem("ct",at);localStorage.setItem("cu",JSON.stringify(u));
-            ensureBizProfile(at,u);
+            ensureBizProfile(at,u).then(function(){
+              fetch(FN+"/send-welcome-email",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+at},body:"{}"}).catch(function(){});
+            });
             obAwaitConfirm=false;scr="onboard";obS=2;R();
           }
         }).catch(function(){});
