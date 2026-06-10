@@ -834,7 +834,7 @@ function showMindbodyActivationResult(d){
 
 
 let ntIdx=0,scr="land";
-let obS=0,obCat=null,obB=null,obP=null,obC=false,obG=null,obT=[],obE="",obPw="",obN="",obNm="",obPh="",obBph="",obBem="",obAddr="",obAddr2="",obCity="",obState="",obZip="",obPl="Growth",obOther="",obImport=null,obGiftSearch="",obCustomGift=null,obLogoFile=null,obLogoUrl=null,obLogoName="",obLogoStorageUrl=null,obLogoQuality=null,obDy=null;
+let obS=0,obCat=null,obB=null,obP=null,obC=false,obG=null,obT=[],obE="",obPw="",obN="",obNm="",obPh="",obBph="",obBem="",obAddr="",obAddr2="",obAddrOverride=false,obCity="",obState="",obZip="",obPl="Growth",obOther="",obImport=null,obGiftSearch="",obCustomGift=null,obLogoFile=null,obLogoUrl=null,obLogoName="",obLogoStorageUrl=null,obLogoQuality=null,obDy=null;
 let riS=0,riB=null,riCatSel=null,riOther="",riSize="small",riFreqDays=15,riRiskMode="miss2",riCu=100,riAv=60,riCh=.20,riDy=30,riGf=22,riPl=99,riVf=2,riLm=12;
 let dpg="overview",cmT="message_only",cmN="",cmTr="",cmGN="",cmGC="",cmG=null,cmPf="Square",cmCh="email",cmM="",cmTi=0,showCM=false,cmProt={delay:7,cancelOnRefund:true,minSpend:0,cooldown:90,productName:"",minOrderVal:0};
 
@@ -1754,6 +1754,18 @@ async function oSignup(){
   const btn=document.getElementById("oSub");
   const v=validSignup({name:nm,email:e,phone:ph,pw:p,biz:n,bphone:bph,bemail:bem,address:addr,city:city,state:state,zip:zip}); if(v){err.textContent=v;err.style.display="block";return;}
   if(!document.getElementById("oAgree")?.checked){err.textContent="Please agree to the Terms, Privacy Policy, Billing Policy, and service authorization.";err.style.display="block";return;}
+  if(!obAddrOverride){
+    btn.textContent="Verifying address...";btn.disabled=true;err.style.display="none";
+    try{
+      const vr=await fetch(`${FN}/validate-address`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({address:addr,city:city,state:state,zip:zip})});
+      const vd=await vr.json().catch(()=>({}));
+      if(vd&&vd.valid===false){
+        obAddrOverride=true;
+        err.textContent="We couldn't verify this address. Double-check the street, city, state, and ZIP. If it's definitely correct, click Create account again to continue.";
+        err.style.display="block";btn.disabled=false;btn.textContent="Create account →";return;
+      }
+    }catch(_){}
+  }
   btn.textContent="Creating account...";btn.disabled=true;err.style.display="none";
   try{
     const meta={business_name:n,contact_name:nm,phone:ph,business_phone:bph,business_email:bem,address:addr,city:city,state:state,zip:zip,plan:obPl,churn_days:obDy||60,business_type:obB||obCat||"other",legal_terms_accepted_at:new Date().toISOString(),legal_terms_version:"2026-06-08",legal_authorized_services:true};
