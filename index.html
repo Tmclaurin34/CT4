@@ -906,7 +906,7 @@ function showMindbodyActivationResult(d){
 
 
 let ntIdx=0,scr="land";
-let obS=0,obCat=null,obB=null,obP=null,obC=false,obG=null,obT=[],obE="",obPw="",obN="",obNm="",obPh="",obBph="",obBem="",obAddr="",obAddr2="",obAddrOverride=false,obCity="",obState="",obZip="",obPl="Growth",obOther="",obImport=null,obGiftSearch="",obCustomGift=null,obLogoFile=null,obLogoUrl=null,obLogoName="",obLogoStorageUrl=null,obLogoQuality=null,obDy=null;
+let obS=0,obCat=null,obB=null,obP=null,obC=false,obG=null,obT=[],obE="",obPw="",obN="",obNm="",obPh="",obBph="",obBem="",obAddr="",obAddr2="",obAddrOverride=false,obAwaitConfirm=false,obCity="",obState="",obZip="",obPl="Growth",obOther="",obImport=null,obGiftSearch="",obCustomGift=null,obLogoFile=null,obLogoUrl=null,obLogoName="",obLogoStorageUrl=null,obLogoQuality=null,obDy=null;
 let riS=0,riB=null,riCatSel=null,riOther="",riSize="small",riFreqDays=15,riRiskMode="miss2",riCu=100,riAv=60,riCh=.20,riDy=30,riGf=22,riPl=99,riVf=2,riLm=12;
 let dpg="overview",cmT="message_only",cmN="",cmTr="",cmGN="",cmGC="",cmG=null,cmPf="Square",cmCh="email",cmM="",cmTi=0,cmPcDesign="bold",cmAiOpts=[],showCM=false,cmProt={delay:7,cancelOnRefund:true,minSpend:0,cooldown:90,productName:"",minOrderVal:0};
 
@@ -914,6 +914,24 @@ let dpg="overview",cmT="message_only",cmN="",cmTr="",cmGN="",cmGC="",cmG=null,cm
 // Edge functions redirect to: goclicktide.com?ct_platform=square&ct_merchant=xxx&ct_name=Yyy
 // or on error: goclicktide.com?ct_error=...
 (function handleOAuthReturn(){
+  // Email-confirmation link return: #access_token=...&type=signup
+  if(window.location.hash&&window.location.hash.indexOf("access_token=")>-1){
+    try{
+      var hp=new URLSearchParams(window.location.hash.substring(1));
+      var at=hp.get("access_token");
+      if(at){
+        history.replaceState({},"",window.location.pathname);
+        fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+at}}).then(function(r){return r.json();}).then(function(u){
+          if(u&&u.id){
+            S={token:at,user:u};
+            localStorage.setItem("ct",at);localStorage.setItem("cu",JSON.stringify(u));
+            ensureBizProfile(at,u);
+            obAwaitConfirm=false;scr="onboard";obS=2;R();
+          }
+        }).catch(function(){});
+      }
+    }catch(e){}
+  }
   const params=new URLSearchParams(window.location.search);
 
   // Stripe redirect
@@ -1293,6 +1311,7 @@ function onboard(){
     "<div data-imp='skip' onclick='setImport(this.dataset.imp)' style='display:flex;align-items:center;gap:12px;padding:14px;border:2px solid "+(obImport==="skip"?"rgba(255,255,255,.3)":"rgba(255,255,255,.07)")+";border-radius:12px;cursor:pointer'><span style='font-size:22px'>⏭️</span><div><div style='font-size:13px;font-weight:700'>Skip for now</div><div style='font-size:11px;color:rgba(240,244,255,.45);margin-top:1px'>Start fresh -- add customers manually or import later from your dashboard</div></div></div>"+
     "</div><button class='btn-full btn-gold' "+(obImport?"":"disabled style='opacity:.4;cursor:not-allowed'")+" onclick='oNxt()'>"+( obImport==="csv"?"Continue →":obImport==="platform"?"Sync & Continue →":"Skip & Go Live →")+"</button>";
   }
+  else if(obS===1&&obAwaitConfirm)c=`<div style="text-align:center"><div style="font-size:46px;margin-bottom:12px">📬</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">Check your email!</h2><p style="color:rgba(240,244,255,.5);font-size:14px;line-height:1.8;margin-bottom:20px">We sent a link to <strong style="color:#F0F4FF">${obE}</strong>.<br/>Click it to activate your account and pick up right where you left off.</p><button class="btn btn-ghost" style="padding:10px 18px" onclick="resendConfirm(this)">Didn't get it? Resend email</button><div style="font-size:11px;color:rgba(240,244,255,.35);margin-top:14px">Check spam too — it comes from support@goclicktide.com</div></div>`;
   else if(obS===1)c=`<div style="font-size:30px;margin-bottom:6px">👤</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Create your account</h2><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:16px">Create your login — then connect your platform. Fields marked <span style="color:#FF4D6D">*</span> are required.</p><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin-bottom:8px">Your details</div><div class="fg"><label class="fl">Your Name <span style="color:#FF4D6D">*</span></label><input class="fi" id="oNm" value="${obNm}" placeholder="Jane Smith" oninput="obNm=this.value"/></div><div class="fg"><label class="fl">Personal Email (your login) <span style="color:#FF4D6D">*</span></label><input class="fi" id="oE" value="${obE}" type="email" placeholder="you@email.com" oninput="obE=this.value"/></div><div class="fg"><label class="fl">Password <span style="color:#FF4D6D">*</span></label><input class="fi" id="oPw" value="${obPw}" type="password" placeholder="••••••••" oninput="obPw=this.value"/></div><div class="fg"><label class="fl">Personal Phone <span style="color:#FF4D6D">*</span></label><input class="fi" id="oPh" value="${obPh}" type="tel" placeholder="(555) 555-5555" oninput="obPh=this.value"/></div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin:14px 0 8px">Business details</div><div class="fg"><label class="fl">Business Name <span style="color:#FF4D6D">*</span></label><input class="fi" id="oN" value="${obN}" placeholder="${B?.l||"Your Business"}" oninput="obN=this.value"/></div><div class="fg"><label class="fl">Business Phone <span style="color:#FF4D6D">*</span></label><input class="fi" id="oBph" value="${obBph}" type="tel" placeholder="(555) 555-5555" oninput="obBph=this.value"/></div><div class="fg"><label class="fl">Business Email <span style="color:#FF4D6D">*</span></label><input class="fi" id="oBem" value="${obBem}" type="email" placeholder="hello@business.com" oninput="obBem=this.value"/></div><div class="fg"><label class="fl">Street Address <span style="color:#FF4D6D">*</span></label><input class="fi" id="oAddr" value="${obAddr}" placeholder="123 Main St" oninput="obAddr=this.value"/></div><div class="fg"><label class="fl">Apt / Suite / Unit <span style="opacity:.5;text-transform:none">(optional)</span></label><input class="fi" id="oAddr2" value="${obAddr2}" placeholder="Apt 4B" oninput="obAddr2=this.value"/></div><div class="fg" style="display:flex;gap:8px"><div style="flex:2"><label class="fl">City <span style="color:#FF4D6D">*</span></label><input class="fi" id="oCity" value="${obCity}" placeholder="City" oninput="obCity=this.value"/></div><div style="flex:1"><label class="fl">State <span style="color:#FF4D6D">*</span></label><input class="fi" id="oState" value="${obState}" placeholder="NY" oninput="obState=this.value"/></div><div style="flex:1"><label class="fl">ZIP <span style="color:#FF4D6D">*</span></label><input class="fi" id="oZip" value="${obZip}" placeholder="11542" oninput="obZip=this.value"/></div></div><div class="fg"><label class="fl">Choose Your Plan</label>
 <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:4px">
   ${[{v:"Local",p:"$29/mo",d:"200 customers/mo",f:["Messages included","Promo codes included","Physical gifts from wallet","Square & Clover"]},{v:"Growth",p:"$99/mo",d:"1,000 customers/mo",pop:true,f:["Messages included","Promo codes included","Physical gifts from wallet","All 12 integrations","Retention analytics"]},{v:"Scale",p:"$299/mo",d:"Unlimited customers",f:["Messages included","Promo codes included","Physical gifts from wallet","AI triggers","White-label"]}].map(pl=>`
@@ -1899,10 +1918,13 @@ async function oSignup(){
       await ensureBizProfile(r.access_token,S.user,{...meta,email:e});
       await finishPendingMindbodyActivation();
       sessionStorage.setItem("ct_justonboarded","1");
-    }
-    // 2. Continue to platform connect; payment happens after triggers (oPay)
-    localStorage.setItem("ct_plan",obPl);
-    obS=2;R();
+      // 2. Continue to platform connect; payment happens after triggers (oPay)
+      localStorage.setItem("ct_plan",obPl);
+      obS=2;R();
+    } else {
+      // Email confirmation required — show the check-your-email screen
+      localStorage.setItem("ct_plan",obPl);
+      obAwaitConfirm=true;R();
   }catch(ex){
     err.textContent=ex.message;err.style.display="block";
     btn.disabled=false;btn.textContent="Create account →";
@@ -3152,6 +3174,41 @@ async function emSave(){
     if(st){st.textContent=r.ok?"Template saved ✓ — campaign emails will use this design.":"Couldn't save — please try again.";st.style.color=r.ok?"#22C55E":"#FF6B6B";}
   }catch(e){if(st){st.textContent="Couldn't save: "+e.message;st.style.color="#FF6B6B";}}
 }
+</script>
+<script>
+// ---- Clicktide support chat (recorded) ----
+(function(){
+  var sid=localStorage.getItem("ct_chat_sid");
+  if(!sid){sid="cs_"+Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem("ct_chat_sid",sid);}
+  var open=false,msgs=[];
+  var btn=document.createElement("div");
+  btn.innerHTML='💬';
+  btn.style.cssText="position:fixed;right:18px;bottom:18px;width:52px;height:52px;border-radius:50%;background:#FFD166;color:#080D18;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;z-index:900;box-shadow:0 8px 28px rgba(0,0,0,.45)";
+  var panel=document.createElement("div");
+  panel.style.cssText="position:fixed;right:18px;bottom:80px;width:min(330px,calc(100vw - 36px));height:430px;background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:16px;display:none;flex-direction:column;z-index:901;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden";
+  panel.innerHTML='<div style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);font-family:Inter,sans-serif"><div style="font-size:13px;font-weight:800;color:#F0F4FF">Clicktide — How can we help?</div><div style="font-size:9px;color:rgba(240,244,255,.4);margin-top:2px">This chat is recorded to improve our service.</div></div><div id="ctChatLog" style="flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px"></div><div style="display:flex;gap:8px;padding:10px;border-top:1px solid rgba(255,255,255,.08)"><input id="ctChatIn" placeholder="Ask about plans, gifts, anything..." style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:#101828;color:#F0F4FF;font-size:12px;outline:none;font-family:Inter,sans-serif"/><button id="ctChatSend" style="padding:10px 14px;border-radius:10px;border:none;background:#FFD166;color:#080D18;font-weight:700;font-size:12px;cursor:pointer;font-family:Inter,sans-serif">Send</button></div>';
+  document.body.appendChild(btn);document.body.appendChild(panel);
+  function draw(){
+    var log=document.getElementById("ctChatLog");if(!log)return;
+    log.innerHTML=msgs.length?msgs.map(function(m){
+      return '<div style="max-width:85%;padding:8px 11px;border-radius:12px;font-size:12px;line-height:1.55;font-family:Inter,sans-serif;'+(m.r==="user"?"align-self:flex-end;background:#FFD166;color:#080D18":"align-self:flex-start;background:#101828;color:#F0F4FF;border:1px solid rgba(255,255,255,.07)")+'">'+m.t.replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];})+'</div>';
+    }).join(""):'<div style="font-size:12px;color:rgba(240,244,255,.45);font-family:Inter,sans-serif;line-height:1.6">Hi there! Ask me anything about Clicktide — plans, gifts, postcards, how it all works.</div>';
+    log.scrollTop=log.scrollHeight;
+  }
+  function send(){
+    var inp=document.getElementById("ctChatIn");
+    var t=(inp.value||"").trim();if(!t)return;
+    inp.value="";msgs.push({r:"user",t:t});msgs.push({r:"assistant",t:"..."});draw();
+    var hdrs={"Content-Type":"application/json"};
+    try{if(typeof S!=="undefined"&&S&&S.token)hdrs.Authorization="Bearer "+S.token;}catch(e){}
+    fetch((typeof FN!=="undefined"?FN:"https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1")+"/support-chat",{method:"POST",headers:hdrs,body:JSON.stringify({session_id:sid,message:t})})
+      .then(function(r){return r.json();}).then(function(d){msgs[msgs.length-1].t=(d&&d.reply)||"Hmm, try again?";draw();})
+      .catch(function(){msgs[msgs.length-1].t="Connection hiccup — try again.";draw();});
+  }
+  btn.onclick=function(){open=!open;panel.style.display=open?"flex":"none";if(open){draw();var i=document.getElementById("ctChatIn");if(i)i.focus();}};
+  panel.addEventListener("click",function(e){if(e.target&&e.target.id==="ctChatSend")send();});
+  panel.addEventListener("keydown",function(e){if(e.key==="Enter"&&e.target&&e.target.id==="ctChatIn")send();});
+})();
 </script>
 </body>
 </html>
