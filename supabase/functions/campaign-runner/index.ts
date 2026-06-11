@@ -1,7 +1,10 @@
-// Clicktide campaign engine. v15
+// Clicktide campaign engine. v16
 // Hourly via pg_cron (or staff admin). Customer-facing emails ship in a branded
-// shell (logo or wordmark, bulletproof-centered) and cite the customer's actual
-// last-visit date/time (business-state timezone) so they read as real, not spam.
+// shell and cite the customer's real last visit. Physical gifts respect the
+// business's gift_auto_send toggle: ON = order placed automatically through
+// printify-fulfill-gift (internal cron-key call, wallet-funded); OFF (default)
+// = queued as an alert for owner review. Auto-send failures fall back to the
+// review queue so no gift is ever silently lost.
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -42,6 +45,8 @@ type Campaign = {
   cooldown_days?: number;
   status?: string;
   postcard_design?: string;
+  printify_product_id?: string;
+  printify_variant_id?: number;
 };
 
 type Customer = {
@@ -75,6 +80,7 @@ type Business = {
   plan?: string;
   logo_url?: string;
   state?: string;
+  gift_auto_send?: boolean;
 };
 
 function json(body: unknown, status = 200) {
@@ -400,6 +406,38 @@ async function queuePhysicalGiftAlert(campaign: Campaign, customer: Customer, ha
 // Ask the customer directly for their mailing address (tokenized link), at most
 // once every ADDRESS_ASK_COOLDOWN_DAYS. Texts first (with consent), else a
 // branded email with the business logo + an explicit no-payment-details note.
+// Auto-send a physical gift through printify-fulfill-gift (internal call).
+// Returns true when the order was placed; false means fall back to review.
+async function autoSendGift(campaign: Campaign, customer: Customer, internalKey: string) {
+  try {
+    const r = await fetch(`${supabaseUrl}/functions/v1/printify-fulfill-gift`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-clicktide-cron-key": internalKey },
+      body: JSON.stringify({
+        user_id: campaign.user_id,
+        customer_id: customer.id,
+        customer_name: customer.name || "Customer",
+        customer_email: customer.email || "",
+        gift_name: campaign.gift_name || "Gift",
+        gift_cost: Number(campaign.gift_cost) || 0,
+        campaign_id: String(campaign.id),
+        printify_product_id: campaign.printify_product_id,
+        printify_variant_id: campaign.printify_variant_id,
+        address: { address1: customer.address, city: customer.city, region: customer.state, zip: customer.zip, country: "US" },
+      }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) {
+      await recordSend(campaign, customer, "gift", "sent", `auto-sent: ${String(d.printify_order_id || "")}`);
+      return true;
+    }
+    await recordSend(campaign, customer, "gift", "failed", `auto-send: ${String(d?.error || "failed")}`);
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 async function maybeRequestAddress(campaign: Campaign, customer: Customer, businessName: string, whiteLabel: boolean, logoUrl = "", brandColor = "#0B62D6", lastVisitText = "") {
   const lastAsk = customer.address_requested_at ? Date.parse(customer.address_requested_at) : 0;
   if (lastAsk && Date.now() - lastAsk < ADDRESS_ASK_COOLDOWN_DAYS * 86400000) return { asked: false, reason: "recently_asked" };
@@ -446,7 +484,8 @@ Deno.serve(async (req) => {
   if (!serviceRoleKey) return json({ error: "Server secrets are not configured" }, 500);
 
   const providedKey = req.headers.get("x-clicktide-cron-key") || "";
-  const validKey = providedKey && providedKey === await expectedCronKey();
+  const internalKey = await expectedCronKey();
+  const validKey = !!providedKey && providedKey === internalKey;
   if (!validKey && !(await isStaffAdmin(req))) {
     return json({ error: "Not authorized to run campaigns" }, 401);
   }
@@ -461,6 +500,7 @@ Deno.serve(async (req) => {
     evaluated: 0,
     sent: 0,
     queued_physical: 0,
+    gifts_auto_sent: 0,
     address_requests: 0,
     failed: 0,
     skipped: {
@@ -487,7 +527,7 @@ Deno.serve(async (req) => {
 
     const userIds = [...new Set(campaigns.map((c) => c.user_id).filter(Boolean))];
     const businesses = await rest(
-      `/rest/v1/clicktide?user_id=in.(${userIds.join(",")})&select=user_id,business_name,churn_days,stripe_subscription_status,plan,logo_url,state`,
+      `/rest/v1/clicktide?user_id=in.(${userIds.join(",")})&select=user_id,business_name,churn_days,stripe_subscription_status,plan,logo_url,state,gift_auto_send`,
     ) as Business[];
     const bizByUser = new Map(businesses.map((b) => [b.user_id, b]));
     summary.businesses = userIds.length;
@@ -532,6 +572,7 @@ Deno.serve(async (req) => {
       const logoUrl = String(biz?.logo_url || "");
       const brandColor = String(emailTpl?.brand?.color || "#0B62D6");
       const bizState = String(biz?.state || "");
+      const giftAutoSend = !!biz?.gift_auto_send;
       const plan = String(biz?.plan || "").toLowerCase();
       const smsLimit = PLAN_SMS_LIMITS[plan] ?? 200;
       const whiteLabel = plan === "scale";
@@ -586,7 +627,15 @@ Deno.serve(async (req) => {
           const lastVisitText = fmtLastVisit(customer.last_visit_at || customer.last_order_at, bizState);
 
           if (campaign.campaign_type === "physical_gift") {
+            const canAuto = giftAutoSend && hasAddress && !!campaign.printify_product_id && !!campaign.printify_variant_id && (Number(campaign.gift_cost) || 0) > 0;
             if (!dryRun) {
+              if (canAuto && await autoSendGift(campaign, customer, internalKey)) {
+                lastSend.set(key, Date.now());
+                summary.gifts_auto_sent++;
+                summary.sent++;
+                bizSends++;
+                continue;
+              }
               if (!hasAddress) {
                 const ask = await maybeRequestAddress(campaign, customer, businessName, whiteLabel, logoUrl, brandColor, lastVisitText);
                 if (ask.asked) summary.address_requests++;

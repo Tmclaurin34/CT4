@@ -5,7 +5,7 @@ const printifyShopId = Deno.env.get("PRINTIFY_SHOP_ID") || "";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-clicktide-cron-key",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -76,6 +76,19 @@ async function supabaseFetch(path: string, init: RequestInit = {}) {
     throw new AppError(message, response.status);
   }
   return data;
+}
+
+async function expectedCronKey() {
+  try {
+    const data = await supabaseFetch("/rest/v1/rpc/clicktide_internal_key", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    return String(data || "");
+  } catch {
+    return "";
+  }
 }
 
 async function authedUserId(req: Request) {
@@ -230,11 +243,18 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json() as Record<string, unknown>;
-    const authUserId = await authedUserId(req);
+
+    // Auth: the business owner's JWT, or the internal cron key (campaign-runner
+    // auto-send when the business has gift_auto_send enabled).
+    const cronKey = req.headers.get("x-clicktide-cron-key") || "";
+    const isInternal = !!cronKey && cronKey === await expectedCronKey();
+    const authUserId = isInternal ? "" : await authedUserId(req);
     const userId = String(body.user_id || body.merchant_id || authUserId || "");
     if (!userId) throw new AppError("Business user id is required", 400);
-    if (!authUserId) throw new AppError("Login is required to fulfill gifts", 401);
-    if (authUserId !== userId) throw new AppError("Not allowed to fulfill gifts for this business", 403);
+    if (!isInternal) {
+      if (!authUserId) throw new AppError("Login is required to fulfill gifts", 401);
+      if (authUserId !== userId) throw new AppError("Not allowed to fulfill gifts for this business", 403);
+    }
 
     const customerName = String(body.customer_name || "Customer");
     const customerEmail = String(body.customer_email || "");
@@ -264,6 +284,7 @@ Deno.serve(async (req) => {
       merchant_id: userId,
       customer_name: customerName,
       customer_email: customerEmail || null,
+      customer_id: body.customer_id ? Number(body.customer_id) : null,
       address,
       gift: giftName,
       campaign: campaignId,

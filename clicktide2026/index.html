@@ -2412,6 +2412,7 @@ async function dLoad(){
           </div>
           <span style="font-size:10px;font-weight:700;color:#22C55E">Connected</span>
         </div>
+        <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">🎁</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Physical gift sending</div><div style="font-size:11px;color:rgba(240,244,255,.45)">${bizLock?.gift_auto_send?"Auto-send — gifts ship automatically, paid from your wallet":"Approval required — you review each gift before it ships"}</div></div><button class="btn ${bizLock?.gift_auto_send?"btn-gold":"btn-ghost"}" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="tGiftAuto(this)">${bizLock?.gift_auto_send?"Auto-send: ON":"Auto-send: OFF"}</button></div>
         <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">📧</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Email delivery</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Managed by Clicktide for campaign messages</div></div><span style="font-size:10px;color:#FFD166;font-weight:700">Back office</span></div>
         <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:12px;font-weight:800;color:#4DA6FF;width:24px;text-align:center">SMS</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">SMS delivery</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Twilio sends texts only to opted-in customers</div></div><span style="font-size:10px;color:#FFD166;font-weight:700">Back office</span></div>
       `;
@@ -2453,6 +2454,17 @@ async function dLoad(){
   }catch(ex){if(el)el.innerHTML=`<div class="empty"><div style="font-size:36px;margin-bottom:10px">⚠️</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">Error</div><div style="font-size:13px;color:rgba(240,244,255,.45)">${ex.message}</div></div>`;}
 }
 
+async function tGiftAuto(btn){
+  var next=!(bizLock&&bizLock.gift_auto_send);
+  if(next&&!confirm("Turn ON auto-send?\n\nGifts will ship automatically when a campaign matches a customer (paid from your gift wallet). You can turn this off anytime."))return;
+  if(btn){btn.disabled=true;btn.textContent="Saving...";}
+  try{
+    var r=await fetch(SU+"/rest/v1/clicktide?user_id=eq."+myId(),{method:"PATCH",headers:Object.assign({},h(S?.token||SK),{Prefer:"return=minimal"}),body:JSON.stringify({gift_auto_send:next})});
+    if(!r.ok)throw new Error("Could not save the setting");
+    if(bizLock)bizLock.gift_auto_send=next;
+  }catch(e){alert(e.message);}
+  dLoad();
+}
 async function tCmp(id,st){if(st!=="active"&&!await requirePaidAction())return;await db.upd("campaigns",id,{status:st==="active"?"paused":"active"},S?.token||SK);dLoad();}
 async function dCmp(id){if(!confirm("Delete?"))return;await db.del("campaigns",id,S?.token||SK);dLoad();}
 async function dOut(){try{if(S?.token)await au.out(S.token);}catch{}S=null;localStorage.removeItem("ct");localStorage.removeItem("cu");go("land");}
