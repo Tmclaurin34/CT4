@@ -1,0 +1,66 @@
+name: launch-hardening checks
+on: [push, pull_request]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Secret scan
+        run: |
+          set -e
+          # Known live-credential shapes. Add patterns as providers are added.
+          PATTERNS='sk_live_[A-Za-z0-9]{20,}|re_[A-Za-z0-9]{20,}|sbp_[A-Za-z0-9]{20,}|cfut_[A-Za-z0-9]{20,}|AKIA[A-Z0-9]{16}|AIza[A-Za-z0-9_-]{30,}|live_[a-f0-9]{30,}|eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{20,}'
+          if grep -rInE "$PATTERNS" --include='*.html' --include='*.ts' --include='*.js' --include='*.sql' --include='*.md' . ; then
+            echo '::error::Possible live secret committed. Rotate it and remove from history.'
+            exit 1
+          fi
+          echo "No secret patterns found."
+
+      - name: HTML inline-script parse check
+        run: |
+          set -e
+          node -e '
+            const fs = require("fs");
+            const files = ["index.html","clicktide.html","clicktide2026/index.html","clicktide2026/clicktide.html","gift-address.html"].filter(f=>fs.existsSync(f));
+            let bad = 0;
+            for (const f of files) {
+              const html = fs.readFileSync(f, "utf8");
+              const re = /<script([^>]*)>([\s\S]*?)<\/script>/g;
+              let m, i = 0;
+              while ((m = re.exec(html))) {
+                if (/src=/.test(m[1]) || /application\/ld\+json/.test(m[1])) {
+                  if (/application\/ld\+json/.test(m[1])) { try { JSON.parse(m[2]); } catch (e) { console.error(`::error file=${f}::invalid JSON-LD: ${e.message}`); bad++; } }
+                  continue;
+                }
+                i++;
+                try { new Function(m[2]); } catch (e) { console.error(`::error file=${f}::script #${i} parse error: ${e.message}`); bad++; }
+              }
+              console.log(`${f}: ${i} inline scripts parsed`);
+            }
+            process.exit(bad ? 1 : 0);
+          '
+
+      - name: SECURITY DEFINER functions must have revokes
+        run: |
+          set -e
+          MIGDIR=supabase/migrations
+          [ -d "$MIGDIR" ] || { echo "no migrations dir"; exit 0; }
+          MISSING=0
+          # every security-definer function defined in migrations must have a
+          # matching revoke somewhere in migrations (or be an RLS/staff helper).
+          ALLOWLIST='clicktide_can_access_client|clicktide_can_manage_fulfillment|clicktide_is_staff'
+          for fn in $(grep -rhoiE 'function public\.[a-z0-9_]+' $MIGDIR/*.sql | sed 's/.*public\.//' | sort -u); do
+            if grep -rqiE "SECURITY DEFINER" $MIGDIR/*.sql && grep -rqiE "function public\.$fn\b[^;]*" $MIGDIR/*.sql; then
+              if grep -rhiA3 "function public\.$fn\b" $MIGDIR/*.sql | grep -qi 'SECURITY DEFINER' || grep -rhozPi "(?s)function public\.$fn\(.*?SECURITY DEFINER" $MIGDIR/*.sql >/dev/null 2>&1; then
+                if echo "$fn" | grep -qE "$ALLOWLIST"; then continue; fi
+                if ! grep -rqi "revoke.*function public\.$fn" $MIGDIR/*.sql; then
+                  echo "::error::SECURITY DEFINER function public.$fn has no matching revoke in migrations"
+                  MISSING=1
+                fi
+              fi
+            fi
+          done
+          [ $MISSING -eq 0 ] && echo "All security-definer functions have revokes (or are allowlisted helpers)."
+          exit $MISSING

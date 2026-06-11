@@ -36,3 +36,7 @@ grant execute on function public.clicktide_debit_gift_wallet(uuid, numeric, text
 
 revoke all on function public.clicktide_wallet_balance(uuid) from public, anon, authenticated;
 grant execute on function public.clicktide_wallet_balance(uuid) to service_role;
+
+-- Trigger function: not directly callable anyway (returns trigger), but
+-- revoked for defense in depth — keeps the SECURITY DEFINER audit clean.
+revoke all on function public.enforce_customer_cap() from public, anon, authenticated;
