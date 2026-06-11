@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Where should we send your gift?</title>
+  <meta name="robots" content="noindex"/>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+  <meta name="theme-color" content="#080d18"/>
+  <style>
+    body{margin:0;background:#080d18;color:#f0f4ff;font-family:Inter,Arial,sans-serif;line-height:1.6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}
+    .card{max-width:430px;width:100%;background:#0d1424;border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:30px 26px;text-align:center}
+    .gift{font-size:44px;margin-bottom:10px}
+    h1{font-size:22px;line-height:1.3;margin:0 0 8px}
+    p{color:rgba(240,244,255,.65);font-size:14px;margin:0 0 20px}
+    .fl{display:block;text-align:left;font-size:12px;font-weight:700;color:rgba(240,244,255,.6);margin:12px 0 5px;text-transform:uppercase;letter-spacing:.5px}
+    input{width:100%;box-sizing:border-box;background:#101828;border:1px solid rgba(255,255,255,.14);border-radius:10px;color:#f0f4ff;font-size:16px;padding:12px 14px;outline:none}
+    input:focus{border-color:#4da6ff}
+    .row{display:flex;gap:10px}
+    .row>div{flex:1}
+    button{width:100%;margin-top:20px;background:#e9b949;color:#080d18;font-weight:700;font-size:16px;border:none;border-radius:12px;padding:14px;cursor:pointer}
+    button:disabled{opacity:.6}
+    .err{color:#ff4d6d;font-size:13px;margin-top:12px;display:none}
+    .muted{font-size:11px;color:rgba(240,244,255,.35);margin-top:16px}
+    .hide{display:none}
+  </style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="gift">🎁</div>
+  <h1 id="hd">One moment…</h1>
+  <p id="sub"></p>
+  <form id="f" class="hide" onsubmit="return false">
+    <label class="fl">Street address</label>
+    <input id="addr" autocomplete="street-address" placeholder="123 Main St, Apt 2"/>
+    <label class="fl">City</label>
+    <input id="city" autocomplete="address-level2" placeholder="Brooklyn"/>
+    <div class="row">
+      <div><label class="fl">State</label><input id="state" autocomplete="address-level1" placeholder="NY" maxlength="14"/></div>
+      <div><label class="fl">ZIP</label><input id="zip" autocomplete="postal-code" placeholder="11201" inputmode="numeric" maxlength="10"/></div>
+    </div>
+    <button id="go" onclick="send()">Send my gift here →</button>
+    <div class="err" id="err"></div>
+  </form>
+  <div class="muted">Your address is only used for mail from this business. Powered by Clicktide.</div>
+</div>
+<script>
+var API="https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1/gift-address";
+var T=new URLSearchParams(location.search).get("t")||"";
+var hd=document.getElementById("hd"),sub=document.getElementById("sub"),f=document.getElementById("f"),err=document.getElementById("err");
+function fail(msg){hd.textContent="Hmm, that link didn't work";sub.textContent=msg||"Please use the latest link we sent you, or just reply to the message and we'll sort it out.";}
+function val(id){return document.getElementById(id).value.trim();}
+async function load(){
+  if(!T){fail();return;}
+  try{
+    var r=await fetch(API+"?t="+encodeURIComponent(T));
+    var d=await r.json();
+    if(!r.ok||!d.ok){fail(d&&d.error);return;}
+    if(d.has_address){hd.textContent="You're all set, "+d.first_name+"!";sub.textContent="We already have your mailing address on file. "+d.business_name+"'s gift is on its way — keep an eye on your mailbox.";return;}
+    hd.textContent=d.business_name+" has something to mail you, "+d.first_name+"!";
+    sub.textContent="Pop in your mailing address below and we'll get it on its way. Takes 20 seconds.";
+    f.classList.remove("hide");
+  }catch(e){fail();}
+}
+async function send(){
+  var b=document.getElementById("go");err.style.display="none";
+  if(!val("addr")||!val("city")||!val("state")||!val("zip")){err.textContent="Please fill in every field.";err.style.display="block";return;}
+  b.disabled=true;b.textContent="Saving…";
+  try{
+    var r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({t:T,address:val("addr"),city:val("city"),state:val("state"),zip:val("zip")})});
+    var d=await r.json();
+    if(!r.ok||!d.ok){err.textContent=(d&&d.error)||"Something went wrong — please try again.";err.style.display="block";b.disabled=false;b.textContent="Send my gift here →";return;}
+    f.classList.add("hide");
+    hd.textContent="Perfect — it's on its way! 🎉";
+    sub.textContent="Keep an eye on your mailbox. (You can close this page.)";
+  }catch(e){err.textContent="Network hiccup — please try again.";err.style.display="block";b.disabled=false;b.textContent="Send my gift here →";}
+}
+load();
+</script>
+</body>
+</html>

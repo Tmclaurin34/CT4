@@ -3,21 +3,21 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Clicktide -- Send a gift. Start a tide.</title>
-<meta name="description" content="Clicktide automatically thanks and wins back your customers with branded gifts, mailed postcards, emails, and texts — triggered by their real behavior. Built for gyms, salons, cafés, and local businesses. Plans from $29/mo."/>
+<title>Clicktide — Customer Loyalty &amp; Win-Back Gifts for Local Businesses</title>
+<meta name="description" content="Your customers aren't leaving — they're forgetting. Clicktide wins them back automatically with branded gifts, mailed postcards, emails, and texts. Built for gyms, salons, cafés, and local businesses. Plans from $29/mo."/>
 <link rel="canonical" href="https://goclicktide.com/"/>
 <meta name="theme-color" content="#080D18"/>
 <meta property="og:type" content="website"/>
 <meta property="og:site_name" content="Clicktide"/>
 <meta property="og:url" content="https://goclicktide.com/"/>
-<meta property="og:title" content="Clicktide — Send a gift. Start a tide."/>
-<meta property="og:description" content="Automatic customer retention for local businesses: branded gifts, mailed postcards, emails, and texts triggered by real customer behavior."/>
+<meta property="og:title" content="Clicktide — Customer Loyalty &amp; Win-Back Gifts for Local Businesses"/>
+<meta property="og:description" content="Your customers aren't leaving — they're forgetting. Automatic retention for local businesses: branded gifts, mailed postcards, emails, and texts triggered by real customer behavior."/>
 <meta property="og:image" content="https://goclicktide.com/og-image.png"/>
 <meta property="og:image:width" content="1200"/>
 <meta property="og:image:height" content="630"/>
 <meta name="twitter:card" content="summary_large_image"/>
-<meta name="twitter:title" content="Clicktide — Send a gift. Start a tide."/>
-<meta name="twitter:description" content="Automatic customer retention for local businesses: branded gifts, postcards, emails, and texts."/>
+<meta name="twitter:title" content="Clicktide — Customer Loyalty &amp; Win-Back Gifts for Local Businesses"/>
+<meta name="twitter:description" content="Your customers aren't leaving — they're forgetting. Branded gifts, postcards, emails, and texts — sent automatically."/>
 <meta name="twitter:image" content="https://goclicktide.com/og-image.png"/>
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"Clicktide","legalName":"Six Seasons Partners LLC","url":"https://goclicktide.com","logo":"https://goclicktide.com/apple-touch-icon.png","email":"support@goclicktide.com"},{"@type":"SoftwareApplication","name":"Clicktide","applicationCategory":"BusinessApplication","operatingSystem":"Web","url":"https://goclicktide.com","description":"Customer loyalty and retention platform for local businesses — automated branded gifts, mailed postcards, emails, and texts triggered by customer behavior.","offers":[{"@type":"Offer","name":"Local","price":"29.00","priceCurrency":"USD"},{"@type":"Offer","name":"Growth","price":"99.00","priceCurrency":"USD"},{"@type":"Offer","name":"Scale","price":"299.00","priceCurrency":"USD"}]}]}</script>
 <link rel="icon" type="image/svg+xml" href="favicon.svg"><link rel="icon" type="image/png" sizes="64x64" href="favicon.png"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png"><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -706,12 +706,25 @@ async function createOAuthState(platform,metadata){
 }
 
 // -- Redirect to Square OAuth -------------------------------------------------
+function ctSec(){
+  var ov=document.createElement("div");
+  ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px";
+  ov.onclick=function(e){if(e.target===ov)document.body.removeChild(ov);};
+  ov.innerHTML='<div style="background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:28px;width:100%;max-width:470px;max-height:85vh;overflow:auto"><div style="font-size:30px;text-align:center;margin-bottom:8px">\ud83d\udd12</div><div style="font-family:&quot;Space Grotesk&quot;,sans-serif;font-size:19px;font-weight:800;text-align:center;margin-bottom:16px">Your POS stays completely safe</div>'
+    +[["\ud83d\udd11","You log in on their site, not ours","Connecting uses your platform\u2019s official secure login (OAuth) \u2014 the same system banks use. Clicktide never sees or stores your password."],
+      ["\ud83d\udc40","Read-only access","Clicktide can only VIEW your sales history and customer list. It cannot move money, issue refunds, change prices or products, or modify anything inside your point of sale."],
+      ["\ud83d\udd0c","You hold the off switch","Disconnect any time with one click in Settings \u2014 or revoke access from your platform\u2019s own dashboard \u2014 and Clicktide\u2019s access ends instantly."],
+      ["\ud83e\udd10","Your data stays yours","Your customer list is used only to run your win-back campaigns. It is never sold, shared, or used for anything else."]].map(function(x){return '<div style="display:flex;gap:12px;margin-bottom:14px"><div style="font-size:20px;flex-shrink:0">'+x[0]+'</div><div><div style="font-size:13px;font-weight:700;margin-bottom:2px">'+x[1]+'</div><div style="font-size:12px;color:rgba(240,244,255,.55);line-height:1.6">'+x[2]+'</div></div></div>';}).join("")
+    +'<button id="ctSecX" style="width:100%;margin-top:6px;padding:12px;border-radius:100px;border:none;background:#FFD166;color:#080D18;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">Got it \u2014 connect safely</button></div>';
+  document.body.appendChild(ov);
+  document.getElementById("ctSecX").onclick=function(){document.body.removeChild(ov);};
+}
 async function squareConnect(){
   var state=await createOAuthState("square",{});
   var redirectUri=FN+"/square-oauth-callback";
   var params=new URLSearchParams({
     client_id:SQ_APP_ID,
-    scope:"MERCHANT_PROFILE_READ ORDERS_READ ORDERS_WRITE PAYMENTS_READ CUSTOMERS_READ CUSTOMERS_WRITE LOYALTY_READ LOYALTY_WRITE",
+    scope:"MERCHANT_PROFILE_READ ORDERS_READ PAYMENTS_READ CUSTOMERS_READ",
     redirect_uri:redirectUri,
     state:state,
     session:"false"
@@ -759,7 +772,7 @@ async function shopifyConnect(){
       var redirectUri=FN+"/shopify-oauth-callback";
       var params=new URLSearchParams({
         client_id:SH_CLIENT_ID,
-        scope:"read_orders,write_orders,read_customers,write_customers,read_products,read_analytics",
+        scope:"read_orders,read_customers",
         redirect_uri:redirectUri,
         state:state
       });
@@ -1038,7 +1051,7 @@ function siteFooter(){
     <div class="foot-top">${logoH(22)}<a class="foot-contact" href="mailto:hello@goclicktide.com">Contact us</a></div>
     <div class="foot-grid">
       <div><div class="foot-title">Clicktide</div><div style="font-size:12px;line-height:1.8;color:rgba(240,244,255,.54)">Reward loyal customers and bring churn-risk customers back with automatic messages, rewards, and gifts.</div></div>
-      <div><div class="foot-title">Company</div><div class="foot-links"><button onclick="go('pricing')">Pricing</button><button onclick="go('roi')">ROI Calculator</button><a href="mailto:hello@goclicktide.com">Contact us</a></div></div>
+      <div><div class="foot-title">Company</div><div class="foot-links"><button onclick="go('pricing')">Pricing</button><button onclick="go('roi')">ROI Calculator</button><a href="win-back-lost-customers.html" target="_blank">Win-back guide</a><a href="mailto:hello@goclicktide.com">Contact us</a></div></div>
       <div><div class="foot-title">Product</div><div class="foot-links"><button onclick="go('onboard')">Start free trial</button><button onclick="go('login')">Customer login</button><button onclick="go('dash')">Dashboard</button></div></div>
       <div><div class="foot-title">Legal</div><div class="foot-links"><a href="terms.html" target="_blank">Terms of Use</a><a href="privacy.html" target="_blank">Privacy Policy</a><a href="billing-policy.html" target="_blank">Billing Policy</a></div></div>
     </div>
@@ -1088,7 +1101,7 @@ function land(){
   <div class="hero">
     <div class="badge"><span class="dot"></span>Shopify · Square · Stripe · 12+ platforms</div>
     <h1>Send a gift.<br><span class="gold">Start a tide.</span></h1>
-    <p class="sub">Reward loyal customers and win back the ones drifting away with automatic thank-yous, gifts, digital rewards, and personal messages sent at the exact moment they matter.</p>
+    <p class="sub">Your customers aren't leaving — they're forgetting. Clicktide rewards your loyal customers and wins back the ones drifting away with automatic thank-yous, gifts, digital rewards, and personal messages sent at the exact moment they matter.</p>
     <div class="input-row">
       <input class="email-inp" id="hE" placeholder="your@email.com" type="email"/>
       <button class="btn btn-gold" onclick="joinW()">Join Waitlist</button>
@@ -1121,14 +1134,18 @@ function land(){
     
     <div class="g3">
       <div class="tc"><div style="font-size:32px;margin-bottom:10px">💬</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#4DA6FF;margin-bottom:6px">Free forever</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Message Only</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#4DA6FF;margin-bottom:8px">Free</div><div style="font-size:12px;color:rgba(240,244,255,.5);line-height:1.7;margin-bottom:14px">A personal check-in or thank you. No gift mentioned. Just human connection.</div><div style="background:rgba(77,166,255,.06);border:1px solid rgba(77,166,255,.15);border-radius:10px;padding:10px 12px;font-size:11px;color:rgba(240,244,255,.5);font-style:italic;margin-bottom:16px">"Hey Sarah, just checking in -- the team at Iron Forge misses you! Hope everything is going well."</div><button class="btn btn-ghost" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
-      <div class="tc pop"><div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#FFD166;color:#080D18;padding:3px 14px;border-radius:100px;font-size:11px;font-weight:700;white-space:nowrap">Most Powerful</div><div style="font-size:32px;margin-bottom:10px">📦</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#FFD166;margin-bottom:6px">From $7 per send</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Physical Gift</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#FFD166;margin-bottom:8px">From $7</div><div style="font-size:12px;color:rgba(240,244,255,.5);line-height:1.7;margin-bottom:14px">A branded item ships automatically. Message naturally mentions something is arriving.</div><div style="background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.15);border-radius:10px;padding:10px 12px;font-size:11px;color:rgba(240,244,255,.5);font-style:italic;margin-bottom:16px">"Hey Sarah, keep an eye on your mailbox -- something is on its way from us. 🎁"</div><button class="btn btn-gold" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
+      <div class="tc pop"><div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#FFD166;color:#080D18;padding:3px 14px;border-radius:100px;font-size:11px;font-weight:700;white-space:nowrap">Most Powerful</div><div style="font-size:32px;margin-bottom:10px">📦</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#FFD166;margin-bottom:6px">Under $2 per send</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Physical Gift</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#FFD166;margin-bottom:8px">Under $2</div><div style="font-size:12px;color:rgba(240,244,255,.5);line-height:1.7;margin-bottom:14px">Your brand in their house — forever. A mug on their desk, a bottle in their gym bag: your logo, seen every single morning, by them and everyone they know.</div><div style="background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.15);border-radius:10px;padding:10px 12px;font-size:11px;color:rgba(240,244,255,.5);font-style:italic;margin-bottom:16px">"Hey Sarah, keep an eye on your mailbox -- something is on its way from us. 🎁"</div><button class="btn btn-gold" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
       <div class="tc"><div style="font-size:32px;margin-bottom:10px">💳</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#22C55E;margin-bottom:6px">Included in your plan</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Digital Gift</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#22C55E;margin-bottom:8px">Included</div><div style="font-size:12px;color:rgba(240,244,255,.5);line-height:1.7;margin-bottom:14px">You generate a promo code in your Square, Shopify, or Clover dashboard. Clicktide sends it to your customer automatically by email.</div><div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:10px;padding:10px 12px;font-size:11px;color:rgba(240,244,255,.5);font-style:italic;margin-bottom:16px">"Hey Sarah, here's something special from Iron Forge -- use code SARAH20 on your next visit!"</div><button class="btn btn-ghost" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:14px">
+      <div class="tc" style="text-align:left"><div style="display:flex;gap:12px;align-items:flex-start"><div style="font-size:26px">🛡️</div><div><div style="font-size:15px;font-weight:700;margin-bottom:4px">One-click Win-Back Playbook</div><div style="font-size:12px;color:rgba(240,244,255,.5);line-height:1.7">One click installs your complete protection: a friendly text at day 14, a postcard at day 30, a small branded gift at day 45 — pre-written, fully editable, and it pauses the moment a customer comes back.</div><button class="btn btn-gold" style="margin-top:12px;padding:9px 18px" onclick="localStorage.setItem('ct_pb_intent','1');go('pricing')">Install it on your business →</button></div></div></div>
+      <div class="tc" style="text-align:left"><div style="display:flex;gap:12px;align-items:flex-start"><div style="font-size:26px">📈</div><div><div style="font-size:15px;font-weight:700;margin-bottom:4px">Monday Drift Report</div><div style="font-size:12px;color:rgba(240,244,255,.5);line-height:1.7">Every Monday morning: exactly which customers started drifting last week — names, days absent, and what they’re worth — so nobody slips away unnoticed.</div></div></div></div>
     </div>
     <div style="margin-top:42px;text-align:left">
       <div style="text-align:center;margin-bottom:22px">
         <div class="badge" style="margin-bottom:12px"><span class="dot"></span>Product samples</div>
-        <h2 class="sec-title" style="font-size:clamp(22px,3vw,32px);margin-bottom:8px">Sample gifts businesses can send</h2>
-        <p class="sec-sub" style="margin-bottom:0">Preview items before choosing a plan. Sending and fulfillment stay locked until billing is active.</p>
+        <h2 class="sec-title" style="font-size:clamp(22px,3vw,32px);margin-bottom:8px">Get your brand in someone’s house — forever</h2>
+        <p class="sec-sub" style="margin-bottom:0">An ad disappears in seconds. A branded mug gets used every morning for years — by your customer, in front of everyone they know. Preview the gifts below; sending unlocks with your plan.</p>
       </div>
       <div id="landingGiftSampleGrid" class="g4">${giftSampleCards()}</div>
     </div>
@@ -1253,7 +1270,7 @@ function onboard(){
     var canCont=obB||(obCat==="other"&&obOther.length>1);
     c="<div style='font-size:30px;margin-bottom:8px'>🏢</div><h2 style='font-family:Space Grotesk,sans-serif;font-size:22px;font-weight:800;margin-bottom:6px'>What type of business?</h2><p style='color:rgba(240,244,255,.45);font-size:13px;margin-bottom:16px;line-height:1.6'>Pick a category then your specific type.</p><div class='bg'>"+catGrid+"</div>"+bizWrap+"<button class='btn-full btn-gold' style='margin-top:16px;"+(canCont?"":"opacity:.4;cursor:not-allowed")+"' "+(canCont?"":"disabled")+" onclick='oNxt()'>Continue →</button>";
   }
-  else if(obS===2&&B)c=`<div style="font-size:30px;margin-bottom:8px">🔌</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Connect your platform</h2><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:14px">Best for <strong>${B.l}</strong>: ${B.pl}</p>${!obC?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">${PL.map(p=>`<div style="padding:12px;border:2px solid ${obP===p.id?"#4DA6FF":"rgba(255,255,255,.07)"};border-radius:12px;cursor:pointer;background:${obP===p.id?"rgba(77,166,255,.06)":"transparent"}" onclick="oPlt('${p.id}')"><div style="font-size:20px;margin-bottom:5px">${p.e}</div><div style="font-size:12px;font-weight:700;margin-bottom:1px">${p.n}</div><div style="font-size:10px;color:rgba(240,244,255,.45)">${p.d}</div></div>`).join("")}</div><button class="btn-full ${obP?"btn-gold":"btn-ghost"}" ${!obP?"disabled":""} id="cBtn" onclick="oCon()">${obP?`Connect ${P?.n} →`:"Select a platform"}</button>`:`<div class="conn-box"><span style="font-size:24px">${P?.e}</span><div><div style="font-weight:700;color:#22C55E;font-size:14px">${P?.n} connected!</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-top:2px">${platformConnectNote()}</div></div></div><button class="btn-full btn-gold" onclick="oNxt()">Continue → Pick your gift</button>`}`;
+  else if(obS===2&&B)c=`<div style="font-size:30px;margin-bottom:8px">🔌</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Connect your platform</h2><div onclick="ctSec()" style="display:inline-flex;align-items:center;gap:7px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:100px;padding:5px 13px;font-size:11px;font-weight:700;color:#22C55E;cursor:pointer;margin-bottom:10px">🔒 Read-only — Clicktide can never touch your money <span style="text-decoration:underline;font-weight:600;color:rgba(240,244,255,.6)">how?</span></div><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:14px">Best for <strong>${B.l}</strong>: ${B.pl}</p>${!obC?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">${PL.map(p=>`<div style="padding:12px;border:2px solid ${obP===p.id?"#4DA6FF":"rgba(255,255,255,.07)"};border-radius:12px;cursor:pointer;background:${obP===p.id?"rgba(77,166,255,.06)":"transparent"}" onclick="oPlt('${p.id}')"><div style="font-size:20px;margin-bottom:5px">${p.e}</div><div style="font-size:12px;font-weight:700;margin-bottom:1px">${p.n}</div><div style="font-size:10px;color:rgba(240,244,255,.45)">${p.d}</div></div>`).join("")}</div><button class="btn-full ${obP?"btn-gold":"btn-ghost"}" ${!obP?"disabled":""} id="cBtn" onclick="oCon()">${obP?`Connect ${P?.n} →`:"Select a platform"}</button>`:`<div class="conn-box"><span style="font-size:24px">${P?.e}</span><div><div style="font-weight:700;color:#22C55E;font-size:14px">${P?.n} connected!</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-top:2px">${platformConnectNote()}</div></div></div><button class="btn-full btn-gold" onclick="oNxt()">Continue → Pick your gift</button>`}`;
   else if(obS===3&&B){
     var sq=obGiftSearch||"";
     // Use the fulfillment catalog as the real gift options
@@ -1352,7 +1369,7 @@ function onboard(){
   </div>`).join("")}
 </div>
 <input type="hidden" id="oPl" value="${obPl}"/></div>${legalConsent("oAgree")}<div class="err" id="oErr"></div><button class="btn-full btn-gold" id="oSub" onclick="oSignup()" style="margin-bottom:12px">Create account →</button><div style="text-align:center;font-size:12px;color:rgba(240,244,255,.45)">Already have an account? <button class="link-btn" onclick="go('login')">Log in</button></div>`;
-  else if(obS===6){const g=obG!==null?GF[obB]?.[obG]:null;c=`<div style="text-align:center"><div style="font-size:52px;margin-bottom:12px">🚀</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">You're live!</h2><p style="color:rgba(240,244,255,.45);font-size:14px;line-height:1.7;margin-bottom:20px">Your Clicktide campaign is active and ready.</p><ul style="list-style:none;padding:0;background:#101828;border-radius:13px;padding:16px;margin-bottom:20px;text-align:left">${[`${B?.i} ${B?.l}`,`${P?.e} ${P?.n} connected`,`🎁 ${g?.n||"--"}`,`⚡ ${obT.length} trigger${obT.length!==1?"s":""}`,`💬 Message Only: Free`,`📦 Physical gifts: From $7`].map(i=>`<li style="font-size:12px;color:rgba(240,244,255,.45);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:8px"><span style="color:#22C55E">✓</span>${i}</li>`).join("")}</ul><div style="display:flex;gap:10px"><button class="btn btn-gold" style="flex:1;padding:12px" onclick="go('dash')">Open Dashboard →</button><button class="btn btn-ghost" style="flex:1;padding:12px" onclick="go('login')">Log in</button></div></div>`;}
+  else if(obS===6){const g=obG!==null?GF[obB]?.[obG]:null;c=`<div style="text-align:center"><div style="font-size:52px;margin-bottom:12px">🚀</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">You're live!</h2><p style="color:rgba(240,244,255,.45);font-size:14px;line-height:1.7;margin-bottom:20px">Your Clicktide campaign is active and ready.</p><ul style="list-style:none;padding:0;background:#101828;border-radius:13px;padding:16px;margin-bottom:20px;text-align:left">${[`${B?.i} ${B?.l}`,`${P?.e} ${P?.n} connected`,`🎁 ${g?.n||"--"}`,`⚡ ${obT.length} trigger${obT.length!==1?"s":""}`,`💬 Message Only: Free`,`📦 Physical gifts: Under $2`].map(i=>`<li style="font-size:12px;color:rgba(240,244,255,.45);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:8px"><span style="color:#22C55E">✓</span>${i}</li>`).join("")}</ul><div style="display:flex;gap:10px"><button class="btn btn-gold" style="flex:1;padding:12px" onclick="go('dash')">Open Dashboard →</button><button class="btn btn-ghost" style="flex:1;padding:12px" onclick="go('login')">Log in</button></div></div>`;}
   var aiHintHtml='';
   if(aiHint||aiHintLoading){aiHintHtml="<div style='background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.2);border-radius:12px;padding:12px 14px;margin-top:12px;display:flex;align-items:flex-start;gap:9px'><div style='font-size:16px;flex-shrink:0'>✨</div><div style='font-size:12px;color:rgba(240,244,255,.7);line-height:1.6'>"+(aiHintLoading?"<span style='color:rgba(240,244,255,.35)'>AI thinking...</span>":aiHint)+"</div></div>";}
   var stBarH=steps.map(function(s,i){return '<div class="sp '+(i===obS?'on':i<obS?'dn':'pd')+'">'+s+'</div>';}).join('');
@@ -1878,6 +1895,22 @@ async function aiSugApprove(id,btn){
   }catch(e){alert(e.message);}
   dLoad();
 }
+async function wbPlaybook(btn){
+  if(btn){btn.disabled=true;btn.textContent="Installing...";}
+  var tok=S?.token||SK;
+  var steps=[
+    {name:"Playbook: Day-14 friendly text",trigger:"14-day inactive",gift_name:"Message Only",gift_cost:0,campaign_type:"message_only",delivery_channel:"email,sms",message:"Hey {{first_name}} — we noticed it's been a couple of weeks since your last visit to {{business_name}}. Everything okay? No pressure at all — your spot's here whenever you're ready.",sms_message:"Hey {{first_name}}, it's {{business_name}} — been a couple weeks since we saw you! Everything okay? No pressure, your spot's here whenever you're ready.",cooldown_days:90,delay_days:0,status:"active",user_id:myId()},
+    {name:"Playbook: Day-30 postcard",trigger:"30-day inactive",gift_name:"Mailed Postcard",gift_cost:1.5,campaign_type:"postcard",postcard_design:"bold",delivery_channel:"email",message:"{{first_name}}, it's been a minute and we wanted you to know there's no catch-up required and no awkwardness at the door. Just come say hi — we'd love to see you. — The team at {{business_name}}",cooldown_days:90,delay_days:0,status:"active",user_id:myId()},
+    {name:"Playbook: Day-45 thank-you gift",trigger:"45-day inactive",gift_name:"Branded Thank-You Gift",gift_cost:0,campaign_type:"physical_gift",delivery_channel:"email",message:"{{first_name}} — whether or not we see you again soon, thank you for being a customer of {{business_name}}. This one's on us.",cooldown_days:180,delay_days:0,status:"active",user_id:myId()}
+  ];
+  try{
+    for(var i=0;i<steps.length;i++){
+      var res=await db.ins("campaigns",steps[i],tok);
+      if(res&&res.message){alert(res.message);if(btn){btn.disabled=false;btn.textContent="Install the playbook →";}return;}
+    }
+  }catch(e){alert(e.message);if(btn){btn.disabled=false;btn.textContent="Install the playbook →";}return;}
+  dLoad();
+}
 async function aiSugDismiss(id){
   var tok=S?.token||SK;
   try{await fetch(SU+"/rest/v1/ai_suggestions?id=eq."+id,{method:"PATCH",headers:Object.assign({},h(tok),{Prefer:"return=minimal"}),body:JSON.stringify({status:"dismissed"})});}catch(e){}
@@ -2211,13 +2244,28 @@ async function dLoad(){
     if(dpg==="overview"){
       const[uR,cR,shR,wR]=await Promise.all([db.sel("customers",scope(""),tok).catch(()=>[]),db.sel("campaigns",scope("order=created_at.desc"),tok).catch(()=>[]),db.sel("shipments",scope("order=created_at.desc&limit=5"),tok).catch(()=>[]),db.sel("wallet",scope("order=created_at.desc&limit=1"),tok).catch(()=>[])]);
       const u=Array.isArray(uR)?uR:[],c=Array.isArray(cR)?cR:[],sh=Array.isArray(shR)?shR:[],w=Array.isArray(wR)?wR:[];      const bal=w[0]?.balance||0;
-      el.innerHTML=paidBanner+`<div class="sg">${[["Customers",u.length,"#FFD166"],["Campaigns",c.length,"#22C55E"],["Gifts Sent",sh.length,"#4DA6FF"],["Wallet","$"+bal,"#06B6D4"]].map(([l,v,cc])=>`<div class="sc"><div class="sl">${l}</div><div class="sn" style="color:${cc}">${v}</div></div>`).join("")}</div>
+      var revealHtml="";
+      try{
+        var _chv=parseInt(localStorage.getItem("ct_churn"))||60;
+        var _dorm=u.filter(function(x){var d=_days(x.last_visit_at||x.last_order_at);return d!==null&&d>=_chv;});
+        var _dv=Math.round(_dorm.reduce(function(a,x){return a+(Number(x.total_spent)||0);},0));
+        var _hasPB2=c.some(function(x){return String(x.name||"").indexOf("Playbook:")===0;});
+        if(u.length===0){
+          if(!window._ctSyncKick&&S&&S.token){window._ctSyncKick=1;try{fetch(FN+"/platform-sync",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+S.token},body:"{}"});}catch(e){}setTimeout(function(){try{if(dpg==="overview")dLoad();}catch(e){}},25000);revealHtml='<div class="dc" style="margin-bottom:14px;border-color:rgba(77,166,255,.35)"><div class="dct">\ud83d\udce1 Looking for your customers\u2026</div><div style="font-size:12px;color:rgba(240,244,255,.5);margin-top:4px">If you\'ve connected your POS, we\'re importing up to a year of customer history right now \u2014 this page will refresh itself in a moment.</div></div>';}
+        } else if(_dorm.length>=3){
+          var _rep=(_dorm.length*50).toLocaleString();
+          var _cta=_hasPB2?'<div style="font-size:12px;color:#22C55E;margin-top:10px">\u2713 Your Win-Back Playbook is already working on them.</div>':'<button class="btn btn-gold" style="margin-top:12px;padding:9px 18px" onclick="wbPlaybook(this)">Let\'s win them back together \u2192</button>';
+          revealHtml='<div class="dc" style="margin-bottom:14px;border-color:rgba(255,209,102,.4)"><div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#FFD166;margin-bottom:6px">The drift reveal</div><div style="font-family:\'Space Grotesk\',sans-serif;font-size:24px;font-weight:800;line-height:1.3">'+_dorm.length.toLocaleString()+' customers haven\'t been back in '+_chv+'+ days.</div><div style="font-size:13px;color:rgba(240,244,255,.6);line-height:1.7;margin-top:8px">Together they\'ve spent <b style="color:#FFD166">$'+_dv.toLocaleString()+'</b> with you \u2014 and right now they\'re drifting to whoever reminds them first. Replacing them with brand-new customers would cost roughly <b>$'+_rep+'</b> in marketing. Winning back the ones you already have? <b style="color:#4DA6FF">A friendly text and a $1.50 postcard.</b></div>'+_cta+'</div>';
+        }
+      }catch(e){revealHtml="";}
+      el.innerHTML=paidBanner+revealHtml+`<div class="sg">${[["Customers",u.length,"#FFD166"],["Campaigns",c.length,"#22C55E"],["Gifts Sent",sh.length,"#4DA6FF"],["Wallet","$"+bal,"#06B6D4"]].map(([l,v,cc])=>`<div class="sc"><div class="sl">${l}</div><div class="sn" style="color:${cc}">${v}</div></div>`).join("")}</div>
       <div class="dc"><div class="dch"><div class="dct">Campaigns</div><button class="link-btn" onclick="oCM()">+ New →</button></div>${c.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">⚡</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No campaigns yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Create your first campaign.</div><button class="btn btn-gold" onclick="oCM()">Create Campaign</button></div>`:c.slice(0,4).map(cc=>`<div class="dr"><div class="di" style="background:rgba(255,209,102,.1)">${cc.campaign_type==="message_only"?"💬":cc.campaign_type==="digital_gift"?"💳":cc.campaign_type==="survey"?"⭐":"📦"}</div><div style="flex:1"><div class="dn">${cc.name}</div><div class="dsub">${cc.trigger} · ${cc.gift_name}</div></div><span class="${cc.status==="active"?"ba":"bp"}">${cc.status==="active"?"● Active":"⏸ Paused"}</span></div>`).join("")}</div>
       <div class="dc"><div class="dch"><div class="dct">Recent Shipments</div></div>${sh.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">📦</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No shipments yet</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Shipments appear when campaigns fire.</div></div>`:sh.map(s=>`<div class="dr"><div class="di" style="background:rgba(77,166,255,.1)">📦</div><div style="flex:1"><div class="dn">${s.customer_name}</div><div class="dsub">${s.gift}</div></div><span class="bp">${s.status||"Processing"}</span></div>`).join("")}</div>`;
     }
     else if(dpg==="campaigns"){
       const cR=await db.sel("campaigns",scope("order=created_at.desc"),tok).catch(()=>[]);
       const c=Array.isArray(cR)?cR:[];
+      c.sort(function(a,b){var pa=String(a.name||"").indexOf("Playbook:")===0,pb=String(b.name||"").indexOf("Playbook:")===0;if(pa&&pb){var da=parseInt(String((a.trigger||"").match(/\d+/)||"999"),10),db2=parseInt(String((b.trigger||"").match(/\d+/)||"999"),10);return da-db2;}if(pa)return -1;if(pb)return 1;return 0;});
       // Email engagement stats per campaign (message_events via Resend webhook)
       var evMap={};
       try{
@@ -2239,6 +2287,9 @@ async function dLoad(){
         if(bounced)out+=chip("⚠ Bounced "+bounced,"#FF4D6D","rgba(255,77,109,0.08)");
         return out+'</div>';
       };
+      var hasPB=c.some(function(x){return String(x.name||"").indexOf("Playbook:")===0;});
+      var pbAuto=!hasPB&&localStorage.getItem("ct_pb_intent")==="1";if(pbAuto){localStorage.removeItem("ct_pb_intent");wbPlaybook();}
+      var pbHtml=hasPB?"":pbAuto?'<div class="dc" style="margin-bottom:14px;border-color:rgba(255,209,102,.35)"><div class="dct">🛡️ Installing your Win-Back Playbook…</div><div style="font-size:12px;color:rgba(240,244,255,.5);margin-top:4px">Your day-14 text, day-30 postcard and day-45 gift are being set up — one moment.</div></div>':'<div class="dc" style="margin-bottom:14px;border-color:rgba(255,209,102,.35)"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div style="flex:1;min-width:240px"><div class="dct">🛡️ Win-Back Playbook</div><div style="font-size:12px;color:rgba(240,244,255,.5);margin-top:4px;line-height:1.6">One click installs your full protection: a friendly text at day 14, a postcard at day 30, a small gift at day 45 — pre-written, editable, and it pauses automatically the moment a customer comes back.</div></div><button class="btn btn-gold" style="padding:9px 18px;flex-shrink:0" onclick="wbPlaybook(this)">Install the playbook →</button></div></div>';
       var isScale=String(bizLock?.plan||"").toLowerCase()==="scale";
       var aiSugHtml="";
       window._aiSug={};
@@ -2262,7 +2313,7 @@ async function dLoad(){
       } else if(paid){
         aiSugHtml='<div class="dc" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><div class="dct">✨ AI campaign suggestions</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-top:3px">AI studies your customer patterns and proposes ready-to-run campaigns. A Scale plan feature.</div></div><button class="btn btn-ghost" style="padding:8px 16px" onclick="go(\'pricing\')">Upgrade to Scale</button></div>';
       }
-      el.innerHTML=paidBanner+aiSugHtml+(c.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">⚡</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No campaigns yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Create your first campaign.</div><button class="btn btn-gold" onclick="oCM()">Create Campaign</button></div>`:c.map(cc=>`<div class="dc" style="margin-bottom:11px"><div style="display:flex;align-items:flex-start;gap:12px"><div class="di" style="background:rgba(255,209,102,.1);width:40px;height:40px;font-size:18px;flex-shrink:0">${cc.campaign_type==="message_only"?"💬":cc.campaign_type==="digital_gift"?"💳":cc.campaign_type==="survey"?"⭐":"📦"}</div><div style="flex:1"><div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><div style="font-size:13px;font-weight:700">${cc.name}</div><span class="${cc.status==="active"?"ba":"bp"}">${cc.status==="active"?"● Active":"⏸ Paused"}</span></div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:6px">Trigger: ${cc.trigger} · ${cc.gift_name}</div>${evChips(cc.id)}${cc.message?`<div style="font-size:11px;color:rgba(240,244,255,.45);background:#101828;border-radius:8px;padding:8px 10px;line-height:1.6;font-style:italic">"${cc.message.substring(0,100)}${cc.message.length>100?"...":""}"</div>`:""}</div><div style="display:flex;gap:7px;flex-shrink:0"><button class="btn btn-ghost" style="padding:6px 11px;font-size:11px" onclick="tCmp('${cc.id}','${cc.status}')">${cc.status==="active"?"Pause":"Resume"}</button><button class="btn" style="background:rgba(255,77,109,.1);color:#FF4D6D;border:1px solid rgba(255,77,109,.2);padding:6px 11px;font-size:11px" onclick="dCmp('${cc.id}')">Delete</button></div></div></div>`).join(""));
+      el.innerHTML=paidBanner+pbHtml+aiSugHtml+(c.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">⚡</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No campaigns yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Create your first campaign.</div><button class="btn btn-gold" onclick="oCM()">Create Campaign</button></div>`:c.map(cc=>`<div class="dc" style="margin-bottom:11px"><div style="display:flex;align-items:flex-start;gap:12px"><div class="di" style="background:rgba(255,209,102,.1);width:40px;height:40px;font-size:18px;flex-shrink:0">${cc.campaign_type==="message_only"?"💬":cc.campaign_type==="digital_gift"?"💳":cc.campaign_type==="survey"?"⭐":"📦"}</div><div style="flex:1"><div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><div style="font-size:13px;font-weight:700">${cc.name}</div><span class="${cc.status==="active"?"ba":"bp"}">${cc.status==="active"?"● Active":"⏸ Paused"}</span></div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:6px">Trigger: ${cc.trigger} · ${cc.gift_name}</div>${evChips(cc.id)}${cc.message?`<div style="font-size:11px;color:rgba(240,244,255,.45);background:#101828;border-radius:8px;padding:8px 10px;line-height:1.6;font-style:italic;white-space:pre-wrap">"${cc.message}"</div>`:""}${cc.sms_message&&cc.sms_message!==cc.message?`<div style="font-size:11px;color:rgba(240,244,255,.45);background:#101828;border-radius:8px;padding:8px 10px;line-height:1.6;font-style:italic;margin-top:6px;white-space:pre-wrap">📱 Text version: "${cc.sms_message}"</div>`:""}</div><div style="display:flex;gap:7px;flex-shrink:0"><button class="btn btn-ghost" style="padding:6px 11px;font-size:11px" onclick="tCmp('${cc.id}','${cc.status}')">${cc.status==="active"?"Pause":"Resume"}</button><button class="btn" style="background:rgba(255,77,109,.1);color:#FF4D6D;border:1px solid rgba(255,77,109,.2);padding:6px 11px;font-size:11px" onclick="dCmp('${cc.id}')">Delete</button></div></div></div>`).join(""));
     }
     else if(dpg==="customers"){
       const cu=await db.sel("customers",scope("order=created_at.desc"),tok).catch(()=>[]);
@@ -2395,7 +2446,7 @@ async function dLoad(){
         ${profileCard}
         ${brandProofCard(biz)}
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.35);margin-bottom:10px">POS & E-commerce</div>
-        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">${platCards}</div>
+        <div onclick="ctSec()" style="display:inline-flex;align-items:center;gap:7px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:100px;padding:5px 13px;font-size:11px;font-weight:700;color:#22C55E;cursor:pointer;margin-bottom:10px">🔒 Read-only — Clicktide can never touch your money <span style="text-decoration:underline;font-weight:600;color:rgba(240,244,255,.6)">how?</span></div><div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">${platCards}</div>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.35);margin-bottom:10px">Other integrations</div>
         <div class="g2">${otherCards}</div>`;
     }
@@ -2792,236 +2843,6 @@ async function getAIHint(step, context){
 
 R();
 
-// -- AI Chat Widget ------------------------------------------------------------
-const CLICKTIDE_SYSTEM = `You are Maya, Clicktide's enthusiastic sales assistant. Your #1 job is to get people excited about Clicktide and convert them into signups. Be warm, friendly, and genuinely helpful -- like a great salesperson who believes in the product and wants to see businesses thrive.
-
-Clicktide helps businesses automatically send physical gifts, digital rewards, and personal messages to reward loyal customers and win back customers showing signs of churn.
-
-Key selling points to push:
-- "Set it and forget it" -- fully automated, no manual work
-- Physical gifts shipped automatically with the merchant's logo on them
-- Average 14x ROI on every gift sent
-- 91% gift open rate vs 21% for email
-- Rewards loyal customers, recovers churn-risk customers, and protects repeat revenue
-- Customers who receive gifts have 3.2x higher lifetime value
-- Works with Square, Shopify, Clover, Stripe and 9 more platforms
-- Start FREE -- no credit card needed
-- Plans from just $29/month -- less than one lost customer
-
-Three gift types:
-- Message Only: FREE -- personal check-in texts
-- Digital Gift: included in plan -- promo codes sent automatically
-- Physical Gift: from $7 -- branded items shipped to customers
-
-Plans: Local $29/mo (200 customers), Growth $99/mo (1,000 customers), Scale $299/mo (unlimited)
-
-Rules:
-- Always end with a call to action -- push them to "Get started free" or "Start your free trial"
-- Use specific numbers and stats to build credibility
-- If they mention their business type, get specific about how Clicktide helps THAT business
-- If they have objections, overcome them confidently
-- Keep responses 2-3 sentences max -- punchy and energetic
-- Never be wishy-washy -- be direct and confident about the value Clicktide delivers
-- If they ask about cost, emphasize the ROI and that it pays for itself with just one retained customer`;
-
-
-let chatOpen = false;
-let chatMessages = [];
-let chatLoading = false;
-
-function toggleChat() {
-  chatOpen = !chatOpen;
-  renderChat();
-  if (chatOpen && chatMessages.length === 0) {
-    chatMessages = [{role:'assistant', content:"👋 Hey! I'm Maya. I help businesses reward loyal customers and win back the ones starting to drift -- through branded gifts, personal messages, and digital rewards. What type of business do you run?"}];
-    renderChat();
-  }
-  setTimeout(() => {
-    const inp = document.getElementById('chatInp');
-    if (inp) inp.focus();
-    const msgs = document.getElementById('chatMsgs');
-    if (msgs) msgs.scrollTop = msgs.scrollHeight;
-  }, 50);
-}
-
-async function sendChat() {
-  const inp = document.getElementById('chatInp');
-  if (!inp) return;
-  const msg = inp.value.trim();
-  if (!msg || chatLoading) return;
-  inp.value = '';
-  chatMessages.push({role:'user', content:msg});
-  chatLoading = true;
-  renderChat();
-  try {
-    const res = await fetch('https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1/ai-proxy', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 300,
-        system: CLICKTIDE_SYSTEM,
-        messages: chatMessages.filter(m => m.role !== 'assistant' || chatMessages.indexOf(m) > 0)
-      })
-    });
-    const data = await res.json();
-    const reply = data.content?.[0]?.text || "I'm having trouble connecting. Please try again!";
-    chatMessages.push({role:'assistant', content:reply});
-  } catch(e) {
-    chatMessages.push({role:'assistant', content:"Sorry, I'm having trouble connecting right now. Please try again!"});
-  }
-  chatLoading = false;
-  renderChat();
-  setTimeout(() => {
-    const msgs = document.getElementById('chatMsgs');
-    if (msgs) msgs.scrollTop = msgs.scrollHeight;
-  }, 50);
-}
-
-// -- Chat Widget --
-var _ctOpen=false,_ctMsgs=[],_ctLoading=false,_ctTi=0,_ctDismissed=false;
-var _ctTeasers=['💬 How does Clicktide work?','🎁 What gifts can I send?','📈 What is the average ROI?','🔌 Which platforms?','💳 What does it cost?'];
-var _ctProxy='https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1/ai-proxy';
-var _ctSys="You are Maya from Clicktide. Be warm, energetic and sales-focused. Clicktide auto-sends branded gifts, digital rewards, and personal messages to reward loyal customers and win back churn-risk customers. 14x ROI, 91% gift open rate. Plans from $29/mo. Always end with a CTA to sign up free. Max 2-3 sentences.";
-
-function _ctRender(){
-  var wrap=document.getElementById('ctWrap');
-  if(!wrap)return;
-  var petal='M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z';
-  var logo='<svg width="32" height="32" viewBox="0 0 44 44"><defs><linearGradient id="ctlg"><stop offset="0%" stop-color="#BAE6FD"/><stop offset="100%" stop-color="#4DA6FF"/></linearGradient></defs><g transform="translate(22,22)">'
-    +[0,51.4,102.8,154.2,205.6,257,308.4].map(function(r){return '<path d="'+petal+'" fill="url(#ctlg)" transform="rotate('+r+')" opacity=".9"/>';}).join('')
-    +'<circle cx="0" cy="0" r="4.5" fill="#080D18"/></g></svg>';
-  var closeIco='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4DA6FF" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-  wrap.innerHTML=(!_ctOpen&&!_ctDismissed?'<div onclick="_ctToggle()" style="background:#0C1220;border:1px solid rgba(77,166,255,.25);border-radius:16px 16px 16px 4px;padding:10px 14px;font-size:13px;color:#F0F4FF;max-width:220px;line-height:1.5;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.5);margin-bottom:4px"><b style="color:#4DA6FF">'+_ctTeasers[_ctTi]+'</b></div>':'')
-    +'<div onclick="_ctDrag_click(event)" style="width:56px;height:56px;border-radius:50%;background:#080D18;border:2px solid rgba(77,166,255,.35);display:flex;align-items:center;justify-content:center;cursor:grab;box-shadow:0 4px 20px rgba(77,166,255,.3);animation:ctFloat 3s ease-in-out infinite,ctPulse 3s ease-in-out infinite;flex-shrink:0">'
-    +(_ctOpen?closeIco:logo)+'</div>';
-}
-
-function _ctToggle(){
-  _ctOpen=!_ctOpen;
-  _ctDismissed=true;
-  if(_ctOpen&&_ctMsgs.length===0){
-    _ctMsgs=[{r:'a',t:"👋 Hey! I'm Maya. I help businesses reward loyal customers and win back churn-risk customers automatically -- with branded gifts, personal messages, and digital rewards. What type of business do you run?"}];
-  }
-  _ctRender();
-  var w=document.getElementById('ctWindow');
-  if(!w)return;
-  if(_ctOpen){
-    _ctRenderWin();
-    w.style.display='flex';
-    w.style.flexDirection='column';
-  } else {
-    w.style.display='none';
-  }
-}
-
-function _ctRenderWin(){
-  var w=document.getElementById('ctWindow');
-  if(!w)return;
-  var petal='M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z';
-  var sml='<svg width="20" height="20" viewBox="0 0 44 44"><defs><linearGradient id="ctlgs"><stop offset="0%" stop-color="#BAE6FD"/><stop offset="100%" stop-color="#4DA6FF"/></linearGradient></defs><g transform="translate(22,22)">'
-    +[0,51.4,102.8,154.2,205.6,257,308.4].map(function(r){return '<path d="'+petal+'" fill="url(#ctlgs)" transform="rotate('+r+')" opacity=".9"/>';}).join('')
-    +'<circle cx="0" cy="0" r="4.5" fill="#080D18"/></g></svg>';
-  var msgs=_ctMsgs.map(function(m){
-    var u=m.r==='u';
-    return '<div style="display:flex;'+(u?'justify-content:flex-end':'')+'"><div style="max-width:82%;padding:10px 13px;border-radius:'+(u?'14px 14px 4px 14px':'14px 14px 14px 4px')+';background:'+(u?'linear-gradient(135deg,#4DA6FF,#2563EB)':'rgba(255,255,255,.07)')+';font-size:13px;line-height:1.55;color:#F0F4FF">'+m.t+'</div></div>';
-  }).join('');
-  var typing=_ctLoading?'<div style="display:flex"><div style="padding:10px 14px;background:rgba(255,255,255,.07);border-radius:14px 14px 14px 4px;font-size:13px;color:rgba(240,244,255,.5)">Maya is typing...</div></div>':'';
-  w.innerHTML='<div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:10px;flex-shrink:0">'
-    +'<div style="width:32px;height:32px;border-radius:50%;background:#080D18;border:1.5px solid rgba(77,166,255,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0">'+sml+'</div>'
-    +'<div><div style="font-size:13px;font-weight:700;color:#F0F4FF">Maya from Clicktide</div><div style="font-size:11px;color:#22C55E">● Online now</div></div>'
-    +'<button onclick="_ctToggle()" style="margin-left:auto;background:none;border:none;color:rgba(240,244,255,.4);cursor:pointer;font-size:22px;line-height:1">×</button>'
-    +'</div>'
-    +'<div id="ctMsgs" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;max-height:320px">'+msgs+typing+'</div>'
-    +'<div style="padding:12px;border-top:1px solid rgba(255,255,255,.07);display:flex;gap:8px;flex-shrink:0">'
-    +'<input id="ctInp" placeholder="Ask Maya anything..." onkeydown="if(event.key==String.fromCharCode(13))_ctSend()" style="flex:1;padding:9px 13px;border-radius:100px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:#F0F4FF;font-size:13px;outline:none;font-family:Inter,sans-serif"/>'
-    +'<button onclick="_ctSend()" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#4DA6FF,#2563EB);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>'
-    +'</div>';
-  var el=document.getElementById('ctMsgs');
-  if(el) el.scrollTop=el.scrollHeight;
-  var inp=document.getElementById('ctInp');
-  if(inp) setTimeout(function(){inp.focus();},50);
-}
-
-function _ctSend(){
-  var inp=document.getElementById('ctInp');
-  if(!inp)return;
-  var msg=inp.value.trim();
-  if(!msg||_ctLoading)return;
-  inp.value='';
-  _ctMsgs.push({r:'u',t:msg});
-  _ctLoading=true;
-  _ctRenderWin();
-  fetch(_ctProxy,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,system:_ctSys,messages:_ctMsgs.map(function(m){return {role:m.r==='u'?'user':'assistant',content:m.t};})})})
-  .then(function(r){return r.json();})
-  .then(function(d){
-    _ctMsgs.push({r:'a',t:d.content?.[0]?.text||"I'm having trouble connecting. Try again!"});
-    _ctLoading=false;
-    _ctRenderWin();
-  }).catch(function(){
-    _ctMsgs.push({r:'a',t:"Sorry, connection issue. Please try again!"});
-    _ctLoading=false;
-    _ctRenderWin();
-  });
-}
-
-// Drag support
-var _ctDx=0,_ctDy=24,_ctDragging=false,_ctDragMoved=false,_ctDragSX,_ctDragSY,_ctDragOX,_ctDragOY;
-function _ctDrag_click(e){if(!_ctDragMoved)_ctToggle();}
-document.addEventListener('mousedown',function(e){
-  var wrap=document.getElementById('ctWrap');
-  if(wrap&&wrap.contains(e.target)){
-    _ctDragging=true;_ctDragMoved=false;
-    _ctDragSX=e.clientX;_ctDragSY=e.clientY;
-    _ctDragOX=_ctDx;_ctDragOY=_ctDy;
-    e.preventDefault();
-  }
-});
-document.addEventListener('mousemove',function(e){
-  if(!_ctDragging)return;
-  var dx=e.clientX-_ctDragSX,dy=e.clientY-_ctDragSY;
-  if(Math.abs(dx)>4||Math.abs(dy)>4)_ctDragMoved=true;
-  _ctDx=Math.max(8,Math.min(window.innerWidth-64,_ctDragOX+dx));
-  _ctDy=Math.max(8,Math.min(window.innerHeight-64,_ctDragOY-dy));
-  var wrap=document.getElementById('ctWrap');
-  if(wrap){wrap.style.left=_ctDx+'px';wrap.style.bottom=_ctDy+'px';}
-  var w=document.getElementById('ctWindow');
-  if(w){w.style.left=_ctDx+'px';w.style.bottom=(_ctDy+68)+'px';}
-});
-document.addEventListener('mouseup',function(){
-  if(!_ctDragging)return;
-  _ctDragging=false;
-  var wrap=document.getElementById('ctWrap');
-  if(wrap){
-    _ctDx=_ctDx+28<window.innerWidth/2?16:window.innerWidth-72;
-    wrap.style.transition='left .25s ease';
-    wrap.style.left=_ctDx+'px';
-    setTimeout(function(){wrap.style.transition='';},300);
-  }
-});
-
-// Inject chat CSS once
-(function(){
-  var s=document.createElement('style');
-  s.textContent='@keyframes ctFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}'
-    +'@keyframes ctPulse{0%,100%{box-shadow:0 4px 20px rgba(77,166,255,.3)}50%{box-shadow:0 4px 32px rgba(77,166,255,.6)}}'
-    +'#ctWrap{position:fixed;bottom:24px;left:16px;z-index:99999;display:flex;flex-direction:column;align-items:flex-start;gap:6px;}'
-    +'#ctWindow{position:fixed;bottom:92px;left:16px;width:340px;max-height:500px;background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.7);z-index:99998;display:none;flex-direction:column;overflow:hidden;}';
-  document.head.appendChild(s);
-})();
-
-// Rotate teasers
-setInterval(function(){if(!_ctOpen&&!_ctDismissed){_ctTi=(_ctTi+1)%_ctTeasers.length;_ctRender();}},5000);
-
-// Init on DOM ready
-function _ctInit(){
-  var wrap=document.getElementById('ctWrap');
-  if(!wrap){wrap=document.createElement('div');wrap.id='ctWrap';document.body.appendChild(wrap);}
-  var w=document.getElementById('ctWindow');
-  if(!w){w=document.createElement('div');w.id='ctWindow';document.body.appendChild(w);}
-  _ctRender();
-}
-if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',_ctInit);}else{_ctInit();}
 </script>
 <script>
 // ---- Clicktide Brand Studio (Fabric.js) v2 ----
@@ -3275,38 +3096,52 @@ async function emSave(){
 }
 </script>
 <script>
-// ---- Clicktide support chat (recorded) ----
 (function(){
-  var sid=localStorage.getItem("ct_chat_sid");
-  if(!sid){sid="cs_"+Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem("ct_chat_sid",sid);}
-  var open=false,msgs=[];
-  var btn=document.createElement("div");
-  btn.innerHTML='💬';
-  btn.style.cssText="position:fixed;right:18px;bottom:18px;width:52px;height:52px;border-radius:50%;background:#FFD166;color:#080D18;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;z-index:900;box-shadow:0 8px 28px rgba(0,0,0,.45)";
-  var panel=document.createElement("div");
-  panel.style.cssText="position:fixed;right:18px;bottom:80px;width:min(330px,calc(100vw - 36px));height:430px;background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:16px;display:none;flex-direction:column;z-index:901;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden";
-  panel.innerHTML='<div style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);font-family:Inter,sans-serif"><div style="font-size:13px;font-weight:800;color:#F0F4FF">Clicktide — How can we help?</div><div style="font-size:9px;color:rgba(240,244,255,.4);margin-top:2px">This chat is recorded to improve our service.</div></div><div id="ctChatLog" style="flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px"></div><div style="display:flex;gap:8px;padding:10px;border-top:1px solid rgba(255,255,255,.08)"><input id="ctChatIn" placeholder="Ask about plans, gifts, anything..." style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:#101828;color:#F0F4FF;font-size:12px;outline:none;font-family:Inter,sans-serif"/><button id="ctChatSend" style="padding:10px 14px;border-radius:10px;border:none;background:#FFD166;color:#080D18;font-weight:700;font-size:12px;cursor:pointer;font-family:Inter,sans-serif">Send</button></div>';
-  document.body.appendChild(btn);document.body.appendChild(panel);
-  function draw(){
-    var log=document.getElementById("ctChatLog");if(!log)return;
-    log.innerHTML=msgs.length?msgs.map(function(m){
-      return '<div style="max-width:85%;padding:8px 11px;border-radius:12px;font-size:12px;line-height:1.55;font-family:Inter,sans-serif;'+(m.r==="user"?"align-self:flex-end;background:#FFD166;color:#080D18":"align-self:flex-start;background:#101828;color:#F0F4FF;border:1px solid rgba(255,255,255,.07)")+'">'+m.t.replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];})+'</div>';
-    }).join(""):'<div style="font-size:12px;color:rgba(240,244,255,.45);font-family:Inter,sans-serif;line-height:1.6">Hi there! Ask me anything about Clicktide — plans, gifts, postcards, how it all works.</div>';
-    log.scrollTop=log.scrollHeight;
-  }
-  function send(){
-    var inp=document.getElementById("ctChatIn");
-    var t=(inp.value||"").trim();if(!t)return;
-    inp.value="";msgs.push({r:"user",t:t});msgs.push({r:"assistant",t:"..."});draw();
-    var hdrs={"Content-Type":"application/json"};
-    try{if(typeof S!=="undefined"&&S&&S.token)hdrs.Authorization="Bearer "+S.token;}catch(e){}
-    fetch((typeof FN!=="undefined"?FN:"https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1")+"/support-chat",{method:"POST",headers:hdrs,body:JSON.stringify({session_id:sid,message:t})})
-      .then(function(r){return r.json();}).then(function(d){msgs[msgs.length-1].t=(d&&d.reply)||"Hmm, try again?";draw();})
-      .catch(function(){msgs[msgs.length-1].t="Connection hiccup — try again.";draw();});
-  }
-  btn.onclick=function(){open=!open;panel.style.display=open?"flex":"none";if(open){draw();var i=document.getElementById("ctChatIn");if(i)i.focus();}};
-  panel.addEventListener("click",function(e){if(e.target&&e.target.id==="ctChatSend")send();});
-  panel.addEventListener("keydown",function(e){if(e.key==="Enter"&&e.target&&e.target.id==="ctChatIn")send();});
+var FNB=(typeof FN!=="undefined"?FN:"https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1");
+var sid=null;
+try{sid=localStorage.getItem("ct_chat_sid");}catch(e){}
+if(!sid){sid=Date.now().toString(36)+Math.random().toString(36).slice(2,10);try{localStorage.setItem("ct_chat_sid",sid);}catch(e){}}
+var open=false,msgs=[],dismissed=false,ti=0,greeted=false;
+var TEASERS=["💬 How does Clicktide work?","🎁 What gifts can I send?","📈 What is the average ROI?","🔌 Which platforms connect?","💳 What does it cost?"];
+var GREET="👋 Hey! I'm Maya. I help businesses reward loyal customers and win back churn-risk customers automatically -- with branded gifts, personal messages, and digital rewards. What type of business do you run?";
+function petals(id,size){var s='<svg width="'+size+'" height="'+size+'" viewBox="0 0 44 44"><defs><linearGradient id="'+id+'"><stop offset="0%" stop-color="#BAE6FD"/><stop offset="100%" stop-color="#4DA6FF"/></linearGradient></defs><g transform="translate(22,22)">';[0,51.4,102.8,154.2,205.6,257,308.4].forEach(function(r){s+='<path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#'+id+')" transform="rotate('+r+')" opacity=".9"/>';});return s+'<circle cx="0" cy="0" r="4.5" fill="#080D18"/></g></svg>';}
+var LOGO=petals("cwlgA",32);
+var CLOSE='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4DA6FF" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+var st=document.createElement("style");
+st.textContent="@keyframes cwFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}@keyframes cwPulse{0%,100%{box-shadow:0 4px 20px rgba(77,166,255,.3)}50%{box-shadow:0 4px 32px rgba(77,166,255,.6)}}";
+document.head.appendChild(st);
+var wrap=document.createElement("div");
+wrap.style.cssText="position:fixed;left:16px;bottom:24px;z-index:900;display:flex;flex-direction:column;align-items:flex-start;gap:6px";
+try{var p=JSON.parse(localStorage.getItem("ct_chat_pos")||"null");if(p&&typeof p.l==="number"&&typeof p.b==="number"){wrap.style.left=p.l+"px";wrap.style.bottom=p.b+"px";if(p.l>window.innerWidth/2)wrap.style.alignItems="flex-end";}}catch(e){}
+var teaser=document.createElement("div");
+teaser.style.cssText="display:flex;align-items:center;gap:8px;background:#0C1220;border:1px solid rgba(77,166,255,.25);border-radius:16px 16px 16px 4px;padding:10px 14px;font-size:13px;color:#F0F4FF;max-width:230px;line-height:1.5;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.5);margin-bottom:4px";
+teaser.innerHTML='<b id="cwTeaserTxt" style="color:#4DA6FF;font-weight:700">'+TEASERS[0]+'</b><span id="cwTeaserX" style="color:rgba(240,244,255,.45);font-size:13px;padding:0 2px;cursor:pointer">✕</span>';
+var btn=document.createElement("div");
+btn.innerHTML=LOGO;
+btn.style.cssText="width:56px;height:56px;border-radius:50%;background:#080D18;border:2px solid rgba(77,166,255,.35);display:flex;align-items:center;justify-content:center;cursor:grab;animation:cwFloat 3s ease-in-out infinite,cwPulse 3s ease-in-out infinite;flex-shrink:0;touch-action:none";
+wrap.appendChild(teaser);wrap.appendChild(btn);document.body.appendChild(wrap);
+var panel=document.createElement("div");
+panel.style.cssText="position:fixed;left:16px;bottom:96px;width:min(460px,calc(100vw - 32px));height:min(72vh,700px);background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:18px;display:none;flex-direction:column;z-index:901;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden";
+panel.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);font-family:Inter,sans-serif"><div style="width:36px;height:36px;border-radius:50%;background:#101828;display:flex;align-items:center;justify-content:center;border:1px solid rgba(77,166,255,.25)">'+petals("cwlgB",24)+'</div><div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:800;color:#F0F4FF">Maya from Clicktide</div><div style="font-size:10px;color:rgba(240,244,255,.45);margin-top:1px;display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:#34D399;display:inline-block"></span>Online now · recorded to improve our service</div></div><div id="ctChatClose" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;color:rgba(240,244,255,.65);font-size:17px">✕</div></div><div id="ctChatLog" style="flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px"></div><div style="display:flex;gap:8px;padding:10px;border-top:1px solid rgba(255,255,255,.08)"><input id="ctChatIn" placeholder="Ask Maya anything..." style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:#101828;color:#F0F4FF;font-size:13px;outline:none;font-family:Inter,sans-serif"/><button id="ctChatSend" style="padding:10px 14px;border-radius:10px;border:none;background:#FFD166;color:#080D18;font-weight:700;font-size:13px;cursor:pointer;font-family:Inter,sans-serif">Send</button></div>';
+document.body.appendChild(panel);
+function esc2(t){return t.replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];});}
+function draw(){var log=document.getElementById("ctChatLog");if(!log)return;log.innerHTML=msgs.map(function(m){return '<div style="max-width:85%;padding:9px 12px;border-radius:12px;font-size:13px;line-height:1.55;font-family:Inter,sans-serif;white-space:pre-wrap;'+(m.r==="user"?"align-self:flex-end;background:#FFD166;color:#080D18":"align-self:flex-start;background:#101828;color:#F0F4FF;border:1px solid rgba(255,255,255,.07)")+'">'+esc2(m.t)+'</div>';}).join("");log.scrollTop=log.scrollHeight;}
+function send(){var inp=document.getElementById("ctChatIn");var t=(inp.value||"").trim();if(!t)return;inp.value="";msgs.push({r:"user",t:t});msgs.push({r:"assistant",t:"..."});draw();var hdrs={"Content-Type":"application/json"};try{if(typeof S!=="undefined"&&S&&S.token)hdrs.Authorization="Bearer "+S.token;}catch(e){}
+fetch(FNB+"/support-chat",{method:"POST",headers:hdrs,body:JSON.stringify({session_id:sid,message:t})}).then(function(r){return r.json();}).then(function(d){msgs[msgs.length-1].t=(d&&d.reply)||"Hmm, try again?";draw();}).catch(function(){msgs[msgs.length-1].t="Connection hiccup — try again.";draw();});}
+function placePanel(){var r=btn.getBoundingClientRect();var vw=window.innerWidth,vh=window.innerHeight;var pw=Math.min(460,vw-32);var ph=Math.min(vh*0.72,700);var left=Math.max(8,Math.min(r.left,vw-pw-16));var bottom=(vh-r.top)+12;bottom=Math.max(16,Math.min(bottom,vh-ph-8));panel.style.left=left+"px";panel.style.bottom=bottom+"px";}
+function openChat(){open=true;dismissed=true;teaser.style.display="none";btn.innerHTML=CLOSE;panel.style.display="flex";placePanel();if(!greeted){greeted=true;msgs.push({r:"assistant",t:GREET});}draw();var i=document.getElementById("ctChatIn");if(i)i.focus();}
+function closeChat(){open=false;panel.style.display="none";btn.innerHTML=LOGO;}
+teaser.addEventListener("click",function(e){if(e.target&&e.target.id==="cwTeaserX"){dismissed=true;teaser.style.display="none";e.stopPropagation();return;}openChat();});
+var dragging=false,moved=false,sx=0,sy=0,ol=0,ob=0;
+btn.addEventListener("pointerdown",function(e){dragging=true;moved=false;sx=e.clientX;sy=e.clientY;var rc=wrap.getBoundingClientRect();ol=rc.left;ob=window.innerHeight-rc.bottom;btn.style.cursor="grabbing";try{btn.setPointerCapture(e.pointerId);}catch(err){}e.preventDefault();});
+btn.addEventListener("pointermove",function(e){if(!dragging)return;var dx=e.clientX-sx,dy=e.clientY-sy;if(Math.abs(dx)>4||Math.abs(dy)>4)moved=true;var L=Math.max(8,Math.min(ol+dx,window.innerWidth-64));var B=Math.max(8,Math.min(ob-dy,window.innerHeight-64));wrap.style.transition="";wrap.style.left=L+"px";wrap.style.bottom=B+"px";if(open)placePanel();});
+btn.addEventListener("pointerup",function(){if(!dragging)return;dragging=false;btn.style.cursor="grab";if(!moved){if(open){closeChat();}else{openChat();}return;}
+var rc=wrap.getBoundingClientRect();var snapL=(rc.left+28<window.innerWidth/2)?16:window.innerWidth-72;wrap.style.transition="left .25s ease";wrap.style.left=snapL+"px";wrap.style.alignItems=(snapL===16)?"flex-start":"flex-end";var B=Math.round(window.innerHeight-rc.bottom);try{localStorage.setItem("ct_chat_pos",JSON.stringify({l:snapL,b:B}));}catch(err){}if(open)setTimeout(placePanel,260);setTimeout(function(){wrap.style.transition="";},300);});
+panel.addEventListener("click",function(e){if(e.target&&e.target.id==="ctChatSend")send();if(e.target&&e.target.id==="ctChatClose")closeChat();});
+panel.addEventListener("keydown",function(e){if(e.key==="Enter"&&e.target&&e.target.id==="ctChatIn")send();});
+document.addEventListener("keydown",function(e){if(e.key==="Escape"&&open)closeChat();});
+window.addEventListener("resize",function(){if(open)placePanel();});
+setInterval(function(){if(!open&&!dismissed){ti=(ti+1)%TEASERS.length;var el=document.getElementById("cwTeaserTxt");if(el)el.textContent=TEASERS[ti];}},5000);
 })();
 </script>
 </body>
