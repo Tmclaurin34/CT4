@@ -4,7 +4,7 @@ set -e
 cd "$(dirname "$0")/.."
 
 echo "— secret scan —"
-PATTERNS='sk_live_[A-Za-z0-9]{20,}|re_[A-Za-z0-9]{20,}|sbp_[A-Za-z0-9]{20,}|cfut_[A-Za-z0-9]{20,}|AKIA[A-Z0-9]{16}|AIza[A-Za-z0-9_-]{30,}'
+PATTERNS='sk_live_[A-Za-z0-9]{20,}|re_[A-Za-z0-9]{20,}|sbp_[A-Za-z0-9]{20,}|cfut_[A-Za-z0-9]{20,}|AKIA[A-Z0-9]{16}|AIza[A-Za-z0-9_-]{30,}|whsec_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|ghp_[A-Za-z0-9]{30,}|xoxb-[A-Za-z0-9-]{20,}'
 if grep -rInE "$PATTERNS" --include='*.html' --include='*.ts' --include='*.js' --include='*.sql' --include='*.md' . ; then
   echo "FAIL: possible live secret committed"; exit 1
 fi
