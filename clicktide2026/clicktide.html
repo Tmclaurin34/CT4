@@ -1104,10 +1104,10 @@ function land(){
     <p class="sub">Your customers aren't leaving — they're forgetting. Clicktide rewards your loyal customers and wins back the ones drifting away with automatic thank-yous, gifts, digital rewards, and personal messages sent at the exact moment they matter.</p>
     <div class="input-row">
       <input class="email-inp" id="hE" placeholder="your@email.com" type="email"/>
-      <button class="btn btn-gold" onclick="joinW()">Join Waitlist</button>
+      <button class="btn btn-gold" onclick="startTrial()">Start free trial →</button>
     </div>
     <div id="wOk" style="display:none;margin-bottom:14px"><span style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:100px;padding:13px 22px;font-size:14px;color:#22C55E;font-weight:600">🎉 You're on the list!</span></div>
-    <button class="link-btn" onclick="go('onboard')">→ Start free trial -- keep loyal customers close and bring churn-risk customers back</button>
+    <button class="link-btn" onclick="go('onboard')">🔍 Includes a free drift assessment · cancel anytime — no charge for 30 days</button>
     <div class="pills">${PL.map(p=>`<div class="pill">${p.e} ${p.n}</div>`).join("")}</div>
   </div>
   <div class="notif" id="ntf"><span style="font-size:22px">${n.e}</span><div><div style="font-size:13px;font-weight:700">${n.t}</div><div style="font-size:11px;color:rgba(240,244,255,.45);margin-top:1px">${n.s}</div></div></div>
@@ -1155,7 +1155,7 @@ function land(){
     <div class="g4" style="margin-top:36px">${[["VIPs","Thank your best customers","before they feel ignored"],["Milestones","Celebrate moments","birthdays, visits, referrals"],["At-risk","Catch slipping customers","before churn becomes final"],["Recovered","Reinforce the comeback","after a customer returns"]].map(([v,l,s])=>`<div class="card" style="text-align:center"><div class="stat-n">${v}</div><div style="font-size:13px;font-weight:700;margin-bottom:4px">${l}</div><div style="font-size:11px;color:rgba(240,244,255,.45)">${s}</div></div>`).join("")}</div>
   </div></div>
   <div class="sec"><div style="max-width:840px;margin:0 auto;text-align:center">
-    <h2 class="sec-title" id="pricing">Built for every <span class="gold">business size.</span></h2><div style="display:flex;justify-content:center"><div style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.3);border-radius:100px;padding:7px 16px;font-size:12px;font-weight:700;color:#FFD166;margin:12px 0 2px">🔍 Free drift assessment · 30-day free trial · cancel anytime — no charge for 30 days</div></div>
+    <h2 class="sec-title" id="pricing">Built for every <span class="gold">business size.</span></h2><div style="display:flex;justify-content:center"><div onclick="go('onboard')" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.3);border-radius:100px;padding:7px 16px;font-size:12px;font-weight:700;color:#FFD166;margin:12px 0 2px;cursor:pointer">🔍 Free drift assessment · 30-day free trial · cancel anytime — no charge for 30 days</div></div>
     <p class="sec-sub">Subscription + pay-per-gift wallet. No surprise bills.</p>
     <div class="g3">${[{n:"Local",p:29,c:"#22C55E",pop:false,f:["200 customers/mo","✉️ Messages included","💳 Digital gifts included","Physical gifts from wallet","Square & Clover","Basic analytics"]},{n:"Growth",p:99,c:"#FFD166",pop:true,f:["1,000 customers/mo","✉️ Messages included","💳 Digital gifts included","Physical gifts from wallet","All 12 integrations","Retention analytics","Branded packaging"]},{n:"Scale",p:299,c:"#4DA6FF",pop:false,f:["Unlimited customers","✉️ Messages included","💳 Digital gifts included","Physical gifts from wallet","AI triggers","White-label","Dedicated CSM"]}].map(pl=>`<div class="plan ${pl.pop?"pop":""}" style="position:relative">${pl.pop?`<div class="plan-badge">Most Popular</div>`:""}<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.45);margin-bottom:6px">${pl.n}</div><div class="plan-price" style="color:${pl.c}"><sup style="font-size:18px;vertical-align:super">$</sup>${pl.p}</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:14px">/month + gift wallet</div><div style="height:1px;background:rgba(255,255,255,.07);margin-bottom:14px"></div><ul class="feat">${pl.f.map(f=>`<li>${f}</li>`).join("")}</ul><button class="btn ${pl.pop?"btn-gold":"btn-ghost"}" style="width:100%" onclick="go('onboard')">Get started →</button></div>`).join("")}</div>
   </div></div>
@@ -2691,6 +2691,7 @@ function bind(){
   },3200);
 }
 
+function startTrial(){var e=document.getElementById("hE")?.value?.trim();if(e){try{obE=e;localStorage.setItem("ct_pref_email",e);}catch(err){}}go("onboard");}
 function joinW(){const e=document.getElementById("hE")?.value;if(e){document.querySelector(".input-row").style.display="none";document.getElementById("wOk").style.display="block";}}
 
 function pricingP(){
