@@ -109,6 +109,7 @@ Deno.serve(async (req) => {
     form.set("mode", "subscription");
     form.set("line_items[0][price]", priceId);
     form.set("line_items[0][quantity]", "1");
+    form.set("subscription_data[trial_period_days]", "30");
     form.set("metadata[type]", "subscription");
     form.set("metadata[plan]", plan);
     form.set("metadata[business_name]", body.business_name || "");
