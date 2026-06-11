@@ -10,6 +10,28 @@ if grep -rInE "$PATTERNS" --include='*.html' --include='*.ts' --include='*.js' -
 fi
 echo "ok"
 
+echo "— service_role JWT check —"
+python3 - <<'PY'
+import re, base64, sys, os
+bad = []
+for root, dirs, files in os.walk("."):
+    if "/.git" in root: continue
+    for fn in files:
+        if not fn.endswith((".html", ".ts", ".js", ".sql", ".md", ".yml", ".json")): continue
+        p = os.path.join(root, fn)
+        try: s = open(p, encoding="utf-8", errors="ignore").read()
+        except OSError: continue
+        for m in re.finditer(r'eyJ[A-Za-z0-9_-]{10,}\.([A-Za-z0-9_-]{10,})\.[A-Za-z0-9_-]{10,}', s):
+            pay = m.group(1); pay += "=" * (-len(pay) % 4)
+            try: dec = base64.urlsafe_b64decode(pay).decode("utf-8", "ignore")
+            except Exception: continue
+            if '"role":"service_role"' in dec.replace(" ", ""):
+                bad.append(p)
+if bad:
+    print("FAIL: service_role JWT committed in: " + ", ".join(sorted(set(bad)))); sys.exit(1)
+print("ok: no service_role JWTs (public anon keys allowed)")
+PY
+
 echo "— HTML inline-script parse —"
 python3 - <<'PY'
 import re, json, subprocess, sys
