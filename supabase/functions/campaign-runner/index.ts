@@ -1,13 +1,7 @@
-// Clicktide campaign engine.
-// Runs hourly via pg_cron (or manually by a staff admin). Scans every business's
-// active campaigns, matches customers to triggers, applies guards, then sends
-// email/SMS. Customer-facing emails ship in a branded shell (business logo or
-// brand-colored wordmark) so they never read as anonymous/phishy. Physical gifts
-// queue alerts; postcards mail via Lob. When a matched customer has no mailing
-// address, the engine asks THEM for it (tokenized /gift-address link), max every 14d.
-//
-// NOTE: deployed as v14 on 2026-06-11. This file mirrors the deployed source;
-// the brandedShell/sendEmail/maybeRequestAddress sections are the v14 changes.
+// Clicktide campaign engine. v15
+// Hourly via pg_cron (or staff admin). Customer-facing emails ship in a branded
+// shell (logo or wordmark, bulletproof-centered) and cite the customer's actual
+// last-visit date/time (business-state timezone) so they read as real, not spam.
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -80,6 +74,7 @@ type Business = {
   stripe_subscription_status?: string;
   plan?: string;
   logo_url?: string;
+  state?: string;
 };
 
 function json(body: unknown, status = 200) {
@@ -152,6 +147,28 @@ function daysSince(value?: string | null) {
   return Math.floor((Date.now() - t) / 86400000);
 }
 
+// Rough business-state -> IANA timezone so visit times read correctly.
+function tzForState(st?: string) {
+  const s = String(st || "").toUpperCase().trim();
+  if (["CA", "WA", "OR", "NV"].includes(s)) return "America/Los_Angeles";
+  if (s === "AZ") return "America/Phoenix";
+  if (["CO", "UT", "NM", "MT", "WY", "ID"].includes(s)) return "America/Denver";
+  if (["TX", "IL", "MN", "WI", "MO", "LA", "OK", "KS", "NE", "SD", "ND", "IA", "AR", "MS", "AL"].includes(s)) return "America/Chicago";
+  return "America/New_York";
+}
+
+// "May 27 at 2:14 PM" — the proof-it's-real line. Empty when no timestamp.
+function fmtLastVisit(value?: string | null, state?: string) {
+  if (!value) return "";
+  const t = Date.parse(value);
+  if (Number.isNaN(t)) return "";
+  const tz = tzForState(state);
+  const d = new Date(t);
+  const date = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", timeZone: tz }).format(d);
+  const time = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: tz }).format(d);
+  return `${date} at ${time}`;
+}
+
 function matchesTrigger(trigger: string, c: Customer, churnDays: number) {
   const t = (trigger || "").toLowerCase();
   const numMatch = t.match(/(\d+)/);
@@ -201,19 +218,19 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#039;");
 }
 
-// Branded shell for every customer-facing email the engine sends by default:
-// business logo (or brand-colored wordmark) on top, white card, clear footer.
-// This is what keeps a win-back text from reading like a phishing attempt.
+// Branded shell for customer-facing emails. Header centering uses a table cell
+// with align=center — the only method every mail client respects.
 function brandedShell(businessName: string, inner: string, whiteLabel: boolean, logoUrl = "", brandColor = "#0B62D6") {
   const header = logoUrl
-    ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(businessName)}" style="max-height:56px;max-width:220px;display:block;margin:0 auto 6px"/><div style="font-size:15px;font-weight:bold;color:#111827;text-align:center">${escapeHtml(businessName)}</div>`
-    : `<div style="font-size:23px;font-weight:bold;color:${escapeHtml(brandColor)};text-align:center">${escapeHtml(businessName)}</div>`;
+    ? `<img src="${escapeHtml(logoUrl)}" alt="" width="56" style="max-height:56px;display:inline-block;vertical-align:middle"/><div style="font-size:15px;font-weight:bold;color:#111827;margin-top:6px">${escapeHtml(businessName)}</div>`
+    : `<div style="font-size:23px;font-weight:bold;color:${escapeHtml(brandColor)}">${escapeHtml(businessName)}</div>`;
   return `<div style="background:#F4F5F7;padding:26px 12px;font-family:Arial,Helvetica,sans-serif">
-    <div style="max-width:560px;margin:0 auto;background:#FFFFFF;border-radius:14px;overflow:hidden;border:1px solid #E9EBEF">
-      <div style="padding:26px 30px 20px;border-bottom:1px solid #F0F1F4">${header}</div>
-      <div style="padding:26px 30px;color:#1F2937;font-size:15px;line-height:1.7">${inner}</div>
-      <div style="padding:16px 30px 22px;border-top:1px solid #F0F1F4;font-size:11px;color:#9CA3AF;text-align:center">${whiteLabel ? escapeHtml(businessName) : `Sent by Clicktide on behalf of ${escapeHtml(businessName)} · goclicktide.com`}</div>
-    </div></div>`;
+    <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+    <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#FFFFFF;border-radius:14px;border:1px solid #E9EBEF">
+      <tr><td align="center" style="padding:26px 30px 20px;border-bottom:1px solid #F0F1F4">${header}</td></tr>
+      <tr><td style="padding:26px 30px;color:#1F2937;font-size:15px;line-height:1.7">${inner}</td></tr>
+      <tr><td align="center" style="padding:16px 30px 22px;border-top:1px solid #F0F1F4;font-size:11px;color:#9CA3AF">${whiteLabel ? escapeHtml(businessName) : `Sent by Clicktide on behalf of ${escapeHtml(businessName)} · goclicktide.com`}</td></tr>
+    </table></td></tr></table></div>`;
 }
 
 type EmailTemplate = {
@@ -241,10 +258,13 @@ function renderTemplate(tpl: EmailTemplate, message: string, businessName: strin
     ${whiteLabel ? "" : `<div style="border-top:1px solid #F3F4F6;margin-top:18px;padding-top:12px;font-family:Arial;font-size:11px;color:#9CA3AF;text-align:center">Sent by Clicktide on behalf of ${escapeHtml(businessName)}.</div>`}</div>`;
 }
 
-async function sendEmail(to: string, subject: string, message: string, businessName: string, customerName: string, htmlOverride?: string, whiteLabel = false, logoUrl = "", brandColor = "#0B62D6") {
+async function sendEmail(to: string, subject: string, message: string, businessName: string, customerName: string, htmlOverride?: string, whiteLabel = false, logoUrl = "", brandColor = "#0B62D6", lastVisitText = "") {
   if (!resendApiKey) return { ok: false, detail: "RESEND_API_KEY is not configured" };
   const first = escapeHtml(customerName.split(/\s+/)[0] || "there");
-  const inner = `<p style="margin:0 0 14px">Hi ${first},</p><p style="margin:0">${escapeHtml(message).replaceAll("\n", "<br>")}</p>`;
+  const visitLine = lastVisitText
+    ? `<p style="margin:18px 0 0;font-size:12px;color:#9CA3AF">\u{1F4CD} Your last visit to ${escapeHtml(businessName)}: ${escapeHtml(lastVisitText)}</p>`
+    : "";
+  const inner = `<p style="margin:0 0 14px">Hi ${first},</p><p style="margin:0">${escapeHtml(message).replaceAll("\n", "<br>")}</p>${visitLine}`;
   const html = htmlOverride || brandedShell(businessName, inner, whiteLabel, logoUrl, brandColor);
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -380,7 +400,7 @@ async function queuePhysicalGiftAlert(campaign: Campaign, customer: Customer, ha
 // Ask the customer directly for their mailing address (tokenized link), at most
 // once every ADDRESS_ASK_COOLDOWN_DAYS. Texts first (with consent), else a
 // branded email with the business logo + an explicit no-payment-details note.
-async function maybeRequestAddress(campaign: Campaign, customer: Customer, businessName: string, whiteLabel: boolean, logoUrl = "", brandColor = "#0B62D6") {
+async function maybeRequestAddress(campaign: Campaign, customer: Customer, businessName: string, whiteLabel: boolean, logoUrl = "", brandColor = "#0B62D6", lastVisitText = "") {
   const lastAsk = customer.address_requested_at ? Date.parse(customer.address_requested_at) : 0;
   if (lastAsk && Date.now() - lastAsk < ADDRESS_ASK_COOLDOWN_DAYS * 86400000) return { asked: false, reason: "recently_asked" };
   const token = String(customer.address_request_token || "");
@@ -396,8 +416,12 @@ async function maybeRequestAddress(campaign: Campaign, customer: Customer, busin
     if (r.ok) { sent = true; channel = "sms"; }
   }
   if (!sent && customer.email) {
+    const visitLine = lastVisitText
+      ? `<p style="margin:0 0 18px;font-size:12px;color:#9CA3AF">\u{1F4CD} Your last visit: ${escapeHtml(lastVisitText)}</p>`
+      : "";
     const inner = `<p style="margin:0 0 14px">Hi ${escapeHtml(first)},</p>
-      <p style="margin:0 0 18px">${escapeHtml(businessName)} has a little something they want to <b>mail you</b> \u{1F381} — a real piece of mail, the good kind. We just need to know where to send it.</p>
+      <p style="margin:0 0 10px">${escapeHtml(businessName)} has a little something they want to <b>mail you</b> \u{1F381} — a real piece of mail, the good kind. We just need to know where to send it.</p>
+      ${visitLine}
       <div style="text-align:center;margin:22px 0"><a href="${escapeHtml(link)}" style="display:inline-block;background:${escapeHtml(brandColor)};color:#FFFFFF;font-weight:bold;font-size:15px;text-decoration:none;padding:13px 32px;border-radius:10px">Tell us where to send it →</a></div>
       <p style="margin:0;font-size:12px;color:#6B7280;line-height:1.7">Takes 20 seconds and only asks for a mailing address — never payment details. The secure form lives at goclicktide.com, the service ${escapeHtml(businessName)} uses to send customer gifts.</p>`;
     const html = brandedShell(businessName, inner, whiteLabel, logoUrl, brandColor);
@@ -463,7 +487,7 @@ Deno.serve(async (req) => {
 
     const userIds = [...new Set(campaigns.map((c) => c.user_id).filter(Boolean))];
     const businesses = await rest(
-      `/rest/v1/clicktide?user_id=in.(${userIds.join(",")})&select=user_id,business_name,churn_days,stripe_subscription_status,plan,logo_url`,
+      `/rest/v1/clicktide?user_id=in.(${userIds.join(",")})&select=user_id,business_name,churn_days,stripe_subscription_status,plan,logo_url,state`,
     ) as Business[];
     const bizByUser = new Map(businesses.map((b) => [b.user_id, b]));
     summary.businesses = userIds.length;
@@ -507,6 +531,7 @@ Deno.serve(async (req) => {
       const businessName = biz?.business_name || "your favorite local business";
       const logoUrl = String(biz?.logo_url || "");
       const brandColor = String(emailTpl?.brand?.color || "#0B62D6");
+      const bizState = String(biz?.state || "");
       const plan = String(biz?.plan || "").toLowerCase();
       const smsLimit = PLAN_SMS_LIMITS[plan] ?? 200;
       const whiteLabel = plan === "scale";
@@ -558,11 +583,12 @@ Deno.serve(async (req) => {
           }
 
           const hasAddress = !!(customer.address && customer.city && customer.state && customer.zip);
+          const lastVisitText = fmtLastVisit(customer.last_visit_at || customer.last_order_at, bizState);
 
           if (campaign.campaign_type === "physical_gift") {
             if (!dryRun) {
               if (!hasAddress) {
-                const ask = await maybeRequestAddress(campaign, customer, businessName, whiteLabel, logoUrl, brandColor);
+                const ask = await maybeRequestAddress(campaign, customer, businessName, whiteLabel, logoUrl, brandColor, lastVisitText);
                 if (ask.asked) summary.address_requests++;
               }
               await queuePhysicalGiftAlert(campaign, customer, hasAddress);
@@ -578,7 +604,7 @@ Deno.serve(async (req) => {
             if (!hasAddress) {
               summary.skipped.postcard_no_address++;
               if (!dryRun) {
-                const ask = await maybeRequestAddress(campaign, customer, businessName, whiteLabel, logoUrl, brandColor);
+                const ask = await maybeRequestAddress(campaign, customer, businessName, whiteLabel, logoUrl, brandColor, lastVisitText);
                 if (ask.asked) summary.address_requests++;
               }
               continue;
@@ -647,6 +673,7 @@ Deno.serve(async (req) => {
                 whiteLabel,
                 logoUrl,
                 brandColor,
+                lastVisitText,
               );
               if (result.ok) sentSomething = true;
               else failure = result.detail;
