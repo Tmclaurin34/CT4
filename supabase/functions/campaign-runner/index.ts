@@ -1,9 +1,13 @@
 // Clicktide campaign engine.
 // Runs hourly via pg_cron (or manually by a staff admin). Scans every business's
 // active campaigns, matches customers to triggers, applies guards, then sends
-// email/SMS. Physical gifts are queued as alerts; postcards mail via Lob. When a
-// matched customer has no mailing address, the engine asks THEM for it directly
-// (text or email with a tokenized link to /gift-address) at most every 14 days.
+// email/SMS. Customer-facing emails ship in a branded shell (business logo or
+// brand-colored wordmark) so they never read as anonymous/phishy. Physical gifts
+// queue alerts; postcards mail via Lob. When a matched customer has no mailing
+// address, the engine asks THEM for it (tokenized /gift-address link), max every 14d.
+//
+// NOTE: deployed as v14 on 2026-06-11. This file mirrors the deployed source;
+// the brandedShell/sendEmail/maybeRequestAddress sections are the v14 changes.
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -16,14 +20,10 @@ const lobKey = Deno.env.get("LOB_API_KEY") || "";
 const POSTCARD_PRICE = 1.5; // debited from the gift wallet per mailed postcard
 const ADDRESS_FORM_URL = "https://goclicktide.com/gift-address";
 const ADDRESS_ASK_COOLDOWN_DAYS = 14;
-// Optional: design cards in Lob's dashboard (Creative > Templates) and set
-// these to the tmpl_... ids; merge variables {{message}}, {{business_name}},
-// {{first_name}} are passed. Unset = built-in design below.
 const lobFrontTpl = Deno.env.get("LOB_FRONT_TEMPLATE") || "";
 const lobBackTpl = Deno.env.get("LOB_BACK_TEMPLATE") || "";
 
 const MAX_SENDS_PER_BUSINESS = 25;
-// Monthly SMS included per plan; extra messages debit the gift wallet.
 const PLAN_SMS_LIMITS: Record<string, number> = { local: 200, growth: 1000, scale: 5000 };
 const SMS_OVERAGE_PRICE = 0.05;
 
@@ -152,9 +152,6 @@ function daysSince(value?: string | null) {
   return Math.floor((Date.now() - t) / 86400000);
 }
 
-// Match a customer against a campaign's trigger text.
-// Returns { match, reason } — reason "unsupported" means the trigger needs
-// event data we don't have (birthdays, cart abandons, etc.).
 function matchesTrigger(trigger: string, c: Customer, churnDays: number) {
   const t = (trigger || "").toLowerCase();
   const numMatch = t.match(/(\d+)/);
@@ -204,6 +201,20 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#039;");
 }
 
+// Branded shell for every customer-facing email the engine sends by default:
+// business logo (or brand-colored wordmark) on top, white card, clear footer.
+// This is what keeps a win-back text from reading like a phishing attempt.
+function brandedShell(businessName: string, inner: string, whiteLabel: boolean, logoUrl = "", brandColor = "#0B62D6") {
+  const header = logoUrl
+    ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(businessName)}" style="max-height:56px;max-width:220px;display:block;margin:0 auto 6px"/><div style="font-size:15px;font-weight:bold;color:#111827;text-align:center">${escapeHtml(businessName)}</div>`
+    : `<div style="font-size:23px;font-weight:bold;color:${escapeHtml(brandColor)};text-align:center">${escapeHtml(businessName)}</div>`;
+  return `<div style="background:#F4F5F7;padding:26px 12px;font-family:Arial,Helvetica,sans-serif">
+    <div style="max-width:560px;margin:0 auto;background:#FFFFFF;border-radius:14px;overflow:hidden;border:1px solid #E9EBEF">
+      <div style="padding:26px 30px 20px;border-bottom:1px solid #F0F1F4">${header}</div>
+      <div style="padding:26px 30px;color:#1F2937;font-size:15px;line-height:1.7">${inner}</div>
+      <div style="padding:16px 30px 22px;border-top:1px solid #F0F1F4;font-size:11px;color:#9CA3AF;text-align:center">${whiteLabel ? escapeHtml(businessName) : `Sent by Clicktide on behalf of ${escapeHtml(businessName)} · goclicktide.com`}</div>
+    </div></div>`;
+}
 
 type EmailTemplate = {
   subject?: string;
@@ -230,15 +241,11 @@ function renderTemplate(tpl: EmailTemplate, message: string, businessName: strin
     ${whiteLabel ? "" : `<div style="border-top:1px solid #F3F4F6;margin-top:18px;padding-top:12px;font-family:Arial;font-size:11px;color:#9CA3AF;text-align:center">Sent by Clicktide on behalf of ${escapeHtml(businessName)}.</div>`}</div>`;
 }
 
-async function sendEmail(to: string, subject: string, message: string, businessName: string, customerName: string, htmlOverride?: string, whiteLabel = false) {
+async function sendEmail(to: string, subject: string, message: string, businessName: string, customerName: string, htmlOverride?: string, whiteLabel = false, logoUrl = "", brandColor = "#0B62D6") {
   if (!resendApiKey) return { ok: false, detail: "RESEND_API_KEY is not configured" };
-  const html = htmlOverride || `
-    <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:28px;color:#111827;line-height:1.6">
-      <h1 style="font-size:22px;margin:0 0 14px;color:#111827">${escapeHtml(businessName)}</h1>
-      <p style="margin:0 0 18px">Hi ${escapeHtml(customerName.split(/\s+/)[0] || "there")},</p>
-      <p style="margin:0 0 22px">${escapeHtml(message).replaceAll("\n", "<br>")}</p>
-      ${whiteLabel ? "" : `<p style="font-size:12px;color:#6B7280;margin:28px 0 0">Sent by Clicktide on behalf of ${escapeHtml(businessName)}.</p>`}
-    </div>`;
+  const first = escapeHtml(customerName.split(/\s+/)[0] || "there");
+  const inner = `<p style="margin:0 0 14px">Hi ${first},</p><p style="margin:0">${escapeHtml(message).replaceAll("\n", "<br>")}</p>`;
+  const html = htmlOverride || brandedShell(businessName, inner, whiteLabel, logoUrl, brandColor);
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
@@ -303,7 +310,6 @@ function postcardFront(businessName: string, brandColor = "#0B62D6", logoUrl = "
 }
 
 function postcardBack(message: string, businessName: string, whiteLabel: boolean) {
-  // Right half stays clear for Lob's address + postage block.
   return `<div style="width:6.25in;height:4.25in;padding:0.35in;font-family:Helvetica,Arial,sans-serif;box-sizing:border-box">
     <div style="width:2.9in;font-size:12px;line-height:1.6;color:#111">${escapeHtml(message).replaceAll("\n", "<br>")}
     <div style="margin-top:14px;font-weight:bold">— ${escapeHtml(businessName)}</div>
@@ -372,8 +378,9 @@ async function queuePhysicalGiftAlert(campaign: Campaign, customer: Customer, ha
 }
 
 // Ask the customer directly for their mailing address (tokenized link), at most
-// once every ADDRESS_ASK_COOLDOWN_DAYS. Texts first (with consent), else email.
-async function maybeRequestAddress(campaign: Campaign, customer: Customer, businessName: string) {
+// once every ADDRESS_ASK_COOLDOWN_DAYS. Texts first (with consent), else a
+// branded email with the business logo + an explicit no-payment-details note.
+async function maybeRequestAddress(campaign: Campaign, customer: Customer, businessName: string, whiteLabel: boolean, logoUrl = "", brandColor = "#0B62D6") {
   const lastAsk = customer.address_requested_at ? Date.parse(customer.address_requested_at) : 0;
   if (lastAsk && Date.now() - lastAsk < ADDRESS_ASK_COOLDOWN_DAYS * 86400000) return { asked: false, reason: "recently_asked" };
   const token = String(customer.address_request_token || "");
@@ -389,8 +396,12 @@ async function maybeRequestAddress(campaign: Campaign, customer: Customer, busin
     if (r.ok) { sent = true; channel = "sms"; }
   }
   if (!sent && customer.email) {
-    const msg = `${businessName} has a little something they want to mail you — a real piece of mail, the good kind. We just need to know where to send it. It takes 20 seconds: ${link}`;
-    const r = await sendEmail(customer.email, `${businessName} wants to mail you something \u{1F381}`, msg, businessName, customer.name || "there");
+    const inner = `<p style="margin:0 0 14px">Hi ${escapeHtml(first)},</p>
+      <p style="margin:0 0 18px">${escapeHtml(businessName)} has a little something they want to <b>mail you</b> \u{1F381} — a real piece of mail, the good kind. We just need to know where to send it.</p>
+      <div style="text-align:center;margin:22px 0"><a href="${escapeHtml(link)}" style="display:inline-block;background:${escapeHtml(brandColor)};color:#FFFFFF;font-weight:bold;font-size:15px;text-decoration:none;padding:13px 32px;border-radius:10px">Tell us where to send it →</a></div>
+      <p style="margin:0;font-size:12px;color:#6B7280;line-height:1.7">Takes 20 seconds and only asks for a mailing address — never payment details. The secure form lives at goclicktide.com, the service ${escapeHtml(businessName)} uses to send customer gifts.</p>`;
+    const html = brandedShell(businessName, inner, whiteLabel, logoUrl, brandColor);
+    const r = await sendEmail(customer.email, `${businessName} wants to mail you something \u{1F381}`, "", businessName, customer.name || "there", html, whiteLabel);
     if (r.ok) { sent = true; channel = "email"; }
   }
   if (!sent) return { asked: false, reason: "no_reachable_channel" };
@@ -410,7 +421,6 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   if (!serviceRoleKey) return json({ error: "Server secrets are not configured" }, 500);
 
-  // Auth: cron key (from pg_cron) or a logged-in Clicktide staff admin.
   const providedKey = req.headers.get("x-clicktide-cron-key") || "";
   const validKey = providedKey && providedKey === await expectedCronKey();
   if (!validKey && !(await isStaffAdmin(req))) {
@@ -473,7 +483,6 @@ Deno.serve(async (req) => {
       ) as Customer[];
       if (!customers.length) continue;
 
-      // Saved Email Studio template (if the business designed one).
       let emailTpl: EmailTemplate | null = null;
       try {
         const tplRows = await rest(
@@ -482,7 +491,6 @@ Deno.serve(async (req) => {
         if (Array.isArray(tplRows) && tplRows[0]) emailTpl = tplRows[0] as EmailTemplate;
       } catch (_) { /* default wrapper */ }
 
-      // Recent sends for cooldown checks (one year back covers every cooldown).
       const yearAgo = new Date(Date.now() - 365 * 86400000).toISOString();
       const sends = await rest(
         `/rest/v1/campaign_sends?user_id=eq.${encodeURIComponent(userId)}&sent_at=gte.${yearAgo}&select=campaign_id,customer_id,sent_at`,
@@ -497,6 +505,8 @@ Deno.serve(async (req) => {
       let bizSends = 0;
       const churnDays = biz?.churn_days || 60;
       const businessName = biz?.business_name || "your favorite local business";
+      const logoUrl = String(biz?.logo_url || "");
+      const brandColor = String(emailTpl?.brand?.color || "#0B62D6");
       const plan = String(biz?.plan || "").toLowerCase();
       const smsLimit = PLAN_SMS_LIMITS[plan] ?? 200;
       const whiteLabel = plan === "scale";
@@ -508,7 +518,7 @@ Deno.serve(async (req) => {
           `/rest/v1/sms_messages?user_id=eq.${encodeURIComponent(userId)}&status=eq.sent&sent_at=gte.${monthStart.toISOString()}&select=id&limit=10000`,
         );
         smsUsed = Array.isArray(used) ? used.length : 0;
-      } catch (_) { /* fail open on the counter, budget check below still guards */ }
+      } catch (_) { /* fail open on the counter */ }
 
       for (const campaign of userCampaigns) {
         for (const customer of customers) {
@@ -528,20 +538,17 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          // Never send gifts to customers whose latest rating is 1-2 stars.
           const sat = customer.satisfaction_score || 0;
           if (sat > 0 && sat <= 2 && campaign.campaign_type !== "message_only") {
             summary.skipped.unhappy_customer++;
             continue;
           }
 
-          // Minimum spend guard.
           if ((campaign.min_spend || 0) > 0 && (customer.total_spent || 0) < (campaign.min_spend || 0)) {
             summary.skipped.no_match++;
             continue;
           }
 
-          // Cooldown guard.
           const cooldownDays = campaign.cooldown_days || 30;
           const key = `${campaign.id}:${customer.id}`;
           const last = lastSend.get(key);
@@ -552,12 +559,10 @@ Deno.serve(async (req) => {
 
           const hasAddress = !!(customer.address && customer.city && customer.state && customer.zip);
 
-          // Physical gifts queue an alert for owner review; if the customer has
-          // no address on file, also ask the customer for it directly.
           if (campaign.campaign_type === "physical_gift") {
             if (!dryRun) {
               if (!hasAddress) {
-                const ask = await maybeRequestAddress(campaign, customer, businessName);
+                const ask = await maybeRequestAddress(campaign, customer, businessName, whiteLabel, logoUrl, brandColor);
                 if (ask.asked) summary.address_requests++;
               }
               await queuePhysicalGiftAlert(campaign, customer, hasAddress);
@@ -569,13 +574,11 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          // Mailed postcards: fully automatic via Lob, paid from the wallet.
-          // Without an address we ask the customer for it and retry next run.
           if (campaign.campaign_type === "postcard") {
             if (!hasAddress) {
               summary.skipped.postcard_no_address++;
               if (!dryRun) {
-                const ask = await maybeRequestAddress(campaign, customer, businessName);
+                const ask = await maybeRequestAddress(campaign, customer, businessName, whiteLabel, logoUrl, brandColor);
                 if (ask.asked) summary.address_requests++;
               }
               continue;
@@ -586,7 +589,7 @@ Deno.serve(async (req) => {
                 continue;
               }
               const pcMessage = fillTemplate(campaign.message || "We miss you, {{first_name}}! Come see us at {{business_name}} soon.", customer, businessName);
-              const result = await sendPostcard(customer, businessName, pcMessage, whiteLabel, String(emailTpl?.brand?.color || "#0B62D6"), String(biz?.logo_url || ""), String(campaign.postcard_design || "bold"));
+              const result = await sendPostcard(customer, businessName, pcMessage, whiteLabel, brandColor, logoUrl, String(campaign.postcard_design || "bold"));
               await recordSend(campaign, customer, "postcard", result.ok ? "sent" : "failed", result.detail);
               if (result.ok) {
                 await debitWallet(userId, POSTCARD_PRICE, `Postcard: ${campaign.name || campaign.trigger}`, String(campaign.id)).catch(() => {});
@@ -617,7 +620,6 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          // Message sends: email and/or SMS per delivery channel.
           const channel = campaign.delivery_channel || "email";
           const template = campaign.message || "Thanks for being a customer of {{business_name}}!";
           const message = fillTemplate(template, customer, businessName);
@@ -643,6 +645,8 @@ Deno.serve(async (req) => {
                 customer.name || "there",
                 override,
                 whiteLabel,
+                logoUrl,
+                brandColor,
               );
               if (result.ok) sentSomething = true;
               else failure = result.detail;
