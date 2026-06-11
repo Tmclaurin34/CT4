@@ -2478,16 +2478,37 @@ async function saveGRev(btn){
     if(btn){btn.textContent="Saved ✓";setTimeout(function(){if(btn){btn.disabled=false;btn.textContent="Save";}},1500);}
   }catch(e){alert(e.message);if(btn){btn.disabled=false;btn.textContent="Save";}}
 }
-async function tGiftAuto(btn){
-  var next=!(bizLock&&bizLock.gift_auto_send);
-  if(next&&!confirm("Turn ON auto-send?\n\nGifts will ship automatically when a campaign matches a customer (paid from your gift wallet). You can turn this off anytime."))return;
-  if(btn){btn.disabled=true;btn.textContent="Saving...";}
+async function doGiftAuto(next){
   try{
     var r=await fetch(SU+"/rest/v1/clicktide?user_id=eq."+myId(),{method:"PATCH",headers:Object.assign({},h(S?.token||SK),{Prefer:"return=minimal"}),body:JSON.stringify({gift_auto_send:next})});
     if(!r.ok)throw new Error("Could not save the setting");
     if(bizLock)bizLock.gift_auto_send=next;
   }catch(e){alert(e.message);}
   dLoad();
+}
+function giftAutoModal(){
+  var ov=document.createElement("div");
+  ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px";
+  ov.onclick=function(e){if(e.target===ov)document.body.removeChild(ov);};
+  var rows=[["\ud83d\udce6","Matched customers get their gift ordered automatically","No review step. The order goes straight to printing and shipping, with your logo on it."],
+            ["\ud83d\udcb3","Your gift wallet is charged at that moment","Each gift costs its catalog price (for example, the mug is $6.44). No wallet balance = nothing ships."],
+            ["\ud83d\udee1\ufe0f","The guardrails stay on","Auto-send only fires when a mailing address is on file AND the campaign has a specific gift chosen. Anything else still comes to you for review. Customers who recently rated you 1\u20132 stars never get gifts."],
+            ["\u23F8\ufe0f","You can turn it off anytime","Takes effect immediately \u2014 gifts go back to waiting for your approval."]];
+  var body=rows.map(function(x){return '<div style="display:flex;gap:11px;margin-bottom:12px"><div style="font-size:18px;flex-shrink:0">'+x[0]+'</div><div><div style="font-size:13px;font-weight:700">'+x[1]+'</div><div style="font-size:11px;color:rgba(240,244,255,.55);line-height:1.6;margin-top:2px">'+x[2]+'</div></div></div>';}).join("");
+  ov.innerHTML='<div id="gaBox" style="background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:26px;width:100%;max-width:450px"><div style="font-size:28px;text-align:center;margin-bottom:8px">\ud83c\udf81</div><div style="font-family:Space Grotesk,sans-serif;font-size:18px;font-weight:800;text-align:center;margin-bottom:14px">Turn on gift auto-send?</div><div style="font-size:12px;font-weight:700;color:rgba(240,244,255,.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Here is exactly what happens</div>'+body+'<div style="display:flex;gap:10px;margin-top:16px"><button id="gaNo" style="flex:1;padding:12px;border-radius:100px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.07);color:#F0F4FF;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">Cancel</button><button id="gaNext" style="flex:1;padding:12px;border-radius:100px;border:none;background:#FFD166;color:#080D18;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">I understand \u2014 continue \u2192</button></div></div>';
+  document.body.appendChild(ov);
+  document.getElementById("gaNo").onclick=function(){document.body.removeChild(ov);};
+  document.getElementById("gaNext").onclick=function(){
+    var box=document.getElementById("gaBox");
+    box.innerHTML='<div style="font-size:28px;text-align:center;margin-bottom:8px">\u26a0\ufe0f</div><div style="font-family:Space Grotesk,sans-serif;font-size:18px;font-weight:800;text-align:center;margin-bottom:12px">Final confirmation</div><div style="font-size:13px;color:rgba(240,244,255,.7);line-height:1.7;text-align:center;margin-bottom:18px">Starting with the next hourly run, matching gifts will <b>ship automatically</b> and your <b>wallet will be charged</b> \u2014 with no review step.<br/><br/>Turn auto-send ON?</div><div style="display:flex;gap:10px"><button id="gaKeep" style="flex:1;padding:12px;border-radius:100px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.07);color:#F0F4FF;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">Keep approval mode</button><button id="gaYes" style="flex:1;padding:12px;border-radius:100px;border:none;background:#22C55E;color:#06220F;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">Yes \u2014 turn it ON</button></div>';
+    document.getElementById("gaKeep").onclick=function(){document.body.removeChild(ov);};
+    document.getElementById("gaYes").onclick=function(){document.body.removeChild(ov);doGiftAuto(true);};
+  };
+}
+async function tGiftAuto(btn){
+  var next=!(bizLock&&bizLock.gift_auto_send);
+  if(!next){if(btn){btn.disabled=true;btn.textContent="Saving...";}await doGiftAuto(false);return;}
+  giftAutoModal();
 }
 async function tCmp(id,st){if(st!=="active"&&!await requirePaidAction())return;await db.upd("campaigns",id,{status:st==="active"?"paused":"active"},S?.token||SK);dLoad();}
 async function dCmp(id){if(!confirm("Delete?"))return;await db.del("campaigns",id,S?.token||SK);dLoad();}
