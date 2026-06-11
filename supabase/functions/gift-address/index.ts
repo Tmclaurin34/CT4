@@ -1,0 +1,87 @@
+// Gift address collection. A customer follows a tokenized link from a text or
+// email ("{{business}} has a gift to mail you") and submits their mailing
+// address once. The token is a per-customer random uuid — it IS the auth.
+// GET  ?t=TOKEN          -> { ok, first_name, business_name, has_address }
+// POST { t, address, city, state, zip } -> saves to the customer row
+
+const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
+const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+};
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
+}
+
+async function rest(path: string, init: RequestInit = {}) {
+  const r = await fetch(`${supabaseUrl}${path}`, {
+    ...init,
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      "Content-Type": "application/json",
+      ...(init.headers || {}),
+    },
+  });
+  const text = await r.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!r.ok) throw new Error(data?.message || data?.error || r.statusText);
+  return data;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function customerByToken(token: string) {
+  if (!UUID_RE.test(token)) return null;
+  const rows = await rest(
+    `/rest/v1/customers?address_request_token=eq.${encodeURIComponent(token)}&select=id,name,user_id,address,city,state,zip&limit=1`,
+  );
+  return Array.isArray(rows) && rows[0] ? rows[0] : null;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (!serviceRoleKey) return json({ error: "Server is not configured" }, 500);
+
+  try {
+    if (req.method === "GET") {
+      const token = new URL(req.url).searchParams.get("t") || "";
+      const c = await customerByToken(token);
+      if (!c) return json({ error: "This link is not valid." }, 404);
+      let businessName = "a business you visit";
+      try {
+        const biz = await rest(`/rest/v1/clicktide?user_id=eq.${encodeURIComponent(c.user_id)}&select=business_name&limit=1`);
+        if (Array.isArray(biz) && biz[0]?.business_name) businessName = String(biz[0].business_name);
+      } catch (_) { /* generic name */ }
+      const first = String(c.name || "").trim().split(/\s+/)[0] || "there";
+      return json({ ok: true, first_name: first, business_name: businessName, has_address: !!(c.address && c.city && c.state && c.zip) });
+    }
+
+    if (req.method === "POST") {
+      const body = await req.json().catch(() => ({}));
+      const token = String(body.t || "");
+      const c = await customerByToken(token);
+      if (!c) return json({ error: "This link is not valid." }, 404);
+      const address = String(body.address || "").trim().slice(0, 120);
+      const city = String(body.city || "").trim().slice(0, 60);
+      const state = String(body.state || "").trim().slice(0, 20);
+      const zip = String(body.zip || "").trim().slice(0, 12);
+      if (!address || !city || !state || !zip) return json({ error: "Please fill in every field." }, 400);
+      if (!/^[0-9]{5}(-[0-9]{4})?$/.test(zip)) return json({ error: "That ZIP code doesn't look right." }, 400);
+      await rest(`/rest/v1/customers?id=eq.${c.id}`, {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ address, city, state, zip, address_confirmed_at: new Date().toISOString() }),
+      });
+      return json({ ok: true });
+    }
+
+    return json({ error: "Method not allowed" }, 405);
+  } catch (e) {
+    return json({ error: e instanceof Error ? e.message : "Something went wrong" }, 500);
+  }
+});

@@ -1,8 +1,9 @@
 // Clicktide campaign engine.
 // Runs hourly via pg_cron (or manually by a staff admin). Scans every business's
 // active campaigns, matches customers to triggers, applies guards, then sends
-// email/SMS. Physical gifts are queued as alerts because customers have no
-// shipping address on file — the business reviews and sends from the dashboard.
+// email/SMS. Physical gifts are queued as alerts; postcards mail via Lob. When a
+// matched customer has no mailing address, the engine asks THEM for it directly
+// (text or email with a tokenized link to /gift-address) at most every 14 days.
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -13,6 +14,8 @@ const twilioToken = Deno.env.get("TWILIO_AUTH_TOKEN") || "";
 const twilioFrom = Deno.env.get("TWILIO_FROM_NUMBER") || "";
 const lobKey = Deno.env.get("LOB_API_KEY") || "";
 const POSTCARD_PRICE = 1.5; // debited from the gift wallet per mailed postcard
+const ADDRESS_FORM_URL = "https://goclicktide.com/gift-address";
+const ADDRESS_ASK_COOLDOWN_DAYS = 14;
 // Optional: design cards in Lob's dashboard (Creative > Templates) and set
 // these to the tmpl_... ids; merge variables {{message}}, {{business_name}},
 // {{first_name}} are passed. Unset = built-in design below.
@@ -66,6 +69,8 @@ type Customer = {
   city?: string;
   state?: string;
   zip?: string;
+  address_request_token?: string;
+  address_requested_at?: string;
 };
 
 type Business = {
@@ -349,7 +354,10 @@ async function recordSend(campaign: Campaign, customer: Customer, channel: strin
   }).catch(() => {});
 }
 
-async function queuePhysicalGiftAlert(campaign: Campaign, customer: Customer) {
+async function queuePhysicalGiftAlert(campaign: Campaign, customer: Customer, hasAddress: boolean) {
+  const addressNote = hasAddress
+    ? "Their mailing address is on file — review and send from the dashboard."
+    : "No mailing address yet — Clicktide has asked them for it directly; it will appear on their profile once they reply.";
   await rest("/rest/v1/alerts", {
     method: "POST",
     headers: { Prefer: "return=minimal" },
@@ -357,10 +365,44 @@ async function queuePhysicalGiftAlert(campaign: Campaign, customer: Customer) {
       user_id: campaign.user_id,
       customer_id: customer.id,
       type: "physical_gift_queued",
-      message: `Campaign "${campaign.name || campaign.trigger}" matched ${customer.name || "a customer"} for a physical gift (${campaign.gift_name || "gift"}). Review and send it from the dashboard — a shipping address is needed.`,
+      message: `Campaign "${campaign.name || campaign.trigger}" matched ${customer.name || "a customer"} for a physical gift (${campaign.gift_name || "gift"}). ${addressNote}`,
       resolved: false,
     }),
   }).catch(() => {});
+}
+
+// Ask the customer directly for their mailing address (tokenized link), at most
+// once every ADDRESS_ASK_COOLDOWN_DAYS. Texts first (with consent), else email.
+async function maybeRequestAddress(campaign: Campaign, customer: Customer, businessName: string) {
+  const lastAsk = customer.address_requested_at ? Date.parse(customer.address_requested_at) : 0;
+  if (lastAsk && Date.now() - lastAsk < ADDRESS_ASK_COOLDOWN_DAYS * 86400000) return { asked: false, reason: "recently_asked" };
+  const token = String(customer.address_request_token || "");
+  if (!token) return { asked: false, reason: "no_token" };
+  const link = `${ADDRESS_FORM_URL}?t=${token}`;
+  const first = (customer.name || "there").trim().split(/\s+/)[0];
+  let sent = false;
+  let channel = "";
+
+  if (customer.sms_consent && !customer.sms_unsubscribed_at && normalizePhone(customer.phone)) {
+    const smsBody = `Hey ${first}! ${businessName} has a little something they want to MAIL you \u{1F381} Tell us where to send it: ${link}`;
+    const r = await sendSms(campaign, customer, smsBody);
+    if (r.ok) { sent = true; channel = "sms"; }
+  }
+  if (!sent && customer.email) {
+    const msg = `${businessName} has a little something they want to mail you — a real piece of mail, the good kind. We just need to know where to send it. It takes 20 seconds: ${link}`;
+    const r = await sendEmail(customer.email, `${businessName} wants to mail you something \u{1F381}`, msg, businessName, customer.name || "there");
+    if (r.ok) { sent = true; channel = "email"; }
+  }
+  if (!sent) return { asked: false, reason: "no_reachable_channel" };
+
+  await rest(`/rest/v1/customers?id=eq.${customer.id}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ address_requested_at: new Date().toISOString() }),
+  }).catch(() => {});
+  customer.address_requested_at = new Date().toISOString();
+  await recordSend(campaign, customer, "address_request", "sent", `${channel}: ${link}`);
+  return { asked: true, reason: channel };
 }
 
 Deno.serve(async (req) => {
@@ -385,6 +427,7 @@ Deno.serve(async (req) => {
     evaluated: 0,
     sent: 0,
     queued_physical: 0,
+    address_requests: 0,
     failed: 0,
     skipped: {
       billing_inactive: 0,
@@ -507,10 +550,17 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          // Physical gifts queue an alert — no shipping address on file.
+          const hasAddress = !!(customer.address && customer.city && customer.state && customer.zip);
+
+          // Physical gifts queue an alert for owner review; if the customer has
+          // no address on file, also ask the customer for it directly.
           if (campaign.campaign_type === "physical_gift") {
             if (!dryRun) {
-              await queuePhysicalGiftAlert(campaign, customer);
+              if (!hasAddress) {
+                const ask = await maybeRequestAddress(campaign, customer, businessName);
+                if (ask.asked) summary.address_requests++;
+              }
+              await queuePhysicalGiftAlert(campaign, customer, hasAddress);
               await recordSend(campaign, customer, "alert", "queued_review", "Physical gift queued for manual review");
             }
             lastSend.set(key, Date.now());
@@ -520,9 +570,14 @@ Deno.serve(async (req) => {
           }
 
           // Mailed postcards: fully automatic via Lob, paid from the wallet.
+          // Without an address we ask the customer for it and retry next run.
           if (campaign.campaign_type === "postcard") {
-            if (!customer.address || !customer.city || !customer.state || !customer.zip) {
+            if (!hasAddress) {
               summary.skipped.postcard_no_address++;
+              if (!dryRun) {
+                const ask = await maybeRequestAddress(campaign, customer, businessName);
+                if (ask.asked) summary.address_requests++;
+              }
               continue;
             }
             if (!dryRun) {
