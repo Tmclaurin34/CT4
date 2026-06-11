@@ -2412,6 +2412,7 @@ async function dLoad(){
           </div>
           <span style="font-size:10px;font-weight:700;color:#22C55E">Connected</span>
         </div>
+        <div class="dc"><div style="display:flex;align-items:center;gap:9px;margin-bottom:8px"><span style="font-size:20px">⭐</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Google review link</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Happy customers (4–5 star survey ratings) get invited to leave you a Google review automatically.</div></div></div><div style="display:flex;gap:8px"><input class="fi" id="gRevInp" value="${bizLock?.google_review_url||''}" placeholder="https://g.page/r/.../review" style="flex:1"/><button class="btn btn-gold" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="saveGRev(this)">Save</button></div></div>
         <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">🎁</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Physical gift sending</div><div style="font-size:11px;color:rgba(240,244,255,.45)">${bizLock?.gift_auto_send?"Auto-send — gifts ship automatically, paid from your wallet":"Approval required — you review each gift before it ships"}</div></div><button class="btn ${bizLock?.gift_auto_send?"btn-gold":"btn-ghost"}" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="tGiftAuto(this)">${bizLock?.gift_auto_send?"Auto-send: ON":"Auto-send: OFF"}</button></div>
         <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">📧</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Email delivery</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Managed by Clicktide for campaign messages</div></div><span style="font-size:10px;color:#FFD166;font-weight:700">Back office</span></div>
         <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:12px;font-weight:800;color:#4DA6FF;width:24px;text-align:center">SMS</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">SMS delivery</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Twilio sends texts only to opted-in customers</div></div><span style="font-size:10px;color:#FFD166;font-weight:700">Back office</span></div>
@@ -2454,6 +2455,17 @@ async function dLoad(){
   }catch(ex){if(el)el.innerHTML=`<div class="empty"><div style="font-size:36px;margin-bottom:10px">⚠️</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">Error</div><div style="font-size:13px;color:rgba(240,244,255,.45)">${ex.message}</div></div>`;}
 }
 
+async function saveGRev(btn){
+  var v=(document.getElementById("gRevInp")?.value||"").trim();
+  if(v&&!/^https?:\/\//i.test(v)){alert("Please paste a full link starting with https://");return;}
+  if(btn){btn.disabled=true;btn.textContent="Saving...";}
+  try{
+    var r=await fetch(SU+"/rest/v1/clicktide?user_id=eq."+myId(),{method:"PATCH",headers:Object.assign({},h(S?.token||SK),{Prefer:"return=minimal"}),body:JSON.stringify({google_review_url:v||null})});
+    if(!r.ok)throw new Error("Could not save");
+    if(bizLock)bizLock.google_review_url=v;
+    if(btn){btn.textContent="Saved ✓";setTimeout(function(){if(btn){btn.disabled=false;btn.textContent="Save";}},1500);}
+  }catch(e){alert(e.message);if(btn){btn.disabled=false;btn.textContent="Save";}}
+}
 async function tGiftAuto(btn){
   var next=!(bizLock&&bizLock.gift_auto_send);
   if(next&&!confirm("Turn ON auto-send?\n\nGifts will ship automatically when a campaign matches a customer (paid from your gift wallet). You can turn this off anytime."))return;
