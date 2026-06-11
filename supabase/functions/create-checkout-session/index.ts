@@ -21,6 +21,29 @@ const planPrices: Record<string, string | undefined> = {
   Scale: Deno.env.get("SCALE_PRICE_ID") || "price_1TfFMgGWBWEX8wHsRS3XgPtb",
 };
 
+// 30-day free trial on every plan — card collected up front, first charge on day 30.
+const TRIAL_DAYS = "30";
+
+// Redirect allowlist — checkout success/cancel URLs may only point at our own
+// origins (production, Pages previews, local dev). Anything else falls back to
+// the default, so a crafted request can't bounce buyers to an external site.
+function allowedRedirect(url: string) {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    const localDev = (host === "localhost" || host === "127.0.0.1");
+    if (u.protocol !== "https:" && !(u.protocol === "http:" && localDev)) return false;
+    if (host === "goclicktide.com" || host === "www.goclicktide.com") return true;
+    if (host === "clicktide-app.pages.dev" || host.endsWith(".clicktide-app.pages.dev")) return true;
+    return localDev;
+  } catch {
+    return false;
+  }
+}
+function safeUrl(value: unknown) {
+  return typeof value === "string" && allowedRedirect(value) ? value : "";
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -59,12 +82,13 @@ Deno.serve(async (req) => {
     return json({ error: "Invalid JSON body" }, 400);
   }
 
-  const origin = req.headers.get("origin") || "https://goclicktide.com";
+  const rawOrigin = req.headers.get("origin") || "";
+  const origin = allowedRedirect(rawOrigin + "/") ? rawOrigin : "https://goclicktide.com";
   const isWalletTopup = body.type === "wallet_topup";
-  const successUrl = body.success_url || (isWalletTopup
+  const successUrl = safeUrl(body.success_url) || (isWalletTopup
     ? `${origin}/?session=wallet_success`
     : `${origin}/?session=success&plan=${encodeURIComponent(body.plan || "Growth")}`);
-  const cancelUrl = body.cancel_url || `${origin}/?session=cancelled`;
+  const cancelUrl = safeUrl(body.cancel_url) || `${origin}/?session=cancelled`;
 
   const form = new URLSearchParams();
   form.set("success_url", successUrl);
@@ -109,7 +133,7 @@ Deno.serve(async (req) => {
     form.set("mode", "subscription");
     form.set("line_items[0][price]", priceId);
     form.set("line_items[0][quantity]", "1");
-    form.set("subscription_data[trial_period_days]", "30");
+    form.set("subscription_data[trial_period_days]", TRIAL_DAYS);
     form.set("metadata[type]", "subscription");
     form.set("metadata[plan]", plan);
     form.set("metadata[business_name]", body.business_name || "");
