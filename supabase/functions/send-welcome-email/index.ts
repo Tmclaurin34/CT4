@@ -57,7 +57,9 @@ function welcomeHtml(contactName: string, businessName: string) {
         <td style="vertical-align:middle;font-size:17px;font-weight:bold;color:#080D18;letter-spacing:1px">CLICK<span style="color:#2D7FF9">TIDE</span></td>
       </tr></table>
       <div style="font-size:34px;line-height:1.2;font-weight:bold;color:#0B0F19;margin:34px 0 14px">Your customers are about to start coming back.</div>
-      <p style="font-size:16px;color:#374151;line-height:1.65;margin:0 0 26px">Hi ${first} — ${biz} now has a retention engine. Clicktide watches your customers' rhythms and wins back the ones who quietly drift, automatically. Here's your launch plan:</p>
+      <p style="font-size:16px;color:#374151;line-height:1.65;margin:0 0 22px">Hi ${first} — ${biz} now has a retention engine. Clicktide watches your customers' rhythms and wins back the ones who quietly drift, automatically.</p>
+      <img src="https://goclicktide.com/drift-reveal-preview.png" width="520" alt="The Drift Reveal — see how many customers have quietly drifted" style="width:100%;max-width:520px;border-radius:14px;display:block;margin:0 0 8px"/>
+      <div style="font-size:12px;color:#9CA3AF;margin:0 0 24px">Your Drift Reveal — what you'll see the moment your customer data connects.</div>
       <table style="width:100%;border-collapse:collapse">
         ${step("1", "Connect your point of sale", "Square, Shopify, Clover, or Stripe — read-only and secure. Up to a year of customers and visits imports itself in about a minute.")}
         ${step("2", "Meet your Drift Reveal", "See exactly how many customers have quietly stopped coming back — and what they're worth. Most owners are surprised.")}
