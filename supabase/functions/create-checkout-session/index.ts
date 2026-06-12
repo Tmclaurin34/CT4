@@ -17,8 +17,8 @@ type CheckoutBody = {
 
 const planPrices: Record<string, string | undefined> = {
   Local: Deno.env.get("LOCAL_PRICE_ID") || "price_1ThaasGWBWEX8wHssSYEbwEl",
-  Growth: Deno.env.get("GROWTH_PRICE_ID") || "price_1TfFM4GWBWEX8wHsd0xaDyaA",
-  Scale: Deno.env.get("SCALE_PRICE_ID") || "price_1TfFMgGWBWEX8wHsRS3XgPtb",
+  Growth: Deno.env.get("GROWTH_PRICE_ID") || "price_1ThbjeGWBWEX8wHsElMt4z3Z",
+  Scale: Deno.env.get("SCALE_PRICE_ID") || "price_1ThbjeGWBWEX8wHsNrw2mjPF",
 };
 
 // 30-day free trial on every plan — card collected up front, first charge on day 30.
@@ -42,6 +42,10 @@ function allowedRedirect(url: string) {
 }
 function safeUrl(value: unknown) {
   return typeof value === "string" && allowedRedirect(value) ? value : "";
+}
+
+function isValidEmail(value: unknown) {
+  return typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
 function json(body: unknown, status = 200) {
@@ -85,6 +89,9 @@ Deno.serve(async (req) => {
   const rawOrigin = req.headers.get("origin") || "";
   const origin = allowedRedirect(rawOrigin + "/") ? rawOrigin : "https://goclicktide.com";
   const isWalletTopup = body.type === "wallet_topup";
+  const isSubscription = !body.type || body.type === "subscription";
+  if (!isWalletTopup && !isSubscription) return json({ error: "Invalid checkout type" }, 400);
+
   const successUrl = safeUrl(body.success_url) || (isWalletTopup
     ? `${origin}/?session=wallet_success`
     : `${origin}/?session=success&plan=${encodeURIComponent(body.plan || "Growth")}`);
@@ -99,7 +106,12 @@ Deno.serve(async (req) => {
     "custom_text[terms_of_service_acceptance][message]",
     "I agree to Clicktide's Terms, Privacy Policy, Billing Policy, and authorize Clicktide to provide messaging, customer retention, platform connection, and gift fulfillment services for my business.",
   );
-  if (body.user_id) form.set("client_reference_id", body.user_id);
+  if (body.user_id) {
+    const authUserId = await authedUserId(req);
+    if (!authUserId) return json({ error: "Login is required for account checkout" }, 401);
+    if (authUserId !== body.user_id) return json({ error: "Not allowed to start checkout for this account" }, 403);
+    form.set("client_reference_id", body.user_id);
+  }
 
   if (isWalletTopup) {
     const amount = Number(body.amount || 0);
@@ -126,7 +138,10 @@ Deno.serve(async (req) => {
     form.set("payment_intent_data[metadata][business_name]", body.business_name || "");
     form.set("payment_intent_data[metadata][amount]", amount.toFixed(2));
   } else {
-    const plan = body.plan && planPrices[body.plan] ? body.plan : "Growth";
+    if (!body.plan || !planPrices[body.plan]) return json({ error: "A valid plan is required" }, 400);
+    if (!isValidEmail(body.email)) return json({ error: "A valid email is required" }, 400);
+
+    const plan = body.plan;
     const priceId = planPrices[plan];
     if (!priceId) return json({ error: "Stripe price is not configured" }, 500);
 
