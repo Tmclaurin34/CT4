@@ -20,7 +20,7 @@
 <meta name="twitter:description" content="Your customers aren't leaving — they're forgetting. Branded gifts, postcards, emails, and texts — sent automatically."/>
 <meta name="twitter:image" content="https://goclicktide.com/og-image.png"/>
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"Clicktide","legalName":"Six Seasons Partners LLC","url":"https://goclicktide.com","logo":"https://goclicktide.com/apple-touch-icon.png","email":"support@goclicktide.com"},{"@type":"SoftwareApplication","name":"Clicktide","applicationCategory":"BusinessApplication","operatingSystem":"Web","url":"https://goclicktide.com","description":"Customer loyalty and retention platform for local businesses — automated branded gifts, mailed postcards, emails, and texts triggered by customer behavior.","offers":[{"@type":"Offer","name":"Local","price":"29.00","priceCurrency":"USD"},{"@type":"Offer","name":"Growth","price":"99.00","priceCurrency":"USD"},{"@type":"Offer","name":"Scale","price":"299.00","priceCurrency":"USD"}]}]}</script>
-<link rel="icon" type="image/svg+xml" href="favicon.svg"><link rel="icon" type="image/png" sizes="64x64" href="favicon.png"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png"><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="favicon.svg"><link rel="icon" type="image/png" sizes="64x64" href="favicon.png"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png"><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#080D18;color:#F0F4FF;font-family:'Inter',sans-serif;overflow-x:clip}
@@ -206,6 +206,202 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px}
 select option{background:#101828}
 .brand-creator-grid{display:grid;grid-template-columns:230px minmax(320px,1fr) 260px;min-height:430px}
+.mini3d{display:inline-block;animation:miniFloat 5.5s ease-in-out infinite}
+@keyframes miniFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+/* clickable floating step cards */
+.step-card{cursor:pointer;position:relative;animation:cardFloat 6s ease-in-out infinite;animation-delay:var(--d,0s);will-change:transform}
+.step-card:hover{animation:none;transform:translateY(-10px) scale(1.02);box-shadow:0 26px 60px rgba(16,18,21,.16);border-color:rgba(16,18,21,.42)}
+@keyframes cardFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.step-go{display:inline-flex;align-items:center;gap:6px;margin-top:14px;font-size:12.5px;font-weight:700;color:#101215;opacity:0;transform:translateX(-6px);transition:opacity .25s ease,transform .25s ease}
+.step-card:hover .step-go{opacity:1;transform:none}
+/* 3D floaters */
+.h3d{position:absolute;pointer-events:none;z-index:0}
+.h3d-r{top:120px;right:max(20px,calc(50% - 660px));width:300px;animation:float3d 7s ease-in-out infinite}
+.h3d-l{top:330px;left:max(8px,calc(50% - 680px));width:200px;animation:float3d 9s ease-in-out infinite reverse}
+@keyframes float3d{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-22px) rotate(2deg)}}
+@media (max-width:1180px){.h3d-r{width:210px;top:90px;right:-30px;opacity:.8}.h3d-l{display:none}}
+@media (max-width:700px){.h3d-r{display:none}}
+/* LIGHT LANDING — editorial (Sadewa-inspired) */
+.nav-lt{top:14px;width:min(1100px,calc(100% - 28px));margin:0 auto;border-radius:100px;background:rgba(255,255,255,.88);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);border:1px solid rgba(46,124,214,.12);border-bottom:1px solid rgba(46,124,214,.12);box-shadow:0 12px 40px rgba(20,60,110,.12);padding:10px 14px 10px 22px}
+.nav-lt .white{color:#101215}
+.nav-lt .btn-outline{color:#3A3E45;border-color:rgba(16,18,21,.22)}
+.nav-lt .btn-ghost{background:#101215;color:#F6F5F1;border:none}
+.lt .white{color:#101215}
+.lt{background:#FAFCFF;color:#101215;--gcn:#101215;--gcd:#5A5E66;--gcc:#8A8E96;--gcp:#9A6E0E;--gcb:rgba(16,18,21,.08);--ftd:#5A5E66;--nts:#6B6F76;--plname:#6B6F76;--plprice:#101215;--plsub:#8A8E96;--pldiv:rgba(16,18,21,.08)}
+.lt .hero{background:linear-gradient(180deg,#C3DFF9 0%,#E4F1FD 55%,#FAFCFF 100%)}
+.lt .hero:before{background:none}
+.lt .badge{background:rgba(6,15,22,.04);border:1px solid rgba(6,15,22,.1);color:#0F1115;letter-spacing:.02em;font-size:13px;font-weight:600;padding:7px 16px;text-transform:none;font-family:'DM Sans',sans-serif}
+.lt .badge .dot{background:#0F1115}
+.lt h1{color:#101215;font-size:clamp(44px,7.2vw,92px);letter-spacing:-.045em;line-height:.99}
+.lt .grad-gold{background:none;color:#0F1115;-webkit-text-fill-color:#0F1115}
+.lt .gold{color:inherit}
+.lt .sub{color:#5A5E66}
+.lt .cta-group{background:#FFFFFF;border:1px solid rgba(46,124,214,.18);box-shadow:0 24px 70px rgba(20,60,110,.16)}
+.lt .cta-group:focus-within{border-color:#101215}
+.lt .email-inp{color:#101215}
+.lt .email-inp::placeholder{color:#9AA0A8}
+.lt .trust-line{color:#6B6F76}
+.lt .trust-line b{color:#1B9E4B}
+.lt .trust-line:hover{color:#101215}
+.lt .pill{background:#FFFFFF;border-color:rgba(16,18,21,.12);color:#5A5E66}
+.lt .shot{border-color:rgba(255,255,255,.65);box-shadow:0 60px 150px rgba(20,60,110,.35)}
+.lt .kick{display:none}
+.lt .sec-sur{background:#EFF6FD;border-top:1px solid rgba(46,124,214,.08);border-bottom:1px solid rgba(46,124,214,.08)}
+.lt .sec-sub{color:#5A5E66}
+.lt .card,.lt .card-s,.lt .tc{background:#FFFFFF;border-color:rgba(16,18,21,.1)}
+.lt .card:hover,.lt .card-s:hover,.lt .tc:hover{border-color:rgba(16,18,21,.32)}
+.lt .tc.pop{background:#FFFFFF;border-color:#101215;box-shadow:0 26px 70px rgba(16,18,21,.14)}
+.lt .step-num{background:#101215;border:none;color:#F6F5F1;font-family:ui-monospace,'SF Mono',Menlo,monospace}
+.lt .stat-n{color:#101215}
+.lt .plan{background:#FFFFFF;border-color:rgba(16,18,21,.1)}
+.lt .plan:hover{border-color:rgba(16,18,21,.32)}
+.lt .plan.pop{background:#101215;border-color:#101215;--plname:rgba(255,255,255,.6);--plprice:#FFFFFF;--plsub:rgba(255,255,255,.55);--pldiv:rgba(255,255,255,.14);box-shadow:0 30px 90px rgba(16,18,21,.35)}
+.lt .feat li{color:#3F434B}
+.lt .plan.pop .feat li{color:rgba(255,255,255,.78)}
+.lt .feat li::before{color:#1B9E4B}
+.lt .plan.pop .feat li::before{color:#FFD166}
+.lt .btn-ghost{background:#101215;color:#F6F5F1;border:none}
+.lt .notif{background:#FFFFFF;border-color:rgba(16,18,21,.12);box-shadow:0 14px 44px rgba(16,18,21,.18)}
+.lt .cta-band{background:radial-gradient(ellipse 90% 130% at 50% -20%,rgba(111,179,247,.25),transparent 55%),linear-gradient(165deg,#1D4E89,#0F2A4A);border:none;color:#FFFFFF}
+.lt .cta-band .sec-title{color:#FFFFFF}
+.lt .cta-band .kick{color:rgba(255,255,255,.5)}
+.lt .cta-band .btn-ghost{background:transparent;color:#FFFFFF;border:1px solid rgba(255,255,255,.35)}
+.lt .site-footer{background:linear-gradient(180deg,#FAFCFF 0%,#D4E7FA 55%,#BFDDF8 100%);border-top:none;color:#3F434B;position:relative;overflow:hidden;padding-top:70px;padding-bottom:46px}
+.lt .site-footer .cloud{opacity:.9}
+.lt .foot-wrap{position:relative;z-index:1;background:linear-gradient(180deg,rgba(255,255,255,.75),rgba(255,255,255,.4));border:1px solid rgba(255,255,255,.65);border-radius:15px;padding:38px 34px 26px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 24px 60px rgba(20,60,110,.12)}
+.lt .foot-title{color:#101215}
+.lt .foot-links a,.lt .foot-links button{color:#5A5E66}
+.lt .foot-links a:hover,.lt .foot-links button:hover{color:#101215}
+.lt .foot-contact{color:#101215}
+.lt .foot-note{border-top:1px solid rgba(16,18,21,.1);color:#7A7E86}
+.lt .foot-legal a{color:#8A8E96}
+/* every page translates: light theme for all views */
+.lt [style*="background:#080D18"]{background:transparent!important}
+.lt .btn-outline{color:#3F434B;border-color:rgb(209,213,219);background:#FFFFFF}
+.lt .link-btn{color:#9A6E0E}
+.lt .logo-text .white,.lt .white{color:#0F1115}
+.lt [style*="color:rgba(240,244,255"]{color:#5A5E66!important}
+.lt [style*="color:#F0F4FF"]{color:#0F1115!important}
+.lt [style*="background:#0C1220"],.lt [style*="background:#101828"],.lt [style*="background:#0C1322"]{background:#FFFFFF!important;border-color:rgb(229,231,235)!important}
+.lt [style*="border:1px solid rgba(255,255,255"]{border-color:rgb(229,231,235)!important}
+.lt .auth{background:transparent}
+.lt .auth-card,.lt .ob-card,.lt .rc{background:#FFFFFF;border:1px solid rgb(229,231,235);box-shadow:0 24px 60px rgba(20,60,110,.08)}
+.lt .auth-title{color:#0F1115}
+.lt .auth-sub,.lt .ds{color:#6B6F76}
+.lt .fi,.lt .fi-sel,.lt .ta{background:#FFFFFF;border:1px solid rgb(209,213,219);color:#0F1115}
+.lt .fi::placeholder,.lt .ta::placeholder{color:#9CA3AF}
+.lt .fi-sel option{background:#FFFFFF;color:#0F1115}
+.lt .fl{color:#6B6F76}
+.lt .ob{background:transparent}
+.lt .stbar{background:#FFFFFF;border:1px solid rgb(229,231,235)}
+.lt .sp{color:#6B6F76}
+.lt .sp.on{background:linear-gradient(rgb(28,47,65) 0%,rgb(6,15,22) 100%);color:#FFFFFF}
+.lt .sp.pd{color:rgba(15,17,21,.35)}
+.lt .bc,.lt .gcard,.lt .ti,.lt .to,.lt .tpl{border-color:rgb(229,231,235);background:#FFFFFF}
+.lt .bc.on,.lt .gcard.on,.lt .ti.on,.lt .tpl.sel{border-color:#0F1115;background:rgba(6,15,22,.04);color:#0F1115}
+.lt .tk{border-color:rgb(209,213,219)}
+.lt .ti.on .tk{background:#101215;border-color:#101215;color:#FFFFFF}
+.lt .roi{background:transparent}
+.lt .roi-hd{background:rgba(255,255,255,.88);backdrop-filter:blur(14px);border-bottom:1px solid rgba(16,18,21,.08)}
+.lt .btc{background:#FFFFFF;border-color:rgb(229,231,235)}
+.lt .btc:hover{border-color:rgba(16,18,21,.4)}
+.lt .sl-l,.lt .sl-v{color:#0F1115}
+.lt .info-dot{background:rgba(6,15,22,.05);border-color:rgba(6,15,22,.15);color:#3F434B}
+.lt .info-dot::after{background:#FFFFFF;border-color:rgb(229,231,235);color:#3F434B;box-shadow:0 12px 36px rgba(20,60,110,.18)}
+.lt .info-dot::before{background:#FFFFFF;border-color:rgb(229,231,235)}
+.lt input[type=range]{background:rgba(6,15,22,.12)}
+.lt input[type=range]::-webkit-slider-thumb{background:#101215}
+.lt .empty{background:#FFFFFF;border-color:rgb(209,213,219)}
+.lt .conn-box{background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.3)}
+/* custom icon chips */
+.ic-chip{width:54px;height:54px;border-radius:14px;background:linear-gradient(rgb(238,242,246) 0%,#FFFFFF 100%);border:1px solid rgb(229,231,235);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ic-chip svg{display:block}
+/* cloudkit nav + band fixes */
+.nav-lt .btn-gold{background:linear-gradient(rgb(28,47,65) 0%,rgb(6,15,22) 100%);color:#FFFFFF;border-radius:15px;font-family:'DM Sans',sans-serif;font-weight:500}
+.nav-lt .btn-gold:hover{filter:brightness(1.25);opacity:1}
+.lt .cta-band .grad-gold{color:#9CC9F5;-webkit-text-fill-color:#9CC9F5}
+.lt .cta-band .btn-gold{background:#FFFFFF;color:#0F1115}
+/* cloudkit exact: type + buttons */
+.lt h1,.lt .sec-title,.lt .plan-price,.lt .stat-n{font-family:'Inter Tight','Inter',sans-serif;font-weight:600;letter-spacing:-.02em}
+.lt h1{font-size:clamp(42px,6.5vw,80px);line-height:.9}
+.lt .sec-title{font-size:clamp(34px,3.5vw,44px);line-height:1.3;letter-spacing:-.01em}
+.lt .sub,.lt .sec-sub,.lt .feat li,.lt p{font-family:'DM Sans','Inter',sans-serif}
+.lt .btn{border-radius:15px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:16px;padding:12px 26px}
+.lt .btn-gold{background:linear-gradient(rgb(28,47,65) 0%,rgb(6,15,22) 100%);color:#FFFFFF;box-shadow:none}
+.lt .btn-gold:hover{filter:brightness(1.25)}
+.lt .btn-ghost{background:#FFFFFF;color:#0F1115;border:1px solid rgb(229,231,235)}
+.lt .cta-group{border-radius:15px}
+.lt .cta-group .btn{border-radius:11px}
+/* platform marquee */
+.pills-marquee{overflow:hidden;margin:44px auto 0;max-width:960px;position:relative;z-index:1;-webkit-mask-image:linear-gradient(to right,transparent 0%,#000 12%,#000 88%,transparent 100%);mask-image:linear-gradient(to right,transparent 0%,#000 12%,#000 88%,transparent 100%)}
+.pills-track{display:flex;width:max-content;animation:marquee 30s linear infinite}
+.pills-track:hover{animation-play-state:paused}
+.pills-track .pill{margin-right:10px;white-space:nowrap;flex-shrink:0}
+@keyframes marquee{to{transform:translateX(-50%)}}
+/* hero melt */
+.lt .hero:after{content:"";position:absolute;left:0;right:0;bottom:0;height:170px;background:linear-gradient(rgba(250,252,255,0),#FAFCFF 92%);pointer-events:none;z-index:1}
+/* text-roll hover */
+.roll .roll-w{display:inline-block;position:relative;overflow:hidden;vertical-align:bottom}
+.roll .roll-a,.roll .roll-b{display:block;transition:transform .28s cubic-bezier(.3,.7,.3,1)}
+.roll .roll-b{position:absolute;left:0;top:100%}
+.roll:hover .roll-a,.roll:hover .roll-b{transform:translateY(-100%)}
+@media (prefers-reduced-motion: reduce){.pills-track{animation:none}.roll .roll-a,.roll .roll-b{transition:none}}
+/* hero letter cascade */
+.hl-ch{display:inline-block;opacity:0;transform:translateY(20px);animation:lrise .55s cubic-bezier(.2,.7,.3,1) forwards;animation-delay:calc(var(--i)*.04s)}
+.hl2{display:inline-block;opacity:0;transform:translateY(24px);animation:lrise .65s cubic-bezier(.2,.7,.3,1) .6s forwards}
+.hl-sub{opacity:0;animation:lrise .6s ease .85s forwards}
+@keyframes lrise{to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion: reduce){.hl-ch,.hl2,.hl-sub{animation:none;opacity:1;transform:none}}
+/* drifting clouds */
+.cloud{position:absolute;background:#FFFFFF;border-radius:50%;filter:blur(18px);pointer-events:none;animation:cloudDrift 30s ease-in-out infinite}
+.cloud:before,.cloud:after{content:"";position:absolute;background:#FFFFFF;border-radius:50%}
+.cloud:before{width:55%;height:130%;left:12%;top:-58%}
+.cloud:after{width:42%;height:105%;right:14%;top:-38%}
+@keyframes cloudDrift{0%,100%{transform:translateX(0)}50%{transform:translateX(44px)}}
+.cloud.c1{width:340px;height:92px;top:110px;left:5%;opacity:.9}
+.cloud.c2{width:260px;height:78px;top:300px;right:7%;opacity:.7;animation-duration:38s;animation-direction:reverse}
+.cloud.c3{width:430px;height:110px;top:600px;left:-70px;opacity:.95;animation-duration:44s}
+.cloud.c4{width:300px;height:88px;bottom:-26px;left:-90px;z-index:2;filter:blur(20px);opacity:.95}
+.cloud.c5{width:250px;height:76px;top:38%;right:-80px;z-index:2;filter:blur(20px);opacity:.85;animation-direction:reverse}
+@media (max-width:700px){.cloud{display:none}}
+/* cloudkit pricing mats */
+.lt .mat:nth-child(1){background:linear-gradient(160deg,rgba(59,213,132,.22) 0%,#FFFFFF 65%);border-color:rgba(23,163,90,.35);box-shadow:0 22px 55px rgba(23,163,90,.16)}
+.lt .mat:nth-child(1):hover{box-shadow:0 34px 80px rgba(23,163,90,.28)}
+.lt .mat:nth-child(1) .plan{--plprice:#17A35A;--plname:#17A35A}
+.lt .mat:nth-child(1) .plan .feat li::before{color:#22C55E}
+.lt .mat:nth-child(1) .plan .btn-ghost{background:linear-gradient(165deg,#3BD584,#17A35A);color:#FFFFFF;border:none}
+.lt .mat:nth-child(2){background:linear-gradient(160deg,rgba(111,179,247,.28) 0%,#FFFFFF 65%);border-color:rgba(46,124,214,.45);box-shadow:0 26px 65px rgba(46,124,214,.2)}
+.lt .mat:nth-child(2):hover{box-shadow:0 38px 90px rgba(46,124,214,.32)}
+.lt .mat:nth-child(2) .plan{--plprice:#2E7CD6;--plname:#2E7CD6}
+.lt .mat:nth-child(2) .plan .feat li::before{color:#4DA6FF}
+.lt .mat:nth-child(2) .plan .btn-gold{background:linear-gradient(165deg,#6FB3F7,#2E7CD6);color:#FFFFFF}
+.lt .plan.pop .plan-badge{background:linear-gradient(165deg,#6FB3F7,#2E7CD6);color:#FFFFFF}
+.lt .mat:nth-child(3){background:linear-gradient(160deg,rgba(255,209,102,.32) 0%,#FFFFFF 65%);border-color:rgba(233,169,59,.45);box-shadow:0 22px 55px rgba(233,169,59,.2)}
+.lt .mat:nth-child(3):hover{box-shadow:0 34px 80px rgba(233,169,59,.32)}
+.lt .mat:nth-child(3) .plan{--plprice:#D9941A;--plname:#C9870F}
+.lt .mat:nth-child(3) .plan .feat li::before{color:#D9941A}
+.lt .mat:nth-child(3) .plan .btn-ghost{background:linear-gradient(165deg,#FFDE8A,#F0B43C);color:#101215;border:none}
+@keyframes planFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+.lt .mat{background:linear-gradient(rgb(238,242,246) 0%,#FFFFFF 100%);border:1px solid rgb(229,231,235);border-radius:15px;padding:10px;cursor:pointer;animation:planFloat 7s ease-in-out infinite;will-change:transform;transition:box-shadow .25s ease}
+.lt .mat:hover{animation:none;transform:translateY(-10px);box-shadow:0 30px 70px rgba(16,18,21,.14)}
+.lt .mat .plan{background:#FFFFFF;border:1px solid rgb(229,231,235);border-radius:10px;--plname:rgba(15,17,21,.55);--plprice:#0F1115;--plsub:rgba(15,17,21,.55);--pldiv:rgb(238,242,246)}
+.lt .mat .plan .feat li{color:rgb(82,82,91)}
+.lt .mat .plan .feat li::before{color:#0F1115}
+.lt .plan.pop{margin-top:0}
+.lt .plan.pop .plan-badge{background:linear-gradient(rgb(28,47,65) 0%,rgb(6,15,22) 100%);color:#FFFFFF;font-family:'DM Sans',sans-serif}
+.lt .plan .btn-ghost,.lt .plan .btn-gold{background:linear-gradient(rgb(28,47,65) 0%,rgb(6,15,22) 100%);color:#FFFFFF;border:none}
+/* drifting clouds */
+.cloud{position:absolute;background:#FFFFFF;border-radius:50%;filter:blur(18px);pointer-events:none;animation:cloudDrift 30s ease-in-out infinite}
+.cloud:before,.cloud:after{content:"";position:absolute;background:#FFFFFF;border-radius:50%}
+.cloud:before{width:55%;height:130%;left:12%;top:-58%}
+.cloud:after{width:42%;height:105%;right:14%;top:-38%}
+@keyframes cloudDrift{0%,100%{transform:translateX(0)}50%{transform:translateX(44px)}}
+.cloud.c1{width:340px;height:92px;top:110px;left:5%;opacity:.9}
+.cloud.c2{width:260px;height:78px;top:300px;right:7%;opacity:.7;animation-duration:38s;animation-direction:reverse}
+.cloud.c3{width:430px;height:110px;top:600px;left:-70px;opacity:.95;animation-duration:44s}
+.cloud.c4{width:300px;height:88px;bottom:-26px;left:-90px;z-index:2;filter:blur(20px);opacity:.95}
+.cloud.c5{width:250px;height:76px;top:38%;right:-80px;z-index:2;filter:blur(20px);opacity:.85;animation-direction:reverse}
+@media (max-width:700px){.cloud{display:none}}
 @media (max-width: 900px){
   nav{padding:12px 16px;gap:12px;align-items:flex-start}
   nav>div:last-child{flex-wrap:wrap;justify-content:flex-end;gap:8px}
@@ -1048,7 +1244,7 @@ function legalConsent(id){
 }
 
 function go(s){scr=s;R();}
-function R(){document.getElementById("app").innerHTML=page();bind();}
+function R(){var lt=!(scr==="dash"&&S);document.body.style.background=lt?"#FAFCFF":"#080D18";document.getElementById("app").innerHTML=lt?'<div class="lt">'+page()+'</div>':page();bind();}
 
 function page(){
   if(scr==="land")return land();
@@ -1061,8 +1257,8 @@ function page(){
   return land();
 }
 
-function navH(){
-  return`<nav>${logoH(20)}<div style="display:flex;gap:10px;align-items:center">
+function navH(lt){
+  return`<nav class="nav-lt">${logoH(20)}<div style="display:flex;gap:10px;align-items:center">
   <button class="btn btn-outline" onclick="go('roi')">ROI Calculator</button>
   <button class="btn btn-outline" onclick="go('samples')">Gift Samples</button>
   ${S?`<button class="btn btn-gold" onclick="go('dash')">Dashboard →</button>`:`<button class="btn btn-ghost" style="margin-right:2px" onclick="go('login')">Log in</button><button class="btn btn-gold" onclick="go('onboard')">Get started →</button>`}
@@ -1075,10 +1271,10 @@ function cookieBanner(){
   return `<div class="cookie-bar" id="ckBar">This website uses cookies and similar technologies to improve your experience, understand site performance, and support marketing. By continuing to browse, you consent to our use of cookies. Learn more in our <a href="privacy.html" target="_blank">Privacy Policy</a>.<button class="cookie-x" aria-label="Close cookie notice" onclick="ckOk()">×</button></div>`;
 }
 function siteFooter(){
-  return `<footer class="site-footer"><div class="foot-wrap">
+  return `<footer class="site-footer"><div class="cloud" style="width:300px;height:84px;bottom:30px;left:4%"></div><div class="cloud" style="width:240px;height:70px;top:40px;right:6%;animation-direction:reverse"></div><div class="foot-wrap">
     <div class="foot-top">${logoH(22)}<a class="foot-contact" href="mailto:hello@goclicktide.com">Contact us</a></div>
     <div class="foot-grid">
-      <div><div class="foot-title">Clicktide</div><div style="font-size:12px;line-height:1.8;color:rgba(240,244,255,.54)">Reward loyal customers and bring churn-risk customers back with automatic messages, rewards, and gifts.</div></div>
+      <div><div class="foot-title">Clicktide</div><div style="font-size:12px;line-height:1.8;color:var(--ftd,rgba(240,244,255,.54))">Reward loyal customers and bring churn-risk customers back with automatic messages, rewards, and gifts.</div></div>
       <div><div class="foot-title">Resources</div><div class="foot-links"><button onclick="go('pricing')">Pricing</button><button onclick="go('roi')">ROI Calculator</button><a href="win-back-lost-customers.html" target="_blank">Win-back guide</a></div></div>
       <div><div class="foot-title">Product</div><div class="foot-links"><button onclick="go('onboard')">Start free trial</button><button onclick="go('login')">Customer login</button><button onclick="go('dash')">Dashboard</button></div></div>
       <div><div class="foot-title">Legal</div><div class="foot-links"><a href="terms.html" target="_blank">Terms of Use</a><a href="privacy.html" target="_blank">Privacy Policy</a><a href="billing-policy.html" target="_blank">Billing Policy</a></div></div>
@@ -1099,13 +1295,13 @@ function giftSampleCards(limit){
         ${g.image_url?`<div style="position:absolute;inset:-16px;background-image:url('${giftEsc(giftImgSrc(g.image_url))}');background-size:cover;background-position:center;filter:blur(14px);opacity:.34;transform:scale(1.04)"></div><img src="${giftEsc(giftImgSrc(g.image_url))}" alt="${giftEsc(g.n)}" style="width:100%;height:100%;object-fit:contain;display:block;position:relative;z-index:1"/>`:`<div style="font-size:42px">${g.e}</div>`}
       </div>
       <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
-        <div style="font-size:14px;font-weight:800;color:#F0F4FF">${giftEsc(g.n)}</div>
+        <div style="font-size:14px;font-weight:800;color:var(--gcn,#F0F4FF)">${giftEsc(g.n)}</div>
         ${(g.pop&&popShown++<2)?`<span style="font-size:10px;font-weight:800;color:#080D18;background:#FFD166;border-radius:999px;padding:2px 7px">Popular</span>`:""}
       </div>
-      <div style="font-size:12px;color:rgba(240,244,255,.52);line-height:1.55;flex:1">${giftEsc(g.s)}</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:11px;border-top:1px solid rgba(255,255,255,.07)">
-        <span style="font-size:11px;color:rgba(240,244,255,.42);text-transform:uppercase;letter-spacing:.8px">${giftEsc(g.cat)}</span>
-        <span style="font-size:13px;font-weight:900;color:#FFD166">Est. $${Number(g.p||0).toFixed(2)}</span>
+      <div style="font-size:12px;color:var(--gcd,rgba(240,244,255,.52));line-height:1.55;flex:1">${giftEsc(g.s)}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:11px;border-top:1px solid var(--gcb,rgba(255,255,255,.07))">
+        <span style="font-size:11px;color:var(--gcc,rgba(240,244,255,.42));text-transform:uppercase;letter-spacing:.8px">${giftEsc(g.cat)}</span>
+        <span style="font-size:13px;font-weight:900;color:var(--gcp,#FFD166)">Est. $${Number(g.p||0).toFixed(2)}</span>
       </div>
     </div>`;
   }).join("");
@@ -1127,31 +1323,66 @@ function giftSamplePage(){
 
 function land(){
   const n=NT[ntIdx];
-  return`${navH()}
-  <div class="hero">
+  return`${navH(1)}
+  <div class="lt">
+  <div class="hero"><div class="cloud c1"></div><div class="cloud c2"></div><div class="cloud c3"></div><svg class="h3d h3d-r" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+<defs>
+<linearGradient id="g3bx" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".95"/><stop offset="1" stop-color="#E8E4D8" stop-opacity=".9"/></linearGradient>
+<linearGradient id="g3side" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#DDD8CA"/><stop offset="1" stop-color="#C9C3B2"/></linearGradient>
+<linearGradient id="g3lid" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#EFEBE0"/></linearGradient>
+<linearGradient id="g3rib" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFD97A"/><stop offset="1" stop-color="#E9B949"/></linearGradient>
+<radialGradient id="g3shadow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#101215" stop-opacity=".22"/><stop offset="1" stop-color="#101215" stop-opacity="0"/></radialGradient>
+<filter id="g3blur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
+</defs>
+<ellipse cx="150" cy="262" rx="105" ry="22" fill="url(#g3shadow)"/>
+<g transform="rotate(-6 150 150)">
+<path d="M62 132 L150 168 L238 132 L238 218 L150 254 L62 218 Z" fill="url(#g3side)"/>
+<path d="M150 168 L238 132 L238 218 L150 254 Z" fill="#D5D0C0"/>
+<path d="M136 174 L164 186 L164 248 L136 236 Z" fill="url(#g3rib)"/>
+<path d="M50 100 L150 140 L250 100 L150 62 Z" fill="url(#g3lid)"/>
+<path d="M50 100 L150 140 L150 172 L50 130 Z" fill="url(#g3bx)"/>
+<path d="M150 140 L250 100 L250 130 L150 172 Z" fill="#E3DECF"/>
+<path d="M132 133 L168 147 L168 178 L132 164 Z" fill="url(#g3rib)"/>
+<path d="M104 81 L150 99 L196 81 L150 64 Z" fill="none" stroke="url(#g3rib)" stroke-width="11" filter="url(#g3blur)" opacity=".55"/>
+<path d="M150 99 C 120 84, 96 86, 92 74 C 88 60, 116 56, 132 66 C 146 75, 150 99, 150 99 Z" fill="url(#g3rib)"/>
+<path d="M150 99 C 180 84, 204 86, 208 74 C 212 60, 184 56, 168 66 C 154 75, 150 99, 150 99 Z" fill="url(#g3rib)" opacity=".92"/>
+<circle cx="150" cy="98" r="9" fill="#E9B949"/>
+</g>
+</svg>
+<svg class="h3d h3d-l" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+<defs>
+<linearGradient id="g3w1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BFD9F5"/><stop offset="1" stop-color="#7FB3E8"/></linearGradient>
+<radialGradient id="g3ws" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#101215" stop-opacity=".16"/><stop offset="1" stop-color="#101215" stop-opacity="0"/></radialGradient>
+</defs>
+<ellipse cx="100" cy="172" rx="66" ry="13" fill="url(#g3ws)"/>
+<g transform="rotate(14 100 100)">
+<path d="M100 30 a55 55 0 1 0 0.01 0 Z M100 66 a19 19 0 1 1 -0.01 0 Z" fill="url(#g3w1)" fill-rule="evenodd"/>
+<path d="M100 30 a55 55 0 0 1 55 55 l-36 0 a19 19 0 0 0 -19 -19 Z" fill="#FFFFFF" opacity=".45"/>
+</g>
+</svg>
     <div class="badge"><span class="dot"></span>Live in 10 minutes · Read-only access · No new hardware</div>
-    <h1>Send a gift.<br><span class="grad-gold">Start a tide.</span></h1>
-    <p class="sub">Your customers aren\'t leaving — they\'re forgetting. Clicktide watches your register, notices the moment a regular starts drifting, and wins them back automatically — a friendly text, a real postcard, a branded gift on their doorstep.</p>
+    <h1 style="position:relative;z-index:1">${"Send a gift.".split("").map((c,i)=>c===" "?`<span class="hl-ch" style="--i:${i};width:.26em">&nbsp;</span>`:`<span class="hl-ch" style="--i:${i}">${c}</span>`).join("")}<br><span class="grad-gold hl2">Start a tide.</span></h1>
+    <p class="sub hl-sub">Your customers aren\'t leaving — they\'re forgetting. Clicktide watches your register, notices the moment a regular starts drifting, and wins them back automatically — a friendly text, a real postcard, a branded gift on their doorstep.</p>
     <div class="input-row">
       <div class="cta-group">
         <input class="email-inp" id="hE" placeholder="your@email.com" type="email"/>
-        <button class="btn btn-gold" onclick="startTrial()">Start free trial →</button>
+        <button class="btn btn-gold roll" onclick="startTrial()"><span class="roll-w"><span class="roll-a">Start free trial →</span><span class="roll-b">Start free trial →</span></span></button>
       </div>
     </div>
-    <div id="wOk" style="display:none;margin-bottom:14px"><span style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:100px;padding:13px 22px;font-size:14px;color:#22C55E;font-weight:600">🎉 You\'re on the list!</span></div>
+    <div id="wOk" style="display:none;margin-bottom:14px"><span style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:100px;padding:13px 22px;font-size:14px;color:#22C55E;font-weight:600">✓ You\'re on the list!</span></div>
     <button class="trust-line" onclick="go('onboard')"><b>✓</b> Free report: see who\'s slipping away&nbsp;&nbsp;&nbsp;<b>✓</b> 30-day free trial&nbsp;&nbsp;&nbsp;<b>✓</b> Cancel anytime</button>
-    <div class="pills">${PL.map(p=>`<div class="pill">${p.e} ${p.n}</div>`).join("")}</div>
-    <div class="shot-wrap"><div class="shot">
+    <div class="pills-marquee"><div class="pills-track">${PL.concat(PL).map(p=>`<div class="pill">${p.n}</div>`).join("")}</div></div>
+    <div class="shot-wrap"><div class="cloud c4"></div><div class="cloud c5"></div><div class="shot">
       <div class="shot-bar"><span class="shot-dot" style="background:#FF5F57"></span><span class="shot-dot" style="background:#FEBC2E"></span><span class="shot-dot" style="background:#28C840"></span><span style="margin-left:12px;font-size:11.5px;color:rgba(240,244,255,.35)">app.goclicktide.com — June\'s Beauty Bar</span></div>
       <img src="dashboard-hero.png" alt="Clicktide dashboard: drift detection, win-back playbook, and recovered revenue" style="width:100%;height:auto;display:block" fetchpriority="high"/>
     </div></div>
   </div>
-  <div class="notif" id="ntf"><span style="font-size:22px">${n.e}</span><div><div style="font-size:13px;font-weight:700">${n.t}</div><div style="font-size:11px;color:rgba(240,244,255,.45);margin-top:1px">${n.s}</div></div></div>
+  <div class="notif" id="ntf"><span class="ic-chip" style="width:38px;height:38px;border-radius:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 12 20 21 4 21 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="21" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></span><div><div style="font-size:13px;font-weight:700">${n.t}</div><div style="font-size:11px;color:var(--nts,#6B6F76);margin-top:1px">${n.s}</div></div></div>
   <div class="sec sec-sur"><div style="max-width:1080px;margin:0 auto;text-align:center">
     <span class="kick">How it works</span>
     <h2 class="sec-title">Live in <span class="gold">10 minutes.</span></h2>
     <p class="sec-sub">Connect your register once — Clicktide learns every customer\'s rhythm and handles the rest on its own.</p>
-    <div class="g4">${[["1","Connect your register","One-click, read-only link to Square, Shopify, Stripe and 9 more. A year of customer history imports in about a minute."],["2","See your drift number","Instantly know how many customers quietly stopped coming back — and what they\'re worth in dollars."],["3","Install the playbook","One button arms your win-backs: a friendly text at day 14, a real postcard at day 30, a branded gift at day 45."],["4","Watch them come back","Any visit pauses everything automatically. Your dashboard counts every save in recovered revenue."]].map(([num,t,d])=>`<div class="card" style="text-align:left"><div class="step-num">${num}</div><div style="font-size:15px;font-weight:700;margin-bottom:7px">${t}</div><div style="font-size:13px;line-height:1.7;color:rgba(240,244,255,.52)">${d}</div></div>`).join("")}</div>
+    <div class="g4">${[["1","Connect your register","One-click, read-only link to Square, Shopify, Stripe and 9 more. A year of customer history imports in about a minute.","go('onboard')","Start connecting"],["2","See your drift number","Instantly know how many customers quietly stopped coming back — and what they\'re worth in dollars.","go('onboard')","See my number"],["3","Install the playbook","One button arms your win-backs: a friendly text at day 14, a real postcard at day 30, a branded gift at day 45.","localStorage.setItem('ct_pb_intent','1');go('pricing')","Install it"],["4","Watch them come back","Any visit pauses everything automatically. Your dashboard counts every save in recovered revenue.","go('roi')","See the math"]].map(([num,t,d,act,cta],ix)=>`<div class="card step-card" style="text-align:left;--d:${ix*0.75}s" onclick="${act}" role="button" tabindex="0" onkeydown="if(event.key==='Enter')this.click()"><div class="step-num">${num}</div><div style="font-size:15px;font-weight:700;margin-bottom:7px">${t}</div><div style="font-size:13px;line-height:1.7;color:#5A5E66">${d}</div><span class="step-go">${cta} →</span></div>`).join("")}</div>
   </div></div>
   <div class="sec"><div style="max-width:1020px;margin:0 auto;text-align:center">
     <span class="kick">One system</span>
@@ -1159,26 +1390,26 @@ function land(){
     <p class="sec-sub">Reward the customers who already love you. Re-engage the ones who are starting to fade.</p>
     <div class="g2" style="margin-bottom:48px">
       <div class="card-s" style="text-align:left">
-        <div style="font-size:30px;margin-bottom:12px">💛</div>
+        <div class="ic-chip" style="margin-bottom:14px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5C7.5 17.5 3.5 14 3.5 9.8 3.5 7 5.6 5 8.1 5c1.6 0 3 .8 3.9 2.1C12.9 5.8 14.3 5 15.9 5c2.5 0 4.6 2 4.6 4.8 0 4.2-4 7.7-8.5 10.7z"/></svg></div>
         <div style="font-size:18px;font-weight:800;margin-bottom:8px">Reward loyal customers</div>
-        <div style="font-size:13px;line-height:1.8;color:rgba(240,244,255,.52)">Send birthday surprises, VIP thank-yous, milestone gifts, referral rewards, and personal notes that make regulars feel remembered.</div>
+        <div style="font-size:13px;line-height:1.8;color:#5A5E66">Send birthday surprises, VIP thank-yous, milestone gifts, referral rewards, and personal notes that make regulars feel remembered.</div>
       </div>
       <div class="card-s" style="text-align:left">
-        <div style="font-size:30px;margin-bottom:12px">🌊</div>
+        <div class="ic-chip" style="margin-bottom:14px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 4 3 9 8 9"/></svg></div>
         <div style="font-size:18px;font-weight:800;margin-bottom:8px">Win back churn-risk customers</div>
-        <div style="font-size:13px;line-height:1.8;color:rgba(240,244,255,.52)">Detect inactivity, low engagement, or slipping visit patterns, then send the right check-in, digital reward, or physical gift.</div>
+        <div style="font-size:13px;line-height:1.8;color:#5A5E66">Detect inactivity, low engagement, or slipping visit patterns, then send the right check-in, digital reward, or physical gift.</div>
       </div>
     </div>
     <h2 class="sec-title" style="font-size:clamp(24px,3vw,34px)">Three ways to <span class="gold">reach them.</span></h2>
     <p class="sec-sub" style="margin-bottom:44px">Every send is personal, automatic, and pauses the moment they walk back in.</p>
     <div class="g3">
-      <div class="tc"><div style="font-size:32px;margin-bottom:12px">💬</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#4DA6FF;margin-bottom:6px">Free forever</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Message Only</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#4DA6FF;margin-bottom:10px">Free</div><div style="font-size:13px;color:rgba(240,244,255,.52);line-height:1.7;margin-bottom:14px">A personal check-in or thank you. No gift mentioned. Just human connection.</div><div style="background:rgba(77,166,255,.06);border:1px solid rgba(77,166,255,.15);border-radius:12px;padding:12px 14px;font-size:12px;color:rgba(240,244,255,.55);font-style:italic;margin-bottom:18px;text-align:left">"Hey Sarah, just checking in — the team at Iron Forge misses you! Hope everything is going well."</div><button class="btn btn-ghost" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
-      <div class="tc pop"><div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#FFD166;color:#080D18;padding:4px 16px;border-radius:100px;font-size:11px;font-weight:800;white-space:nowrap">Most Powerful</div><div style="font-size:32px;margin-bottom:12px">📦</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#FFD166;margin-bottom:6px">Gifts from $2</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Physical Gift</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#FFD166;margin-bottom:10px">From $2</div><div style="font-size:13px;color:rgba(240,244,255,.52);line-height:1.7;margin-bottom:14px">Your brand in their house — forever. A mug on their desk, a bottle in their gym bag: your logo, seen every single morning.</div><div style="background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.15);border-radius:12px;padding:12px 14px;font-size:12px;color:rgba(240,244,255,.55);font-style:italic;margin-bottom:18px;text-align:left">"Hey Sarah, keep an eye on your mailbox — something is on its way from us. 🎁"</div><button class="btn btn-gold" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
-      <div class="tc"><div style="font-size:32px;margin-bottom:12px">💳</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#22C55E;margin-bottom:6px">Included in your plan</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Digital Gift</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#22C55E;margin-bottom:10px">Included</div><div style="font-size:13px;color:rgba(240,244,255,.52);line-height:1.7;margin-bottom:14px">You generate a promo code in your Square, Shopify, or Clover dashboard. Clicktide sends it to your customer automatically.</div><div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:12px;padding:12px 14px;font-size:12px;color:rgba(240,244,255,.55);font-style:italic;margin-bottom:18px;text-align:left">"Hey Sarah, here\'s something special from Iron Forge — use code SARAH20 on your next visit!"</div><button class="btn btn-ghost" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
+      <div class="tc"><div style="margin-bottom:8px"><svg class="mini3d" width="86" height="78" viewBox="0 0 120 110" aria-hidden="true"><defs><linearGradient id="m3bub" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9CC6F2"/><stop offset="1" stop-color="#5E9FE0"/></linearGradient><radialGradient id="m3bs" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#101215" stop-opacity=".18"/><stop offset="1" stop-color="#101215" stop-opacity="0"/></radialGradient></defs><ellipse cx="60" cy="99" rx="30" ry="6" fill="url(#m3bs)"/><g transform="rotate(-4 60 55)"><rect x="24" y="26" width="72" height="46" rx="16" fill="url(#m3bub)"/><path d="M48 70 L42 90 L64 72 Z" fill="#5E9FE0"/><rect x="31" y="31" width="38" height="12" rx="6" fill="#FFFFFF" opacity=".45"/><circle cx="46" cy="51" r="4.5" fill="#FFFFFF"/><circle cx="60" cy="51" r="4.5" fill="#FFFFFF"/><circle cx="74" cy="51" r="4.5" fill="#FFFFFF"/></g></svg></div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#2776C4;margin-bottom:6px">Free forever</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Message Only</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#2776C4;margin-bottom:10px">Free</div><div style="font-size:13px;color:#5A5E66;line-height:1.7;margin-bottom:14px">A personal check-in or thank you. No gift mentioned. Just human connection.</div><div style="background:rgba(77,166,255,.06);border:1px solid rgba(77,166,255,.15);border-radius:12px;padding:12px 14px;font-size:12px;color:#4A4E55;font-style:italic;margin-bottom:18px;text-align:left">"Hey Sarah, just checking in — the team at Iron Forge misses you! Hope everything is going well."</div><button class="btn btn-ghost" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
+      <div class="tc pop"><div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#FFD166;color:#080D18;padding:4px 16px;border-radius:100px;font-size:11px;font-weight:800;white-space:nowrap">Most Powerful</div><div style="margin-bottom:8px"><svg class="mini3d" style="animation-delay:.6s" width="86" height="78" viewBox="0 0 120 110" aria-hidden="true"><defs><linearGradient id="m3lid" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#F0EBDD"/></linearGradient><linearGradient id="m3rib" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFD97A"/><stop offset="1" stop-color="#E9B949"/></linearGradient><radialGradient id="m3gs" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#101215" stop-opacity=".2"/><stop offset="1" stop-color="#101215" stop-opacity="0"/></radialGradient></defs><ellipse cx="60" cy="100" rx="34" ry="7" fill="url(#m3gs)"/><g transform="rotate(-5 60 60)"><path d="M28 52 L60 66 L60 96 L28 82 Z" fill="#EFEAD9"/><path d="M60 66 L92 52 L92 82 L60 96 Z" fill="#DFD9C5"/><path d="M54 63 L66 68 L66 94 L54 89 Z" fill="url(#m3rib)"/><path d="M24 40 L60 54 L96 40 L60 27 Z" fill="url(#m3lid)"/><path d="M24 40 L60 54 L60 66 L24 52 Z" fill="#F6F2E6"/><path d="M60 54 L96 40 L96 52 L60 66 Z" fill="#E8E2D0"/><path d="M52 49 L68 55 L68 64 L52 58 Z" fill="url(#m3rib)"/><path d="M60 38 C 48 32, 38 33, 36 27 C 34 20, 46 19, 53 24 C 58 28, 60 38, 60 38 Z" fill="url(#m3rib)"/><path d="M60 38 C 72 32, 82 33, 84 27 C 86 20, 74 19, 67 24 C 62 28, 60 38, 60 38 Z" fill="url(#m3rib)" opacity=".92"/><circle cx="60" cy="38" r="5" fill="#E9B949"/></g></svg></div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#B07E12;margin-bottom:6px">Gifts from $2</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Physical Gift</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#B07E12;margin-bottom:10px">From $2</div><div style="font-size:13px;color:#5A5E66;line-height:1.7;margin-bottom:14px">Your brand in their house — forever. A mug on their desk, a bottle in their gym bag: your logo, seen every single morning.</div><div style="background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.15);border-radius:12px;padding:12px 14px;font-size:12px;color:#4A4E55;font-style:italic;margin-bottom:18px;text-align:left">"Hey Sarah, keep an eye on your mailbox — something is on its way from us. 🎁"</div><button class="btn btn-gold" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
+      <div class="tc"><div style="margin-bottom:8px"><svg class="mini3d" style="animation-delay:1.2s" width="86" height="78" viewBox="0 0 120 110" aria-hidden="true"><defs><linearGradient id="m3cd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9ADBB2"/><stop offset="1" stop-color="#4CBF77"/></linearGradient><radialGradient id="m3cs" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#101215" stop-opacity=".18"/><stop offset="1" stop-color="#101215" stop-opacity="0"/></radialGradient></defs><ellipse cx="60" cy="99" rx="32" ry="6" fill="url(#m3cs)"/><g transform="rotate(-6 60 55)"><rect x="22" y="30" width="76" height="50" rx="10" fill="url(#m3cd)"/><rect x="22" y="40" width="76" height="10" fill="#101215" opacity=".22"/><rect x="30" y="58" width="15" height="11" rx="2.5" fill="#FFE9A8"/><rect x="52" y="62" width="36" height="5" rx="2.5" fill="#FFFFFF" opacity=".6"/><rect x="28" y="34" width="30" height="4" rx="2" fill="#FFFFFF" opacity=".45"/></g></svg></div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#189048;margin-bottom:6px">Included in your plan</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Digital Gift</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#189048;margin-bottom:10px">Included</div><div style="font-size:13px;color:#5A5E66;line-height:1.7;margin-bottom:14px">You generate a promo code in your Square, Shopify, or Clover dashboard. Clicktide sends it to your customer automatically.</div><div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:12px;padding:12px 14px;font-size:12px;color:#4A4E55;font-style:italic;margin-bottom:18px;text-align:left">"Hey Sarah, here\'s something special from Iron Forge — use code SARAH20 on your next visit!"</div><button class="btn btn-ghost" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-top:18px">
-      <div class="tc" style="text-align:left"><div style="display:flex;gap:14px;align-items:flex-start"><div style="font-size:26px">🛡️</div><div><div style="font-size:15px;font-weight:700;margin-bottom:5px">One-click Win-Back Playbook</div><div style="font-size:13px;color:rgba(240,244,255,.52);line-height:1.7">One click installs your complete protection: a friendly text at day 14, a postcard at day 30, a small branded gift at day 45 — pre-written, fully editable, and it pauses the moment a customer comes back.</div><button class="btn btn-gold" style="margin-top:14px;padding:9px 18px" onclick="localStorage.setItem('ct_pb_intent','1');go('pricing')">Install it on your business →</button></div></div></div>
-      <div class="tc" style="text-align:left"><div style="display:flex;gap:14px;align-items:flex-start"><div style="font-size:26px">📈</div><div><div style="font-size:15px;font-weight:700;margin-bottom:5px">Monday Drift Report</div><div style="font-size:13px;color:rgba(240,244,255,.52);line-height:1.7">Every Monday morning: exactly which customers started drifting last week — names, days absent, and what they\'re worth — so nobody slips away unnoticed.</div></div></div></div>
+      <div class="tc" style="text-align:left"><div style="display:flex;gap:14px;align-items:flex-start"><div class="ic-chip"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 2.8v5.4c0 4.3-2.9 7.6-7 9.8-4.1-2.2-7-5.5-7-9.8V5.8L12 3z"/><polyline points="9 11.5 11.2 13.7 15.5 9.4"/></svg></div><div><div style="font-size:15px;font-weight:700;margin-bottom:5px">One-click Win-Back Playbook</div><div style="font-size:13px;color:#5A5E66;line-height:1.7">One click installs your complete protection: a friendly text at day 14, a postcard at day 30, a small branded gift at day 45 — pre-written, fully editable, and it pauses the moment a customer comes back.</div><button class="btn btn-gold" style="margin-top:14px;padding:9px 18px" onclick="localStorage.setItem('ct_pb_intent','1');go('pricing')">Install it on your business →</button></div></div></div>
+      <div class="tc" style="text-align:left"><div style="display:flex;gap:14px;align-items:flex-start"><div class="ic-chip"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 9.5 11.5 13 15 20 7"/><polyline points="14.5 7 20 7 20 12.5"/></svg></div><div><div style="font-size:15px;font-weight:700;margin-bottom:5px">Monday Drift Report</div><div style="font-size:13px;color:#5A5E66;line-height:1.7">Every Monday morning: exactly which customers started drifting last week — names, days absent, and what they\'re worth — so nobody slips away unnoticed.</div></div></div></div>
     </div>
     <div style="margin-top:64px;text-align:left">
       <div style="text-align:center;margin-bottom:30px">
@@ -1193,25 +1424,25 @@ function land(){
   <div class="sec sec-sur"><div style="max-width:1080px;margin:0 auto;text-align:center">
     <span class="kick">Coverage</span>
     <h2 class="sec-title">Keep your regulars. <span class="gold">Recover the ones slipping away.</span></h2>
-    <div class="g4" style="margin-top:44px">${[["VIPs","Thank your best customers","before they feel ignored"],["Milestones","Celebrate moments","birthdays, visits, referrals"],["At-risk","Catch slipping customers","before churn becomes final"],["Recovered","Reinforce the comeback","after a customer returns"]].map(([v,l,s])=>`<div class="card" style="text-align:center"><div class="stat-n">${v}</div><div style="font-size:13.5px;font-weight:700;margin-bottom:5px">${l}</div><div style="font-size:12px;color:rgba(240,244,255,.48)">${s}</div></div>`).join("")}</div>
+    <div class="g4" style="margin-top:44px">${[["VIPs","Thank your best customers","before they feel ignored"],["Milestones","Celebrate moments","birthdays, visits, referrals"],["At-risk","Catch slipping customers","before churn becomes final"],["Recovered","Reinforce the comeback","after a customer returns"]].map(([v,l,s])=>`<div class="card" style="text-align:center"><div class="stat-n">${v}</div><div style="font-size:13.5px;font-weight:700;margin-bottom:5px">${l}</div><div style="font-size:12px;color:#6B6F76">${s}</div></div>`).join("")}</div>
   </div></div>
   <div class="sec"><div style="max-width:1020px;margin:0 auto;text-align:center">
     <span class="kick">Pricing</span>
-    <h2 class="sec-title" id="pricing">Built for every <span class="gold">business size.</span></h2><div style="display:flex;justify-content:center"><div onclick="go('onboard')" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.3);border-radius:100px;padding:8px 18px;font-size:12.5px;font-weight:700;color:#FFD166;margin:14px 0 4px;cursor:pointer">🔍 Free drift assessment · 30-day free trial · cancel anytime</div></div>
+    <h2 class="sec-title" id="pricing">Built for every <span class="gold">business size.</span></h2><div style="display:flex;justify-content:center"><div onclick="go('onboard')" style="display:inline-flex;align-items:center;gap:8px;background:#101215;border:1px solid #101215;border-radius:100px;padding:8px 18px;font-size:12.5px;font-weight:700;color:#F6F5F1;margin:14px 0 4px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.5" y1="15.5" x2="21" y2="21"/></svg> Free drift assessment · 30-day free trial · cancel anytime</div></div>
     <p class="sec-sub" style="margin-bottom:44px">Subscription + pay-per-gift wallet. No surprise bills.</p>
-    <div class="g3">${[{n:"Local",p:29,c:"#22C55E",pop:false,f:["200 customers/mo","Messages included","Digital gifts included","Physical gifts from wallet","Square & Clover","Basic analytics"]},{n:"Growth",p:99,c:"#FFD166",pop:true,f:["1,000 customers/mo","Messages included","Digital gifts included","Physical gifts from wallet","All 12 integrations","Retention analytics","Branded packaging"]},{n:"Scale",p:299,c:"#4DA6FF",pop:false,f:["Unlimited customers","Messages included","Digital gifts included","Physical gifts from wallet","AI triggers","White-label — your branding only","Dedicated success manager"]}].map(pl=>`<div class="plan ${pl.pop?"pop":""}" style="position:relative">${pl.pop?`<div class="plan-badge">Most Popular</div>`:""}<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(240,244,255,.45);margin-bottom:10px">${pl.n}</div><div class="plan-price" style="color:#F0F4FF">$${pl.p}<span style="font-size:15px;letter-spacing:0;font-weight:600;color:rgba(240,244,255,.45)">/mo</span></div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:18px">+ pay-per-gift wallet</div><div style="height:1px;background:rgba(255,255,255,.07);margin-bottom:18px"></div><ul class="feat">${pl.f.map(f=>`<li>${f}</li>`).join("")}</ul><button class="btn ${pl.pop?"btn-gold":"btn-ghost"}" style="width:100%;padding:12px" onclick="go('onboard')">Get started →</button></div>`).join("")}</div>
+    <div class="g3">${[{n:"Local",p:29,c:"#22C55E",pop:false,f:["200 customers/mo","Messages included","Digital gifts included","Physical gifts from wallet","Square & Clover","Basic analytics"]},{n:"Growth",p:99,c:"#FFD166",pop:true,f:["1,000 customers/mo","Messages included","Digital gifts included","Physical gifts from wallet","All 12 integrations","Retention analytics","Branded packaging"]},{n:"Scale",p:299,c:"#4DA6FF",pop:false,f:["Unlimited customers","Messages included","Digital gifts included","Physical gifts from wallet","AI triggers","White-label — your branding only","Dedicated success manager"]}].map((pl,ix)=>`<div class="mat" style="animation-delay:${ix*0.8}s" onclick="go('onboard')" role="button" tabindex="0"><div class="plan ${pl.pop?"pop":""}" style="position:relative">${pl.pop?`<div class="plan-badge">Most Popular</div>`:""}<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--plname,#6B6F76);margin-bottom:10px">${pl.n}</div><div class="plan-price" style="color:var(--plprice,#F0F4FF)">$${pl.p}<span style="font-size:15px;letter-spacing:0;font-weight:600;color:var(--plsub,#6B6F76)">/mo</span></div><div style="font-size:12px;color:var(--plsub,#6B6F76);margin-bottom:18px">+ pay-per-gift wallet</div><div style="height:1px;background:var(--pldiv,rgba(255,255,255,.07));margin-bottom:18px"></div><ul class="feat">${pl.f.map(f=>`<li>${f}</li>`).join("")}</ul><button class="btn ${pl.pop?"btn-gold":"btn-ghost"}" style="width:100%;padding:12px" onclick="go('onboard')">Get started →</button></div></div>`).join("")}</div>
   </div></div>
   <div class="sec" style="padding-top:32px">
     <div class="cta-band">
       <span class="kick">Get started</span>
       <h2 class="sec-title" style="margin-bottom:14px">Ready to start the <span class="grad-gold">tide?</span></h2>
-      <p style="color:rgba(240,244,255,.55);font-size:16px;margin-bottom:32px;line-height:1.7;max-width:520px;margin-left:auto;margin-right:auto">See your drift number free — most owners find thousands of dollars in customers they didn\'t know they\'d lost.</p>
+      <p style="color:rgba(255,255,255,.68);font-size:16px;margin-bottom:32px;line-height:1.7;max-width:520px;margin-left:auto;margin-right:auto">See your drift number free — most owners find thousands of dollars in customers they didn\'t know they\'d lost.</p>
       <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
         <button class="btn btn-gold" style="padding:15px 38px;font-size:15px" onclick="go('onboard')">Start free trial →</button>
         <button class="btn btn-ghost" style="padding:15px 28px;font-size:15px" onclick="go('roi')">Calculate my ROI</button>
       </div>
     </div>
-  </div>${siteFooter()}${cookieBanner()}`;
+  </div>${siteFooter()}${cookieBanner()}</div>`;
 }
 
 function authP(mode){
@@ -2805,7 +3036,7 @@ function bind(){
   if(scr==="land")setTimeout(async()=>{await loadGiftCatalog();const el=document.getElementById("landingGiftSampleGrid");if(el)el.innerHTML=giftSampleCards(8);},50);
   setInterval(()=>{
     ntIdx=(ntIdx+1)%NT.length;const el=document.getElementById("ntf");
-    if(el){el.style.animation="none";el.offsetHeight;el.style.animation="fadeUp .4s ease";el.innerHTML=`<span style="font-size:22px">${NT[ntIdx].e}</span><div><div style="font-size:13px;font-weight:700">${NT[ntIdx].t}</div><div style="font-size:11px;color:rgba(240,244,255,.45);margin-top:1px">${NT[ntIdx].s}</div></div>`;}
+    if(el){el.style.animation="none";el.offsetHeight;el.style.animation="fadeUp .4s ease";el.innerHTML=`<span style="font-size:22px">${NT[ntIdx].e}</span><div><div style="font-size:13px;font-weight:700">${NT[ntIdx].t}</div><div style="font-size:11px;color:var(--nts,rgba(240,244,255,.45));margin-top:1px">${NT[ntIdx].s}</div></div>`;}
   },3200);
 }
 
@@ -2815,8 +3046,8 @@ function joinW(){const e=document.getElementById("hE")?.value;if(e){document.que
 function pricingP(){
   var plans=[
     {v:"Local",p:29,c:"#22C55E",cu:"200 customers/mo",pop:false,f:["Messages included","Promo codes included","Square & Clover","Basic analytics","Physical gifts from wallet","Email support"]},
-    {v:"Growth",p:99,c:"#FFD166",cu:"1,000 customers/mo",pop:true,f:["Messages included","Promo codes included","All 12 integrations","Retention analytics","Branded packaging","Priority support","Physical gifts from wallet"]},
-    {v:"Scale",p:299,c:"#4DA6FF",cu:"Unlimited customers",pop:false,f:["Messages included","Promo codes included","All integrations","AI triggers","White-label","A/B testing","Dedicated CSM","Physical gifts from wallet"]}
+    {v:"Growth",p:99,c:"#4DA6FF",cu:"1,000 customers/mo",pop:true,f:["Messages included","Promo codes included","All 12 integrations","Retention analytics","Branded packaging","Priority support","Physical gifts from wallet"]},
+    {v:"Scale",p:299,c:"#FFD166",cu:"Unlimited customers",pop:false,f:["Messages included","Promo codes included","All integrations","AI triggers","White-label","A/B testing","Dedicated CSM","Physical gifts from wallet"]}
   ];
   var cards="";
   for(var i=0;i<plans.length;i++){
@@ -2848,7 +3079,7 @@ function pricingP(){
   note+="<b style='color:#F0F4FF'>Physical gifts</b> -- from your wallet, only when you send one &nbsp;&#183;&nbsp; ";
   note+="<b style='color:#F0F4FF'>Cancel anytime</b> -- no contracts, no setup fees";
   note+="</div></div>";
-  var h="<nav>"+logoH(20)+"<button class=\"btn btn-outline\" onclick=\"go('land')\">&#8592; Back</button></nav>";
+  var h="<nav class=\"nav-lt\">"+logoH(20)+"<button class=\"btn btn-outline\" onclick=\"go('land')\">&#8592; Back</button></nav>";
   var title="<div style='text-align:center;margin-bottom:48px'><h1 style='font-size:clamp(28px,5vw,50px);font-weight:800;letter-spacing:-2px;margin-bottom:14px'>Choose your <span class='gold'>plan</span></h1><p style='font-size:16px;color:rgba(240,244,255,.5);max-width:460px;margin:0 auto;line-height:1.7'>Messages and promo codes included. Only physical gifts cost extra.</p></div>";
   var grid="<div style='display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px'>"+cards+"</div>";
   return "<div style='min-height:100vh;background:#080D18;color:#F0F4FF;font-family:Inter,sans-serif'>"+h+"<div style='max-width:860px;margin:0 auto;padding:60px 24px'>"+title+grid+note+"</div></div>";

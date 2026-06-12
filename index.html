@@ -370,17 +370,17 @@ select option{background:#101828}
 .lt .mat:nth-child(1) .plan{--plprice:#17A35A;--plname:#17A35A}
 .lt .mat:nth-child(1) .plan .feat li::before{color:#22C55E}
 .lt .mat:nth-child(1) .plan .btn-ghost{background:linear-gradient(165deg,#3BD584,#17A35A);color:#FFFFFF;border:none}
-.lt .mat:nth-child(2){background:linear-gradient(160deg,rgba(255,209,102,.3) 0%,#FFFFFF 65%);border-color:rgba(233,169,59,.45);box-shadow:0 26px 65px rgba(233,169,59,.22)}
-.lt .mat:nth-child(2):hover{box-shadow:0 38px 90px rgba(233,169,59,.35)}
-.lt .mat:nth-child(2) .plan{--plprice:#D9941A;--plname:#C9870F}
-.lt .mat:nth-child(2) .plan .feat li::before{color:#D9941A}
-.lt .mat:nth-child(2) .plan .btn-gold{background:linear-gradient(165deg,#FFDE8A,#F0B43C);color:#101215}
-.lt .plan.pop .plan-badge{background:linear-gradient(165deg,#FFDE8A,#F0B43C);color:#101215}
-.lt .mat:nth-child(3){background:linear-gradient(160deg,rgba(111,179,247,.26) 0%,#FFFFFF 65%);border-color:rgba(46,124,214,.35);box-shadow:0 22px 55px rgba(46,124,214,.16)}
-.lt .mat:nth-child(3):hover{box-shadow:0 34px 80px rgba(46,124,214,.28)}
-.lt .mat:nth-child(3) .plan{--plprice:#2E7CD6;--plname:#2E7CD6}
-.lt .mat:nth-child(3) .plan .feat li::before{color:#4DA6FF}
-.lt .mat:nth-child(3) .plan .btn-ghost{background:linear-gradient(165deg,#6FB3F7,#2E7CD6);color:#FFFFFF;border:none}
+.lt .mat:nth-child(2){background:linear-gradient(160deg,rgba(111,179,247,.28) 0%,#FFFFFF 65%);border-color:rgba(46,124,214,.45);box-shadow:0 26px 65px rgba(46,124,214,.2)}
+.lt .mat:nth-child(2):hover{box-shadow:0 38px 90px rgba(46,124,214,.32)}
+.lt .mat:nth-child(2) .plan{--plprice:#2E7CD6;--plname:#2E7CD6}
+.lt .mat:nth-child(2) .plan .feat li::before{color:#4DA6FF}
+.lt .mat:nth-child(2) .plan .btn-gold{background:linear-gradient(165deg,#6FB3F7,#2E7CD6);color:#FFFFFF}
+.lt .plan.pop .plan-badge{background:linear-gradient(165deg,#6FB3F7,#2E7CD6);color:#FFFFFF}
+.lt .mat:nth-child(3){background:linear-gradient(160deg,rgba(255,209,102,.32) 0%,#FFFFFF 65%);border-color:rgba(233,169,59,.45);box-shadow:0 22px 55px rgba(233,169,59,.2)}
+.lt .mat:nth-child(3):hover{box-shadow:0 34px 80px rgba(233,169,59,.32)}
+.lt .mat:nth-child(3) .plan{--plprice:#D9941A;--plname:#C9870F}
+.lt .mat:nth-child(3) .plan .feat li::before{color:#D9941A}
+.lt .mat:nth-child(3) .plan .btn-ghost{background:linear-gradient(165deg,#FFDE8A,#F0B43C);color:#101215;border:none}
 @keyframes planFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
 .lt .mat{background:linear-gradient(rgb(238,242,246) 0%,#FFFFFF 100%);border:1px solid rgb(229,231,235);border-radius:15px;padding:10px;cursor:pointer;animation:planFloat 7s ease-in-out infinite;will-change:transform;transition:box-shadow .25s ease}
 .lt .mat:hover{animation:none;transform:translateY(-10px);box-shadow:0 30px 70px rgba(16,18,21,.14)}
@@ -3046,8 +3046,8 @@ function joinW(){const e=document.getElementById("hE")?.value;if(e){document.que
 function pricingP(){
   var plans=[
     {v:"Local",p:29,c:"#22C55E",cu:"200 customers/mo",pop:false,f:["Messages included","Promo codes included","Square & Clover","Basic analytics","Physical gifts from wallet","Email support"]},
-    {v:"Growth",p:99,c:"#FFD166",cu:"1,000 customers/mo",pop:true,f:["Messages included","Promo codes included","All 12 integrations","Retention analytics","Branded packaging","Priority support","Physical gifts from wallet"]},
-    {v:"Scale",p:299,c:"#4DA6FF",cu:"Unlimited customers",pop:false,f:["Messages included","Promo codes included","All integrations","AI triggers","White-label","A/B testing","Dedicated CSM","Physical gifts from wallet"]}
+    {v:"Growth",p:99,c:"#4DA6FF",cu:"1,000 customers/mo",pop:true,f:["Messages included","Promo codes included","All 12 integrations","Retention analytics","Branded packaging","Priority support","Physical gifts from wallet"]},
+    {v:"Scale",p:299,c:"#FFD166",cu:"Unlimited customers",pop:false,f:["Messages included","Promo codes included","All integrations","AI triggers","White-label","A/B testing","Dedicated CSM","Physical gifts from wallet"]}
   ];
   var cards="";
   for(var i=0;i<plans.length;i++){
