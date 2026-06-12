@@ -3263,6 +3263,15 @@ async function svCust(){const tok=S?.token||SK;const n=document.getElementById("
 
 
 function bind(){
+  if(!window._ctCG){window._ctCG=1;document.addEventListener("click",function(e){
+    var b=e.target&&e.target.closest?e.target.closest("button"):null;
+    if(!b||b.disabled)return;
+    var oc=b.getAttribute("onclick")||"";
+    if(/oSignup|oCon\(|oPay|createWalletCheckout|createCheckoutSession|fulfill|svCM|topUp|startTrial|doGiftAuto|saveD|saveGRev|saveSet/i.test(oc)){
+      setTimeout(function(){b.disabled=true;setTimeout(function(){b.disabled=false;},2500);},0);
+    }
+  },true);}
+
   if(scr==="dash")setTimeout(dLoad,50);
   if(scr==="samples")setTimeout(async()=>{await loadGiftCatalog();const el=document.getElementById("giftSampleGrid");if(el)el.innerHTML=giftSampleCards();},50);
   if(scr==="land"){if(!(window.CSS&&CSS.supports("offset-path",'path("M0 0 H10")'))){document.querySelectorAll(".orb").forEach(function(o){o.style.display="none"});}var pfFit=function(){document.querySelectorAll(".pflow").forEach(function(w){var st=w.querySelector(".pstage");if(!st)return;var sc=Math.min(1,w.clientWidth/1000);st.style.transform="scale("+sc+")";w.style.height=(285*sc)+"px";});};pfFit();if(!window._ctPfR){window._ctPfR=1;window.addEventListener("resize",pfFit);}}
