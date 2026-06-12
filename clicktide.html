@@ -6,6 +6,7 @@
 <title>Clicktide — Customer Loyalty &amp; Win-Back Gifts for Local Businesses</title>
 <meta name="description" content="Your customers aren't leaving — they're forgetting. Clicktide wins them back automatically with branded gifts, mailed postcards, emails, and texts. Built for gyms, salons, cafés, and local businesses. Plans from $29/mo."/>
 <link rel="canonical" href="https://goclicktide.com/clicktide"/>
+<meta name="color-scheme" content="only light"/>
 <meta name="theme-color" content="#080D18"/>
 <meta property="og:type" content="website"/>
 <meta property="og:site_name" content="Clicktide"/>
@@ -20,8 +21,9 @@
 <meta name="twitter:description" content="Your customers aren't leaving — they're forgetting. Branded gifts, postcards, emails, and texts — sent automatically."/>
 <meta name="twitter:image" content="https://goclicktide.com/og-image.png"/>
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"Clicktide","legalName":"Six Seasons Partners LLC","url":"https://goclicktide.com","logo":"https://goclicktide.com/apple-touch-icon.png","email":"support@goclicktide.com"},{"@type":"SoftwareApplication","name":"Clicktide","applicationCategory":"BusinessApplication","operatingSystem":"Web","url":"https://goclicktide.com","description":"Customer loyalty and retention platform for local businesses — automated branded gifts, mailed postcards, emails, and texts triggered by customer behavior.","offers":[{"@type":"Offer","name":"Local","price":"29.00","priceCurrency":"USD"},{"@type":"Offer","name":"Growth","price":"99.00","priceCurrency":"USD"},{"@type":"Offer","name":"Scale","price":"299.00","priceCurrency":"USD"}]}]}</script>
-<link rel="icon" type="image/svg+xml" href="favicon.svg"><link rel="icon" type="image/png" sizes="64x64" href="favicon.png"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png"><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="favicon.svg"><link rel="icon" type="image/png" sizes="64x64" href="favicon.png"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png"><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+html{color-scheme:only light}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#080D18;color:#F0F4FF;font-family:'Inter',sans-serif;overflow-x:clip}
 nav{position:sticky;top:0;z-index:99;display:flex;align-items:center;justify-content:space-between;padding:14px clamp(20px,4vw,44px);background:rgba(8,13,24,0.82);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);border-bottom:1px solid rgba(255,255,255,0.07)}
@@ -206,6 +208,334 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px}
 select option{background:#101828}
 .brand-creator-grid{display:grid;grid-template-columns:230px minmax(320px,1fr) 260px;min-height:430px}
+.mini3d{display:inline-block;animation:miniFloat 5.5s ease-in-out infinite}
+@keyframes miniFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+/* clickable floating step cards */
+.step-card{cursor:pointer;position:relative;animation:cardFloat 6s ease-in-out infinite;animation-delay:var(--d,0s);will-change:transform}
+.step-card:hover{animation:none;transform:translateY(-10px) scale(1.02);box-shadow:0 26px 60px rgba(16,18,21,.16);border-color:rgba(16,18,21,.42)}
+@keyframes cardFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.step-go{display:inline-flex;align-items:center;gap:6px;margin-top:14px;font-size:12.5px;font-weight:700;color:#101215;opacity:0;transform:translateX(-6px);transition:opacity .25s ease,transform .25s ease}
+.step-card:hover .step-go{opacity:1;transform:none}
+/* 3D floaters */
+.h3d{position:absolute;pointer-events:none;z-index:0}
+.h3d-r{top:120px;right:max(20px,calc(50% - 660px));width:300px;animation:float3d 7s ease-in-out infinite}
+.h3d-l{top:330px;left:max(8px,calc(50% - 680px));width:200px;animation:float3d 9s ease-in-out infinite reverse}
+@keyframes float3d{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-22px) rotate(2deg)}}
+@media (max-width:1180px){.h3d-r{width:210px;top:90px;right:-30px;opacity:.8}.h3d-l{display:none}}
+@media (max-width:700px){.h3d-r{display:none}}
+/* LIGHT LANDING — editorial (Sadewa-inspired) */
+.nav-lt{top:14px;width:min(1100px,calc(100% - 28px));margin:0 auto;border-radius:100px;background:rgba(255,255,255,.88);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);border:1px solid rgba(46,124,214,.12);border-bottom:1px solid rgba(46,124,214,.12);box-shadow:0 12px 40px rgba(20,60,110,.12);padding:10px 14px 10px 22px}
+.nav-lt .white{color:#101215}
+.nav-lt .btn-outline{color:#3A3E45;border-color:rgba(16,18,21,.22)}
+.nav-lt .btn-ghost{background:#101215;color:#F6F5F1;border:none}
+.lt .white{color:#101215}
+.lt{background:#FAFCFF;color:#101215;--gcn:#101215;--gcd:#5A5E66;--gcc:#8A8E96;--gcp:#9A6E0E;--gcb:rgba(16,18,21,.08);--ftd:#5A5E66;--nts:#6B6F76;--plname:#6B6F76;--plprice:#101215;--plsub:#8A8E96;--pldiv:rgba(16,18,21,.08)}
+.lt .hero{background:linear-gradient(180deg,#C3DFF9 0%,#E4F1FD 55%,#FAFCFF 100%)}
+.lt .hero:before{background:none}
+.lt .badge{background:rgba(6,15,22,.04);border:1px solid rgba(6,15,22,.1);color:#0F1115;letter-spacing:.02em;font-size:13px;font-weight:600;padding:7px 16px;text-transform:none;font-family:'DM Sans',sans-serif}
+.lt .badge .dot{background:#0F1115}
+.lt h1{color:#101215;font-size:clamp(44px,7.2vw,92px);letter-spacing:-.045em;line-height:.99}
+.lt .grad-gold{background:none;color:#0F1115;-webkit-text-fill-color:#0F1115}
+.lt .gold{color:inherit}
+.lt .sub{color:#5A5E66}
+.lt .cta-group{background:#FFFFFF;border:1px solid rgba(46,124,214,.18);box-shadow:0 24px 70px rgba(20,60,110,.16)}
+.lt .cta-group:focus-within{border-color:#101215}
+.lt .email-inp{color:#101215}
+.lt .email-inp::placeholder{color:#9AA0A8}
+.lt .trust-line{color:#6B6F76}
+.lt .trust-line b{color:#1B9E4B}
+.lt .trust-line:hover{color:#101215}
+.lt .pill{background:#FFFFFF;border-color:rgba(16,18,21,.12);color:#5A5E66}
+.lt .shot{border-color:rgba(255,255,255,.65);box-shadow:0 60px 150px rgba(20,60,110,.35)}
+.lt .kick{display:none}
+.lt .sec-sur{background:#EFF6FD;border-top:1px solid rgba(46,124,214,.08);border-bottom:1px solid rgba(46,124,214,.08)}
+.lt .sec-sub{color:#5A5E66}
+.lt .card,.lt .card-s,.lt .tc{background:#FFFFFF;border-color:rgba(16,18,21,.1)}
+.lt .card:hover,.lt .card-s:hover,.lt .tc:hover{border-color:rgba(16,18,21,.32)}
+.lt .tc.pop{background:#FFFFFF;border-color:#101215;box-shadow:0 26px 70px rgba(16,18,21,.14)}
+.lt .step-num{background:#101215;border:none;color:#F6F5F1;font-family:ui-monospace,'SF Mono',Menlo,monospace}
+.lt .stat-n{color:#101215}
+.lt .plan{background:#FFFFFF;border-color:rgba(16,18,21,.1)}
+.lt .plan:hover{border-color:rgba(16,18,21,.32)}
+.lt .plan.pop{background:#101215;border-color:#101215;--plname:rgba(255,255,255,.6);--plprice:#FFFFFF;--plsub:rgba(255,255,255,.55);--pldiv:rgba(255,255,255,.14);box-shadow:0 30px 90px rgba(16,18,21,.35)}
+.lt .feat li{color:#3F434B}
+.lt .plan.pop .feat li{color:rgba(255,255,255,.78)}
+.lt .feat li::before{color:#1B9E4B}
+.lt .plan.pop .feat li::before{color:#FFD166}
+.lt .btn-ghost{background:#101215;color:#F6F5F1;border:none}
+.lt .notif{background:#FFFFFF;border-color:rgba(16,18,21,.12);box-shadow:0 14px 44px rgba(16,18,21,.18)}
+.lt .cta-band{background:radial-gradient(ellipse 90% 130% at 50% -20%,rgba(111,179,247,.25),transparent 55%),linear-gradient(165deg,#1D4E89,#0F2A4A);border:none;color:#FFFFFF}
+.lt .cta-band .sec-title{color:#FFFFFF}
+.lt .cta-band .kick{color:rgba(255,255,255,.5)}
+.lt .cta-band .btn-ghost{background:transparent;color:#FFFFFF;border:1px solid rgba(255,255,255,.35)}
+.lt .site-footer{background:linear-gradient(180deg,#FAFCFF 0%,#D4E7FA 55%,#BFDDF8 100%);border-top:none;color:#3F434B;position:relative;overflow:hidden;padding-top:70px;padding-bottom:46px}
+.lt .site-footer .cloud{opacity:.9}
+.lt .foot-wrap{position:relative;z-index:1;background:linear-gradient(180deg,rgba(255,255,255,.75),rgba(255,255,255,.4));border:1px solid rgba(255,255,255,.65);border-radius:15px;padding:38px 34px 26px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 24px 60px rgba(20,60,110,.12)}
+.lt .foot-title{color:#101215}
+.lt .foot-links a,.lt .foot-links button{color:#5A5E66}
+.lt .foot-links a:hover,.lt .foot-links button:hover{color:#101215}
+.lt .foot-contact{color:#101215}
+.lt .foot-note{border-top:1px solid rgba(16,18,21,.1);color:#7A7E86}
+.lt .foot-legal a{color:#8A8E96}
+/* every page translates: light theme for all views */
+.lt [style*="background:#080D18"]{background:transparent!important}
+.lt .btn-outline{color:#3F434B;border-color:rgb(209,213,219);background:#FFFFFF}
+.lt .link-btn{color:#2E7CD6}
+.lt .logo-text .white,.lt .white{color:#0F1115}
+.lt [style*="color:rgba(240,244,255"]{color:#5A5E66!important}
+.lt [style*="color:#F0F4FF"]{color:#0F1115!important}
+.lt [style*="background:#0C1220"],.lt [style*="background:#101828"],.lt [style*="background:#0C1322"]{background:#FFFFFF!important;border-color:rgb(229,231,235)!important}
+.lt [style*="border:1px solid rgba(255,255,255"]{border-color:rgb(229,231,235)!important}
+.lt .auth{background:transparent}
+.lt .auth-card,.lt .ob-card,.lt .rc{background:#FFFFFF;border:1px solid rgb(229,231,235);box-shadow:0 24px 60px rgba(20,60,110,.08)}
+.lt .auth-title{color:#0F1115}
+.lt .auth-sub,.lt .ds{color:#6B6F76}
+.lt .fi,.lt .fi-sel,.lt .ta{background:#FFFFFF;border:1px solid rgb(209,213,219);color:#0F1115}
+.lt .fi::placeholder,.lt .ta::placeholder{color:#9CA3AF}
+.lt .fi-sel option{background:#FFFFFF;color:#0F1115}
+.lt .fl{color:#6B6F76}
+.lt .ob{background:transparent}
+.lt .stbar{background:#FFFFFF;border:1px solid rgb(229,231,235)}
+.lt .sp{color:#6B6F76}
+.lt .sp.on{background:linear-gradient(rgb(28,47,65) 0%,rgb(6,15,22) 100%);color:#FFFFFF}
+.lt .sp.pd{color:rgba(15,17,21,.35)}
+.lt .bc,.lt .gcard,.lt .ti,.lt .to,.lt .tpl{border-color:rgb(229,231,235);background:#FFFFFF}
+.lt .bc.on,.lt .gcard.on,.lt .ti.on,.lt .tpl.sel{border-color:#0F1115;background:rgba(6,15,22,.04);color:#0F1115}
+.lt .tk{border-color:rgb(209,213,219)}
+.lt .ti.on .tk{background:#101215;border-color:#101215;color:#FFFFFF}
+.lt .roi{background:transparent}
+.lt .roi-hd{background:rgba(255,255,255,.88);backdrop-filter:blur(14px);border-bottom:1px solid rgba(16,18,21,.08)}
+.lt .btc{background:#FFFFFF;border-color:rgb(229,231,235)}
+.lt .btc:hover{border-color:rgba(16,18,21,.4)}
+.lt .sl-l,.lt .sl-v{color:#0F1115}
+.lt .info-dot{background:rgba(6,15,22,.05);border-color:rgba(6,15,22,.15);color:#3F434B}
+.lt .info-dot::after{background:#FFFFFF;border-color:rgb(229,231,235);color:#3F434B;box-shadow:0 12px 36px rgba(20,60,110,.18)}
+.lt .info-dot::before{background:#FFFFFF;border-color:rgb(229,231,235)}
+.lt input[type=range]{background:rgba(6,15,22,.12)}
+.lt input[type=range]::-webkit-slider-thumb{background:#101215}
+.lt .empty{background:#FFFFFF;border-color:rgb(209,213,219)}
+.lt .conn-box{background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.3)}
+/* artifacts: what actually goes out */
+.arts{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:42px;align-items:start;text-align:left}
+.art-lbl{margin-top:16px;text-align:center}
+.art-lbl b{font-size:14.5px;color:#0F1115;display:block}
+.art-lbl small{font-size:12px;color:#6B7280;display:block;margin-top:3px;line-height:1.5}
+.aphone{width:min(250px,100%);margin:0 auto;background:#FFFFFF;border:1px solid rgb(229,231,235);border-radius:34px;padding:14px 12px 22px;box-shadow:0 24px 60px rgba(20,60,110,.14)}
+.aphone .notch{width:86px;height:18px;background:#0F1115;border-radius:100px;margin:0 auto 12px}
+.aphone .scr{background:#F4F7FB;border-radius:18px;padding:14px 12px;min-height:240px}
+.aphone .tme{text-align:center;font-size:10px;color:#9CA3AF;margin-bottom:10px}
+.aphone .bub{background:#E9EBF0;color:#1F2937;border-radius:16px 16px 16px 5px;padding:11px 13px;font-size:12.5px;line-height:1.55;max-width:94%;animation:bubPop .5s cubic-bezier(.2,.7,.3,1) both}
+.rv-in .aphone .bub{animation-delay:.5s}
+@keyframes bubPop{from{opacity:0;transform:translateY(10px) scale(.92)}to{opacity:1;transform:none}}
+.apost{width:min(300px,100%);margin:26px auto 0;aspect-ratio:4/2.9;border-radius:10px;background:linear-gradient(165deg,#1D4E89,#0F2A4A);box-shadow:0 24px 60px rgba(20,60,110,.2);transform:rotate(-2.5deg);display:flex;align-items:center;justify-content:center;position:relative;color:#FFFFFF;text-align:center;padding:18px}
+.apost .stamp{position:absolute;top:10px;right:10px;width:34px;height:40px;border:1.5px dashed rgba(255,255,255,.5);border-radius:4px}
+.apost b{font-family:'Space Grotesk',sans-serif;font-size:21px;display:block;letter-spacing:-.02em}
+.apost span{font-size:12px;opacity:.85;display:block;margin-top:8px}
+.amail{background:#FFFFFF;border:1px solid rgb(229,231,235);border-radius:16px;box-shadow:0 24px 60px rgba(20,60,110,.14);overflow:hidden;position:relative}
+.amail .mh2{padding:13px 16px;border-bottom:1px solid rgb(238,240,244)}
+.amail .mh2 small{font-size:10.5px;color:#9CA3AF;display:block}
+.amail .mh2 b{font-size:12.5px;color:#0F1115;display:block;margin-top:2px}
+.amail .mrow{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid rgb(243,244,247);font-size:12px}
+.amail .mrow b{color:#0F1115;font-size:12.5px}
+.amail .mrow small{color:#6B7280;display:block;font-size:10.5px;margin-top:1px}
+.amail .mft{padding:11px 16px;font-size:12px;font-weight:700;color:#17A35A}
+.amail .smp{position:absolute;top:10px;right:10px;background:rgba(16,18,21,.06);border:1px solid rgba(16,18,21,.12);color:#6B7280;font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-radius:100px;padding:3px 9px}
+@media (max-width:900px){.arts{grid-template-columns:1fr;max-width:360px;margin-left:auto;margin-right:auto}}
+/* guardrails */
+.guard-wrap{margin:0 0 52px}
+.guard-h{font-family:'Space Grotesk',sans-serif;font-size:clamp(20px,2.6vw,27px);font-weight:800;letter-spacing:-.5px;color:#0F1115;margin-bottom:6px}
+.guard-s{font-size:13.5px;color:#6B7280;margin-bottom:22px}
+.guard{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;max-width:980px;margin:0 auto}
+.gchip{display:inline-flex;align-items:center;gap:10px;background:#FFFFFF;border:1px solid rgb(229,231,235);border-radius:100px;padding:10px 18px 10px 12px;font-size:13px;font-weight:600;color:#1F2937;box-shadow:0 10px 26px rgba(20,60,110,.08)}
+.gchip .ic-chip{width:32px;height:32px;border-radius:9px}
+/* two-sided postcard */
+.apost-w{position:relative;width:min(320px,100%);height:250px;margin:10px auto 0}
+.apost{position:absolute;top:0;left:0;width:250px;aspect-ratio:4/2.9;border-radius:10px;background:linear-gradient(165deg,#1D4E89,#0F2A4A);box-shadow:0 18px 44px rgba(20,60,110,.22);transform:rotate(-7deg);display:flex;align-items:center;justify-content:center;color:#FFFFFF;text-align:center;padding:16px;z-index:1}
+.apost .stamp{position:absolute;top:9px;right:9px;width:28px;height:34px;border:1.5px dashed rgba(255,255,255,.5);border-radius:4px}
+.apost b{font-family:'Space Grotesk',sans-serif;font-size:17px;display:block;letter-spacing:-.02em}
+.apost span{font-size:11px;opacity:.85;display:block;margin-top:6px}
+.apostb{position:absolute;right:0;bottom:0;width:272px;aspect-ratio:4/2.9;border-radius:10px;background:#FFFDF8;border:1px solid rgb(229,231,235);box-shadow:0 22px 50px rgba(20,60,110,.2);transform:rotate(3deg);z-index:2;display:flex;padding:13px;gap:10px}
+.apostb .msg{flex:1.25;font-size:10px;line-height:1.65;color:#374151;border-right:1px solid rgb(232,228,218);padding-right:10px}
+.apostb .addr{flex:1;display:flex;flex-direction:column;justify-content:flex-end;padding-bottom:6px;position:relative;font-size:10px;color:#374151;line-height:1.8}
+.apostb .stamp2{position:absolute;top:0;right:2px;width:30px;height:36px;border:1.5px dashed rgb(203,198,184);border-radius:4px;display:flex;align-items:center;justify-content:center}
+/* retention stats */
+.rstats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:40px 0 26px}
+.rstat{background:#FFFFFF;border:1px solid rgb(229,231,235);border-radius:18px;padding:26px 20px;box-shadow:0 16px 40px rgba(20,60,110,.08)}
+.rstat .rn{font-family:'Space Grotesk',sans-serif;font-size:clamp(34px,4vw,46px);font-weight:800;letter-spacing:-.04em;color:#0F1115}
+.rstat .rl{font-size:13px;color:#374151;line-height:1.55;margin-top:8px}
+.rstat .rs{font-size:10.5px;color:#9CA3AF;margin-top:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.rchart{background:#FFFFFF;border:1px solid rgb(229,231,235);border-radius:18px;padding:26px 28px;box-shadow:0 16px 40px rgba(20,60,110,.08);max-width:760px;margin:0 auto;text-align:left}
+.rchart h4{font-size:14.5px;color:#0F1115;margin-bottom:18px;font-weight:700}
+.rrow{margin-bottom:16px}
+.rrow .rt{display:flex;justify-content:space-between;font-size:12.5px;color:#374151;margin-bottom:6px;font-weight:600}
+.rtrack{height:32px;background:rgb(238,241,246);border-radius:100px;box-shadow:inset 0 2px 6px rgba(16,18,21,.1);overflow:visible}
+.sbar{position:relative;height:100%;width:0;border-radius:100px;transition:width 1.3s cubic-bezier(.2,.7,.3,1) .35s;display:flex;align-items:center;justify-content:flex-end;padding-right:12px;color:#FFFFFF;font-size:11.5px;font-weight:800}
+.sbar::before{content:"";position:absolute;inset:0;border-radius:inherit;background:repeating-linear-gradient(45deg,rgba(255,255,255,.28) 0 10px,transparent 10px 20px);animation:stripeMove .9s linear infinite}
+.sbar::after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,0) 48%);pointer-events:none}
+@keyframes stripeMove{to{background-position:28.3px 0}}
+.sled{position:absolute;right:-4px;top:50%;width:17px;height:17px;margin-top:-8.5px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FFFFFF,rgba(255,255,255,.4) 75%);box-shadow:0 0 16px 6px rgba(255,255,255,.55);animation:ledPulse 1.5s ease-in-out infinite;z-index:3}
+@keyframes ledPulse{0%,100%{transform:scale(.8)}50%{transform:scale(1.2)}}
+@media (prefers-reduced-motion: reduce){.sbar::before,.sled{animation:none}}
+.rv-in .sbar{width:var(--w)}
+.rsrc{font-size:10.5px;color:#9CA3AF;margin-top:4px}
+@media (max-width:900px){.rstats{grid-template-columns:1fr}}
+@media (prefers-reduced-motion: reduce){.sbar{transition:none;width:var(--w)}}
+/* two-sided postcard end */
+/* 3D process stage */
+.pstage{position:relative;width:1000px;height:285px;margin:0 auto;transform-origin:left top}
+.pnode{position:absolute;display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-46%);animation:nodeBob 5.6s ease-in-out infinite;animation-delay:var(--nb,0s);will-change:transform}
+@keyframes nodeBob{0%,100%{transform:translate(-50%,-46%) translateY(0)}50%{transform:translate(-50%,-46%) translateY(-7px)}}
+.pnode b{font-size:14px;font-weight:700;color:#0F1115;margin-top:2px;white-space:nowrap;font-family:Inter,sans-serif}
+.pnode small{font-size:11px;color:#6B7280;white-space:nowrap}
+.pring2{position:absolute;top:6px;left:50%;width:86px;height:74px;margin-left:-43px;border:2px solid rgba(233,185,73,.75);border-radius:24px;opacity:0;animation:nring2 6.4s ease-out infinite;animation-delay:var(--rd,0s);pointer-events:none}
+@keyframes nring2{0%{opacity:0;transform:scale(.6)}6%{opacity:.85}16%{opacity:0;transform:scale(1.35)}100%{opacity:0;transform:scale(1.35)}}
+.orb{position:absolute;left:0;top:0;width:13px;height:13px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FFF3CD,#E9B949);box-shadow:0 0 16px 5px rgba(233,185,73,.55);opacity:0;will-change:offset-distance}
+.oA{animation:orbA 6.4s linear infinite}
+.oB{animation:orbB 6.4s linear infinite}
+.oC{animation:orbC 6.4s linear infinite}
+@keyframes orbA{0%{offset-distance:0%;opacity:0}2%{opacity:1}15%{offset-distance:100%;opacity:1}17%{offset-distance:100%;opacity:0}100%{offset-distance:100%;opacity:0}}
+@keyframes orbB{0%,17%{offset-distance:0%;opacity:0}19%{opacity:1}32%{offset-distance:100%;opacity:1}34%{offset-distance:100%;opacity:0}100%{offset-distance:100%;opacity:0}}
+@keyframes orbC{0%,36%{offset-distance:0%;opacity:0}38%{opacity:1}51%{offset-distance:100%;opacity:1}53%{offset-distance:100%;opacity:0}100%{offset-distance:100%;opacity:0}}
+.espin{position:absolute;left:300px;top:111px;width:104px;height:104px;margin:-52px 0 0 -52px;border:2px dashed rgba(233,185,73,.5);border-radius:50%;animation:espinR 10s linear infinite;pointer-events:none}
+@keyframes espinR{to{transform:rotate(360deg)}}
+.ckd{animation:ckdraw2 6.4s linear infinite}
+@keyframes ckdraw2{0%,52%{stroke-dashoffset:1}62%,90%{stroke-dashoffset:0}100%{stroke-dashoffset:1}}
+@media (prefers-reduced-motion: reduce){.pnode,.orb,.espin,.pring2{animation:none}.orb{display:none}.ckd{animation:none;stroke-dashoffset:0}}
+/* process flow (apiant-style wires) */
+.pflow{max-width:980px;margin:10px auto 38px}
+.pflow svg{width:100%;height:auto;display:block;overflow:visible}
+.wflow{animation:wirepulse 1.1s linear infinite}
+@keyframes wirepulse{to{stroke-dashoffset:-14}}
+.wpk{animation:wpk 3.2s linear infinite}
+@keyframes wpk{0%{stroke-dashoffset:400}100%{stroke-dashoffset:-30}}
+.pring{transform-box:fill-box;transform-origin:center;animation:nring 6.4s ease-out infinite;opacity:0}
+@keyframes nring{0%{opacity:0;transform:scale(.55)}6%{opacity:.8}16%{opacity:0;transform:scale(1.35)}100%{opacity:0;transform:scale(1.35)}}
+.ckd{animation:ckdraw 6.4s linear infinite}
+@keyframes ckdraw{0%,58%{stroke-dashoffset:1}70%,92%{stroke-dashoffset:0}100%{stroke-dashoffset:1}}
+@media (max-width:700px){.pflow{display:none}}
+@media (prefers-reduced-motion: reduce){.wflow,.wpk,.pring,.ckd{animation:none}.ckd{stroke-dashoffset:0}}
+/* scroll reveal */
+.lt .rv{opacity:0;transform:translateY(26px);transition:opacity .7s cubic-bezier(.2,.7,.3,1),transform .7s cubic-bezier(.2,.7,.3,1)}
+.lt .rv.rv-in{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){.lt .rv{opacity:1;transform:none;transition:none}}
+.plogo{width:20px;height:20px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:#FFFFFF;font-size:11px;font-weight:800;margin-right:8px;vertical-align:-5px;font-family:Inter,sans-serif}
+/* hero engagement button */
+.lt .btn-hero{position:relative;overflow:hidden;background:linear-gradient(165deg,#FFDE8A,#F0B43C);color:#101215;font-weight:800;font-size:15px;padding:15px 30px;border-radius:14px;border:none;cursor:pointer;font-family:Inter,sans-serif;display:inline-flex;align-items:center;gap:9px;box-shadow:0 12px 30px rgba(233,169,59,.45);animation:heroGlow 2.6s ease-in-out infinite;transition:transform .18s ease}
+.lt .btn-hero:hover{animation:none;transform:translateY(-3px) scale(1.04);box-shadow:0 22px 50px rgba(233,169,59,.65);opacity:1}
+.lt .btn-hero::after{content:"";position:absolute;top:0;left:-80%;width:55%;height:100%;background:linear-gradient(100deg,transparent 0%,rgba(255,255,255,.55) 50%,transparent 100%);transform:skewX(-20deg);animation:btnShine 3.2s ease-in-out infinite;pointer-events:none}
+@keyframes heroGlow{0%,100%{box-shadow:0 12px 30px rgba(233,169,59,.4)}50%{box-shadow:0 16px 44px rgba(233,169,59,.7)}}
+@media (prefers-reduced-motion: reduce){.lt .btn-hero,.lt .btn-hero::after{animation:none}}
+/* buttons that pop */
+.lt .btn-gold{position:relative;overflow:hidden;box-shadow:0 10px 26px rgba(13,32,52,.32),inset 0 1px 0 rgba(255,255,255,.16);transition:transform .18s ease,box-shadow .18s ease}
+.lt .btn-gold:hover{opacity:1;transform:translateY(-2px) scale(1.02);box-shadow:0 18px 40px rgba(13,32,52,.45)}
+.lt .btn-gold::after{content:"";position:absolute;top:0;left:-80%;width:55%;height:100%;background:linear-gradient(100deg,transparent 0%,rgba(255,255,255,.38) 50%,transparent 100%);transform:skewX(-20deg);animation:btnShine 4.6s ease-in-out infinite;pointer-events:none}
+@keyframes btnShine{0%,62%{left:-80%}82%,100%{left:135%}}
+.lt .btn-ghost{background:#FFFFFF;border:1.5px solid rgba(13,32,52,.35);color:#0F1115;font-weight:700;transition:all .18s ease}
+.lt .btn-ghost:hover{opacity:1;background:#101215;color:#FFFFFF;transform:translateY(-2px);box-shadow:0 12px 30px rgba(13,32,52,.3)}
+.lt .btn-outline{transition:all .18s ease}
+.lt .btn-outline:hover{opacity:1;border-color:rgba(13,32,52,.5);transform:translateY(-1px)}
+/* floating product cards (animated background) */
+.px{position:absolute;z-index:3;pointer-events:none;will-change:transform}
+.fcard{background:#FFFFFF;border:1px solid rgb(229,231,235);border-radius:14px;box-shadow:0 18px 50px rgba(20,60,110,.2);padding:12px 15px;display:flex;align-items:center;gap:10px;white-space:nowrap}
+.fcard .av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#FFFFFF;flex-shrink:0}
+.fcard b{font-size:12.5px;color:#0F1115;display:block;line-height:1.3}
+.fcard small{font-size:10.5px;color:#6B7280;display:block;line-height:1.4}
+.fc1{animation:fcA 9s ease-in-out infinite}
+.fc2{animation:fcB 11s ease-in-out infinite}
+.fc3{animation:fcC 10s ease-in-out infinite}
+@keyframes fcA{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-14px) rotate(-4deg)}}
+@keyframes fcB{0%,100%{transform:translateY(0) rotate(5deg)}50%{transform:translateY(-16px) rotate(3deg)}}
+@keyframes fcC{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-12px) rotate(-5deg)}}
+@media (max-width:900px){.px{display:none}}
+/* custom icon chips */
+.ic-chip{width:54px;height:54px;border-radius:14px;background:linear-gradient(rgb(238,242,246) 0%,#FFFFFF 100%);border:1px solid rgb(229,231,235);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ic-chip svg{display:block;stroke-width:1.5}
+/* cloudkit nav + band fixes */
+.nav-lt .btn-gold{background:linear-gradient(rgb(28,47,65) 0%,rgb(6,15,22) 100%);color:#FFFFFF;border-radius:15px;font-family:'DM Sans',sans-serif;font-weight:500}
+.nav-lt .btn-gold:hover{filter:brightness(1.25);opacity:1}
+.lt .cta-band .grad-gold{color:#9CC9F5;-webkit-text-fill-color:#9CC9F5}
+.lt .cta-band .btn-gold{background:#FFFFFF;color:#0F1115}
+/* cloudkit exact: type + buttons */
+.lt h1,.lt .sec-title,.lt .plan-price,.lt .stat-n{font-family:'Inter Tight','Inter',sans-serif;font-weight:600;letter-spacing:-.02em}
+.lt h1{font-size:clamp(42px,6.5vw,80px);line-height:.9}
+.lt .sec-title{font-size:clamp(34px,3.5vw,44px);line-height:1.3;letter-spacing:-.01em}
+.lt .sub,.lt .sec-sub,.lt .feat li,.lt p{font-family:'DM Sans','Inter',sans-serif}
+.lt .btn{border-radius:15px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:16px;padding:12px 26px}
+.lt .btn-gold{background:linear-gradient(rgb(28,47,65) 0%,rgb(6,15,22) 100%);color:#FFFFFF;box-shadow:none}
+.lt .btn-gold:hover{filter:brightness(1.25)}
+.lt .btn-ghost{background:#FFFFFF;color:#0F1115;border:1px solid rgb(229,231,235)}
+.lt .cta-group{border-radius:15px}
+.lt .cta-group .btn{border-radius:11px}
+/* platform marquee */
+.pills-marquee{overflow:hidden;margin:44px auto 0;max-width:960px;position:relative;z-index:1;-webkit-mask-image:linear-gradient(to right,transparent 0%,#000 12%,#000 88%,transparent 100%);mask-image:linear-gradient(to right,transparent 0%,#000 12%,#000 88%,transparent 100%)}
+.pills-track{display:flex;width:max-content;animation:marquee 30s linear infinite}
+.pills-track:hover{animation-play-state:paused}
+.pills-track .pill{margin-right:10px;white-space:nowrap;flex-shrink:0}
+@keyframes marquee{to{transform:translateX(-50%)}}
+/* hero melt */
+.lt .hero:after{content:"";position:absolute;left:0;right:0;bottom:0;height:170px;background:linear-gradient(rgba(250,252,255,0),#FAFCFF 92%);pointer-events:none;z-index:1}
+/* text-roll hover */
+.roll .roll-w{display:inline-block;position:relative;overflow:hidden;vertical-align:bottom}
+.roll .roll-a,.roll .roll-b{display:block;transition:transform .28s cubic-bezier(.3,.7,.3,1)}
+.roll .roll-b{position:absolute;left:0;top:100%}
+.roll:hover .roll-a,.roll:hover .roll-b{transform:translateY(-100%)}
+@media (prefers-reduced-motion: reduce){.pills-track{animation:none}.roll .roll-a,.roll .roll-b{transition:none}}
+/* hero letter cascade */
+.hl-ch{display:inline-block;opacity:0;transform:translateY(20px);animation:lrise .55s cubic-bezier(.2,.7,.3,1) forwards;animation-delay:calc(var(--i)*.04s)}
+.hl2{display:inline-block;opacity:0;transform:translateY(24px);animation:lrise .65s cubic-bezier(.2,.7,.3,1) .6s forwards}
+.hl-sub{opacity:0;animation:lrise .6s ease .85s forwards}
+@keyframes lrise{to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion: reduce){.hl-ch,.hl2,.hl-sub{animation:none;opacity:1;transform:none}}
+/* drifting clouds */
+.cloud{position:absolute;background:#FFFFFF;border-radius:50%;filter:blur(18px);pointer-events:none;animation:cloudDrift 30s ease-in-out infinite}
+.cloud:before,.cloud:after{content:"";position:absolute;background:#FFFFFF;border-radius:50%}
+.cloud:before{width:55%;height:130%;left:12%;top:-58%}
+.cloud:after{width:42%;height:105%;right:14%;top:-38%}
+@keyframes cloudDrift{0%,100%{transform:translateX(0)}50%{transform:translateX(44px)}}
+.cloud.c1{width:340px;height:92px;top:110px;left:5%;opacity:.9}
+.cloud.c2{width:260px;height:78px;top:300px;right:7%;opacity:.7;animation-duration:38s;animation-direction:reverse}
+.cloud.c3{width:430px;height:110px;top:600px;left:-70px;opacity:.95;animation-duration:44s}
+.cloud.c4{width:300px;height:88px;bottom:-26px;left:-90px;z-index:2;filter:blur(20px);opacity:.95}
+.cloud.c5{width:250px;height:76px;top:38%;right:-80px;z-index:2;filter:blur(20px);opacity:.85;animation-direction:reverse}
+@media (max-width:700px){.cloud{display:none}}
+/* cloudkit pricing mats */
+.lt .mat:nth-child(1){background:linear-gradient(160deg,rgba(59,213,132,.22) 0%,#FFFFFF 65%);border-color:rgba(23,163,90,.35);box-shadow:0 22px 55px rgba(23,163,90,.16)}
+.lt .mat:nth-child(1):hover{box-shadow:0 34px 80px rgba(23,163,90,.28)}
+.lt .mat:nth-child(1) .plan{--plprice:#17A35A;--plname:#17A35A}
+.lt .mat:nth-child(1) .plan .feat li::before{color:#22C55E}
+.lt .mat:nth-child(1) .plan .btn-ghost{background:linear-gradient(165deg,#3BD584,#17A35A);color:#FFFFFF;border:none}
+.lt .mat:nth-child(2){background:linear-gradient(160deg,rgba(111,179,247,.28) 0%,#FFFFFF 65%);border-color:rgba(46,124,214,.45);box-shadow:0 26px 65px rgba(46,124,214,.2)}
+.lt .mat:nth-child(2):hover{box-shadow:0 38px 90px rgba(46,124,214,.32)}
+.lt .mat:nth-child(2) .plan{--plprice:#2E7CD6;--plname:#2E7CD6}
+.lt .mat:nth-child(2) .plan .feat li::before{color:#4DA6FF}
+.lt .mat:nth-child(2) .plan .btn-gold{background:linear-gradient(165deg,#6FB3F7,#2E7CD6);color:#FFFFFF}
+.lt .plan.pop .plan-badge{background:linear-gradient(165deg,#6FB3F7,#2E7CD6);color:#FFFFFF}
+.lt .mat:nth-child(3){background:linear-gradient(160deg,rgba(255,209,102,.32) 0%,#FFFFFF 65%);border-color:rgba(233,169,59,.45);box-shadow:0 22px 55px rgba(233,169,59,.2)}
+.lt .mat:nth-child(3):hover{box-shadow:0 34px 80px rgba(233,169,59,.32)}
+.lt .mat:nth-child(3) .plan{--plprice:#D9941A;--plname:#C9870F}
+.lt .mat:nth-child(3) .plan .feat li::before{color:#D9941A}
+.lt .mat:nth-child(3) .plan .btn-ghost{background:linear-gradient(165deg,#FFDE8A,#F0B43C);color:#101215;border:none}
+@keyframes planFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+.lt .mat{background:linear-gradient(rgb(238,242,246) 0%,#FFFFFF 100%);border:1px solid rgb(229,231,235);border-radius:15px;padding:10px;cursor:pointer;animation:planFloat 7s ease-in-out infinite;will-change:transform;transition:box-shadow .25s ease}
+.lt .mat:hover{animation:none;transform:translateY(-10px);box-shadow:0 30px 70px rgba(16,18,21,.14)}
+.lt .mat .plan{background:#FFFFFF;border:1px solid rgb(229,231,235);border-radius:10px;--plname:rgba(15,17,21,.55);--plprice:#0F1115;--plsub:rgba(15,17,21,.55);--pldiv:rgb(238,242,246)}
+.lt .mat .plan .feat li{color:rgb(82,82,91)}
+.lt .mat .plan .feat li::before{color:#0F1115}
+.lt .plan.pop{margin-top:0}
+.lt .plan.pop .plan-badge{background:linear-gradient(rgb(28,47,65) 0%,rgb(6,15,22) 100%);color:#FFFFFF;font-family:'DM Sans',sans-serif}
+.lt .plan .btn-ghost,.lt .plan .btn-gold{background:linear-gradient(rgb(28,47,65) 0%,rgb(6,15,22) 100%);color:#FFFFFF;border:none}
+/* drifting clouds */
+.cloud{position:absolute;background:#FFFFFF;border-radius:50%;filter:blur(18px);pointer-events:none;animation:cloudDrift 30s ease-in-out infinite}
+.cloud:before,.cloud:after{content:"";position:absolute;background:#FFFFFF;border-radius:50%}
+.cloud:before{width:55%;height:130%;left:12%;top:-58%}
+.cloud:after{width:42%;height:105%;right:14%;top:-38%}
+@keyframes cloudDrift{0%,100%{transform:translateX(0)}50%{transform:translateX(44px)}}
+.cloud.c1{width:340px;height:92px;top:110px;left:5%;opacity:.9}
+.cloud.c2{width:260px;height:78px;top:300px;right:7%;opacity:.7;animation-duration:38s;animation-direction:reverse}
+.cloud.c3{width:430px;height:110px;top:600px;left:-70px;opacity:.95;animation-duration:44s}
+.cloud.c4{width:300px;height:88px;bottom:-26px;left:-90px;z-index:2;filter:blur(20px);opacity:.95}
+.cloud.c5{width:250px;height:76px;top:38%;right:-80px;z-index:2;filter:blur(20px);opacity:.85;animation-direction:reverse}
+@media (max-width:700px){.cloud{display:none}}
 @media (max-width: 900px){
   nav{padding:12px 16px;gap:12px;align-items:flex-start}
   nav>div:last-child{flex-wrap:wrap;justify-content:flex-end;gap:8px}
@@ -385,7 +715,7 @@ const CATS=[
     {id:"medspa",l:"Med Spa",i:"✨",pl:"Square/Vagaro",lf:.38,ch:.18,av:150,dy:60,gf:10,cu:50},
     {id:"wellness",l:"Wellness Center",i:"🌿",pl:"Mindbody/Acuity",lf:.40,ch:.16,av:90,dy:45,gf:8,cu:60},
   ]},
-  {id:"food",l:"Food & Drink",i:"🍽️",c:"#FFD166",biz:[
+  {id:"food",l:"Food & Drink",i:"🍽️",c:"#D9941A",biz:[
     {id:"cafe",l:"Café & Coffee",i:"☕",pl:"Square/Toast",lf:.29,ch:.25,av:12,dy:21,gf:5,cu:400},
     {id:"resto",l:"Restaurant",i:"🍽️",pl:"Toast/Square",lf:.27,ch:.30,av:28,dy:45,gf:5,cu:500},
     {id:"bakery",l:"Bakery",i:"🧁",pl:"Square/Toast",lf:.30,ch:.25,av:18,dy:21,gf:5,cu:300},
@@ -478,7 +808,7 @@ function tierColor(t){
   return t==="Loyal"||t==="Win-back VIP"||t==="Recovered ★"?"#22C55E":t==="Regular"||t==="Win-back"?"#4DA6FF":t==="Building"?"#FFD166":t==="At risk"?"#FF4D6D":t==="Drifting"?"#FF9F4D":"rgba(240,244,255,.3)";
 }
 function giftLabel(g){
-  return g==="physical"?'<span style="font-size:11px;color:#22C55E;font-weight:600">🎁 Physical gift</span>':g==="digital"?'<span style="font-size:11px;color:#4DA6FF;font-weight:600">💳 Digital code</span>':g==="message"?'<span style="font-size:11px;color:#FFD166;font-weight:600">💬 Message</span>':g==="alert"?'<span style="font-size:11px;color:#FF9F4D;font-weight:600">⚠ Alert only</span>':'<span style="font-size:11px;color:#FF4D6D;font-weight:600">⛔ Blocked</span>';
+  return g==="physical"?'<span style="font-size:11px;color:#22C55E;font-weight:600">Physical gift</span>':g==="digital"?'<span style="font-size:11px;color:#4DA6FF;font-weight:600">Digital code</span>':g==="message"?'<span style="font-size:11px;color:#FFD166;font-weight:600">Message</span>':g==="alert"?'<span style="font-size:11px;color:#FF9F4D;font-weight:600">Alert only</span>':'<span style="font-size:11px;color:#FF4D6D;font-weight:600">Blocked</span>';
 }
 
 const BZ=[];
@@ -692,7 +1022,7 @@ const SQ_APP_ID="sq0idp-lOwkDlbKD4OacOyioAOkZQ";
 const SH_CLIENT_ID="1e876d10b4e052fe9897dd45bd859eca";
 const CL_APP_ID="1YSBHCR5VTYZE";
 // Add these once you register the apps (see setup checklist). Empty = "needs setup".
-const ST_CLIENT_ID="ca_Ug1GQfGHiUMO3TeLjwyBv2YnQ9XlfMTV";   // Stripe Connect client id (live)
+const ST_CLIENT_ID="ca_Ug1GQfGHiUMO3TeLjwyBv2YnQ9XlfMTV";   // Stripe Connect client id (starts with ca_...)
 // Toast connects via partner approval, Mindbody connects with a site activation code.
 const TOAST_READY=false; // flip true once Toast partner access is approved
 const MB_READY=true;
@@ -738,7 +1068,7 @@ function ctSec(){
   var ov=document.createElement("div");
   ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px";
   ov.onclick=function(e){if(e.target===ov)document.body.removeChild(ov);};
-  ov.innerHTML='<div style="background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:28px;width:100%;max-width:470px;max-height:85vh;overflow:auto"><div style="font-size:30px;text-align:center;margin-bottom:8px">\ud83d\udd12</div><div style="font-family:&quot;Space Grotesk&quot;,sans-serif;font-size:19px;font-weight:800;text-align:center;margin-bottom:16px">Your POS stays completely safe</div>'
+  ov.innerHTML=LT('<div style="background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:28px;width:100%;max-width:470px;max-height:85vh;overflow:auto"><div style="font-size:30px;text-align:center;margin-bottom:8px">\ud83d\udd12</div><div style="font-family:&quot;Space Grotesk&quot;,sans-serif;font-size:19px;font-weight:800;text-align:center;margin-bottom:16px">Your POS stays completely safe</div>')
     +[["\ud83d\udd11","You log in on their site, not ours","Connecting uses your platform\u2019s official secure login (OAuth) \u2014 the same system banks use. Clicktide never sees or stores your password."],
       ["\ud83d\udc40","Read-only access","Clicktide can only VIEW your sales history and customer list. It cannot move money, issue refunds, change prices or products, or modify anything inside your point of sale."],
       ["\ud83d\udd0c","You hold the off switch","Disconnect any time with one click in Settings \u2014 or revoke access from your platform\u2019s own dashboard \u2014 and Clicktide\u2019s access ends instantly."],
@@ -766,7 +1096,7 @@ async function shopifyConnect(){
   return new Promise((resolve)=>{
     const ov=document.createElement("div");
     ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px";
-    ov.innerHTML=`
+    ov.innerHTML=LT(`
       <div style="background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:28px;width:100%;max-width:400px">
         <div style="font-size:28px;margin-bottom:10px;text-align:center">🛒</div>
         <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:800;text-align:center;margin-bottom:6px">Connect Shopify</div>
@@ -781,7 +1111,7 @@ async function shopifyConnect(){
           <button id="shopCancelBtn" style="flex:1;padding:12px;border-radius:100px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.07);color:#F0F4FF;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">Cancel</button>
           <button id="shopConnectBtn" style="flex:1;padding:12px;border-radius:100px;border:none;background:#FFD166;color:#080D18;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">Connect →</button>
         </div>
-      </div>`;
+      </div>`);
     document.body.appendChild(ov);
     const inp=document.getElementById("shopDomainInp");
     const err=document.getElementById("shopDomainErr");
@@ -1048,7 +1378,8 @@ function legalConsent(id){
 }
 
 function go(s){scr=s;R();}
-function R(){document.getElementById("app").innerHTML=page();bind();}
+function LT(h){if(scr==="dash"&&S)return h;return h.split("rgba(240,244,255,").join("rgba(15,17,21,").split("#F0F4FF").join("#0F1115").split("color:#FFD166").join("color:#B8860B").split("color:#4DA6FF").join("color:#2776C4").split("background:#101828").join("background:#F4F6FA").split("background:#0C1220").join("background:#FFFFFF").split("background:#080D18").join("background:#FFFFFF").split("rgba(255,255,255,.07)").join("rgba(15,23,42,.1)").split("rgba(255,255,255,.08)").join("rgba(15,23,42,.1)").split("rgba(255,255,255,.1)").join("rgba(15,23,42,.12)").split("rgba(255,255,255,.15)").join("rgba(15,23,42,.18)");}
+function R(){var lt=!(scr==="dash"&&S);document.body.style.background=lt?"#FAFCFF":"#080D18";var h=lt?LT(page()):page();document.getElementById("app").innerHTML=lt?'<div class="lt">'+h+'</div>':h;bind();}
 
 function page(){
   if(scr==="land")return land();
@@ -1061,8 +1392,30 @@ function page(){
   return land();
 }
 
-function navH(){
-  return`<nav>${logoH(20)}<div style="display:flex;gap:10px;align-items:center">
+function pLogoIco(id){
+  var T='<svg width="21" height="21" viewBox="0 0 24 24" style="vertical-align:-5px;flex-shrink:0">';
+  if(id==="square")return T+'<rect x="1.5" y="1.5" width="21" height="21" rx="5" fill="#000000"/><rect x="8" y="8" width="8" height="8" rx="1.8" fill="#FFFFFF"/></svg>';
+  if(id==="stripe")return T+'<rect x="1.5" y="1.5" width="21" height="21" rx="5" fill="#635BFF"/><text x="12" y="17" text-anchor="middle" font-size="14" font-weight="800" fill="#FFFFFF" font-family="Inter,sans-serif">S</text></svg>';
+  if(id==="shopify")return T+'<rect x="1.5" y="1.5" width="21" height="21" rx="5" fill="#95BF47"/><path d="M8.2 9.2 L15.8 9.2 L16.8 17.5 L7.2 17.5 Z" fill="#FFFFFF"/><path d="M9.7 9.2a2.3 2.3 0 0 1 4.6 0" stroke="#FFFFFF" stroke-width="1.3" fill="none"/></svg>';
+  if(id==="clover")return T+'<rect x="1.5" y="1.5" width="21" height="21" rx="5" fill="#FFFFFF" stroke="rgb(229,231,235)"/><circle cx="9.7" cy="9.7" r="2.9" fill="#43B02A"/><circle cx="14.3" cy="9.7" r="2.9" fill="#43B02A"/><circle cx="9.7" cy="14.3" r="2.9" fill="#43B02A"/><circle cx="14.3" cy="14.3" r="2.9" fill="#43B02A"/></svg>';
+  if(id==="toast")return T+'<rect x="1.5" y="1.5" width="21" height="21" rx="5" fill="#FF4B00"/><path d="M7.2 10.4c0-1.7 2.1-2.9 4.8-2.9s4.8 1.2 4.8 2.9c.9.2.9 1.9 0 2.1v4.2a.9.9 0 0 1-.9.9H8.1a.9.9 0 0 1-.9-.9v-4.2c-.9-.2-.9-1.9 0-2.1z" fill="#FFFFFF"/></svg>';
+  if(id==="mindbody")return T+'<rect x="1.5" y="1.5" width="21" height="21" rx="5" fill="#FF6340"/><text x="12" y="17" text-anchor="middle" font-size="13" font-weight="800" fill="#FFFFFF" font-family="Inter,sans-serif">M</text></svg>';
+  return T+'<rect x="1.5" y="1.5" width="21" height="21" rx="5" fill="#6B7280"/><path d="M8 16.5l.9-2.9 5.6-5.6 2 2-5.6 5.6-2.9.9z" fill="#FFFFFF"/></svg>';
+}
+function icoCat(id){
+  var P={fitness:'<path d="M2.5 9.5v5"/><path d="M5.5 7v10"/><path d="M18.5 7v10"/><path d="M21.5 9.5v5"/><path d="M5.5 12h13"/>',
+  beauty:'<circle cx="5.5" cy="5.5" r="2.4"/><circle cx="5.5" cy="18.5" r="2.4"/><path d="M7.5 7.1 19.5 19"/><path d="M7.5 16.9 19.5 5"/>',
+  food:'<path d="M5.5 3v5.5a2.5 2.5 0 0 0 5 0V3"/><path d="M8 11.5V21"/><path d="M17 3c-1.8 2.2-2.5 4.3-2.5 6.5 0 2.2 1.2 3.5 2.5 3.5V21"/>',
+  retail:'<path d="M5.5 8.5h13l-1.1 11.3a1.6 1.6 0 0 1-1.6 1.2H8.2a1.6 1.6 0 0 1-1.6-1.2L5.5 8.5z"/><path d="M9 11V7.5a3 3 0 0 1 6 0V11"/>',
+  services:'<path d="M15.2 6.1a4.3 4.3 0 0 0-5.9 5L3.5 17l3.5 3.5 5.9-5.8a4.3 4.3 0 0 0 5-5.9l-3.3 3.2-2.6-2.6 3.2-3.3z"/>',
+  tech:'<rect x="3.5" y="5" width="17" height="11.5" rx="2"/><path d="M2 19.5h20"/>',
+  other:'<rect x="5" y="3.5" width="14" height="17" rx="1.5"/><path d="M9 7.5h1.7M13.3 7.5H15M9 11h1.7M13.3 11H15M9 14.5h1.7M13.3 14.5H15"/><path d="M10.8 20.5v-3h2.4v3"/>'};
+  return '<svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block">'+(P[id]||P.other)+'</svg>';
+}
+var ICO_BIZMAP={gym:"fitness",yoga:"fitness",boxing:"fitness",cycling:"fitness",swimming:"fitness",salon:"beauty",nails:"beauty",barber:"beauty",medspa:"beauty",wellness:"beauty",cafe:"food",resto:"food",bakery:"food",bar:"food",fastcasual:"food",localretail:"retail",ecom:"retail",boutique:"retail",giftshop:"retail",petstore:"retail",petgrooming:"services",autoshop:"services",tutoring:"services",photography:"services",cleaning:"services",saas:"tech",app:"tech",agency:"tech",consulting:"tech",software:"tech"};
+function icoOf(bizId){return icoCat(ICO_BIZMAP[bizId]||"other");}
+function navH(lt){
+  return`<nav class="nav-lt">${logoH(20)}<div style="display:flex;gap:10px;align-items:center">
   <button class="btn btn-outline" onclick="go('roi')">ROI Calculator</button>
   <button class="btn btn-outline" onclick="go('samples')">Gift Samples</button>
   ${S?`<button class="btn btn-gold" onclick="go('dash')">Dashboard →</button>`:`<button class="btn btn-ghost" style="margin-right:2px" onclick="go('login')">Log in</button><button class="btn btn-gold" onclick="go('onboard')">Get started →</button>`}
@@ -1075,10 +1428,10 @@ function cookieBanner(){
   return `<div class="cookie-bar" id="ckBar">This website uses cookies and similar technologies to improve your experience, understand site performance, and support marketing. By continuing to browse, you consent to our use of cookies. Learn more in our <a href="privacy.html" target="_blank">Privacy Policy</a>.<button class="cookie-x" aria-label="Close cookie notice" onclick="ckOk()">×</button></div>`;
 }
 function siteFooter(){
-  return `<footer class="site-footer"><div class="foot-wrap">
+  return `<footer class="site-footer"><div class="cloud" style="width:300px;height:84px;bottom:30px;left:4%"></div><div class="cloud" style="width:240px;height:70px;top:40px;right:6%;animation-direction:reverse"></div><div class="foot-wrap">
     <div class="foot-top">${logoH(22)}<a class="foot-contact" href="mailto:hello@goclicktide.com">Contact us</a></div>
     <div class="foot-grid">
-      <div><div class="foot-title">Clicktide</div><div style="font-size:12px;line-height:1.8;color:rgba(240,244,255,.54)">Reward loyal customers and bring churn-risk customers back with automatic messages, rewards, and gifts.</div></div>
+      <div><div class="foot-title">Clicktide</div><div style="font-size:12px;line-height:1.8;color:var(--ftd,rgba(240,244,255,.54))">Reward loyal customers and bring churn-risk customers back with automatic messages, rewards, and gifts.</div></div>
       <div><div class="foot-title">Resources</div><div class="foot-links"><button onclick="go('pricing')">Pricing</button><button onclick="go('roi')">ROI Calculator</button><a href="win-back-lost-customers.html" target="_blank">Win-back guide</a></div></div>
       <div><div class="foot-title">Product</div><div class="foot-links"><button onclick="go('onboard')">Start free trial</button><button onclick="go('login')">Customer login</button><button onclick="go('dash')">Dashboard</button></div></div>
       <div><div class="foot-title">Legal</div><div class="foot-links"><a href="terms.html" target="_blank">Terms of Use</a><a href="privacy.html" target="_blank">Privacy Policy</a><a href="billing-policy.html" target="_blank">Billing Policy</a></div></div>
@@ -1096,16 +1449,16 @@ function giftSampleCards(limit){
   return list.map(function(g){
     return `<div class="card-s" style="text-align:left;padding:14px;display:flex;flex-direction:column;min-height:210px">
       <div style="height:104px;border-radius:12px;background:linear-gradient(135deg,#eef2f7,#e5ebf2);border:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;margin-bottom:12px;overflow:hidden;padding:10px;position:relative">
-        ${g.image_url?`<div style="position:absolute;inset:-16px;background-image:url('${giftEsc(giftImgSrc(g.image_url))}');background-size:cover;background-position:center;filter:blur(14px);opacity:.34;transform:scale(1.04)"></div><img src="${giftEsc(giftImgSrc(g.image_url))}" alt="${giftEsc(g.n)}" style="width:100%;height:100%;object-fit:contain;display:block;position:relative;z-index:1"/>`:`<div style="font-size:42px">${g.e}</div>`}
+        ${g.image_url?`<div style="position:absolute;inset:-16px;background-image:url('${giftEsc(giftImgSrc(g.image_url))}');background-size:cover;background-position:center;filter:blur(14px);opacity:.34;transform:scale(1.04)"></div><img src="${giftEsc(giftImgSrc(g.image_url))}" alt="${giftEsc(g.n)}" style="width:100%;height:100%;object-fit:contain;display:block;position:relative;z-index:1"/>`:`<span class="ic-chip" style="width:52px;height:52px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 21 4 21 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="21" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></span>`}
       </div>
       <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
-        <div style="font-size:14px;font-weight:800;color:#F0F4FF">${giftEsc(g.n)}</div>
+        <div style="font-size:14px;font-weight:800;color:var(--gcn,#F0F4FF)">${giftEsc(g.n)}</div>
         ${(g.pop&&popShown++<2)?`<span style="font-size:10px;font-weight:800;color:#080D18;background:#FFD166;border-radius:999px;padding:2px 7px">Popular</span>`:""}
       </div>
-      <div style="font-size:12px;color:rgba(240,244,255,.52);line-height:1.55;flex:1">${giftEsc(g.s)}</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:11px;border-top:1px solid rgba(255,255,255,.07)">
-        <span style="font-size:11px;color:rgba(240,244,255,.42);text-transform:uppercase;letter-spacing:.8px">${giftEsc(g.cat)}</span>
-        <span style="font-size:13px;font-weight:900;color:#FFD166">Est. $${Number(g.p||0).toFixed(2)}</span>
+      <div style="font-size:12px;color:var(--gcd,rgba(240,244,255,.52));line-height:1.55;flex:1">${giftEsc(g.s)}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:11px;border-top:1px solid var(--gcb,rgba(255,255,255,.07))">
+        <span style="font-size:11px;color:var(--gcc,rgba(240,244,255,.42));text-transform:uppercase;letter-spacing:.8px">${giftEsc(g.cat)}</span>
+        <span style="font-size:13px;font-weight:900;color:var(--gcp,#FFD166)">Est. $${Number(g.p||0).toFixed(2)}</span>
       </div>
     </div>`;
   }).join("");
@@ -1127,31 +1480,77 @@ function giftSamplePage(){
 
 function land(){
   const n=NT[ntIdx];
-  return`${navH()}
-  <div class="hero">
+  return`${navH(1)}
+  <div class="lt">
+  <div class="hero"><div class="cloud c1"></div><div class="cloud c2"></div><div class="cloud c3"></div><svg class="h3d h3d-r" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+<defs>
+<linearGradient id="g3bx" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".95"/><stop offset="1" stop-color="#E8E4D8" stop-opacity=".9"/></linearGradient>
+<linearGradient id="g3side" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#DDD8CA"/><stop offset="1" stop-color="#C9C3B2"/></linearGradient>
+<linearGradient id="g3lid" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#EFEBE0"/></linearGradient>
+<linearGradient id="g3rib" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFD97A"/><stop offset="1" stop-color="#E9B949"/></linearGradient>
+<radialGradient id="g3shadow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#101215" stop-opacity=".22"/><stop offset="1" stop-color="#101215" stop-opacity="0"/></radialGradient>
+<filter id="g3blur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
+</defs>
+<ellipse cx="150" cy="262" rx="105" ry="22" fill="url(#g3shadow)"/>
+<g transform="rotate(-6 150 150)">
+<path d="M62 132 L150 168 L238 132 L238 218 L150 254 L62 218 Z" fill="url(#g3side)"/>
+<path d="M150 168 L238 132 L238 218 L150 254 Z" fill="#D5D0C0"/>
+<path d="M136 174 L164 186 L164 248 L136 236 Z" fill="url(#g3rib)"/>
+<path d="M50 100 L150 140 L250 100 L150 62 Z" fill="url(#g3lid)"/>
+<path d="M50 100 L150 140 L150 172 L50 130 Z" fill="url(#g3bx)"/>
+<path d="M150 140 L250 100 L250 130 L150 172 Z" fill="#E3DECF"/>
+<path d="M132 133 L168 147 L168 178 L132 164 Z" fill="url(#g3rib)"/>
+<path d="M104 81 L150 99 L196 81 L150 64 Z" fill="none" stroke="url(#g3rib)" stroke-width="11" filter="url(#g3blur)" opacity=".55"/>
+<path d="M150 99 C 120 84, 96 86, 92 74 C 88 60, 116 56, 132 66 C 146 75, 150 99, 150 99 Z" fill="url(#g3rib)"/>
+<path d="M150 99 C 180 84, 204 86, 208 74 C 212 60, 184 56, 168 66 C 154 75, 150 99, 150 99 Z" fill="url(#g3rib)" opacity=".92"/>
+<circle cx="150" cy="98" r="9" fill="#E9B949"/>
+</g>
+</svg>
+<svg class="h3d h3d-l" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+<defs>
+<linearGradient id="g3w1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BFD9F5"/><stop offset="1" stop-color="#7FB3E8"/></linearGradient>
+<radialGradient id="g3ws" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#101215" stop-opacity=".16"/><stop offset="1" stop-color="#101215" stop-opacity="0"/></radialGradient>
+</defs>
+<ellipse cx="100" cy="172" rx="66" ry="13" fill="url(#g3ws)"/>
+<g transform="rotate(14 100 100)">
+<path d="M100 30 a55 55 0 1 0 0.01 0 Z M100 66 a19 19 0 1 1 -0.01 0 Z" fill="url(#g3w1)" fill-rule="evenodd"/>
+<path d="M100 30 a55 55 0 0 1 55 55 l-36 0 a19 19 0 0 0 -19 -19 Z" fill="#FFFFFF" opacity=".45"/>
+</g>
+</svg>
     <div class="badge"><span class="dot"></span>Live in 10 minutes · Read-only access · No new hardware</div>
-    <h1>Send a gift.<br><span class="grad-gold">Start a tide.</span></h1>
-    <p class="sub">Your customers aren\'t leaving — they\'re forgetting. Clicktide watches your register, notices the moment a regular starts drifting, and wins them back automatically — a friendly text, a real postcard, a branded gift on their doorstep.</p>
+    <h1 style="position:relative;z-index:1">${"Send a gift.".split("").map((c,i)=>c===" "?`<span class="hl-ch" style="--i:${i};width:.26em">&nbsp;</span>`:`<span class="hl-ch" style="--i:${i}">${c}</span>`).join("")}<br><span class="grad-gold hl2">Start a tide.</span></h1>
+    <p class="sub hl-sub">Your customers aren\'t leaving — they\'re forgetting. Clicktide watches your register, notices the moment a regular starts drifting, and wins them back automatically — a friendly text, a real postcard, a branded gift on their doorstep.</p>
     <div class="input-row">
       <div class="cta-group">
         <input class="email-inp" id="hE" placeholder="your@email.com" type="email"/>
-        <button class="btn btn-gold" onclick="startTrial()">Start free trial →</button>
+        <button class="btn btn-gold roll" onclick="startTrial()"><span class="roll-w"><span class="roll-a">Start free trial →</span><span class="roll-b">Start free trial →</span></span></button>
       </div>
     </div>
-    <div id="wOk" style="display:none;margin-bottom:14px"><span style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:100px;padding:13px 22px;font-size:14px;color:#22C55E;font-weight:600">🎉 You\'re on the list!</span></div>
+    <div id="wOk" style="display:none;margin-bottom:14px"><span style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:100px;padding:13px 22px;font-size:14px;color:#22C55E;font-weight:600">✓ You\'re on the list!</span></div>
     <button class="trust-line" onclick="go('onboard')"><b>✓</b> Free report: see who\'s slipping away&nbsp;&nbsp;&nbsp;<b>✓</b> 30-day free trial&nbsp;&nbsp;&nbsp;<b>✓</b> Cancel anytime</button>
-    <div class="pills">${PL.map(p=>`<div class="pill">${p.e} ${p.n}</div>`).join("")}</div>
-    <div class="shot-wrap"><div class="shot">
+    <div class="pills-marquee"><div class="pills-track">${PL.concat(PL).map(p=>`<div class="pill" style="display:inline-flex;align-items:center;gap:8px">${pLogoIco(p.id)}${p.n}</div>`).join("")}</div></div>
+    <div class="shot-wrap"><div class="cloud c4"></div><div class="cloud c5"></div><div class="px" data-px=".07" style="top:-30px;left:-72px"><div class="fcard fc1"><span class="av" style="background:#22C55E">SM</span><span><b>Sophia came back</b><small>Day-14 text · spent $84</small></span></div></div><div class="px" data-px=".11" style="top:34%;right:-78px"><div class="fcard fc2"><span class="av" style="background:#4DA6FF">MJ</span><span><b>Gift delivered</b><small>branded mug · follow up today</small></span></div></div><div class="px" data-px=".05" style="bottom:-26px;right:7%"><div class="fcard fc3"><span class="av" style="background:#E9B949"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 9.5 11.5 13 15 20 7"/><polyline points="14.5 7 20 7 20 12.5"/></svg></span><span><b><span data-count="23">23</span> customers drifting</b><small>worth $9,840 — playbook armed</small></span></div></div><div class="shot">
       <div class="shot-bar"><span class="shot-dot" style="background:#FF5F57"></span><span class="shot-dot" style="background:#FEBC2E"></span><span class="shot-dot" style="background:#28C840"></span><span style="margin-left:12px;font-size:11.5px;color:rgba(240,244,255,.35)">app.goclicktide.com — June\'s Beauty Bar</span></div>
       <img src="dashboard-hero.png" alt="Clicktide dashboard: drift detection, win-back playbook, and recovered revenue" style="width:100%;height:auto;display:block" fetchpriority="high"/>
     </div></div>
   </div>
-  <div class="notif" id="ntf"><span style="font-size:22px">${n.e}</span><div><div style="font-size:13px;font-weight:700">${n.t}</div><div style="font-size:11px;color:rgba(240,244,255,.45);margin-top:1px">${n.s}</div></div></div>
+  <div class="notif" id="ntf"><span class="ic-chip" style="width:38px;height:38px;border-radius:10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 12 20 21 4 21 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="21" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></span><div><div style="font-size:13px;font-weight:700">${n.t}</div><div style="font-size:11px;color:var(--nts,#6B6F76);margin-top:1px">${n.s}</div></div></div>
   <div class="sec sec-sur"><div style="max-width:1080px;margin:0 auto;text-align:center">
     <span class="kick">How it works</span>
-    <h2 class="sec-title">Live in <span class="gold">10 minutes.</span></h2>
+    <h2 class="sec-title">Live in <span class="gold"><span data-count="10">10</span> minutes.</span></h2>
     <p class="sec-sub">Connect your register once — Clicktide learns every customer\'s rhythm and handles the rest on its own.</p>
-    <div class="g4">${[["1","Connect your register","One-click, read-only link to Square, Shopify, Stripe and 9 more. A year of customer history imports in about a minute."],["2","See your drift number","Instantly know how many customers quietly stopped coming back — and what they\'re worth in dollars."],["3","Install the playbook","One button arms your win-backs: a friendly text at day 14, a real postcard at day 30, a branded gift at day 45."],["4","Watch them come back","Any visit pauses everything automatically. Your dashboard counts every save in recovered revenue."]].map(([num,t,d])=>`<div class="card" style="text-align:left"><div class="step-num">${num}</div><div style="font-size:15px;font-weight:700;margin-bottom:7px">${t}</div><div style="font-size:13px;line-height:1.7;color:rgba(240,244,255,.52)">${d}</div></div>`).join("")}</div>
+    <div class="pflow" aria-hidden="true"><div class="pstage"><svg class="pwires" viewBox="0 0 1000 260" style="position:absolute;left:0;top:0;width:1000px;height:260px">
+<g stroke="#9CC6F2" stroke-width="2" fill="none" stroke-dasharray="5 9" class="wflow">
+<path d="M103 125 H272"/>
+<path d="M328 125 C 430 125, 450 40, 532 40"/>
+<path d="M328 125 H532"/>
+<path d="M328 125 C 430 125, 450 214, 532 214"/>
+<path d="M588 40 C 690 50, 710 125, 807 125"/>
+<path d="M588 125 H807"/>
+<path d="M588 214 C 690 200, 710 125, 807 125"/>
+</g></svg><div class="orb oA" style="offset-path:path(&quot;M103 125 H272&quot;)"></div><div class="orb oB" style="offset-path:path(&quot;M328 125 C 430 125, 450 40, 532 40&quot;)"></div><div class="orb oB" style="offset-path:path(&quot;M328 125 H532&quot;)"></div><div class="orb oB" style="offset-path:path(&quot;M328 125 C 430 125, 450 214, 532 214&quot;)"></div><div class="orb oC" style="offset-path:path(&quot;M588 40 C 690 50, 710 125, 807 125&quot;)"></div><div class="orb oC" style="offset-path:path(&quot;M588 125 H807&quot;)"></div><div class="orb oC" style="offset-path:path(&quot;M588 214 C 690 200, 710 125, 807 125&quot;)"></div><div class="espin"></div><div class="pnode" style="left:75px;top:118px;--nb:0s"><span class="pring2" style="--rd:.1s"></span><svg width="84" height="76" viewBox="0 0 120 110"><defs><linearGradient id="p3r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#DCE4EE"/></linearGradient><radialGradient id="p3rs" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#101215" stop-opacity=".2"/><stop offset="1" stop-color="#101215" stop-opacity="0"/></radialGradient></defs><ellipse cx="60" cy="100" rx="34" ry="7" fill="url(#p3rs)"/><g transform="rotate(-5 60 60)"><path d="M30 78 L60 88 L90 78 L90 86 L60 96 L30 86 Z" fill="#C7D1DE"/><rect x="30" y="30" width="60" height="50" rx="8" fill="url(#p3r)" stroke="#C7D1DE"/><rect x="38" y="38" width="44" height="18" rx="4" fill="#16365C"/><rect x="42" y="43" width="22" height="3" rx="1.5" fill="#6FB3F7"/><rect x="42" y="49" width="14" height="3" rx="1.5" fill="#3BD584"/><rect x="38" y="62" width="10" height="6" rx="2" fill="#C7D1DE"/><rect x="52" y="62" width="10" height="6" rx="2" fill="#C7D1DE"/><rect x="66" y="62" width="16" height="6" rx="2" fill="#E9B949"/></g></svg><b>Your register</b><small>read-only · 1 click</small></div><div class="pnode" style="left:300px;top:118px;--nb:.7s"><span class="pring2" style="--rd:1.05s"></span><svg width="86" height="80" viewBox="0 0 120 112"><defs><radialGradient id="p3e" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#8FC3F8"/><stop offset=".6" stop-color="#2E7CD6"/><stop offset="1" stop-color="#16365C"/></radialGradient><radialGradient id="p3es" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#101215" stop-opacity=".22"/><stop offset="1" stop-color="#101215" stop-opacity="0"/></radialGradient></defs><ellipse cx="60" cy="103" rx="36" ry="7" fill="url(#p3es)"/><circle cx="60" cy="56" r="34" fill="url(#p3e)"/><circle cx="48" cy="44" r="10" fill="#FFFFFF" opacity=".25"/><path d="M42 60 q9 -14 18 0 q9 14 18 0" stroke="#FFFFFF" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M42 48 q9 -14 18 0 q9 14 18 0" stroke="#FFFFFF" stroke-width="3" fill="none" stroke-linecap="round" opacity=".45"/></svg><b>Clicktide watches</b><small>learns every rhythm</small></div><div class="pnode" style="left:560px;top:40px;--nb:1.4s"><span class="pring2" style="--rd:2.2s"></span><svg width="64" height="58" viewBox="0 0 120 110"><defs><linearGradient id="p3b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9CC6F2"/><stop offset="1" stop-color="#5E9FE0"/></linearGradient><radialGradient id="p3bs" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#101215" stop-opacity=".18"/><stop offset="1" stop-color="#101215" stop-opacity="0"/></radialGradient></defs><ellipse cx="60" cy="99" rx="30" ry="6" fill="url(#p3bs)"/><g transform="rotate(-4 60 55)"><rect x="24" y="26" width="72" height="46" rx="16" fill="url(#p3b)"/><path d="M48 70 L42 90 L64 72 Z" fill="#5E9FE0"/><rect x="31" y="31" width="38" height="12" rx="6" fill="#FFFFFF" opacity=".45"/><circle cx="46" cy="51" r="4.5" fill="#FFFFFF"/><circle cx="60" cy="51" r="4.5" fill="#FFFFFF"/><circle cx="74" cy="51" r="4.5" fill="#FFFFFF"/></g></svg><b>Day 14 · text</b></div><div class="pnode" style="left:560px;top:122px;--nb:.4s"><span class="pring2" style="--rd:2.4s"></span><svg width="64" height="58" viewBox="0 0 120 110"><defs><linearGradient id="p3p" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2E6BAE"/><stop offset="1" stop-color="#16365C"/></linearGradient><radialGradient id="p3ps" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#101215" stop-opacity=".18"/><stop offset="1" stop-color="#101215" stop-opacity="0"/></radialGradient></defs><ellipse cx="60" cy="99" rx="32" ry="6" fill="url(#p3ps)"/><g transform="rotate(4 60 55)"><rect x="22" y="32" width="76" height="52" rx="8" fill="url(#p3p)"/><rect x="78" y="38" width="12" height="14" rx="2" fill="none" stroke="#FFFFFF" stroke-dasharray="3 3" opacity=".7"/><rect x="30" y="56" width="40" height="4" rx="2" fill="#FFFFFF" opacity=".8"/><rect x="30" y="65" width="28" height="4" rx="2" fill="#FFFFFF" opacity=".5"/><rect x="28" y="36" width="26" height="9" rx="2" fill="#FFD166"/></g></svg><b>Day 30 · postcard</b></div><div class="pnode" style="left:560px;top:214px;--nb:1.1s"><span class="pring2" style="--rd:2.6s"></span><svg width="64" height="58" viewBox="0 0 120 110"><defs><linearGradient id="p3l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#F0EBDD"/></linearGradient><linearGradient id="p3g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFD97A"/><stop offset="1" stop-color="#E9B949"/></linearGradient><radialGradient id="p3gs" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#101215" stop-opacity=".2"/><stop offset="1" stop-color="#101215" stop-opacity="0"/></radialGradient></defs><ellipse cx="60" cy="100" rx="34" ry="7" fill="url(#p3gs)"/><g transform="rotate(-5 60 60)"><path d="M28 52 L60 66 L60 96 L28 82 Z" fill="#EFEAD9"/><path d="M60 66 L92 52 L92 82 L60 96 Z" fill="#DFD9C5"/><path d="M54 63 L66 68 L66 94 L54 89 Z" fill="url(#p3g)"/><path d="M24 40 L60 54 L96 40 L60 27 Z" fill="url(#p3l)"/><path d="M24 40 L60 54 L60 66 L24 52 Z" fill="#F6F2E6"/><path d="M60 54 L96 40 L96 52 L60 66 Z" fill="#E8E2D0"/><path d="M52 49 L68 55 L68 64 L52 58 Z" fill="url(#p3g)"/><circle cx="60" cy="38" r="5" fill="#E9B949"/></g></svg><b>Day 45 · gift</b></div><div class="pnode" style="left:840px;top:118px;--nb:.9s"><span class="pring2" style="--rd:3.4s"></span><svg width="84" height="76" viewBox="0 0 120 110"><defs><radialGradient id="p3c" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#7FE0A8"/><stop offset=".65" stop-color="#22C55E"/><stop offset="1" stop-color="#0F7A3A"/></radialGradient><radialGradient id="p3cs" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#101215" stop-opacity=".22"/><stop offset="1" stop-color="#101215" stop-opacity="0"/></radialGradient></defs><ellipse cx="60" cy="101" rx="34" ry="7" fill="url(#p3cs)"/><circle cx="60" cy="56" r="32" fill="url(#p3c)"/><circle cx="49" cy="44" r="9" fill="#FFFFFF" opacity=".3"/><path d="M46 56 l9 9 19 -21" stroke="#FFFFFF" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1" class="ckd"/></svg><b>They walk back in</b><small>everything pauses</small></div></div></div>
+    <div style="text-align:center;margin:2px 0 40px"><button class="btn-hero" onclick="localStorage.setItem('ct_pb_intent','1');go('pricing')"><svg width="17" height="17" viewBox="0 0 24 24" fill="#101215" stroke="none"><path d="M13 2 L4.5 13.5 H11 L9.8 22 L19.5 9.5 H12.6 Z"/></svg>Install this playbook on your business →</button><div style="font-size:11.5px;color:#9CA3AF;margin-top:9px">One click · pre-written · free during your 30-day trial</div></div>
+    <div class="g4">${[["1","Connect your register","One-click, read-only link to Square, Shopify, Stripe and 9 more. A year of customer history imports in about a minute.","go('onboard')","Start connecting"],["2","See your drift number","Instantly know how many customers quietly stopped coming back — and what they\'re worth in dollars.","go('onboard')","See my number"],["3","Install the playbook","One button arms your win-backs: a friendly text at day 14, a real postcard at day 30, a branded gift at day 45.","localStorage.setItem('ct_pb_intent','1');go('pricing')","Install it"],["4","Watch them come back","Any visit pauses everything automatically. Your dashboard counts every save in recovered revenue.","go('roi')","See the math"]].map(([num,t,d,act,cta],ix)=>`<div class="card step-card" style="text-align:left;--d:${ix*0.75}s" onclick="${act}" role="button" tabindex="0" onkeydown="if(event.key==='Enter')this.click()"><div class="step-num">${num}</div><div style="font-size:15px;font-weight:700;margin-bottom:7px">${t}</div><div style="font-size:13px;line-height:1.7;color:#5A5E66">${d}</div><span class="step-go">${cta} →</span></div>`).join("")}</div>
   </div></div>
   <div class="sec"><div style="max-width:1020px;margin:0 auto;text-align:center">
     <span class="kick">One system</span>
@@ -1159,26 +1558,45 @@ function land(){
     <p class="sec-sub">Reward the customers who already love you. Re-engage the ones who are starting to fade.</p>
     <div class="g2" style="margin-bottom:48px">
       <div class="card-s" style="text-align:left">
-        <div style="font-size:30px;margin-bottom:12px">💛</div>
+        <div class="ic-chip" style="margin-bottom:14px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5C7.5 17.5 3.5 14 3.5 9.8 3.5 7 5.6 5 8.1 5c1.6 0 3 .8 3.9 2.1C12.9 5.8 14.3 5 15.9 5c2.5 0 4.6 2 4.6 4.8 0 4.2-4 7.7-8.5 10.7z"/></svg></div>
         <div style="font-size:18px;font-weight:800;margin-bottom:8px">Reward loyal customers</div>
-        <div style="font-size:13px;line-height:1.8;color:rgba(240,244,255,.52)">Send birthday surprises, VIP thank-yous, milestone gifts, referral rewards, and personal notes that make regulars feel remembered.</div>
+        <div style="font-size:13px;line-height:1.8;color:#5A5E66">Send birthday surprises, VIP thank-yous, milestone gifts, referral rewards, and personal notes that make regulars feel remembered.</div>
       </div>
       <div class="card-s" style="text-align:left">
-        <div style="font-size:30px;margin-bottom:12px">🌊</div>
+        <div class="ic-chip" style="margin-bottom:14px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 4 3 9 8 9"/></svg></div>
         <div style="font-size:18px;font-weight:800;margin-bottom:8px">Win back churn-risk customers</div>
-        <div style="font-size:13px;line-height:1.8;color:rgba(240,244,255,.52)">Detect inactivity, low engagement, or slipping visit patterns, then send the right check-in, digital reward, or physical gift.</div>
+        <div style="font-size:13px;line-height:1.8;color:#5A5E66">Detect inactivity, low engagement, or slipping visit patterns, then send the right check-in, digital reward, or physical gift.</div>
       </div>
     </div>
     <h2 class="sec-title" style="font-size:clamp(24px,3vw,34px)">Three ways to <span class="gold">reach them.</span></h2>
     <p class="sec-sub" style="margin-bottom:44px">Every send is personal, automatic, and pauses the moment they walk back in.</p>
     <div class="g3">
-      <div class="tc"><div style="font-size:32px;margin-bottom:12px">💬</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#4DA6FF;margin-bottom:6px">Free forever</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Message Only</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#4DA6FF;margin-bottom:10px">Free</div><div style="font-size:13px;color:rgba(240,244,255,.52);line-height:1.7;margin-bottom:14px">A personal check-in or thank you. No gift mentioned. Just human connection.</div><div style="background:rgba(77,166,255,.06);border:1px solid rgba(77,166,255,.15);border-radius:12px;padding:12px 14px;font-size:12px;color:rgba(240,244,255,.55);font-style:italic;margin-bottom:18px;text-align:left">"Hey Sarah, just checking in — the team at Iron Forge misses you! Hope everything is going well."</div><button class="btn btn-ghost" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
-      <div class="tc pop"><div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#FFD166;color:#080D18;padding:4px 16px;border-radius:100px;font-size:11px;font-weight:800;white-space:nowrap">Most Powerful</div><div style="font-size:32px;margin-bottom:12px">📦</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#FFD166;margin-bottom:6px">Gifts from $2</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Physical Gift</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#FFD166;margin-bottom:10px">From $2</div><div style="font-size:13px;color:rgba(240,244,255,.52);line-height:1.7;margin-bottom:14px">Your brand in their house — forever. A mug on their desk, a bottle in their gym bag: your logo, seen every single morning.</div><div style="background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.15);border-radius:12px;padding:12px 14px;font-size:12px;color:rgba(240,244,255,.55);font-style:italic;margin-bottom:18px;text-align:left">"Hey Sarah, keep an eye on your mailbox — something is on its way from us. 🎁"</div><button class="btn btn-gold" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
-      <div class="tc"><div style="font-size:32px;margin-bottom:12px">💳</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#22C55E;margin-bottom:6px">Included in your plan</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Digital Gift</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#22C55E;margin-bottom:10px">Included</div><div style="font-size:13px;color:rgba(240,244,255,.52);line-height:1.7;margin-bottom:14px">You generate a promo code in your Square, Shopify, or Clover dashboard. Clicktide sends it to your customer automatically.</div><div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:12px;padding:12px 14px;font-size:12px;color:rgba(240,244,255,.55);font-style:italic;margin-bottom:18px;text-align:left">"Hey Sarah, here\'s something special from Iron Forge — use code SARAH20 on your next visit!"</div><button class="btn btn-ghost" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
+      <div class="tc"><div style="margin-bottom:8px"><svg class="mini3d" width="86" height="78" viewBox="0 0 120 110" aria-hidden="true"><defs><linearGradient id="m3bub" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9CC6F2"/><stop offset="1" stop-color="#5E9FE0"/></linearGradient><radialGradient id="m3bs" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#101215" stop-opacity=".18"/><stop offset="1" stop-color="#101215" stop-opacity="0"/></radialGradient></defs><ellipse cx="60" cy="99" rx="30" ry="6" fill="url(#m3bs)"/><g transform="rotate(-4 60 55)"><rect x="24" y="26" width="72" height="46" rx="16" fill="url(#m3bub)"/><path d="M48 70 L42 90 L64 72 Z" fill="#5E9FE0"/><rect x="31" y="31" width="38" height="12" rx="6" fill="#FFFFFF" opacity=".45"/><circle cx="46" cy="51" r="4.5" fill="#FFFFFF"/><circle cx="60" cy="51" r="4.5" fill="#FFFFFF"/><circle cx="74" cy="51" r="4.5" fill="#FFFFFF"/></g></svg></div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#2776C4;margin-bottom:6px">Free forever</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Message Only</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#2776C4;margin-bottom:10px">Free</div><div style="font-size:13px;color:#5A5E66;line-height:1.7;margin-bottom:14px">A personal check-in or thank you. No gift mentioned. Just human connection.</div><div style="background:rgba(77,166,255,.06);border:1px solid rgba(77,166,255,.15);border-radius:12px;padding:12px 14px;font-size:12px;color:#4A4E55;font-style:italic;margin-bottom:18px;text-align:left">"Hey Sarah, just checking in — the team at Iron Forge misses you! Hope everything is going well."</div><button class="btn btn-ghost" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
+      <div class="tc pop"><div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#FFD166;color:#080D18;padding:4px 16px;border-radius:100px;font-size:11px;font-weight:800;white-space:nowrap">Most Powerful</div><div style="margin-bottom:8px"><svg class="mini3d" style="animation-delay:.6s" width="86" height="78" viewBox="0 0 120 110" aria-hidden="true"><defs><linearGradient id="m3lid" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#F0EBDD"/></linearGradient><linearGradient id="m3rib" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFD97A"/><stop offset="1" stop-color="#E9B949"/></linearGradient><radialGradient id="m3gs" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#101215" stop-opacity=".2"/><stop offset="1" stop-color="#101215" stop-opacity="0"/></radialGradient></defs><ellipse cx="60" cy="100" rx="34" ry="7" fill="url(#m3gs)"/><g transform="rotate(-5 60 60)"><path d="M28 52 L60 66 L60 96 L28 82 Z" fill="#EFEAD9"/><path d="M60 66 L92 52 L92 82 L60 96 Z" fill="#DFD9C5"/><path d="M54 63 L66 68 L66 94 L54 89 Z" fill="url(#m3rib)"/><path d="M24 40 L60 54 L96 40 L60 27 Z" fill="url(#m3lid)"/><path d="M24 40 L60 54 L60 66 L24 52 Z" fill="#F6F2E6"/><path d="M60 54 L96 40 L96 52 L60 66 Z" fill="#E8E2D0"/><path d="M52 49 L68 55 L68 64 L52 58 Z" fill="url(#m3rib)"/><path d="M60 38 C 48 32, 38 33, 36 27 C 34 20, 46 19, 53 24 C 58 28, 60 38, 60 38 Z" fill="url(#m3rib)"/><path d="M60 38 C 72 32, 82 33, 84 27 C 86 20, 74 19, 67 24 C 62 28, 60 38, 60 38 Z" fill="url(#m3rib)" opacity=".92"/><circle cx="60" cy="38" r="5" fill="#E9B949"/></g></svg></div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#B07E12;margin-bottom:6px">Gifts from $2</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Physical Gift</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#B07E12;margin-bottom:10px">From $2</div><div style="font-size:13px;color:#5A5E66;line-height:1.7;margin-bottom:14px">Your brand in their house — forever. A mug on their desk, a bottle in their gym bag: your logo, seen every single morning.</div><div style="background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.15);border-radius:12px;padding:12px 14px;font-size:12px;color:#4A4E55;font-style:italic;margin-bottom:18px;text-align:left">"Hey Sarah, keep an eye on your mailbox — something is on its way from us. 🎁"</div><button class="btn btn-gold" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
+      <div class="tc"><div style="margin-bottom:8px"><svg class="mini3d" style="animation-delay:1.2s" width="86" height="78" viewBox="0 0 120 110" aria-hidden="true"><defs><linearGradient id="m3cd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9ADBB2"/><stop offset="1" stop-color="#4CBF77"/></linearGradient><radialGradient id="m3cs" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#101215" stop-opacity=".18"/><stop offset="1" stop-color="#101215" stop-opacity="0"/></radialGradient></defs><ellipse cx="60" cy="99" rx="32" ry="6" fill="url(#m3cs)"/><g transform="rotate(-6 60 55)"><rect x="22" y="30" width="76" height="50" rx="10" fill="url(#m3cd)"/><rect x="22" y="40" width="76" height="10" fill="#101215" opacity=".22"/><rect x="30" y="58" width="15" height="11" rx="2.5" fill="#FFE9A8"/><rect x="52" y="62" width="36" height="5" rx="2.5" fill="#FFFFFF" opacity=".6"/><rect x="28" y="34" width="30" height="4" rx="2" fill="#FFFFFF" opacity=".45"/></g></svg></div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#189048;margin-bottom:6px">Included in your plan</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Digital Gift</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#189048;margin-bottom:10px">Included</div><div style="font-size:13px;color:#5A5E66;line-height:1.7;margin-bottom:14px">You generate a promo code in your Square, Shopify, or Clover dashboard. Clicktide sends it to your customer automatically.</div><div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:12px;padding:12px 14px;font-size:12px;color:#4A4E55;font-style:italic;margin-bottom:18px;text-align:left">"Hey Sarah, here\'s something special from Iron Forge — use code SARAH20 on your next visit!"</div><button class="btn btn-ghost" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-top:18px">
-      <div class="tc" style="text-align:left"><div style="display:flex;gap:14px;align-items:flex-start"><div style="font-size:26px">🛡️</div><div><div style="font-size:15px;font-weight:700;margin-bottom:5px">One-click Win-Back Playbook</div><div style="font-size:13px;color:rgba(240,244,255,.52);line-height:1.7">One click installs your complete protection: a friendly text at day 14, a postcard at day 30, a small branded gift at day 45 — pre-written, fully editable, and it pauses the moment a customer comes back.</div><button class="btn btn-gold" style="margin-top:14px;padding:9px 18px" onclick="localStorage.setItem('ct_pb_intent','1');go('pricing')">Install it on your business →</button></div></div></div>
-      <div class="tc" style="text-align:left"><div style="display:flex;gap:14px;align-items:flex-start"><div style="font-size:26px">📈</div><div><div style="font-size:15px;font-weight:700;margin-bottom:5px">Monday Drift Report</div><div style="font-size:13px;color:rgba(240,244,255,.52);line-height:1.7">Every Monday morning: exactly which customers started drifting last week — names, days absent, and what they\'re worth — so nobody slips away unnoticed.</div></div></div></div>
+      <div class="tc" style="text-align:left"><div style="display:flex;gap:14px;align-items:flex-start"><div class="ic-chip"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 2.8v5.4c0 4.3-2.9 7.6-7 9.8-4.1-2.2-7-5.5-7-9.8V5.8L12 3z"/><polyline points="9 11.5 11.2 13.7 15.5 9.4"/></svg></div><div><div style="font-size:15px;font-weight:700;margin-bottom:5px">One-click Win-Back Playbook</div><div style="font-size:13px;color:#5A5E66;line-height:1.7">One click installs your complete protection: a friendly text at day 14, a postcard at day 30, a small branded gift at day 45 — pre-written, fully editable, and it pauses the moment a customer comes back.</div><button class="btn btn-gold" style="margin-top:14px;padding:12px 24px;font-size:13.5px" onclick="localStorage.setItem('ct_pb_intent','1');go('pricing')">Install it on your business →</button><div style="font-size:11.5px;color:#9CA3AF;margin-top:9px">One click · pre-written · free during your 30-day trial</div></div></div></div>
+      <div class="tc" style="text-align:left"><div style="display:flex;gap:14px;align-items:flex-start"><div class="ic-chip"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 9.5 11.5 13 15 20 7"/><polyline points="14.5 7 20 7 20 12.5"/></svg></div><div><div style="font-size:15px;font-weight:700;margin-bottom:5px">Monday Drift Report</div><div style="font-size:13px;color:#5A5E66;line-height:1.7">Every Monday morning: exactly which customers started drifting last week — names, days absent, and what they\'re worth — so nobody slips away unnoticed.</div></div></div></div>
+    </div>
+    <div style="margin-top:54px">
+      <div style="text-align:center"><span class="kick">What actually goes out</span>
+      <h2 class="sec-title" style="font-size:clamp(24px,3.4vw,38px)">Read every word <span class="gold">before it sends.</span></h2>
+      <p class="sec-sub" style="margin-bottom:0">Shown with sample data — every message goes out under your business name, and every word is yours to edit.</p></div>
+      <div class="arts">
+        <div><div class="aphone"><div class="notch"></div><div class="scr"><div class="tme">Today 10:02 AM</div><div class="bub">Hey Sarah, it\'s June\'s Beauty Bar — been a couple weeks since we saw you! Everything okay? No pressure, your spot\'s here whenever you\'re ready.</div></div></div>
+        <div class="art-lbl"><b>Day 14 — the friendly text</b><small>knows their real last visit · never reads like spam</small></div></div>
+        <div><div class="apost-w"><div class="apost"><div class="stamp"></div><div><b>June\'s Beauty Bar</b><span>A little something, just for you</span></div></div>
+        <div class="apostb"><div class="msg">Sarah, it\'s been a minute — and we wanted you to know there\'s no catch-up required and no awkwardness at the door. Just come say hi. We\'d love to see you.<br><br>— The team at June\'s Beauty Bar</div>
+        <div class="addr"><div class="stamp2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgb(203,198,184)" stroke-width="2"><path d="M-11 3 q5.5 -11 11 0 q5.5 11 11 0" transform="translate(12 9)"/></svg></div>Sarah Mitchell<br>482 Maple Ave<br>Brooklyn, NY 11215</div></div></div>
+        <div class="art-lbl"><b>Day 30 — a real postcard, front and back</b><small>your design, their name, real words — printed and mailed for $1.50</small></div></div>
+        <div><div class="amail"><span class="smp">Sample data</span><div class="mh2"><small>Clicktide &lt;support@goclicktide.com&gt;</small><b>Your Monday Drift Report — 3 customers drifting</b></div>
+        <div class="mrow"><span><b>Sophia M.</b><small>16 days quiet</small></span><span style="font-weight:800;color:#0F1115">$1,240</span></div>
+        <div class="mrow"><span><b>Derek R.</b><small>21 days quiet</small></span><span style="font-weight:800;color:#0F1115">$830</span></div>
+        <div class="mrow"><span><b>Aisha K.</b><small>33 days quiet</small></span><span style="font-weight:800;color:#0F1115">$610</span></div>
+        <div class="mft">Playbook armed for all three →</div></div>
+        <div class="art-lbl"><b>Every Monday — the Drift Report</b><small>names, days gone, and what they\'re worth</small></div></div>
+      </div>
     </div>
     <div style="margin-top:64px;text-align:left">
       <div style="text-align:center;margin-bottom:30px">
@@ -1193,25 +1611,53 @@ function land(){
   <div class="sec sec-sur"><div style="max-width:1080px;margin:0 auto;text-align:center">
     <span class="kick">Coverage</span>
     <h2 class="sec-title">Keep your regulars. <span class="gold">Recover the ones slipping away.</span></h2>
-    <div class="g4" style="margin-top:44px">${[["VIPs","Thank your best customers","before they feel ignored"],["Milestones","Celebrate moments","birthdays, visits, referrals"],["At-risk","Catch slipping customers","before churn becomes final"],["Recovered","Reinforce the comeback","after a customer returns"]].map(([v,l,s])=>`<div class="card" style="text-align:center"><div class="stat-n">${v}</div><div style="font-size:13.5px;font-weight:700;margin-bottom:5px">${l}</div><div style="font-size:12px;color:rgba(240,244,255,.48)">${s}</div></div>`).join("")}</div>
+    <div class="g4" style="margin-top:44px">${[["VIPs","Thank your best customers","before they feel ignored"],["Milestones","Celebrate moments","birthdays, visits, referrals"],["At-risk","Catch slipping customers","before churn becomes final"],["Recovered","Reinforce the comeback","after a customer returns"]].map(([v,l,s])=>`<div class="card" style="text-align:center"><div class="stat-n">${v}</div><div style="font-size:13.5px;font-weight:700;margin-bottom:5px">${l}</div><div style="font-size:12px;color:#6B6F76">${s}</div></div>`).join("")}</div>
+  </div></div>
+  <div class="sec"><div style="max-width:1080px;margin:0 auto;text-align:center">
+    <span class="kick">Why retention first</span>
+    <h2 class="sec-title">Keeping a customer beats finding one. <span class="gold">It\'s not close.</span></h2>
+    <p class="sec-sub">The math every local business learns the hard way — usually after the regulars are already gone.</p>
+    <div class="rstats">
+      <div class="rstat"><div class="rn">5–7×</div><div class="rl">what winning a brand-new customer costs compared to keeping one you already have</div><div class="rs">Harvard Business Review</div></div>
+      <div class="rstat"><div class="rn">+25–95%</div><div class="rl">profit increase from holding on to just 5% more of your customers</div><div class="rs">Bain &amp; Company</div></div>
+      <div class="rstat"><div class="rn">67%</div><div class="rl">more spent per visit by a returning customer than a first-timer</div><div class="rs">BIA Advisory Services</div></div>
+    </div>
+    <div class="rchart">
+      <h4>Odds they actually buy from you</h4>
+      <div class="rrow"><div class="rt"><span>A customer you already have</span><span>60–70%</span></div><div class="rtrack"><div class="sbar" style="--w:68%;background:linear-gradient(90deg,#3BD584,#17A35A);box-shadow:0 7px 20px rgba(23,163,90,.45)"><em style="position:relative;z-index:2;font-style:normal">60–70%</em><span class="sled"></span></div></div></div>
+      <div class="rrow"><div class="rt"><span>A stranger from an ad</span><span>5–20%</span></div><div class="rtrack"><div class="sbar" style="--w:15%;background:linear-gradient(90deg,#9CC6F2,#5E9FE0);box-shadow:0 7px 20px rgba(94,159,224,.45)"><span class="sled" style="box-shadow:0 0 14px 5px rgba(255,255,255,.5)"></span></div></div></div>
+      <div class="rsrc">Source: Marketing Metrics — probability of selling to existing vs. new customers</div>
+    </div>
+    <p style="font-size:15px;color:#374151;max-width:560px;margin:30px auto 0;line-height:1.7">Ads rent attention from strangers. Clicktide protects the people who already chose you — <b>and it does it automatically, for less than one lost regular costs.</b></p>
+    <div style="margin-top:20px"><button class="btn btn-gold" style="padding:13px 30px" onclick="go('roi')">See what drifting costs your business →</button></div>
   </div></div>
   <div class="sec"><div style="max-width:1020px;margin:0 auto;text-align:center">
     <span class="kick">Pricing</span>
-    <h2 class="sec-title" id="pricing">Built for every <span class="gold">business size.</span></h2><div style="display:flex;justify-content:center"><div onclick="go('onboard')" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.3);border-radius:100px;padding:8px 18px;font-size:12.5px;font-weight:700;color:#FFD166;margin:14px 0 4px;cursor:pointer">🔍 Free drift assessment · 30-day free trial · cancel anytime</div></div>
+    <div class="guard-wrap"><span class="kick">Your customers, protected</span>
+    <div class="guard-h">Built to never annoy the people you\'re winning back.</div>
+    <div class="guard-s">Your name is on every message — so the guardrails are not optional.</div>
+    <div class="guard">
+      <span class="gchip"><span class="ic-chip"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 2.8v5.4c0 4.3-2.9 7.6-7 9.8-4.1-2.2-7-5.5-7-9.8V5.8L12 3z"/><polyline points="9 11.5 11.2 13.7 15.5 9.4"/></svg></span>Three touches max — then it stops for good</span>
+      <span class="gchip"><span class="ic-chip"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="6" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="18"/></svg></span>Any visit pauses everything instantly</span>
+      <span class="gchip"><span class="ic-chip"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="5.8" y1="5.8" x2="18.2" y2="18.2"/></svg></span>Reply STOP — honored automatically, forever</span>
+      <span class="gchip"><span class="ic-chip"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12 C 5 7, 9 4.5, 12 4.5 S 19 7, 21.5 12 C 19 17, 15 19.5, 12 19.5 S 5 17, 2.5 12 Z"/><circle cx="12" cy="12" r="3.2"/></svg></span>Approve-before-send mode — you see it first</span>
+      <span class="gchip"><span class="ic-chip"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11 V8 a4 4 0 0 1 8 0 v3"/></svg></span>Read-only register access — can\'t touch money</span>
+    </div></div>
+    <h2 class="sec-title" id="pricing">Built for every <span class="gold">business size.</span></h2><div style="display:flex;justify-content:center"><div onclick="go('onboard')" style="display:inline-flex;align-items:center;gap:8px;background:#101215;border:1px solid #101215;border-radius:100px;padding:8px 18px;font-size:12.5px;font-weight:700;color:#F6F5F1;margin:14px 0 4px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.5" y1="15.5" x2="21" y2="21"/></svg> Free drift assessment · 30-day free trial · cancel anytime</div></div>
     <p class="sec-sub" style="margin-bottom:44px">Subscription + pay-per-gift wallet. No surprise bills.</p>
-    <div class="g3">${[{n:"Local",p:29,c:"#22C55E",pop:false,f:["200 customers/mo","Messages included","Digital gifts included","Physical gifts from wallet","Square & Clover","Basic analytics"]},{n:"Growth",p:99,c:"#FFD166",pop:true,f:["1,000 customers/mo","Messages included","Digital gifts included","Physical gifts from wallet","All 12 integrations","Retention analytics","Branded packaging"]},{n:"Scale",p:299,c:"#4DA6FF",pop:false,f:["Unlimited customers","Messages included","Digital gifts included","Physical gifts from wallet","AI triggers","White-label — your branding only","Dedicated success manager"]}].map(pl=>`<div class="plan ${pl.pop?"pop":""}" style="position:relative">${pl.pop?`<div class="plan-badge">Most Popular</div>`:""}<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(240,244,255,.45);margin-bottom:10px">${pl.n}</div><div class="plan-price" style="color:#F0F4FF">$${pl.p}<span style="font-size:15px;letter-spacing:0;font-weight:600;color:rgba(240,244,255,.45)">/mo</span></div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:18px">+ pay-per-gift wallet</div><div style="height:1px;background:rgba(255,255,255,.07);margin-bottom:18px"></div><ul class="feat">${pl.f.map(f=>`<li>${f}</li>`).join("")}</ul><button class="btn ${pl.pop?"btn-gold":"btn-ghost"}" style="width:100%;padding:12px" onclick="go('onboard')">Get started →</button></div>`).join("")}</div>
+    <div class="g3">${[{n:"Local",p:29,c:"#22C55E",pop:false,f:["200 customers/mo","Messages included","Digital gifts included","Physical gifts from wallet","Square & Clover","Basic analytics"]},{n:"Growth",p:99,c:"#FFD166",pop:true,f:["1,000 customers/mo","Messages included","Digital gifts included","Physical gifts from wallet","All 12 integrations","Retention analytics","Branded packaging"]},{n:"Scale",p:299,c:"#4DA6FF",pop:false,f:["Unlimited customers","Messages included","Digital gifts included","Physical gifts from wallet","AI triggers","White-label — your branding only","Dedicated success manager"]}].map((pl,ix)=>`<div class="mat" style="animation-delay:${ix*0.8}s" onclick="go('onboard')" role="button" tabindex="0"><div class="plan ${pl.pop?"pop":""}" style="position:relative">${pl.pop?`<div class="plan-badge">Most Popular</div>`:""}<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--plname,#6B6F76);margin-bottom:10px">${pl.n}</div><div class="plan-price" style="color:var(--plprice,#F0F4FF)">$${pl.p}<span style="font-size:15px;letter-spacing:0;font-weight:600;color:var(--plsub,#6B6F76)">/mo</span></div><div style="font-size:12px;color:var(--plsub,#6B6F76);margin-bottom:18px">+ pay-per-gift wallet</div><div style="height:1px;background:var(--pldiv,rgba(255,255,255,.07));margin-bottom:18px"></div><ul class="feat">${pl.f.map(f=>`<li>${f}</li>`).join("")}</ul><button class="btn ${pl.pop?"btn-gold":"btn-ghost"}" style="width:100%;padding:12px" onclick="go('onboard')">Get started →</button></div></div>`).join("")}</div>
   </div></div>
   <div class="sec" style="padding-top:32px">
     <div class="cta-band">
       <span class="kick">Get started</span>
       <h2 class="sec-title" style="margin-bottom:14px">Ready to start the <span class="grad-gold">tide?</span></h2>
-      <p style="color:rgba(240,244,255,.55);font-size:16px;margin-bottom:32px;line-height:1.7;max-width:520px;margin-left:auto;margin-right:auto">See your drift number free — most owners find thousands of dollars in customers they didn\'t know they\'d lost.</p>
+      <p style="color:rgba(255,255,255,.68);font-size:16px;margin-bottom:32px;line-height:1.7;max-width:520px;margin-left:auto;margin-right:auto">See your drift number free — most owners find thousands of dollars in customers they didn\'t know they\'d lost.</p>
       <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
         <button class="btn btn-gold" style="padding:15px 38px;font-size:15px" onclick="go('onboard')">Start free trial →</button>
         <button class="btn btn-ghost" style="padding:15px 28px;font-size:15px" onclick="go('roi')">Calculate my ROI</button>
       </div>
     </div>
-  </div>${siteFooter()}${cookieBanner()}`;
+  </div>${siteFooter()}${cookieBanner()}</div>`;
 }
 
 function authP(mode){
@@ -1288,7 +1734,7 @@ function onboard(){
     CATS.forEach(function(cat){
       var sel=obCat===cat.id;
       catGrid+="<div class='bc "+(sel?"on":"")+"' data-cid='"+cat.id+"' onclick='oCat(this.dataset.cid)'>";
-      catGrid+="<div style='font-size:26px;margin-bottom:6px'>"+cat.i+"</div>";
+      catGrid+="<div style='font-size:26px;margin-bottom:6px'>"+icoCat(cat.id)+"</div>";
       catGrid+="<div style='font-size:13px;font-weight:700;margin-bottom:2px'>"+cat.l+"</div>";
       if(sel)catGrid+="<div style='font-size:10px;color:#FFD166;font-weight:700'>✓ Selected</div>";
       catGrid+="</div>";
@@ -1302,7 +1748,7 @@ function onboard(){
         selCatObj.biz.forEach(function(b){
           var bsel=obB===b.id;
           bizGrid+="<div class='bc "+(bsel?"on":"")+"' data-bid='"+b.id+"' onclick='oBiz(this.dataset.bid)'>";
-          bizGrid+="<div style='font-size:22px;margin-bottom:6px'>"+b.i+"</div>";
+          bizGrid+="<div style='font-size:22px;margin-bottom:6px'>"+icoOf(b.id)+"</div>";
           bizGrid+="<div style='font-size:12px;font-weight:700;margin-bottom:2px'>"+b.l+"</div>";
           if(bsel)bizGrid+="<div style='font-size:10px;color:#FFD166;font-weight:700'>✓ Avg "+Math.round(b.lf*100)+"% lift</div>";
           bizGrid+="</div>";
@@ -1315,7 +1761,7 @@ function onboard(){
     var canCont=obB||(obCat==="other"&&obOther.length>1);
     c="<div style='font-size:30px;margin-bottom:8px'>🏢</div><h2 style='font-family:Space Grotesk,sans-serif;font-size:22px;font-weight:800;margin-bottom:6px'>What type of business?</h2><p style='color:rgba(240,244,255,.45);font-size:13px;margin-bottom:16px;line-height:1.6'>Pick a category then your specific type.</p><div class='bg'>"+catGrid+"</div>"+bizWrap+"<button class='btn-full btn-gold' style='margin-top:16px;"+(canCont?"":"opacity:.4;cursor:not-allowed")+"' "+(canCont?"":"disabled")+" onclick='oNxt()'>Continue →</button>";
   }
-  else if(obS===2&&B)c=`<div style="font-size:30px;margin-bottom:8px">🔌</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Connect your platform</h2><div onclick="ctSec()" style="display:inline-flex;align-items:center;gap:7px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:100px;padding:5px 13px;font-size:11px;font-weight:700;color:#22C55E;cursor:pointer;margin-bottom:10px">🔒 Read-only — Clicktide can never touch your money <span style="text-decoration:underline;font-weight:600;color:rgba(240,244,255,.6)">how?</span></div><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:14px">Best for <strong>${B.l}</strong>: ${B.pl}</p>${!obC?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">${PL.map(p=>`<div style="padding:12px;border:2px solid ${obP===p.id?"#4DA6FF":"rgba(255,255,255,.07)"};border-radius:12px;cursor:pointer;background:${obP===p.id?"rgba(77,166,255,.06)":"transparent"}" onclick="oPlt('${p.id}')"><div style="font-size:20px;margin-bottom:5px">${p.e}</div><div style="font-size:12px;font-weight:700;margin-bottom:1px">${p.n}</div><div style="font-size:10px;color:rgba(240,244,255,.45)">${p.d}</div></div>`).join("")}</div><button class="btn-full ${obP?"btn-gold":"btn-ghost"}" ${!obP?"disabled":""} id="cBtn" onclick="oCon()">${obP?`Connect ${P?.n} →`:"Select a platform"}</button>`:`<div class="conn-box"><span style="font-size:24px">${P?.e}</span><div><div style="font-weight:700;color:#22C55E;font-size:14px">${P?.n} connected!</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-top:2px">${platformConnectNote()}</div></div></div><button class="btn-full btn-gold" onclick="oNxt()">Continue → Pick your gift</button>`}`;
+  else if(obS===2&&B)c=`<div style="margin-bottom:10px;display:flex;justify-content:center"><span class="ic-chip" style="width:52px;height:52px;margin:0 auto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7V3M15 7V3"/><path d="M6 7h12v4a6 6 0 0 1-12 0V7z"/><path d="M12 17v4"/></svg></span></div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Connect your platform</h2><div onclick="ctSec()" style="display:inline-flex;align-items:center;gap:7px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:100px;padding:5px 13px;font-size:11px;font-weight:700;color:#22C55E;cursor:pointer;margin-bottom:10px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="1.9" stroke-linecap="round" style="vertical-align:-3px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg> Read-only — Clicktide can never touch your money <span style="text-decoration:underline;font-weight:600;color:rgba(240,244,255,.6)">how?</span></div><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:14px">Best for <strong>${B.l}</strong>: ${B.pl}</p>${!obC?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">${PL.map(p=>`<div style="padding:12px;border:2px solid ${obP===p.id?"#4DA6FF":"rgba(255,255,255,.07)"};border-radius:12px;cursor:pointer;background:${obP===p.id?"rgba(77,166,255,.06)":"transparent"}" onclick="oPlt('${p.id}')"><div style="margin-bottom:5px">${pLogoIco(p.id)}</div><div style="font-size:12px;font-weight:700;margin-bottom:1px">${p.n}</div><div style="font-size:10px;color:rgba(240,244,255,.45)">${p.d}</div></div>`).join("")}</div><button class="btn-full ${obP?"btn-gold":"btn-ghost"}" ${!obP?"disabled":""} id="cBtn" onclick="oCon()">${obP?`Connect ${P?.n} →`:"Select a platform"}</button>`:`<div class="conn-box"><span style="display:flex">${P?pLogoIco(P.id):""}</span><div><div style="font-weight:700;color:#22C55E;font-size:14px">${P?.n} connected!</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-top:2px">${platformConnectNote()}</div></div></div><button class="btn-full btn-gold" onclick="oNxt()">Continue → Pick your gift</button>`}`;
   else if(obS===3&&B){
     var sq=obGiftSearch||"";
     // Use the fulfillment catalog as the real gift options
@@ -1327,7 +1773,7 @@ function onboard(){
       customRow="<div style='background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);border-radius:12px;padding:16px;margin-bottom:14px;text-align:center'><div style='font-size:13px;font-weight:700;margin-bottom:6px'>No results for \""+sq+"\"</div><div style='font-size:12px;color:rgba(240,244,255,.45);margin-bottom:12px'>Add it as a custom gift -- we will source and ship it.</div><button class='btn btn-gold' data-q='"+sq+"' onclick='obCustomGift=this.dataset.q;obG=-1;obGiftSearch=String();R()' style='padding:8px 20px;font-size:12px'>+ Add \""+sq+"\" as my gift</button></div>";
     }
     if(obG===-1&&obCustomGift){
-      customRow="<div style='background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px'><span style='font-size:20px'>✅</span><div style='flex:1'><div style='font-size:13px;font-weight:700'>Custom: "+obCustomGift+"</div><div style='font-size:11px;color:rgba(240,244,255,.45)'>We will source and ship this for you</div></div><button onclick='obG=null;obCustomGift=null;R()' style='background:transparent;border:none;color:rgba(240,244,255,.35);cursor:pointer;font-size:20px;padding:0'>×</button></div>";
+      customRow="<div style='background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px'><span style='display:flex'><svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#22C55E' stroke-width='2'><circle cx='12' cy='12' r='9.5'/><path d='M8 12.2l2.6 2.6L16.5 9' stroke-linecap='round' stroke-linejoin='round'/></svg></span><div style='flex:1'><div style='font-size:13px;font-weight:700'>Custom: "+obCustomGift+"</div><div style='font-size:11px;color:rgba(240,244,255,.45)'>We will source and ship this for you</div></div><button onclick='obG=null;obCustomGift=null;R()' style='background:transparent;border:none;color:rgba(240,244,255,.35);cursor:pointer;font-size:20px;padding:0'>×</button></div>";
     }
     var gCards="";
     filtG.forEach(function(g,i){
@@ -1359,18 +1805,18 @@ function onboard(){
       ls2+="<label style='font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.45);display:block;margin-bottom:6px'>Your Business Logo <span style='font-size:10px;font-weight:400;text-transform:none;color:rgba(240,244,255,.3)'>-- optional but recommended</span></label>";
       ls2+="<label id='logoDropZone' style='display:block;border:2px dashed rgba(255,255,255,.1);border-radius:10px;padding:18px;text-align:center;cursor:pointer;background:rgba(255,255,255,.02);transition:all .2s'>";
       ls2+="<input type='file' accept='.png,.jpg,.jpeg,.svg' style='display:none' onchange='handleLogoUpload(this)'/>";
-      ls2+="<div style='font-size:22px;margin-bottom:6px'>🖼️</div>";
+      ls2+="<div style='margin-bottom:8px;display:flex;justify-content:center'><svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='#0F1115' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><rect x='3.5' y='4.5' width='17' height='15' rx='2'/><circle cx='9' cy='10' r='1.8'/><path d='M3.5 17l5-5 4 4 3-3 4.5 4.5'/></svg></div>";
       ls2+="<div style='font-size:13px;font-weight:600;margin-bottom:4px'>Click to upload your logo</div>";
       ls2+="<div style='font-size:11px;color:rgba(240,244,255,.45);margin-bottom:4px'>PNG · JPG · SVG</div>";
       ls2+="<div style='font-size:10px;color:rgba(240,244,255,.3)'>Minimum 2000×2000px · Recommended 3000×3000px+ · Original phone/camera files only</div>";
       ls2+="</label>";
       ls2+="<div style='background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);border-radius:8px;padding:10px 12px;margin-top:8px;font-size:11px;color:rgba(240,244,255,.6);line-height:1.6'>";
-      ls2+="&#9888;&#65039; <strong style='color:#FFD166'>Quality gate:</strong> screenshots, profile pictures, and social media downloads are rejected before fulfillment.";
+      ls2+="<strong style='color:#B8860B'>Quality gate:</strong> screenshots, profile pictures, and social media downloads are rejected before fulfillment.";
       ls2+="</div></div>";
       logoSection=ls2;
     }
 
-    c="<div style='font-size:30px;margin-bottom:6px'>🎁</div><h2 style='font-family:Space Grotesk,sans-serif;font-size:22px;font-weight:800;margin-bottom:4px'>Pick your gift</h2><p style='color:rgba(240,244,255,.45);font-size:13px;margin-bottom:14px'>Curated for <strong style='color:"+B.c+"'>"+B.l+"</strong>. Don't see yours? Search below.</p>"+searchBar+customRow+"<div class='gc'>"+gCards+"</div>"+logoSection+"<button class='btn-full "+(canGo?"btn-gold":"btn-ghost")+"' "+(canGo?"":"disabled")+" onclick='oNxt()'>Continue → Set triggers</button>";
+    c="<div style='margin-bottom:10px;display:flex;justify-content:center'><span class='ic-chip' style='width:52px;height:52px;margin:0 auto'><svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='#0F1115' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 12 20 21 4 21 4 12'/><rect x='2' y='7' width='20' height='5'/><line x1='12' y1='21' x2='12' y2='7'/><path d='M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z'/><path d='M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z'/></svg></span></div><h2 style='font-family:Space Grotesk,sans-serif;font-size:22px;font-weight:800;margin-bottom:4px'>Pick your gift</h2><p style='color:rgba(240,244,255,.45);font-size:13px;margin-bottom:14px'>Curated for <strong style='color:"+B.c+"'>"+B.l+"</strong>. Don't see yours? Search below.</p>"+searchBar+customRow+"<div class='gc'>"+gCards+"</div>"+logoSection+"<button class='btn-full "+(canGo?"btn-gold":"btn-ghost")+"' "+(canGo?"":"disabled")+" onclick='oNxt()'>Continue → Set triggers</button>";
   }
     else if(obS===4&&P){
       var _bz=getBizById(obB)||{dy:60};
@@ -1378,7 +1824,7 @@ function onboard(){
       var _presets = obDy<=35 ? [[14,"2 weeks"],[30,"1 month"],[60,"2 months"]] : obDy<=90 ? [[30,"1 month"],[60,"2 months"],[90,"3 months"]] : [[90,"3 months"],[180,"6 months"],[365,"1 year"]];
       var _churnLabel = obDy>=365 ? (Math.round(obDy/365*10)/10)+" year"+(obDy>=730?"s":"") : obDy>=60 ? Math.round(obDy/30)+" months" : obDy+" days";
       var _presetBtns = _presets.map(function(p){return '<button class="btn '+(obDy===p[0]?"btn-gold":"btn-ghost")+'" style="flex:1;padding:9px;font-size:12px" onclick="obDy='+p[0]+';R()">'+p[1]+'</button>';}).join("");
-      c=`<div style="font-size:30px;margin-bottom:6px">⚡</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Set your triggers</h2><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:16px">Pick what fires a campaign for <strong>${P.n}</strong> customers.</p><div class="tl">${P.tr.map(t=>`<div class="ti ${obT.includes(t)?"on":""}" onclick="oTrg('${t}')"><span style="flex:1;font-size:13px;font-weight:600">${t}</span><div class="tk">${obT.includes(t)?"✓":""}</div></div>`).join("")}</div>
+      c=`<div style="margin-bottom:10px;display:flex;justify-content:center"><span class="ic-chip" style="width:52px;height:52px;margin:0 auto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4.5 13.5H11L9.8 22 19.5 9.5h-6.9z"/></svg></span></div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Set your triggers</h2><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:16px">Pick what fires a campaign for <strong>${P.n}</strong> customers.</p><div class="tl">${P.tr.map(t=>`<div class="ti ${obT.includes(t)?"on":""}" onclick="oTrg('${t}')"><span style="flex:1;font-size:13px;font-weight:600">${t}</span><div class="tk">${obT.includes(t)?"✓":""}</div></div>`).join("")}</div>
       <div style="background:rgba(77,166,255,.06);border:1px solid rgba(77,166,255,.18);border-radius:12px;padding:14px;margin:16px 0">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#4DA6FF;margin-bottom:8px">When is a customer slipping away?</div>
         <div style="font-size:13px;color:rgba(240,244,255,.7);line-height:1.6;margin-bottom:12px">Most <strong>${_bz.l||"businesses like yours"}</strong> consider a customer at risk after about <strong style="color:#F0F4FF">${_churnLabel}</strong> with no visit. Adjust if you know yours is different.</div>
@@ -1392,7 +1838,7 @@ function onboard(){
     if(obImport==="csv"){
       importContent="<div style='background:#101828;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px;margin-bottom:14px'><div style='font-size:13px;font-weight:700;margin-bottom:8px'>Upload a CSV file</div><div style='font-size:12px;color:rgba(240,244,255,.45);margin-bottom:14px;line-height:1.6'>Your file needs a Name column and Email column. Phone and other fields are optional.</div><label style='display:block;border:2px dashed rgba(255,255,255,.1);border-radius:10px;padding:24px;text-align:center;cursor:pointer'><input type='file' accept='.csv' style='display:none' onchange='handleCSV(this)'/><div style='font-size:28px;margin-bottom:8px'>📄</div><div style='font-size:13px;font-weight:600;margin-bottom:4px'>Click to upload CSV</div><div style='font-size:11px;color:rgba(240,244,255,.45)'>Export from Excel, Google Sheets, or your POS</div></label></div>";
     } else if(obImport==="platform"){
-      importContent="<div style='background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:14px;padding:16px;margin-bottom:14px;display:flex;align-items:center;gap:10px'><span style='font-size:22px'>✅</span><div><div style='font-size:13px;font-weight:700;color:#22C55E'>Platform connected!</div><div style='font-size:11px;color:rgba(240,244,255,.45);margin-top:2px'>Your existing customers will sync automatically when you go live.</div></div></div>";
+      importContent="<div style='background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:14px;padding:16px;margin-bottom:14px;display:flex;align-items:center;gap:10px'><span style='display:flex'><svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#22C55E' stroke-width='2'><circle cx='12' cy='12' r='9.5'/><path d='M8 12.2l2.6 2.6L16.5 9' stroke-linecap='round' stroke-linejoin='round'/></svg></span><div><div style='font-size:13px;font-weight:700;color:#22C55E'>Platform connected!</div><div style='font-size:11px;color:rgba(240,244,255,.45);margin-top:2px'>Your existing customers will sync automatically when you go live.</div></div></div>";
     }
     c="<div style='font-size:30px;margin-bottom:8px'>👥</div><h2 style='font-family:Space Grotesk,sans-serif;font-size:22px;font-weight:800;margin-bottom:6px'>Import your customers</h2><p style='color:rgba(240,244,255,.45);font-size:13px;margin-bottom:20px;line-height:1.6'>Do you have existing customers you'd like to bring in? You can always do this later.</p>"+importContent+"<div style='display:flex;flex-direction:column;gap:8px;margin-bottom:16px'>"+
     "<div data-imp='csv' onclick='setImport(this.dataset.imp)' style='display:flex;align-items:center;gap:12px;padding:14px;border:2px solid "+(obImport==="csv"?"#4DA6FF":"rgba(255,255,255,.07)")+";border-radius:12px;cursor:pointer;background:"+(obImport==="csv"?"rgba(77,166,255,.08)":"transparent")+"'><span style='font-size:22px'>📄</span><div><div style='font-size:13px;font-weight:700'>Upload a CSV file</div><div style='font-size:11px;color:rgba(240,244,255,.45);margin-top:1px'>Import from Excel, Google Sheets, or any spreadsheet</div></div></div>"+
@@ -1400,13 +1846,13 @@ function onboard(){
     "<div data-imp='skip' onclick='setImport(this.dataset.imp)' style='display:flex;align-items:center;gap:12px;padding:14px;border:2px solid "+(obImport==="skip"?"rgba(255,255,255,.3)":"rgba(255,255,255,.07)")+";border-radius:12px;cursor:pointer'><span style='font-size:22px'>⏭️</span><div><div style='font-size:13px;font-weight:700'>Skip for now</div><div style='font-size:11px;color:rgba(240,244,255,.45);margin-top:1px'>Start fresh -- add customers manually or import later from your dashboard</div></div></div>"+
     "</div><button class='btn-full btn-gold' "+(obImport?"":"disabled style='opacity:.4;cursor:not-allowed'")+" onclick='oNxt()'>"+( obImport==="csv"?"Continue →":obImport==="platform"?"Sync & Continue →":"Skip & Go Live →")+"</button>";
   }
-  else if(obS===1&&obAwaitConfirm)c=`<div style="text-align:center"><div style="font-size:46px;margin-bottom:12px">📬</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">Check your email!</h2><p style="color:rgba(240,244,255,.5);font-size:14px;line-height:1.8;margin-bottom:20px">We sent a link to <strong style="color:#F0F4FF">${obE}</strong>.<br/>Click it to activate your account and pick up right where you left off.</p><button class="btn btn-ghost" style="padding:10px 18px" onclick="resendConfirm(this)">Didn't get it? Resend email</button><div style="font-size:11px;color:rgba(240,244,255,.35);margin-top:14px">Check spam too — it comes from support@goclicktide.com</div></div>`;
-  else if(obS===1)c=`<div style="font-size:30px;margin-bottom:6px">👤</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Create your account</h2><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:16px">Create your login — then connect your platform. Fields marked <span style="color:#FF4D6D">*</span> are required.</p><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin-bottom:8px">Your details</div><div class="fg"><label class="fl">Your Name <span style="color:#FF4D6D">*</span></label><input class="fi" id="oNm" value="${obNm}" placeholder="Jane Smith" oninput="obNm=this.value"/></div><div class="fg"><label class="fl">Personal Email (your login) <span style="color:#FF4D6D">*</span></label><input class="fi" id="oE" value="${obE}" type="email" placeholder="you@email.com" oninput="obE=this.value"/></div><div class="fg"><label class="fl">Password <span style="color:#FF4D6D">*</span></label><input class="fi" id="oPw" value="${obPw}" type="password" placeholder="••••••••" oninput="obPw=this.value"/></div><div class="fg"><label class="fl">Personal Phone <span style="color:#FF4D6D">*</span></label><input class="fi" id="oPh" value="${obPh}" type="tel" placeholder="(555) 555-5555" oninput="obPh=this.value"/></div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin:14px 0 8px">Business details</div><div class="fg"><label class="fl">Business Name <span style="color:#FF4D6D">*</span></label><input class="fi" id="oN" value="${obN}" placeholder="${B?.l||"Your Business"}" oninput="obN=this.value"/></div><div class="fg"><label class="fl">Business Phone <span style="color:#FF4D6D">*</span></label><input class="fi" id="oBph" value="${obBph}" type="tel" placeholder="(555) 555-5555" oninput="obBph=this.value"/></div><div class="fg"><label class="fl">Business Email <span style="color:#FF4D6D">*</span></label><input class="fi" id="oBem" value="${obBem}" type="email" placeholder="hello@business.com" oninput="obBem=this.value"/></div><div class="fg"><label class="fl">Street Address <span style="color:#FF4D6D">*</span></label><input class="fi" id="oAddr" value="${obAddr}" placeholder="123 Main St" oninput="obAddr=this.value"/></div><div class="fg"><label class="fl">Apt / Suite / Unit <span style="opacity:.5;text-transform:none">(optional)</span></label><input class="fi" id="oAddr2" value="${obAddr2}" placeholder="Apt 4B" oninput="obAddr2=this.value"/></div><div class="fg" style="display:flex;gap:8px"><div style="flex:2"><label class="fl">City <span style="color:#FF4D6D">*</span></label><input class="fi" id="oCity" value="${obCity}" placeholder="City" oninput="obCity=this.value"/></div><div style="flex:1"><label class="fl">State <span style="color:#FF4D6D">*</span></label><input class="fi" id="oState" value="${obState}" placeholder="NY" oninput="obState=this.value"/></div><div style="flex:1"><label class="fl">ZIP <span style="color:#FF4D6D">*</span></label><input class="fi" id="oZip" value="${obZip}" placeholder="11542" oninput="obZip=this.value"/></div></div><div class="fg"><label class="fl">Choose Your Plan</label>
+  else if(obS===1&&obAwaitConfirm)c=`<div style="text-align:center"><div style="margin-bottom:12px;display:flex;justify-content:center"><span class="ic-chip" style="width:52px;height:52px;margin:0 auto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v7H3v-7z"/><path d="M3 18h18"/><path d="M15 7v4M9 21v-3"/></svg></span></div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">Check your email!</h2><p style="color:rgba(240,244,255,.5);font-size:14px;line-height:1.8;margin-bottom:20px">We sent a link to <strong style="color:#F0F4FF">${obE}</strong>.<br/>Click it to activate your account and pick up right where you left off.</p><button class="btn btn-ghost" style="padding:10px 18px" onclick="resendConfirm(this)">Didn't get it? Resend email</button><div style="font-size:11px;color:rgba(240,244,255,.35);margin-top:14px">Check spam too — it comes from support@goclicktide.com</div></div>`;
+  else if(obS===1)c=`<div style="margin-bottom:10px;display:flex;justify-content:center"><span class="ic-chip" style="width:52px;height:52px;margin:0 auto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/></svg></span></div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Create your account</h2><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:16px">Create your login — then connect your platform. Fields marked <span style="color:#FF4D6D">*</span> are required.</p><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin-bottom:8px">Your details</div><div class="fg"><label class="fl">Your Name <span style="color:#FF4D6D">*</span></label><input class="fi" id="oNm" value="${obNm}" placeholder="Jane Smith" oninput="obNm=this.value"/></div><div class="fg"><label class="fl">Personal Email (your login) <span style="color:#FF4D6D">*</span></label><input class="fi" id="oE" value="${obE}" type="email" placeholder="you@email.com" oninput="obE=this.value"/></div><div class="fg"><label class="fl">Password <span style="color:#FF4D6D">*</span></label><input class="fi" id="oPw" value="${obPw}" type="password" placeholder="••••••••" oninput="obPw=this.value"/></div><div class="fg"><label class="fl">Personal Phone <span style="color:#FF4D6D">*</span></label><input class="fi" id="oPh" value="${obPh}" type="tel" placeholder="(555) 555-5555" oninput="obPh=this.value"/></div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin:14px 0 8px">Business details</div><div class="fg"><label class="fl">Business Name <span style="color:#FF4D6D">*</span></label><input class="fi" id="oN" value="${obN}" placeholder="${B?.l||"Your Business"}" oninput="obN=this.value"/></div><div class="fg"><label class="fl">Business Phone <span style="color:#FF4D6D">*</span></label><input class="fi" id="oBph" value="${obBph}" type="tel" placeholder="(555) 555-5555" oninput="obBph=this.value"/></div><div class="fg"><label class="fl">Business Email <span style="color:#FF4D6D">*</span></label><input class="fi" id="oBem" value="${obBem}" type="email" placeholder="hello@business.com" oninput="obBem=this.value"/></div><div class="fg"><label class="fl">Street Address <span style="color:#FF4D6D">*</span></label><input class="fi" id="oAddr" value="${obAddr}" placeholder="123 Main St" oninput="obAddr=this.value"/></div><div class="fg"><label class="fl">Apt / Suite / Unit <span style="opacity:.5;text-transform:none">(optional)</span></label><input class="fi" id="oAddr2" value="${obAddr2}" placeholder="Apt 4B" oninput="obAddr2=this.value"/></div><div class="fg" style="display:flex;gap:8px"><div style="flex:2"><label class="fl">City <span style="color:#FF4D6D">*</span></label><input class="fi" id="oCity" value="${obCity}" placeholder="City" oninput="obCity=this.value"/></div><div style="flex:1"><label class="fl">State <span style="color:#FF4D6D">*</span></label><input class="fi" id="oState" value="${obState}" placeholder="NY" oninput="obState=this.value"/></div><div style="flex:1"><label class="fl">ZIP <span style="color:#FF4D6D">*</span></label><input class="fi" id="oZip" value="${obZip}" placeholder="11542" oninput="obZip=this.value"/></div></div><div class="fg"><label class="fl">Choose Your Plan</label>
 <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:4px">
   ${[{v:"Local",p:"$29/mo",d:"200 customers/mo",f:["Messages included","Promo codes included","Physical gifts from wallet","Square & Clover"]},{v:"Growth",p:"$99/mo",d:"1,000 customers/mo",pop:true,f:["Messages included","Promo codes included","Physical gifts from wallet","All 12 integrations","Retention analytics"]},{v:"Scale",p:"$299/mo",d:"Unlimited customers",f:["Messages included","Promo codes included","Physical gifts from wallet","AI triggers","White-label"]}].map(pl=>`
   <div onclick="obPl='${pl.v}';document.querySelectorAll('.pl-opt').forEach(function(e){e.style.borderColor='rgba(255,255,255,.07)';e.style.background='transparent'});this.style.borderColor='#FFD166';this.style.background='rgba(255,209,102,.08)'" class="pl-opt ${obPl===pl.v?"on":""}" style="padding:14px;border:2px solid ${obPl===pl.v?"#FFD166":"rgba(255,255,255,.07)"};border-radius:12px;cursor:pointer;background:${obPl===pl.v?"rgba(255,209,102,.08)":"transparent"};transition:all .15s">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-      <div style="font-size:14px;font-weight:700">${pl.v} ${pl.pop?"⭐":""}</div>
+      <div style="font-size:14px;font-weight:700">${pl.v}</div>
       <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:800;color:#FFD166">${pl.p}</div>
     </div>
     <div style="font-size:11px;color:rgba(240,244,255,.45);margin-bottom:6px">${pl.d}</div>
@@ -1414,7 +1860,7 @@ function onboard(){
   </div>`).join("")}
 </div>
 <input type="hidden" id="oPl" value="${obPl}"/></div>${legalConsent("oAgree")}<div class="err" id="oErr"></div><button class="btn-full btn-gold" id="oSub" onclick="oSignup()" style="margin-bottom:12px">Create account →</button><div style="text-align:center;font-size:12px;color:rgba(240,244,255,.45)">Already have an account? <button class="link-btn" onclick="go('login')">Log in</button></div>`;
-  else if(obS===6){const g=obG!==null?GF[obB]?.[obG]:null;c=`<div style="text-align:center"><div style="font-size:52px;margin-bottom:12px">🚀</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">You're live!</h2><p style="color:rgba(240,244,255,.45);font-size:14px;line-height:1.7;margin-bottom:20px">Your Clicktide campaign is active and ready.</p><ul style="list-style:none;padding:0;background:#101828;border-radius:13px;padding:16px;margin-bottom:20px;text-align:left">${[`${B?.i} ${B?.l}`,`${P?.e} ${P?.n} connected`,`🎁 ${g?.n||"--"}`,`⚡ ${obT.length} trigger${obT.length!==1?"s":""}`,`💬 Message Only: Free`,`📦 Postcards & gifts from $2`].map(i=>`<li style="font-size:12px;color:rgba(240,244,255,.45);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:8px"><span style="color:#22C55E">✓</span>${i}</li>`).join("")}</ul><div style="display:flex;gap:10px"><button class="btn btn-gold" style="flex:1;padding:12px" onclick="go('dash')">Open Dashboard →</button><button class="btn btn-ghost" style="flex:1;padding:12px" onclick="go('login')">Log in</button></div></div>`;}
+  else if(obS===6){const g=obG!==null?GF[obB]?.[obG]:null;c=`<div style="text-align:center"><div style="margin-bottom:12px;display:flex;justify-content:center"><span class="ic-chip" style="width:52px;height:52px;margin:0 auto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c3 2 5 6 5 10l-2.5 2.5h-5L7 12c0-4 2-8 5-10z"/><circle cx="12" cy="9" r="1.8"/><path d="M7 15l-2 5 5-2M17 15l2 5-5-2"/></svg></span></div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">You're live!</h2><p style="color:rgba(240,244,255,.45);font-size:14px;line-height:1.7;margin-bottom:20px">Your Clicktide campaign is active and ready.</p><ul style="list-style:none;padding:0;background:#101828;border-radius:13px;padding:16px;margin-bottom:20px;text-align:left">${[`${B?.l}`,`${P?.n} connected`,`Gift: ${g?.n||"--"}`,`${obT.length} trigger${obT.length!==1?"s":""}`,`Message Only: Free`,`Postcards & gifts from $2`].map(i=>`<li style="font-size:12px;color:rgba(240,244,255,.45);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:8px"><span style="color:#22C55E">✓</span>${i}</li>`).join("")}</ul><div style="display:flex;gap:10px"><button class="btn btn-gold" style="flex:1;padding:12px" onclick="go('dash')">Open Dashboard →</button><button class="btn btn-ghost" style="flex:1;padding:12px" onclick="go('login')">Log in</button></div></div>`;}
   var aiHintHtml='';
   if(aiHint||aiHintLoading){aiHintHtml="<div style='background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.2);border-radius:12px;padding:12px 14px;margin-top:12px;display:flex;align-items:flex-start;gap:9px'><div style='font-size:16px;flex-shrink:0'>✨</div><div style='font-size:12px;color:rgba(240,244,255,.7);line-height:1.6'>"+(aiHintLoading?"<span style='color:rgba(240,244,255,.35)'>AI thinking...</span>":aiHint)+"</div></div>";}
   var stBarH=steps.map(function(s,i){return '<div class="sp '+(i===obS?'on':i<obS?'dn':'pd')+'">'+s+'</div>';}).join('');
@@ -1441,7 +1887,7 @@ function updateGiftGrid(){
     gCards+="</div>";
   });
   var gridEl=document.getElementById('giftGrid');
-  if(gridEl)gridEl.innerHTML=gCards;
+  if(gridEl)gridEl.innerHTML=LT(gCards);
   var noResEl=document.getElementById('noRes');
   if(noResEl){
     if(sq.length>0&&filtG.length===0){
@@ -1450,7 +1896,7 @@ function updateGiftGrid(){
       nrH+="<div style='font-size:12px;color:rgba(240,244,255,.45);margin-bottom:12px'>Add it as a custom gift - we will source and ship it.</div>";
       nrH+="<button class='btn btn-gold' data-q='"+sq+"' onclick='addCustomGift(this)' style='padding:8px 20px;font-size:12px'>+ Add "+sq+" as my gift</button>";
       nrH+="</div>";
-      noResEl.innerHTML=nrH;
+      noResEl.innerHTML=LT(nrH);
       noResEl.style.display='block';
     }else{
       noResEl.style.display='none';
@@ -1689,7 +2135,7 @@ async function loadGiftCatalog(){
 }
 function giftThumb(g){
   if(g.image_url)return `<img src="${giftEsc(giftImgSrc(g.image_url))}" alt="" style="width:42px;height:42px;object-fit:contain;border-radius:10px;display:block;margin:0 auto 6px;background:rgba(255,255,255,.06);padding:4px"/>`;
-  return `<div style="font-size:26px;margin-bottom:4px">${g.e}</div>`;
+  return `<svg width=\u002726\u0027 height=\u002726\u0027 viewBox=\u00270 0 24 24\u0027 fill=\u0027none\u0027 stroke=\u0027#B8860B\u0027 stroke-width=\u00271.5\u0027 stroke-linecap=\u0027round\u0027 stroke-linejoin=\u0027round\u0027 style=\u0027display:block;margin:0 auto 6px\u0027><polyline points=\u002720 12 20 21 4 21 4 12\u0027/><rect x=\u00272\u0027 y=\u00277\u0027 width=\u002720\u0027 height=\u00275\u0027/><line x1=\u002712\u0027 y1=\u002721\u0027 x2=\u002712\u0027 y2=\u00277\u0027/><path d=\u0027M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z\u0027/><path d=\u0027M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z\u0027/></svg>`;
 }
 let brandLogoUrl=localStorage.getItem("ct_brand_logo")||"";
 let brandLogoName=localStorage.getItem("ct_brand_logo_name")||"";
@@ -1719,7 +2165,7 @@ function brandQualityLabel(){
 }
 function brandProofCard(biz){
   if(!hasPaidAccess(biz))return `<div class="dc" style="margin-bottom:24px;text-align:center;padding:34px 24px">
-    <div style="font-size:34px;margin-bottom:10px">🔒</div>
+    <div style="margin-bottom:10px;display:flex;justify-content:center"><span class="ic-chip" style="width:52px;height:52px;margin:0 auto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span></div>
     <div style="font-size:15px;font-weight:800;margin-bottom:6px">Brand Kit & Proof Preview</div>
     <div style="font-size:13px;color:rgba(240,244,255,.5);line-height:1.7;max-width:420px;margin:0 auto 18px">Upload your logo, preview it on real products, and approve print quality before gifts ship. Unlocks with an active plan.</div>
     <button class="btn btn-gold" onclick="go('pricing')">Choose a plan →</button>
@@ -2052,7 +2498,7 @@ function roi(){
     var catCards="";
     CATS.forEach(function(cat){
       catCards+="<div class='btc' data-cid='"+cat.id+"' onclick='riCat(this.dataset.cid)'>";
-      catCards+="<div style='font-size:32px;margin-bottom:8px'>"+cat.i+"</div>";
+      catCards+="<div style='font-size:32px;margin-bottom:8px'>"+icoCat(cat.id)+"</div>";
       catCards+="<div style='font-size:13px;font-weight:700;margin-bottom:5px'>"+cat.l+"</div>";
       if(cat.id==="other"){
         catCards+="<div style='font-size:11px;color:rgba(240,244,255,.45);margin-bottom:10px'>Tattoo studio · Florist · Law firm · Anything else</div>";
@@ -2073,7 +2519,7 @@ function roi(){
         bizCards="<div style='margin-top:20px;padding-top:20px;border-top:1px solid rgba(255,255,255,.07)'><p style='font-size:12px;color:rgba(240,244,255,.45);margin-bottom:12px'>Pick your specific type:</p><div class='btg'>";
         rCat.biz.forEach(function(b){
           bizCards+="<div class='btc "+(riB===b.id?"on":"")+"' data-bid='"+b.id+"' onclick='riBiz(this.dataset.bid)' style='border-color:"+(riB===b.id?rCat.c:"rgba(255,255,255,.07)")+"'>";
-          bizCards+="<div style='font-size:24px;margin-bottom:8px'>"+b.i+"</div>";
+          bizCards+="<div style='font-size:24px;margin-bottom:8px'>"+icoOf(b.id)+"</div>";
           bizCards+="<div style='font-size:13px;font-weight:700;margin-bottom:5px'>"+b.l+"</div>";
           bizCards+="<div style='font-size:11px;color:rgba(240,244,255,.45);margin-bottom:8px'>"+b.pl+"</div>";
           bizCards+="<div style='font-size:11px;font-weight:700;color:"+rCat.c+"'>Avg "+Math.round(b.lf*100)+"% lift</div>";
@@ -2095,7 +2541,7 @@ function roi(){
     var sv=Math.round(ch*B.lf);
     var rc=sv*riAv;
     var ml=Math.round((riAv/riGf)*10)/10;
-    var giftWarn=!giftOk?'<div style="background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.3);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#FF4D6D">⚠️ Gift cost ($'+riGf+') exceeds 45% of avg sale ($'+riAv+'). Recommend gift under $'+maxGift+'.</div>':'';
+    var giftWarn=!giftOk?'<div style="background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.3);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#FF4D6D">Gift cost ($'+riGf+') exceeds 45% of avg sale ($'+riAv+'). Recommend gift under $'+maxGift+'.</div>':'';
     var sliders='';
     var sizeCards='<div style="margin-bottom:18px"><div class="sl-l" style="margin-bottom:8px">Business size <button class="info-dot" type="button" aria-label="Business size explanation" data-tip="Choose the closest company size to set a starting estimate. You can still adjust every number below.">?</button></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:7px">'+sizeDefs.map(function(s){return '<button type="button" data-size="'+s.id+'" onclick="riSetSize(this.dataset.size)" style="padding:10px 8px;border-radius:10px;border:1.5px solid '+(riSize===s.id?B.c:'rgba(255,255,255,.08)')+';background:'+(riSize===s.id?'rgba(255,209,102,.08)':'rgba(255,255,255,.03)')+';color:#F0F4FF;cursor:pointer;font-family:Inter,sans-serif;text-align:left"><div style="font-size:12px;font-weight:800;margin-bottom:2px">'+s.n+'</div><div style="font-size:10px;color:rgba(240,244,255,.45);line-height:1.3">'+s.d+'</div></button>';}).join('')+'</div></div>';
     var freqDefs=[
@@ -2129,7 +2575,7 @@ function roi(){
       var sval=spc?Math.round(rawVal*100):rawVal;
       sliders+='<div class="sl-row"><div class="sl-lr"><div class="sl-l">'+sl2+'<button class="info-dot" type="button" aria-label="'+sl2+' explanation" data-tip="'+stip.replace(/"/g,"&quot;")+'">?</button></div><div class="sl-v" style="color:'+B.c+'">'+spr+sval+ssf+'</div></div><input type="range" style="accent-color:'+B.c+'" min="'+smn+'" max="'+smx+'" step="'+sst+'" value="'+rawVal+'" oninput="riSlide(this,this.dataset.key)" data-key="'+sk+'"/></div>';
     }
-    roiC='<div class="rc"><div style="text-align:center;margin-bottom:24px"><div style="font-size:28px;margin-bottom:6px">'+B.i+'</div><h2 style="font-family:Space Grotesk,sans-serif;font-size:26px;font-weight:800;letter-spacing:-1px;margin-bottom:4px">About your <span style="color:'+B.c+'">'+B.l+'</span></h2><p style="font-size:12px;color:rgba(240,244,255,.4);margin-top:6px">Tell us about your business to see your personalized ROI</p></div>'
+    roiC='<div class="rc"><div style="text-align:center;margin-bottom:24px"><div style="font-size:28px;margin-bottom:6px">'+icoOf(B.id)+'</div><h2 style="font-family:Space Grotesk,sans-serif;font-size:26px;font-weight:800;letter-spacing:-1px;margin-bottom:4px">About your <span style="color:'+B.c+'">'+B.l+'</span></h2><p style="font-size:12px;color:rgba(240,244,255,.4);margin-top:6px">Tell us about your business to see your personalized ROI</p></div>'
       +sizeCards
       +churnEstimator
       +sliders
@@ -2160,7 +2606,7 @@ function roi(){
     var lowCost=sv*riGf,avgCost=sv*riGf,highCost=sv*riGf;
     var lowProfit=Math.round(lowRev-lowCost),avgProfit=Math.round(avgRev-avgCost),highProfit=Math.round(highRev-highCost);
     var breakEven=Math.round((riGf/riAv)*10)/10;
-    roiC='<div style="text-align:center;margin-bottom:24px"><div style="font-size:28px;margin-bottom:6px">'+B.i+'</div>'
+    roiC='<div style="text-align:center;margin-bottom:24px"><div style="font-size:28px;margin-bottom:6px">'+icoOf(B.id)+'</div>'
     +'<h2 style="font-family:Space Grotesk,sans-serif;font-size:clamp(20px,4vw,36px);font-weight:800;letter-spacing:-1px;margin-bottom:6px">Your Full ROI Breakdown</h2>'
     +'<p style="font-size:13px;color:rgba(240,244,255,.45)">'+riCu+' customers · $'+riAv+' avg sale · '+riVf+'x/mo visits · '+riLm+' month loyalty</p></div>'
     // CLV banner
@@ -2177,14 +2623,14 @@ function roi(){
     +'<div style="font-size:12px;color:rgba(240,244,255,.45)">Customer only needs to return '+breakEven+'x to pay for the gift — everything after is pure profit</div>'
     +'</div>'
     // 3 scenarios
-    +'<div style="font-size:13px;font-weight:700;margin-bottom:12px;color:rgba(240,244,255,.6);text-transform:uppercase;letter-spacing:1px">📊 Return Rate Scenarios — '+sv+' gifts sent to churning customers</div>'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:12px;color:rgba(240,244,255,.6);text-transform:uppercase;letter-spacing:1px">Return Rate Scenarios — '+sv+' gifts sent to churning customers</div>'
     +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">'
     +[{label:'Conservative',emoji:'😐',ret:'10%',back:lowRet,rev:lowRev,profit:lowProfit,c:'#4DA6FF',bg:'rgba(77,166,255,.08)',bc:'rgba(77,166,255,.2)'},
       {label:'Realistic',emoji:'😊',ret:'25%',back:avgRet,rev:avgRev,profit:avgProfit,c:'#FFD166',bg:'rgba(255,209,102,.08)',bc:'rgba(255,209,102,.2)'},
       {label:'Optimistic',emoji:'🚀',ret:'40%',back:highRet,rev:highRev,profit:highProfit,c:'#22C55E',bg:'rgba(34,197,94,.08)',bc:'rgba(34,197,94,.2)'}
     ].map(function(s){
       return '<div style="background:'+s.bg+';border:1px solid '+s.bc+';border-radius:14px;padding:16px;text-align:center">'
-        +'<div style="font-size:20px;margin-bottom:4px">'+s.emoji+'</div>'
+        
         +'<div style="font-size:11px;font-weight:700;color:'+s.c+';margin-bottom:8px;text-transform:uppercase">'+s.label+'</div>'
         +'<div style="font-size:11px;color:rgba(240,244,255,.45);margin-bottom:4px">'+s.ret+' return rate</div>'
         +'<div style="font-size:13px;font-weight:700;margin-bottom:2px">'+s.back+' customers back</div>'
@@ -2196,11 +2642,11 @@ function roi(){
     +'</div>'
     // Key insight
     +'<div style="background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.15);border-radius:14px;padding:20px;margin-bottom:16px">'
-    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#FFD166;margin-bottom:8px">💡 The Key Insight</div>'
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#FFD166;margin-bottom:8px">The Key Insight</div>'
     +'<div style="font-size:14px;line-height:1.85">You only need <strong style="color:#22C55E">1 out of '+sv+' customers</strong> to return to break even. Every customer after that is <strong style="color:#FFD166">pure profit</strong>. And each returning customer is worth <strong style="color:#4DA6FF">$'+clv.toLocaleString()+'</strong> to your business — not just one visit.</div>'
     +'</div>'
     // Gift warning if applicable
-    +(riGf>maxGift?'<div style="background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.2);border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px"><strong style="color:#FF4D6D">⚠️ Gift Cost Warning:</strong> Your $'+riGf+' gift exceeds 45% of your $'+riAv+' avg sale. Consider a gift under $'+maxGift+' for better margins.</div>':'')
+    +(riGf>maxGift?'<div style="background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.2);border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px"><strong style="color:#FF4D6D">Gift Cost Warning:</strong> Your $'+riGf+' gift exceeds 45% of your $'+riAv+' avg sale. Consider a gift under $'+maxGift+' for better margins.</div>':'')
     // CTA
     +'<div class="g2" style="max-width:860px;margin:0 auto">'
     +'<div style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.15);border-radius:14px;padding:22px;text-align:center"><div style="font-size:24px;margin-bottom:6px">🚀</div><div style="font-family:Space Grotesk,sans-serif;font-size:18px;font-weight:800;margin-bottom:6px">Start free today</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:14px">No credit card required.</div><button class="btn btn-gold" style="width:100%;padding:11px" onclick="go(&quot;onboard&quot;)">Get started →</button></div>'
@@ -2256,12 +2702,13 @@ function riSetSize(id){
 function riSetFrequency(days,vf){riFreqDays=days;riVf=vf;riRefreshChurn();riR();}
 function riSetRisk(mode){riRiskMode=mode;riRefreshChurn();riR();}
 function riShow(){riS=2;riR();}
-function riR(){document.getElementById("app").innerHTML=roi();bind();}
+function riR(){R();}
 function riPrv(){
   const B=riB==="other_custom"?{id:"other_custom",l:riOther||"Other Business",i:"🏢",c:"#94A3B8",lf:.30}:BZ.find(b=>b.id===riB);if(!B)return;
   const ch=Math.round(riCu*riCh),sv=Math.round(ch*B.lf),rc=sv*riAv,ml=Math.round((riAv/riGf)*10)/10;
   const el=document.getElementById("riPv");
   if(el)el.innerHTML=`<div><div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:800;color:${B.c};margin-bottom:2px">${sv}</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Saved/mo</div></div><div><div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:800;color:#22C55E;margin-bottom:2px">$${rc.toLocaleString()}</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Recovered</div></div><div><div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:800;color:#FFD166;margin-bottom:2px">${ml}×</div><div style="font-size:11px;color:rgba(240,244,255,.45)">ROI</div></div>`;
+  if(el&&!(scr==="dash"&&S))el.innerHTML=LT(el.innerHTML);
 }
 
 function dash(){
@@ -2468,7 +2915,7 @@ async function dLoad(){
         const conn=platConn[p.id];
         if(conn&&conn.merchant_id){
           return`<div class="dc" style="display:flex;align-items:center;gap:12px;border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.04)">
-            <span style="font-size:22px">${p.i}</span>
+            ${pLogoIco(p.id)}
             <div style="flex:1">
               <div style="font-size:13px;font-weight:700;margin-bottom:2px">${p.n}</div>
               <div style="font-size:11px;color:#22C55E;font-weight:600">● Connected · ${conn.merchant_name||conn.merchant_id}</div>
@@ -2481,7 +2928,7 @@ async function dLoad(){
         else if(p.state==="setup") btn=`<button class="btn btn-ghost" style="font-size:11px;padding:7px 14px" onclick="connectPlatformDash('${p.id}')">Set up</button>`;
         else btn=`<button class="btn btn-gold" style="font-size:11px;padding:7px 14px" onclick="connectPlatformDash('${p.id}')">Connect</button>`;
         return`<div class="dc" style="display:flex;align-items:center;gap:12px">
-          <span style="font-size:22px">${p.i}</span>
+          ${pLogoIco(p.id)}
           <div style="flex:1">
             <div style="font-size:13px;font-weight:700;margin-bottom:2px">${p.n}</div>
             <div style="font-size:11px;color:rgba(240,244,255,.45)">${p.d}</div>
@@ -2494,7 +2941,7 @@ async function dLoad(){
         ${profileCard}
         ${brandProofCard(biz)}
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.35);margin-bottom:10px">POS & E-commerce</div>
-        <div onclick="ctSec()" style="display:inline-flex;align-items:center;gap:7px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:100px;padding:5px 13px;font-size:11px;font-weight:700;color:#22C55E;cursor:pointer;margin-bottom:10px">🔒 Read-only — Clicktide can never touch your money <span style="text-decoration:underline;font-weight:600;color:rgba(240,244,255,.6)">how?</span></div><div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">${platCards}</div>
+        <div onclick="ctSec()" style="display:inline-flex;align-items:center;gap:7px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:100px;padding:5px 13px;font-size:11px;font-weight:700;color:#22C55E;cursor:pointer;margin-bottom:10px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="1.9" stroke-linecap="round" style="vertical-align:-3px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg> Read-only — Clicktide can never touch your money <span style="text-decoration:underline;font-weight:600;color:rgba(240,244,255,.6)">how?</span></div><div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">${platCards}</div>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.35);margin-bottom:10px">Other integrations</div>
         <div class="g2">${otherCards}</div>`;
     }
@@ -2556,7 +3003,7 @@ function giftAutoModal(){
             ["\ud83d\udee1\ufe0f","The guardrails stay on","Auto-send only fires when a mailing address is on file AND the campaign has a specific gift chosen. Anything else still comes to you for review. Customers who recently rated you 1\u20132 stars never get gifts."],
             ["\u23F8\ufe0f","You can turn it off anytime","Takes effect immediately \u2014 gifts go back to waiting for your approval."]];
   var body=rows.map(function(x){return '<div style="display:flex;gap:11px;margin-bottom:12px"><div style="font-size:18px;flex-shrink:0">'+x[0]+'</div><div><div style="font-size:13px;font-weight:700">'+x[1]+'</div><div style="font-size:11px;color:rgba(240,244,255,.55);line-height:1.6;margin-top:2px">'+x[2]+'</div></div></div>';}).join("");
-  ov.innerHTML='<div id="gaBox" style="background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:26px;width:100%;max-width:450px"><div style="font-size:28px;text-align:center;margin-bottom:8px">\ud83c\udf81</div><div style="font-family:Space Grotesk,sans-serif;font-size:18px;font-weight:800;text-align:center;margin-bottom:14px">Turn on gift auto-send?</div><div style="font-size:12px;font-weight:700;color:rgba(240,244,255,.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Here is exactly what happens</div>'+body+'<div style="display:flex;gap:10px;margin-top:16px"><button id="gaNo" style="flex:1;padding:12px;border-radius:100px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.07);color:#F0F4FF;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">Cancel</button><button id="gaNext" style="flex:1;padding:12px;border-radius:100px;border:none;background:#FFD166;color:#080D18;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">I understand \u2014 continue \u2192</button></div></div>';
+  ov.innerHTML=LT('<div id="gaBox" style="background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:26px;width:100%;max-width:450px"><div style="font-size:28px;text-align:center;margin-bottom:8px">\ud83c\udf81</div><div style="font-family:Space Grotesk,sans-serif;font-size:18px;font-weight:800;text-align:center;margin-bottom:14px">Turn on gift auto-send?</div><div style="font-size:12px;font-weight:700;color:rgba(240,244,255,.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Here is exactly what happens</div>')+body+'<div style="display:flex;gap:10px;margin-top:16px"><button id="gaNo" style="flex:1;padding:12px;border-radius:100px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.07);color:#F0F4FF;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">Cancel</button><button id="gaNext" style="flex:1;padding:12px;border-radius:100px;border:none;background:#FFD166;color:#080D18;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">I understand \u2014 continue \u2192</button></div></div>';
   document.body.appendChild(ov);
   document.getElementById("gaNo").onclick=function(){document.body.removeChild(ov);};
   document.getElementById("gaNext").onclick=function(){
@@ -2802,10 +3249,27 @@ async function svCust(){const tok=S?.token||SK;const n=document.getElementById("
 function bind(){
   if(scr==="dash")setTimeout(dLoad,50);
   if(scr==="samples")setTimeout(async()=>{await loadGiftCatalog();const el=document.getElementById("giftSampleGrid");if(el)el.innerHTML=giftSampleCards();},50);
+  if(scr==="land"){if(!(window.CSS&&CSS.supports("offset-path",'path("M0 0 H10")'))){document.querySelectorAll(".orb").forEach(function(o){o.style.display="none"});}var pfFit=function(){document.querySelectorAll(".pflow").forEach(function(w){var st=w.querySelector(".pstage");if(!st)return;var sc=Math.min(1,w.clientWidth/1000);st.style.transform="scale("+sc+")";w.style.height=(285*sc)+"px";});};pfFit();if(!window._ctPfR){window._ctPfR=1;window.addEventListener("resize",pfFit);}}
+  if(scr==="land"&&("IntersectionObserver" in window)){
+    var rvEls=document.querySelectorAll(".lt .sec>div,.lt .cta-band,.pflow");
+    rvEls.forEach(function(el){el.classList.add("rv")});
+    var rvIO=new IntersectionObserver(function(es){es.forEach(function(e){
+      if(!e.isIntersecting)return;
+      e.target.classList.add("rv-in");rvIO.unobserve(e.target);
+      e.target.querySelectorAll("[data-count]").forEach(function(c){
+        if(c._ctc)return;c._ctc=1;
+        var v=parseFloat(c.getAttribute("data-count")),t0=null;
+        function st(ts){if(!t0)t0=ts;var p=Math.min(1,(ts-t0)/900);p=1-Math.pow(1-p,3);c.textContent=Math.round(v*p);if(p<1)requestAnimationFrame(st);}
+        requestAnimationFrame(st);
+      });
+    });},{threshold:.15});
+    rvEls.forEach(function(el){rvIO.observe(el)});
+  }
+  if(scr==="land"&&!window._ctPx){window._ctPx=1;var pxT=false;window.addEventListener("scroll",function(){if(pxT)return;pxT=true;requestAnimationFrame(function(){pxT=false;var y=window.scrollY;document.querySelectorAll(".px").forEach(function(el){el.style.marginTop=(-y*parseFloat(el.getAttribute("data-px")||"0.05"))+"px";});});},{passive:true});}
   if(scr==="land")setTimeout(async()=>{await loadGiftCatalog();const el=document.getElementById("landingGiftSampleGrid");if(el)el.innerHTML=giftSampleCards(8);},50);
   setInterval(()=>{
     ntIdx=(ntIdx+1)%NT.length;const el=document.getElementById("ntf");
-    if(el){el.style.animation="none";el.offsetHeight;el.style.animation="fadeUp .4s ease";el.innerHTML=`<span style="font-size:22px">${NT[ntIdx].e}</span><div><div style="font-size:13px;font-weight:700">${NT[ntIdx].t}</div><div style="font-size:11px;color:rgba(240,244,255,.45);margin-top:1px">${NT[ntIdx].s}</div></div>`;}
+    if(el){el.style.animation="none";el.offsetHeight;el.style.animation="fadeUp .4s ease";el.innerHTML=`<span style="font-size:22px">${NT[ntIdx].e}</span><div><div style="font-size:13px;font-weight:700">${NT[ntIdx].t}</div><div style="font-size:11px;color:var(--nts,rgba(240,244,255,.45));margin-top:1px">${NT[ntIdx].s}</div></div>`;}
   },3200);
 }
 
@@ -2815,8 +3279,8 @@ function joinW(){const e=document.getElementById("hE")?.value;if(e){document.que
 function pricingP(){
   var plans=[
     {v:"Local",p:29,c:"#22C55E",cu:"200 customers/mo",pop:false,f:["Messages included","Promo codes included","Square & Clover","Basic analytics","Physical gifts from wallet","Email support"]},
-    {v:"Growth",p:99,c:"#FFD166",cu:"1,000 customers/mo",pop:true,f:["Messages included","Promo codes included","All 12 integrations","Retention analytics","Branded packaging","Priority support","Physical gifts from wallet"]},
-    {v:"Scale",p:299,c:"#4DA6FF",cu:"Unlimited customers",pop:false,f:["Messages included","Promo codes included","All integrations","AI triggers","White-label","A/B testing","Dedicated CSM","Physical gifts from wallet"]}
+    {v:"Growth",p:99,c:"#4DA6FF",cu:"1,000 customers/mo",pop:true,f:["Messages included","Promo codes included","All 12 integrations","Retention analytics","Branded packaging","Priority support","Physical gifts from wallet"]},
+    {v:"Scale",p:299,c:"#FFD166",cu:"Unlimited customers",pop:false,f:["Messages included","Promo codes included","All integrations","AI triggers","White-label","A/B testing","Dedicated CSM","Physical gifts from wallet"]}
   ];
   var cards="";
   for(var i=0;i<plans.length;i++){
@@ -2848,7 +3312,7 @@ function pricingP(){
   note+="<b style='color:#F0F4FF'>Physical gifts</b> -- from your wallet, only when you send one &nbsp;&#183;&nbsp; ";
   note+="<b style='color:#F0F4FF'>Cancel anytime</b> -- no contracts, no setup fees";
   note+="</div></div>";
-  var h="<nav>"+logoH(20)+"<button class=\"btn btn-outline\" onclick=\"go('land')\">&#8592; Back</button></nav>";
+  var h="<nav class=\"nav-lt\">"+logoH(20)+"<button class=\"btn btn-outline\" onclick=\"go('land')\">&#8592; Back</button></nav>";
   var title="<div style='text-align:center;margin-bottom:48px'><h1 style='font-size:clamp(28px,5vw,50px);font-weight:800;letter-spacing:-2px;margin-bottom:14px'>Choose your <span class='gold'>plan</span></h1><p style='font-size:16px;color:rgba(240,244,255,.5);max-width:460px;margin:0 auto;line-height:1.7'>Messages and promo codes included. Only physical gifts cost extra.</p></div>";
   var grid="<div style='display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px'>"+cards+"</div>";
   return "<div style='min-height:100vh;background:#080D18;color:#F0F4FF;font-family:Inter,sans-serif'>"+h+"<div style='max-width:860px;margin:0 auto;padding:60px 24px'>"+title+grid+note+"</div></div>";
@@ -2913,7 +3377,7 @@ function renderProtectionFields(){
 
 function updateProtFields(){
   var el=document.getElementById('protFields');
-  if(el)el.innerHTML=renderProtectionFields();
+  if(el)el.innerHTML=LT(renderProtectionFields());
 }
 
 
@@ -3184,7 +3648,7 @@ function emPropsHtml(){
     if(b.t==="image")html+='<div class="fg"><label class="fl">Image URL</label><input class="fi" value="'+giftEsc(b.url||"")+'" onchange="emBlocks['+emSelIdx+'].url=this.value;emRedraw()"/></div>';
     html+='<div style="display:flex;gap:6px"><button class="btn btn-ghost" style="flex:1;font-size:11px;padding:7px" onclick="emMove(-1)">↑</button><button class="btn btn-ghost" style="flex:1;font-size:11px;padding:7px" onclick="emMove(1)">↓</button><button class="btn" style="flex:1;background:rgba(255,77,109,.12);color:#FF4D6D;border:1px solid rgba(255,77,109,.2);font-size:11px;padding:7px" onclick="emDelBlock()">Delete</button></div>';
   }else{
-    html+='<div style="font-size:11px;color:rgba(240,244,255,.4);line-height:1.6;border-top:1px solid rgba(255,255,255,.08);padding-top:12px">Click any block in the email to edit, move, or delete it. Text edits happen right in the email.</div>';
+    html+='<div style="font-size:11px;color:rgba(15,17,21,.4);line-height:1.6;border-top:1px solid rgba(15,23,42,.12);padding-top:12px">Click any block in the email to edit, move, or delete it. Text edits happen right in the email.</div>';
   }
   return html;
 }
@@ -3201,7 +3665,7 @@ function emRedraw(){var c=document.getElementById("emCanvasWrap");if(c)c.innerHT
 async function emSave(){
   var st=document.getElementById("emStatus");
   if(!S||!S.token){if(st){st.textContent="Log in to save your template.";st.style.color="#FF6B6B";}return;}
-  if(st){st.textContent="Saving...";st.style.color="rgba(240,244,255,.5)";}
+  if(st){st.textContent="Saving...";st.style.color="rgba(15,17,21,.5)";}
   var payload={user_id:myId(),name:"Default",subject:emSubject,blocks:emBlocks,brand:emBrand,updated_at:new Date().toISOString()};
   try{
     var r;
@@ -3221,11 +3685,11 @@ var sid=null;
 try{sid=localStorage.getItem("ct_chat_sid");}catch(e){}
 if(!sid){sid=Date.now().toString(36)+Math.random().toString(36).slice(2,10);try{localStorage.setItem("ct_chat_sid",sid);}catch(e){}}
 var open=false,msgs=[],dismissed=false,ti=0,greeted=false;
-var TEASERS=["💬 How does Clicktide work?","🎁 What gifts can I send?","📈 What is the average ROI?","🔌 Which platforms connect?","💳 What does it cost?"];
-var GREET="👋 Hey! I'm Maya. I help businesses reward loyal customers and win back churn-risk customers automatically -- with branded gifts, personal messages, and digital rewards. What type of business do you run?";
-function petals(id,size){var s='<svg width="'+size+'" height="'+size+'" viewBox="0 0 44 44"><defs><linearGradient id="'+id+'"><stop offset="0%" stop-color="#BAE6FD"/><stop offset="100%" stop-color="#4DA6FF"/></linearGradient></defs><g transform="translate(22,22)">';[0,51.4,102.8,154.2,205.6,257,308.4].forEach(function(r){s+='<path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#'+id+')" transform="rotate('+r+')" opacity=".9"/>';});return s+'<circle cx="0" cy="0" r="4.5" fill="#080D18"/></g></svg>';}
+var TEASERS=["How does Clicktide work?","What gifts can I send?","What is the average ROI?","Which platforms connect?","What does it cost?"];
+var GREET="Hey! I'm Maya. I help businesses reward loyal customers and win back churn-risk customers automatically -- with branded gifts, personal messages, and digital rewards. What type of business do you run?";
+function petals(id,size){var s='<svg width="'+size+'" height="'+size+'" viewBox="0 0 44 44"><defs><linearGradient id="'+id+'"><stop offset="0%" stop-color="#BAE6FD"/><stop offset="100%" stop-color="#2776C4"/></linearGradient></defs><g transform="translate(22,22)">';[0,51.4,102.8,154.2,205.6,257,308.4].forEach(function(r){s+='<path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#'+id+')" transform="rotate('+r+')" opacity=".9"/>';});return s+'<circle cx="0" cy="0" r="4.5" fill="#080D18"/></g></svg>';}
 var LOGO=petals("cwlgA",32);
-var CLOSE='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4DA6FF" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+var CLOSE='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2776C4" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
 var st=document.createElement("style");
 st.textContent="@keyframes cwFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}@keyframes cwPulse{0%,100%{box-shadow:0 4px 20px rgba(77,166,255,.3)}50%{box-shadow:0 4px 32px rgba(77,166,255,.6)}}";
 document.head.appendChild(st);
@@ -3233,18 +3697,18 @@ var wrap=document.createElement("div");
 wrap.style.cssText="position:fixed;left:16px;bottom:24px;z-index:900;display:flex;flex-direction:column;align-items:flex-start;gap:6px";
 try{var p=JSON.parse(localStorage.getItem("ct_chat_pos")||"null");if(p&&typeof p.l==="number"&&typeof p.b==="number"){wrap.style.left=p.l+"px";wrap.style.bottom=p.b+"px";if(p.l>window.innerWidth/2)wrap.style.alignItems="flex-end";}}catch(e){}
 var teaser=document.createElement("div");
-teaser.style.cssText="display:flex;align-items:center;gap:8px;background:#0C1220;border:1px solid rgba(77,166,255,.25);border-radius:16px 16px 16px 4px;padding:10px 14px;font-size:13px;color:#F0F4FF;max-width:230px;line-height:1.5;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.5);margin-bottom:4px";
-teaser.innerHTML='<b id="cwTeaserTxt" style="color:#4DA6FF;font-weight:700">'+TEASERS[0]+'</b><span id="cwTeaserX" style="color:rgba(240,244,255,.45);font-size:13px;padding:0 2px;cursor:pointer">✕</span>';
+teaser.style.cssText="display:flex;align-items:center;gap:8px;background:#FFFFFF;border:1px solid rgba(77,166,255,.25);border-radius:16px 16px 16px 4px;padding:10px 14px;font-size:13px;color:#0F1115;max-width:230px;line-height:1.5;cursor:pointer;box-shadow:0 8px 24px rgba(20,40,70,.25);margin-bottom:4px";
+teaser.innerHTML='<b id="cwTeaserTxt" style="color:#2776C4;font-weight:700">'+TEASERS[0]+'</b><span id="cwTeaserX" style="color:rgba(15,17,21,.45);font-size:13px;padding:0 2px;cursor:pointer">✕</span>';
 var btn=document.createElement("div");
 btn.innerHTML=LOGO;
 btn.style.cssText="width:56px;height:56px;border-radius:50%;background:#080D18;border:2px solid rgba(77,166,255,.35);display:flex;align-items:center;justify-content:center;cursor:grab;animation:cwFloat 3s ease-in-out infinite,cwPulse 3s ease-in-out infinite;flex-shrink:0;touch-action:none";
 wrap.appendChild(teaser);wrap.appendChild(btn);document.body.appendChild(wrap);
 var panel=document.createElement("div");
-panel.style.cssText="position:fixed;left:16px;bottom:96px;width:min(460px,calc(100vw - 32px));height:min(72vh,700px);background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:18px;display:none;flex-direction:column;z-index:901;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden";
-panel.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);font-family:Inter,sans-serif"><div style="width:36px;height:36px;border-radius:50%;background:#101828;display:flex;align-items:center;justify-content:center;border:1px solid rgba(77,166,255,.25)">'+petals("cwlgB",24)+'</div><div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:800;color:#F0F4FF">Maya from Clicktide</div><div style="font-size:10px;color:rgba(240,244,255,.45);margin-top:1px;display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:#34D399;display:inline-block"></span>Online now · recorded to improve our service</div></div><div id="ctChatClose" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;color:rgba(240,244,255,.65);font-size:17px">✕</div></div><div id="ctChatLog" style="flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px"></div><div style="display:flex;gap:8px;padding:10px;border-top:1px solid rgba(255,255,255,.08)"><input id="ctChatIn" placeholder="Ask Maya anything..." style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:#101828;color:#F0F4FF;font-size:13px;outline:none;font-family:Inter,sans-serif"/><button id="ctChatSend" style="padding:10px 14px;border-radius:10px;border:none;background:#FFD166;color:#080D18;font-weight:700;font-size:13px;cursor:pointer;font-family:Inter,sans-serif">Send</button></div>';
+panel.style.cssText="position:fixed;left:16px;bottom:96px;width:min(460px,calc(100vw - 32px));height:min(72vh,700px);background:#FFFFFF;border:1px solid rgba(15,23,42,.12);border-radius:18px;display:none;flex-direction:column;z-index:901;box-shadow:0 18px 60px rgba(20,40,70,.25);overflow:hidden";
+panel.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(15,23,42,.12);font-family:Inter,sans-serif"><div style="width:36px;height:36px;border-radius:50%;background:#F4F6FA;display:flex;align-items:center;justify-content:center;border:1px solid rgba(77,166,255,.25)">'+petals("cwlgB",24)+'</div><div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:800;color:#0F1115">Maya from Clicktide</div><div style="font-size:10px;color:rgba(15,17,21,.45);margin-top:1px;display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:#34D399;display:inline-block"></span>Online now · recorded to improve our service</div></div><div id="ctChatClose" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;color:rgba(15,17,21,.65);font-size:17px">✕</div></div><div id="ctChatLog" style="flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px"></div><div style="display:flex;gap:8px;padding:10px;border-top:1px solid rgba(15,23,42,.12)"><input id="ctChatIn" placeholder="Ask Maya anything..." style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid rgba(15,23,42,.12);background:#F4F6FA;color:#0F1115;font-size:13px;outline:none;font-family:Inter,sans-serif"/><button id="ctChatSend" style="padding:10px 14px;border-radius:10px;border:none;background:#FFD166;color:#080D18;font-weight:700;font-size:13px;cursor:pointer;font-family:Inter,sans-serif">Send</button></div>';
 document.body.appendChild(panel);
 function esc2(t){return t.replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];});}
-function draw(){var log=document.getElementById("ctChatLog");if(!log)return;log.innerHTML=msgs.map(function(m){return '<div style="max-width:85%;padding:9px 12px;border-radius:12px;font-size:13px;line-height:1.55;font-family:Inter,sans-serif;white-space:pre-wrap;'+(m.r==="user"?"align-self:flex-end;background:#FFD166;color:#080D18":"align-self:flex-start;background:#101828;color:#F0F4FF;border:1px solid rgba(255,255,255,.07)")+'">'+esc2(m.t)+'</div>';}).join("");log.scrollTop=log.scrollHeight;}
+function draw(){var log=document.getElementById("ctChatLog");if(!log)return;log.innerHTML=msgs.map(function(m){return '<div style="max-width:85%;padding:9px 12px;border-radius:12px;font-size:13px;line-height:1.55;font-family:Inter,sans-serif;white-space:pre-wrap;'+(m.r==="user"?"align-self:flex-end;background:#FFD166;color:#080D18":"align-self:flex-start;background:#F4F6FA;color:#0F1115;border:1px solid rgba(15,23,42,.12)")+'">'+esc2(m.t)+'</div>';}).join("");log.scrollTop=log.scrollHeight;}
 function send(){var inp=document.getElementById("ctChatIn");var t=(inp.value||"").trim();if(!t)return;inp.value="";msgs.push({r:"user",t:t});msgs.push({r:"assistant",t:"..."});draw();var hdrs={"Content-Type":"application/json"};try{if(typeof S!=="undefined"&&S&&S.token)hdrs.Authorization="Bearer "+S.token;}catch(e){}
 fetch(FNB+"/support-chat",{method:"POST",headers:hdrs,body:JSON.stringify({session_id:sid,message:t})}).then(function(r){return r.json();}).then(function(d){msgs[msgs.length-1].t=(d&&d.reply)||"Hmm, try again?";draw();}).catch(function(){msgs[msgs.length-1].t="Connection hiccup — try again.";draw();});}
 function placePanel(){var r=btn.getBoundingClientRect();var vw=window.innerWidth,vh=window.innerHeight;var pw=Math.min(460,vw-32);var ph=Math.min(vh*0.72,700);var left=Math.max(8,Math.min(r.left,vw-pw-16));var bottom=(vh-r.top)+12;bottom=Math.max(16,Math.min(bottom,vh-ph-8));panel.style.left=left+"px";panel.style.bottom=bottom+"px";}
