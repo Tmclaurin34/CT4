@@ -1,4 +1,4 @@
-// Clicktide campaign engine. v19 — anniversary/tenure triggers + single-order + lifetime spend
+// Clicktide campaign engine. v20 — backfill-safe: event triggers gated by campaign.created_at; 48h warm-up after first POS connection
 // Hourly via pg_cron (or staff admin). Customer-facing emails ship in a branded
 // shell and cite the customer's real last visit. Physical gifts respect the
 // business's gift_auto_send toggle: ON = order placed automatically through
@@ -33,6 +33,7 @@ const cors = {
 type Campaign = {
   id: number;
   user_id: string;
+  created_at?: string;
   name?: string;
   trigger?: string;
   campaign_type?: string;
@@ -177,7 +178,12 @@ function fmtLastVisit(value?: string | null, state?: string) {
   return `${date} at ${time}`;
 }
 
-function matchesTrigger(trigger: string, c: Customer, churnDays: number) {
+function matchesTrigger(trigger: string, c: Customer, churnDays: number, campCreatedAt?: string) {
+  // Event-style triggers only react to activity AFTER the campaign was created —
+  // imported history is a baseline, never a trigger (prevents day-one backfill blasts).
+  const campAt = campCreatedAt ? Date.parse(campCreatedAt) : 0;
+  const lastActivity = Date.parse(c.last_visit_at || c.last_order_at || "") || 0;
+  const postActivation = !campAt || lastActivity > campAt;
   const t = (trigger || "").toLowerCase();
   const numMatch = t.match(/(\d+)/);
   const num = numMatch ? parseInt(numMatch[1], 10) : null;
@@ -197,10 +203,10 @@ function matchesTrigger(trigger: string, c: Customer, churnDays: number) {
     return { match: since !== null && since >= threshold, reason: "inactive" };
   }
   if (/first (purchase|visit|order|class|payment)|new customer|welcome/.test(t)) {
-    return { match: visits >= 1, reason: "first" };
+    return { match: visits >= 1 && postActivation, reason: "first" };
   }
   if (num && /(visit|order|class|milestone)/.test(t) && !/\$/.test(t)) {
-    return { match: visits >= num, reason: "milestone" };
+    return { match: visits >= num && postActivation, reason: "milestone" };
   }
   // High-ticket / big-spender rewards: "Spent $500+", "High-Ticket $1,000", "premium package buyer"
   const dollarMatch = t.match(/\$\s*([\d,]+)/);
@@ -211,7 +217,7 @@ function matchesTrigger(trigger: string, c: Customer, churnDays: number) {
   if (/(one|single|per)[- ]?(order|purchase|cart)|order (of|over)|cart (of|over)|big (order|purchase)/.test(t)) {
     const threshold = dollars || 500;
     const recent = since !== null && since <= 14;
-    return { match: recent && (Number(c.last_order_amount) || 0) >= threshold, reason: "bigorder" };
+    return { match: recent && postActivation && (Number(c.last_order_amount) || 0) >= threshold, reason: "bigorder" };
   }
   if (/spent|high[- ]?ticket|big[- ]?spender|top customer|premium (buyer|package)/.test(t)) {
     const threshold = dollars || 500;
@@ -540,6 +546,7 @@ Deno.serve(async (req) => {
       postcard_no_address: 0,
       postcard_wallet: 0,
       send_cap: 0,
+      warmup: 0,
     },
   };
 
@@ -566,6 +573,19 @@ Deno.serve(async (req) => {
         summary.skipped.billing_inactive += userCampaigns.length;
         continue;
       }
+
+      // Warm-up: for 48h after a business's FIRST register connection, no campaign
+      // fires at all — the import settles, the owner looks around, nothing blasts.
+      try {
+        const firstConn = await rest(
+          `/rest/v1/platform_connections?user_id=eq.${encodeURIComponent(userId)}&select=created_at&order=created_at.asc&limit=1`,
+        );
+        const connAt = Array.isArray(firstConn) && firstConn[0]?.created_at ? Date.parse(firstConn[0].created_at) : 0;
+        if (connAt && Date.now() - connAt < 48 * 3600000) {
+          summary.skipped.warmup += userCampaigns.length;
+          continue;
+        }
+      } catch (_) { /* no connections — manual mode, no import flood risk */ }
 
       const customers = await rest(
         `/rest/v1/customers?user_id=eq.${encodeURIComponent(userId)}&select=*`,
@@ -619,7 +639,7 @@ Deno.serve(async (req) => {
           }
           summary.evaluated++;
 
-          const { match, reason } = matchesTrigger(campaign.trigger || "", customer, churnDays);
+          const { match, reason } = matchesTrigger(campaign.trigger || "", customer, churnDays, campaign.created_at);
           if (reason === "unsupported") {
             summary.skipped.unsupported_trigger++;
             continue;
