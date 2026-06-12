@@ -120,6 +120,9 @@ A texting-only buyer fits **Local at $29** — if they never fund the wallet, th
 **"Can you promise me X customers back in a month?"**
 > "Honest answer: no — and be careful with anyone who does promise that. What I can show you free is your real number: connect your register read-only and the drift assessment shows you how many customers have drifted and an estimate of what they're worth. Then the 30-day trial lets you watch the win-backs run before you've paid anything. Your own register will make the case better than my promises could."
 
+**"Can I reward my big spenders — someone who just bought a premium package?"**
+> "Yes — that's the other half of the tide. Win-backs protect the relationship when it fades; high-ticket thank-yous lock it in right after their biggest yes. Create a campaign with the 'Spent $500+' or 'Spent $1,000+' trigger (any dollar amount works) and pick a premium gift — when a customer's total spending crosses that line, the thank-you fires once, automatically. The moment someone makes their biggest purchase is exactly when a thank-you means the most: it turns buyer's remorse into 'I chose the right place,' and it's the difference between a customer who bought a package and a customer who tells their friends about it."
+
 **"Who's behind this?"**
 > "Clicktide is founded and run by Charles — a service of Six Seasons Partners LLC, reachable at support@goclicktide.com (we reply within a business day). Founding customers work directly with the founder; that's the advantage of being early."
 
@@ -138,6 +141,7 @@ A texting-only buyer fits **Local at $29** — if they never fund the wallet, th
 - "Money needs a yes."
 - "We don't message active customers."
 - "Protect what you already paid to earn."
+- "The thank-you after their biggest yes is the cheapest insurance in business."
 
 ## If the question isn't in this document
 

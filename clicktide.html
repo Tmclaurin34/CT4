@@ -915,6 +915,10 @@ const MSG={
   ]
 };
 const MSG_X={
+  highticket:[
+    "{{first_name}}, you didn\'t just buy a package — you bet on us. So this one\'s on the house. Thank you for being one of our best. — {{business_name}}",
+    "Our best customers deserve more than a receipt, {{first_name}}. A small thank-you is on its way — we don\'t take the big yes for granted. — {{business_name}}"
+  ],
   birthday:[
     "Happy birthday, {{first_name}}! Everyone at {{business_name}} hopes your day is as wonderful as you are. Come celebrate with us soon — there might be a little something waiting.",
     "{{first_name}}, it's your day! The whole {{business_name}} family wishes you the happiest of birthdays. Treat yourself — you've earned it.",
@@ -969,7 +973,8 @@ const MSG_V_ALIAS={boxing:"gym",cycling:"gym",swimming:"gym",wellness:"yoga",nai
 function tplsFor(t){
   var list=(MSG[t]||MSG.message_only).slice();
   var tr=(cmTr||"").toLowerCase();
-  if(/birthday/.test(tr))list=MSG_X.birthday.concat(list);
+  if(/spent|high-?ticket|big spender|premium/.test(tr))list=MSG_X.highticket.concat(list);
+  else if(/birthday/.test(tr))list=MSG_X.birthday.concat(list);
   else if(/milestone|5th|10th|100th|class|anniversary|loyalty/.test(tr))list=MSG_X.milestone.concat(list);
   else if(/holiday|seasonal/.test(tr))list=MSG_X.holiday.concat(list);
   if(t==="message_only"||t==="postcard"){
@@ -1582,7 +1587,7 @@ function land(){
       <div class="card-s" style="text-align:left">
         <div class="ic-chip" style="margin-bottom:14px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5C7.5 17.5 3.5 14 3.5 9.8 3.5 7 5.6 5 8.1 5c1.6 0 3 .8 3.9 2.1C12.9 5.8 14.3 5 15.9 5c2.5 0 4.6 2 4.6 4.8 0 4.2-4 7.7-8.5 10.7z"/></svg></div>
         <div style="font-size:18px;font-weight:800;margin-bottom:8px">Reward loyal customers</div>
-        <div style="font-size:13px;line-height:1.8;color:#5A5E66">Send birthday surprises, VIP thank-yous, milestone gifts, referral rewards, and personal notes that make regulars feel remembered.</div>
+        <div style="font-size:13px;line-height:1.8;color:#5A5E66">Send birthday surprises, big-purchase thank-yous, VIP and milestone gifts, referral rewards, and personal notes that make regulars feel remembered. Someone just bought your premium package? A thank-you gift locks in the relationship right after their biggest yes.</div>
       </div>
       <div class="card-s" style="text-align:left">
         <div class="ic-chip" style="margin-bottom:14px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 4 3 9 8 9"/></svg></div>
@@ -3127,7 +3132,7 @@ function cModal(){
   </div>
   <div class="fg"><label class="fl">Campaign Name</label><input class="fi" id="cN" value="${cmN}" placeholder="${cmT==="message_only"?"Birthday Check-in":"Welcome Kit"}" oninput="cmN=this.value"/></div>
   <div class="fg"><label class="fl">Platform</label><select class="fi-sel" id="cPf" onchange="cmPf=this.value">${["Square","Shopify","Stripe","Toast","Clover","Mindbody"].map(p=>`<option value="${p}" ${cmPf===p?"selected":""}>${p}</option>`).join("")}</select></div>
-  <div class="fg"><label class="fl">Trigger</label><select class="fi-sel" id="cTr" onchange="cmTr=this.value"><option value="">Select trigger...</option>${["New Signup","First Purchase","5th Visit","30-day Inactive","Birthday","Churn Risk","Loyalty Milestone"].map(t=>`<option value="${t}" ${cmTr===t?"selected":""}>${t}</option>`).join("")}</select></div>
+  <div class="fg"><label class="fl">Trigger</label><select class="fi-sel" id="cTr" onchange="cmTr=this.value"><option value="">Select trigger...</option>${["New Signup","First Purchase","5th Visit","30-day Inactive","Birthday","Churn Risk","Loyalty Milestone","Spent $500+ — High-Ticket Thank-You","Spent $1,000+ — VIP Gift"].map(t=>`<option value="${t}" ${cmTr===t?"selected":""}>${t}</option>`).join("")}</select></div>
   <div class="fg"><label class="fl">Delivery Channel</label><select class="fi-sel" id="cCh" onchange="cmCh=this.value;document.getElementById('smsHelp').style.display=this.value.includes('sms')?'block':'none'"><option value="email" ${cmCh==="email"?"selected":""}>Email</option><option value="sms" ${cmCh==="sms"?"selected":""}>SMS</option><option value="email_sms" ${cmCh==="email_sms"?"selected":""}>Email + SMS</option></select><div id="smsHelp" style="display:${cmCh.includes('sms')?'block':'none'};font-size:11px;color:rgba(240,244,255,.45);margin-top:6px">SMS sends only to customers with a saved phone number and SMS consent.</div></div>
   ${cmT==="survey"?`
   <div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:12px;padding:14px;margin-bottom:14px">

@@ -1,4 +1,4 @@
-// Clicktide campaign engine. v16
+// Clicktide campaign engine. v17 — high-ticket spend triggers (Spent $N+)
 // Hourly via pg_cron (or staff admin). Customer-facing emails ship in a branded
 // shell and cite the customer's real last visit. Physical gifts respect the
 // business's gift_auto_send toggle: ON = order placed automatically through
@@ -191,6 +191,13 @@ function matchesTrigger(trigger: string, c: Customer, churnDays: number) {
   }
   if (num && /(visit|order|class|milestone)/.test(t)) {
     return { match: visits >= num, reason: "milestone" };
+  }
+  // High-ticket / big-spender rewards: "Spent $500+", "High-Ticket $1,000", "premium package buyer"
+  const dollarMatch = t.match(/\$\s*([\d,]+)/);
+  const dollars = dollarMatch ? parseInt(dollarMatch[1].replace(/,/g, ""), 10) : null;
+  if (/spent|high[- ]?ticket|big[- ]?spender|top customer|premium (buyer|package)/.test(t)) {
+    const threshold = dollars || 500;
+    return { match: (c.total_spent || 0) >= threshold, reason: "highticket" };
   }
   if (/vip|loyal/.test(t)) {
     return { match: (c.loyalty_score || 0) >= 75, reason: "vip" };
