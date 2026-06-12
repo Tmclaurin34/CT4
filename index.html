@@ -447,7 +447,7 @@ select option{background:#101828}
 @media (max-width:900px){.px{display:none}}
 /* custom icon chips */
 .ic-chip{width:54px;height:54px;border-radius:14px;background:linear-gradient(rgb(238,242,246) 0%,#FFFFFF 100%);border:1px solid rgb(229,231,235);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.ic-chip svg{display:block}
+.ic-chip svg{display:block;stroke-width:1.5}
 /* cloudkit nav + band fixes */
 .nav-lt .btn-gold{background:linear-gradient(rgb(28,47,65) 0%,rgb(6,15,22) 100%);color:#FFFFFF;border-radius:15px;font-family:'DM Sans',sans-serif;font-weight:500}
 .nav-lt .btn-gold:hover{filter:brightness(1.25);opacity:1}
@@ -1400,14 +1400,14 @@ function pLogoIco(id){
   return T+'<rect x="1.5" y="1.5" width="21" height="21" rx="5" fill="#6B7280"/><path d="M8 16.5l.9-2.9 5.6-5.6 2 2-5.6 5.6-2.9.9z" fill="#FFFFFF"/></svg>';
 }
 function icoCat(id){
-  var P={fitness:'<rect x="2" y="10" width="3" height="4" rx="1"/><rect x="6" y="8" width="3" height="8" rx="1"/><rect x="15" y="8" width="3" height="8" rx="1"/><rect x="19" y="10" width="3" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/>',
-  beauty:'<circle cx="6" cy="6" r="2.6"/><circle cx="6" cy="18" r="2.6"/><path d="M8.2 7.6 L20 19"/><path d="M8.2 16.4 L20 5"/>',
-  food:'<path d="M6 3v6a2 2 0 0 0 4 0V3"/><path d="M8 11v10"/><path d="M16 3c-1.6 2-2.2 4-2.2 6 0 2 1.2 3 2.2 3v9"/>',
-  retail:'<path d="M6 8h12l-1.2 13H7.2L6 8z"/><path d="M9 8a3 3 0 0 1 6 0"/>',
-  services:'<path d="M14.5 6.5a4 4 0 0 0-5.7 4.6L3 17l4 4 5.9-5.8a4 4 0 0 0 4.6-5.7L14 13l-3-3 3.5-3.5z"/>',
-  tech:'<rect x="4" y="5" width="16" height="11" rx="2"/><path d="M2 19h20"/>',
-  other:'<rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2M11 21v-3h2v3"/>'};
-  return '<span class="ic-chip" style="width:46px;height:46px;border-radius:13px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+(P[id]||P.other)+'</svg></span>';
+  var P={fitness:'<path d="M2.5 9.5v5"/><path d="M5.5 7v10"/><path d="M18.5 7v10"/><path d="M21.5 9.5v5"/><path d="M5.5 12h13"/>',
+  beauty:'<circle cx="5.5" cy="5.5" r="2.4"/><circle cx="5.5" cy="18.5" r="2.4"/><path d="M7.5 7.1 19.5 19"/><path d="M7.5 16.9 19.5 5"/>',
+  food:'<path d="M5.5 3v5.5a2.5 2.5 0 0 0 5 0V3"/><path d="M8 11.5V21"/><path d="M17 3c-1.8 2.2-2.5 4.3-2.5 6.5 0 2.2 1.2 3.5 2.5 3.5V21"/>',
+  retail:'<path d="M5.5 8.5h13l-1.1 11.3a1.6 1.6 0 0 1-1.6 1.2H8.2a1.6 1.6 0 0 1-1.6-1.2L5.5 8.5z"/><path d="M9 11V7.5a3 3 0 0 1 6 0V11"/>',
+  services:'<path d="M15.2 6.1a4.3 4.3 0 0 0-5.9 5L3.5 17l3.5 3.5 5.9-5.8a4.3 4.3 0 0 0 5-5.9l-3.3 3.2-2.6-2.6 3.2-3.3z"/>',
+  tech:'<rect x="3.5" y="5" width="17" height="11.5" rx="2"/><path d="M2 19.5h20"/>',
+  other:'<rect x="5" y="3.5" width="14" height="17" rx="1.5"/><path d="M9 7.5h1.7M13.3 7.5H15M9 11h1.7M13.3 11H15M9 14.5h1.7M13.3 14.5H15"/><path d="M10.8 20.5v-3h2.4v3"/>'};
+  return '<span class="ic-chip" style="width:50px;height:50px;border-radius:14px"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'+(P[id]||P.other)+'</svg></span>';
 }
 var ICO_BIZMAP={gym:"fitness",yoga:"fitness",boxing:"fitness",cycling:"fitness",swimming:"fitness",salon:"beauty",nails:"beauty",barber:"beauty",medspa:"beauty",wellness:"beauty",cafe:"food",resto:"food",bakery:"food",bar:"food",fastcasual:"food",localretail:"retail",ecom:"retail",boutique:"retail",giftshop:"retail",petstore:"retail",petgrooming:"services",autoshop:"services",tutoring:"services",photography:"services",cleaning:"services",saas:"tech",app:"tech",agency:"tech",consulting:"tech",software:"tech"};
 function icoOf(bizId){return icoCat(ICO_BIZMAP[bizId]||"other");}
