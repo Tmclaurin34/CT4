@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
   const isWalletTopup = body.type === "wallet_topup";
   const successUrl = safeUrl(body.success_url) || (isWalletTopup
     ? `${origin}/?session=wallet_success`
-    : `${origin}/?session=success&plan=${encodeURIComponent(body.plan || "Growth")}`);
+    : `${origin}/?session=success&plan=${encodeURIComponent(body.plan || "")}`);
   const cancelUrl = safeUrl(body.cancel_url) || `${origin}/?session=cancelled`;
 
   const form = new URLSearchParams();
@@ -126,9 +126,12 @@ Deno.serve(async (req) => {
     form.set("payment_intent_data[metadata][business_name]", body.business_name || "");
     form.set("payment_intent_data[metadata][amount]", amount.toFixed(2));
   } else {
-    const plan = body.plan && planPrices[body.plan] ? body.plan : "Growth";
+    // Never substitute a plan silently — a $49 buyer must not get a $149 checkout.
+    if (!body.plan || !planPrices[body.plan]) {
+      return json({ error: `Unknown or missing plan: ${body.plan ?? "(none)"}` }, 400);
+    }
+    const plan = body.plan;
     const priceId = planPrices[plan];
-    if (!priceId) return json({ error: "Stripe price is not configured" }, 500);
 
     form.set("mode", "subscription");
     form.set("line_items[0][price]", priceId);
