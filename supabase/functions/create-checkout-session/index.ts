@@ -15,10 +15,10 @@ type CheckoutBody = {
   cancel_url?: string;
 };
 
-const planPrices: Record<string, string | undefined> = {
-  Local: Deno.env.get("LOCAL_PRICE_ID") || "price_1ThaasGWBWEX8wHssSYEbwEl",
-  Growth: Deno.env.get("GROWTH_PRICE_ID") || "price_1TfFM4GWBWEX8wHsd0xaDyaA",
-  Scale: Deno.env.get("SCALE_PRICE_ID") || "price_1TfFMgGWBWEX8wHsRS3XgPtb",
+const planPrices: Record<string, string> = {
+  Local: "price_1ThaasGWBWEX8wHssSYEbwEl",   // $49/mo
+  Growth: "price_1ThbjeGWBWEX8wHsElMt4z3Z",  // $149/mo
+  Scale: "price_1ThbjeGWBWEX8wHsNrw2mjPF",   // $349/mo
 };
 
 // 30-day free trial on every plan — card collected up front, first charge on day 30.
