@@ -11,3 +11,7 @@ create index if not exists idx_alerts_user_resolved on public.alerts using btree
 
 -- Single-order trigger support (applied 2026-06-12 via MCP customers_last_order_amount)
 alter table public.customers add column if not exists last_order_amount numeric;
+
+-- Anniversary/tenure trigger support (applied 2026-06-12 via MCP customers_first_order_at)
+alter table public.customers add column if not exists first_order_at timestamptz;
+update public.customers set first_order_at = coalesce(first_order_at, last_visit_at, created_at) where first_order_at is null;

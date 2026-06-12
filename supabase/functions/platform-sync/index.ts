@@ -226,7 +226,7 @@ async function applyOrder(userId: string, o: Order): Promise<{ res: "updated" | 
   const ors: string[] = [];
   if (email) ors.push(`email.ilike.${encodeURIComponent(email)}`);
   if (phone) ors.push(`phone.eq.${encodeURIComponent(phone)}`, `phone.like.*${phone.replace(/\D/g, "").slice(-10)}`);
-  const rows = await rest(`/rest/v1/customers?user_id=eq.${userId}&or=(${ors.join(",")})&select=id,visits,total_spent,last_visit_at,address,city,state,zip&limit=1`);
+  const rows = await rest(`/rest/v1/customers?user_id=eq.${userId}&or=(${ors.join(",")})&select=id,visits,total_spent,last_visit_at,first_order_at,address,city,state,zip&limit=1`);
   const ex = Array.isArray(rows) ? rows[0] : null;
   if (ex) {
     const newer = !ex.last_visit_at || Date.parse(o.at) > Date.parse(ex.last_visit_at);
@@ -238,6 +238,7 @@ async function applyOrder(userId: string, o: Order): Promise<{ res: "updated" | 
         visits: (Number(ex.visits) || 0) + 1,
         total_spent: Math.round(((Number(ex.total_spent) || 0) + o.amount) * 100) / 100,
         ...(newer ? { last_visit_at: o.at, last_order_at: o.at, last_order_amount: o.amount } : {}),
+        ...((!ex.first_order_at || Date.parse(o.at) < Date.parse(ex.first_order_at)) ? { first_order_at: o.at } : {}),
         ...(addAddr ? addAddr : {}),
       }),
     });
@@ -247,7 +248,7 @@ async function applyOrder(userId: string, o: Order): Promise<{ res: "updated" | 
     method: "POST", headers: { Prefer: "return=minimal" },
     body: JSON.stringify({
       user_id: userId, name: o.name || email || "Customer", email: email || null, phone: phone || null,
-      visits: 1, total_spent: o.amount, last_order_amount: o.amount, status: "active", last_visit_at: o.at, last_order_at: o.at, sms_consent: false,
+      visits: 1, total_spent: o.amount, last_order_amount: o.amount, status: "active", last_visit_at: o.at, last_order_at: o.at, first_order_at: o.at, sms_consent: false,
       ...(o.addr ? o.addr : {}),
     }),
   });

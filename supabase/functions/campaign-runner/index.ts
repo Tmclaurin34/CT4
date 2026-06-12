@@ -1,4 +1,4 @@
-// Clicktide campaign engine. v18 — single-order triggers (one $N+ cart) + lifetime spend triggers
+// Clicktide campaign engine. v19 — anniversary/tenure triggers + single-order + lifetime spend
 // Hourly via pg_cron (or staff admin). Customer-facing emails ship in a branded
 // shell and cite the customer's real last visit. Physical gifts respect the
 // business's gift_auto_send toggle: ON = order placed automatically through
@@ -63,6 +63,7 @@ type Customer = {
   last_visit_at?: string;
   last_order_at?: string;
   last_order_amount?: number;
+  first_order_at?: string;
   sms_consent?: boolean;
   sms_unsubscribed_at?: string;
   address?: string;
@@ -183,6 +184,14 @@ function matchesTrigger(trigger: string, c: Customer, churnDays: number) {
   const visits = c.visits || c.order_count || 0;
   const since = daysSince(c.last_visit_at || c.last_order_at);
 
+  // Anniversary / tenure: "1-Year Anniversary", "12 months with us", "2-year member" —
+  // months since the customer's first known order. Yearly cooldown makes it recur.
+  if (/anniversary|year (with|together|member)|months? with|member for/.test(t)) {
+    const months = num ? (/year/.test(t) && num <= 10 ? num * 12 : num) : 12;
+    const firstAt = c.first_order_at ? Date.parse(c.first_order_at) : NaN;
+    const tenureMonths = Number.isNaN(firstAt) ? 0 : (Date.now() - firstAt) / (30.44 * 86400000);
+    return { match: tenureMonths >= months, reason: "anniversary" };
+  }
   if (/inactive|win[- ]?back|churn/.test(t)) {
     const threshold = num || churnDays || 60;
     return { match: since !== null && since >= threshold, reason: "inactive" };
