@@ -365,6 +365,22 @@ select option{background:#101828}
 .cloud.c5{width:250px;height:76px;top:38%;right:-80px;z-index:2;filter:blur(20px);opacity:.85;animation-direction:reverse}
 @media (max-width:700px){.cloud{display:none}}
 /* cloudkit pricing mats */
+.lt .mat:nth-child(1){background:linear-gradient(160deg,rgba(59,213,132,.22) 0%,#FFFFFF 65%);border-color:rgba(23,163,90,.35);box-shadow:0 22px 55px rgba(23,163,90,.16)}
+.lt .mat:nth-child(1):hover{box-shadow:0 34px 80px rgba(23,163,90,.28)}
+.lt .mat:nth-child(1) .plan{--plprice:#17A35A;--plname:#17A35A}
+.lt .mat:nth-child(1) .plan .feat li::before{color:#22C55E}
+.lt .mat:nth-child(1) .plan .btn-ghost{background:linear-gradient(165deg,#3BD584,#17A35A);color:#FFFFFF;border:none}
+.lt .mat:nth-child(2){background:linear-gradient(160deg,rgba(255,209,102,.3) 0%,#FFFFFF 65%);border-color:rgba(233,169,59,.45);box-shadow:0 26px 65px rgba(233,169,59,.22)}
+.lt .mat:nth-child(2):hover{box-shadow:0 38px 90px rgba(233,169,59,.35)}
+.lt .mat:nth-child(2) .plan{--plprice:#D9941A;--plname:#C9870F}
+.lt .mat:nth-child(2) .plan .feat li::before{color:#D9941A}
+.lt .mat:nth-child(2) .plan .btn-gold{background:linear-gradient(165deg,#FFDE8A,#F0B43C);color:#101215}
+.lt .plan.pop .plan-badge{background:linear-gradient(165deg,#FFDE8A,#F0B43C);color:#101215}
+.lt .mat:nth-child(3){background:linear-gradient(160deg,rgba(111,179,247,.26) 0%,#FFFFFF 65%);border-color:rgba(46,124,214,.35);box-shadow:0 22px 55px rgba(46,124,214,.16)}
+.lt .mat:nth-child(3):hover{box-shadow:0 34px 80px rgba(46,124,214,.28)}
+.lt .mat:nth-child(3) .plan{--plprice:#2E7CD6;--plname:#2E7CD6}
+.lt .mat:nth-child(3) .plan .feat li::before{color:#4DA6FF}
+.lt .mat:nth-child(3) .plan .btn-ghost{background:linear-gradient(165deg,#6FB3F7,#2E7CD6);color:#FFFFFF;border:none}
 @keyframes planFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
 .lt .mat{background:linear-gradient(rgb(238,242,246) 0%,#FFFFFF 100%);border:1px solid rgb(229,231,235);border-radius:15px;padding:10px;cursor:pointer;animation:planFloat 7s ease-in-out infinite;will-change:transform;transition:box-shadow .25s ease}
 .lt .mat:hover{animation:none;transform:translateY(-10px);box-shadow:0 30px 70px rgba(16,18,21,.14)}
