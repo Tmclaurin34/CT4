@@ -16,7 +16,7 @@ type CheckoutBody = {
 };
 
 const planPrices: Record<string, string | undefined> = {
-  Local: Deno.env.get("LOCAL_PRICE_ID") || "price_1TfFL5GWBWEX8wHsZ7A1zUpY",
+  Local: Deno.env.get("LOCAL_PRICE_ID") || "price_1ThaasGWBWEX8wHssSYEbwEl",
   Growth: Deno.env.get("GROWTH_PRICE_ID") || "price_1TfFM4GWBWEX8wHsd0xaDyaA",
   Scale: Deno.env.get("SCALE_PRICE_ID") || "price_1TfFMgGWBWEX8wHsRS3XgPtb",
 };

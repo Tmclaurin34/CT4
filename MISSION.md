@@ -60,11 +60,11 @@ All plans include the core loop: rhythm watching, the full 8-campaign library, t
 
 | Plan | Price | Built for |
 |---|---|---|
-| **Local** | $29/mo | Single shop, up to ~200 customers/mo — texts & emails included, Square & Clover, basic analytics |
+| **Local** | $49/mo | Single shop, up to ~200 customers/mo — texts & emails included, Square & Clover, basic analytics |
 | **Growth** | $99/mo | Busier shop, up to ~1,000 customers/mo — all integrations, retention analytics, branded packaging, priority support |
 | **Scale** | $299/mo | Multi-location or high volume — unlimited customers, white-label (their branding only), custom dashboard, dedicated success manager |
 
-A texting-only buyer fits **Local at $29** — if they never fund the wallet, they never pay for anything physical.
+A texting-only buyer fits **Local at $49** — if they never fund the wallet, they never pay for anything physical.
 
 ## How we speak
 
@@ -91,7 +91,7 @@ A texting-only buyer fits **Local at $29** — if they never fund the wallet, th
 > "Read-only access through the platform's official connection. We can see visit and sales history so we can spot drifting; we can't move money or change your account, and you can disconnect with one click. Your data is never sold and deleted on request."
 
 **"What does it cost? Any hidden fees?"**
-> "Three plans — $29, $99, $299 a month — and texts, emails, and promo-code delivery are included. Physical things cost what they cost, from a pay-per-send wallet you control: about $1.50 a postcard, gifts from a few dollars depending on what you pick (a logo mug runs around $8–20 with shipping). You only pay when something physically sends, and nothing physical sends without your standing permission. No contracts, no setup fees, cancel anytime."
+> "Three plans — $49, $99, $299 a month — and texts, emails, and promo-code delivery are included. Physical things cost what they cost, from a pay-per-send wallet you control: about $1.50 a postcard, gifts from a few dollars depending on what you pick (a logo mug runs around $8–20 with shipping). You only pay when something physically sends, and nothing physical sends without your standing permission. No contracts, no setup fees, cancel anytime."
 
 **"What happens after the 30-day free trial?"**
 > "Nothing is charged for 30 days, and if you cancel during the trial there's no charge at all. If you stay, your plan starts. Either way the customer data is yours — we delete it on request."
