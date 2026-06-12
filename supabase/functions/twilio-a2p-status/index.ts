@@ -58,6 +58,9 @@ Deno.serve(async (req) => {
           ? (camp.data?.compliance || []).map((c: Record<string, unknown>) => ({
               sid: c.sid, status: c.campaign_status, use_case: c.us_app_to_person_usecase,
               errors: c.errors || null, updated: c.date_updated,
+              description: c.description, message_flow: c.message_flow,
+              opt_in_keywords: c.opt_in_keywords, opt_in_message: c.opt_in_message,
+              sample_messages: c.message_samples,
             }))
           : { error: camp.status, detail: camp.data },
       });
