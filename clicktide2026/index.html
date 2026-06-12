@@ -1546,6 +1546,37 @@ function giftShowcaseExtras(){
    +card("/digital-channel.jpg","Digital Gift Code","digital","A promo code from your own register, delivered automatically in a branded email at the perfect moment.","Included","Every plan");
 }
 
+function brandSampleCards(){
+  function card(img,brand,type,product){
+    return `<div class="card-s" style="text-align:left;padding:14px;display:flex;flex-direction:column">
+      <div style="margin:-14px -14px 12px;height:208px;border-radius:17px 17px 0 0;overflow:hidden">
+        <img src="${img}" alt="${brand} branded ${product}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block"/>
+      </div>
+      <div style="font-size:14px;font-weight:800;color:var(--gcn,#F0F4FF);margin-bottom:4px">${brand}</div>
+      <div style="font-size:12px;color:var(--gcd,rgba(240,244,255,.52));line-height:1.5;flex:1">${type}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:11px;border-top:1px solid var(--gcb,rgba(255,255,255,.07))">
+        <span style="font-size:11px;color:var(--gcc,rgba(240,244,255,.42));text-transform:uppercase;letter-spacing:.8px">${product}</span>
+        <span style="font-size:12px;font-weight:900;color:var(--gcp,#FFD166)">Your logo here</span>
+      </div>
+    </div>`;
+  }
+  return card("/brand-cafeluna.jpg","Café Luna","Local coffee shop","11oz Mug")
+   +card("/brand-irontide.jpg","Iron Tide Fitness","Neighborhood gym","Water Bottle")
+   +card("/brand-bloomco.jpg","Bloom & Co.","Hair studio","Tote Bag")
+   +card("/brand-goldenhour.jpg","Golden Hour","Day spa","Scented Candle")
+   +card("/brand-shoreauto.jpg","Shore Auto","Auto body shop","Magnet")
+   +card("/brand-pawfect.jpg","Pawfect","Dog grooming","Stickers");
+}
+
+function brandSampleBlock(){
+  return `<div style="text-align:center;margin-top:56px;margin-bottom:28px">
+      <span class="kick">With your brand</span>
+      <h3 class="sec-title" style="font-size:clamp(24px,3.4vw,38px)">Now imagine it with <span class="gold">your logo</span></h3>
+      <p class="sec-sub">The gifts above wear our logo. Here’s the same merch wearing six local businesses we made up — upload your logo once and every gift, postcard, and email prints with it automatically.</p>
+    </div>
+    <div class="g3">${brandSampleCards()}</div>`;
+}
+
 function giftSamplePage(){
   return `${navH()}<div class="sec" style="padding-top:76px">
     <div style="max-width:980px;margin:0 auto">
@@ -1556,6 +1587,7 @@ function giftSamplePage(){
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="btn btn-gold" onclick="go('pricing')">Choose plan</button><button class="btn btn-outline" onclick="go('land')">Back to site</button></div>
       </div>
       <div id="giftSampleGrid" class="g3">${giftSampleCards()}</div>
+      ${brandSampleBlock()}
     </div>
   </div>${siteFooter()}${cookieBanner()}`;
 }
@@ -1690,6 +1722,7 @@ function land(){
       <small>Your lost customers didn\'t leave — they forgot. The gift isn\'t a reward for being gone; it\'s a reminder that they were part of something. And nobody throws away a free mug — your logo lives on their counter, working, every single morning.</small></div>
       </div>
       <div id="landingGiftSampleGrid" class="g3">${giftSampleCards()}</div>
+      ${brandSampleBlock()}
       <div style="text-align:center;margin-top:26px"><button class="btn btn-ghost" onclick="go('samples')">See all gift samples →</button></div>
     </div>
   </div></div>
