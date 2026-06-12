@@ -275,6 +275,44 @@ select option{background:#101828}
 .lt .foot-contact{color:#101215}
 .lt .foot-note{border-top:1px solid rgba(16,18,21,.1);color:#7A7E86}
 .lt .foot-legal a{color:#8A8E96}
+/* every page translates: light theme for all views */
+.lt [style*="background:#080D18"]{background:transparent!important}
+.lt .btn-outline{color:#3F434B;border-color:rgb(209,213,219);background:#FFFFFF}
+.lt .link-btn{color:#9A6E0E}
+.lt .logo-text .white,.lt .white{color:#0F1115}
+.lt [style*="color:rgba(240,244,255"]{color:#5A5E66!important}
+.lt [style*="color:#F0F4FF"]{color:#0F1115!important}
+.lt [style*="background:#0C1220"],.lt [style*="background:#101828"],.lt [style*="background:#0C1322"]{background:#FFFFFF!important;border-color:rgb(229,231,235)!important}
+.lt [style*="border:1px solid rgba(255,255,255"]{border-color:rgb(229,231,235)!important}
+.lt .auth{background:transparent}
+.lt .auth-card,.lt .ob-card,.lt .rc{background:#FFFFFF;border:1px solid rgb(229,231,235);box-shadow:0 24px 60px rgba(20,60,110,.08)}
+.lt .auth-title{color:#0F1115}
+.lt .auth-sub,.lt .ds{color:#6B6F76}
+.lt .fi,.lt .fi-sel,.lt .ta{background:#FFFFFF;border:1px solid rgb(209,213,219);color:#0F1115}
+.lt .fi::placeholder,.lt .ta::placeholder{color:#9CA3AF}
+.lt .fi-sel option{background:#FFFFFF;color:#0F1115}
+.lt .fl{color:#6B6F76}
+.lt .ob{background:transparent}
+.lt .stbar{background:#FFFFFF;border:1px solid rgb(229,231,235)}
+.lt .sp{color:#6B6F76}
+.lt .sp.on{background:linear-gradient(rgb(28,47,65) 0%,rgb(6,15,22) 100%);color:#FFFFFF}
+.lt .sp.pd{color:rgba(15,17,21,.35)}
+.lt .bc,.lt .gcard,.lt .ti,.lt .to,.lt .tpl{border-color:rgb(229,231,235);background:#FFFFFF}
+.lt .bc.on,.lt .gcard.on,.lt .ti.on,.lt .tpl.sel{border-color:#0F1115;background:rgba(6,15,22,.04);color:#0F1115}
+.lt .tk{border-color:rgb(209,213,219)}
+.lt .ti.on .tk{background:#101215;border-color:#101215;color:#FFFFFF}
+.lt .roi{background:transparent}
+.lt .roi-hd{background:rgba(255,255,255,.88);backdrop-filter:blur(14px);border-bottom:1px solid rgba(16,18,21,.08)}
+.lt .btc{background:#FFFFFF;border-color:rgb(229,231,235)}
+.lt .btc:hover{border-color:rgba(16,18,21,.4)}
+.lt .sl-l,.lt .sl-v{color:#0F1115}
+.lt .info-dot{background:rgba(6,15,22,.05);border-color:rgba(6,15,22,.15);color:#3F434B}
+.lt .info-dot::after{background:#FFFFFF;border-color:rgb(229,231,235);color:#3F434B;box-shadow:0 12px 36px rgba(20,60,110,.18)}
+.lt .info-dot::before{background:#FFFFFF;border-color:rgb(229,231,235)}
+.lt input[type=range]{background:rgba(6,15,22,.12)}
+.lt input[type=range]::-webkit-slider-thumb{background:#101215}
+.lt .empty{background:#FFFFFF;border-color:rgb(209,213,219)}
+.lt .conn-box{background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.3)}
 /* custom icon chips */
 .ic-chip{width:54px;height:54px;border-radius:14px;background:linear-gradient(rgb(238,242,246) 0%,#FFFFFF 100%);border:1px solid rgb(229,231,235);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .ic-chip svg{display:block}
@@ -1190,7 +1228,7 @@ function legalConsent(id){
 }
 
 function go(s){scr=s;R();}
-function R(){document.getElementById("app").innerHTML=page();bind();}
+function R(){var lt=!(scr==="dash"&&S);document.body.style.background=lt?"#FAFCFF":"#080D18";document.getElementById("app").innerHTML=lt?'<div class="lt">'+page()+'</div>':page();bind();}
 
 function page(){
   if(scr==="land")return land();
@@ -1204,7 +1242,7 @@ function page(){
 }
 
 function navH(lt){
-  return`<nav class="${lt?'nav-lt':''}">${logoH(20)}<div style="display:flex;gap:10px;align-items:center">
+  return`<nav class="nav-lt">${logoH(20)}<div style="display:flex;gap:10px;align-items:center">
   <button class="btn btn-outline" onclick="go('roi')">ROI Calculator</button>
   <button class="btn btn-outline" onclick="go('samples')">Gift Samples</button>
   ${S?`<button class="btn btn-gold" onclick="go('dash')">Dashboard →</button>`:`<button class="btn btn-ghost" style="margin-right:2px" onclick="go('login')">Log in</button><button class="btn btn-gold" onclick="go('onboard')">Get started →</button>`}
@@ -3025,7 +3063,7 @@ function pricingP(){
   note+="<b style='color:#F0F4FF'>Physical gifts</b> -- from your wallet, only when you send one &nbsp;&#183;&nbsp; ";
   note+="<b style='color:#F0F4FF'>Cancel anytime</b> -- no contracts, no setup fees";
   note+="</div></div>";
-  var h="<nav>"+logoH(20)+"<button class=\"btn btn-outline\" onclick=\"go('land')\">&#8592; Back</button></nav>";
+  var h="<nav class=\"nav-lt\">"+logoH(20)+"<button class=\"btn btn-outline\" onclick=\"go('land')\">&#8592; Back</button></nav>";
   var title="<div style='text-align:center;margin-bottom:48px'><h1 style='font-size:clamp(28px,5vw,50px);font-weight:800;letter-spacing:-2px;margin-bottom:14px'>Choose your <span class='gold'>plan</span></h1><p style='font-size:16px;color:rgba(240,244,255,.5);max-width:460px;margin:0 auto;line-height:1.7'>Messages and promo codes included. Only physical gifts cost extra.</p></div>";
   var grid="<div style='display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px'>"+cards+"</div>";
   return "<div style='min-height:100vh;background:#080D18;color:#F0F4FF;font-family:Inter,sans-serif'>"+h+"<div style='max-width:860px;margin:0 auto;padding:60px 24px'>"+title+grid+note+"</div></div>";
