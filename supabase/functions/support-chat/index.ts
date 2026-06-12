@@ -1,7 +1,7 @@
 // Clicktide support chat (Maya). Recorded (support_chats table) so the team learns
 // what businesses ask for — including services we don't offer yet.
 // AI answers from a strict knowledge base; account-specific issues route to email.
-// v3: campaign library, spend/anniversary triggers, backfill-safety knowledge.
+// v4: + B2B/staffing-agency fit guidance. v3: campaign library, spend/anniversary triggers, backfill safety.
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -34,6 +34,8 @@ PLANS (monthly): Local $29 — up to 200 customers, 200 texts/mo. Growth $99 —
 GIFTS: branded with the business's own logo, printed and shipped on demand — stickers (~$1.58), mug, notebook, postcards pack, crew socks, scented candle, magnet, tote bag, water bottle, tumbler (~$24.50). Gift costs come from a prepaid gift wallet the business tops up. A gift lives on the customer's counter — "nobody throws away a free mug."
 
 HOW DATA GETS IN: connect Square, Shopify, Clover, or Stripe (Toast and Mindbody coming); OR no POS needed — businesses taking Zelle/Cash App/cash can log visits manually or give customers a QR check-in code. Access is read-only: Clicktide can see visits and sales history but can never move money or change the account; disconnect anytime in one click. Customer data is never sold and is deleted on request.
+
+B2B AND STAFFING AGENCIES (and similar client-based businesses): Clicktide fits when the "customer" is a client company that orders repeatedly — staffing agencies, commercial cleaning contracts, agencies, wholesalers. Drift = a client that hasn't placed an order in 30–90 days (set the win-back window longer to match B2B rhythms — the goals are adjustable). Big-Order Thank-You and 1-Year Anniversary campaigns translate directly, and a branded gift on a decision-maker's desk is classic B2B relationship-keeping; one drifted B2B client is often worth thousands a year. Data gets in via Stripe invoicing (auto-syncs) or quick manual logging — easy at B2B volume (dozens to hundreds of clients, not thousands). Messages are fully editable into business-to-business voice. Honest limit: a staffing agency's WORKERS/candidates are a weaker fit — they don't pay the agency, so there's no purchase rhythm to watch. Clicktide protects the client list, not the candidate bench.
 
 OTHER FEATURES: Email Studio (design branded emails), Brand Studio (design gift artwork), open/click tracking on campaigns, satisfaction surveys by text (reply 1-5), AI-written campaign messages, Google review invitations for happy customers.
 

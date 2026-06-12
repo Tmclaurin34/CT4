@@ -123,6 +123,9 @@ A texting-only buyer fits **Local at $29** — if they never fund the wallet, th
 **"Can I reward my big spenders — someone who just bought a premium package?"**
 > "Yes — that's the other half of the tide. Win-backs protect the relationship when it fades; high-ticket thank-yous lock it in right after their biggest yes. Create a campaign with the 'Spent $500+' or 'Spent $1,000+' trigger (any dollar amount works) and pick a premium gift — when a customer's total spending crosses that line, the thank-you fires once, automatically. The moment someone makes their biggest purchase is exactly when a thank-you means the most: it turns buyer's remorse into 'I chose the right place,' and it's the difference between a customer who bought a package and a customer who tells their friends about it."
 
+**"I'm a staffing agency / B2B — does this work for me?"**
+> "Yes — your 'customer' is the client company, and they have a rhythm just like a salon regular: how often they place orders. When a client goes quiet for 45 days, that usually means a competitor got the call — Clicktide notices and puts your name back on their desk before the relationship dies. The big-order thank-you and the one-year anniversary gift translate directly, and a branded gift in an HR manager's office is classic B2B relationship-keeping. Data comes in through Stripe invoicing automatically, or quick manual logging — easy when you have dozens of clients instead of thousands of customers. One honest limit: it protects your client list, not your candidate bench — workers don't pay you, so there's no rhythm to watch."
+
 **"Who's behind this?"**
 > "Clicktide is founded and run by Charles — a service of Six Seasons Partners LLC, reachable at support@goclicktide.com (we reply within a business day). Founding customers work directly with the founder; that's the advantage of being early."
 
