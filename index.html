@@ -313,6 +313,28 @@ select option{background:#101828}
 .lt input[type=range]::-webkit-slider-thumb{background:#101215}
 .lt .empty{background:#FFFFFF;border-color:rgb(209,213,219)}
 .lt .conn-box{background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.3)}
+/* buttons that pop */
+.lt .btn-gold{position:relative;overflow:hidden;box-shadow:0 10px 26px rgba(13,32,52,.32),inset 0 1px 0 rgba(255,255,255,.16);transition:transform .18s ease,box-shadow .18s ease}
+.lt .btn-gold:hover{opacity:1;transform:translateY(-2px) scale(1.02);box-shadow:0 18px 40px rgba(13,32,52,.45)}
+.lt .btn-gold::after{content:"";position:absolute;top:0;left:-80%;width:55%;height:100%;background:linear-gradient(100deg,transparent 0%,rgba(255,255,255,.38) 50%,transparent 100%);transform:skewX(-20deg);animation:btnShine 4.6s ease-in-out infinite;pointer-events:none}
+@keyframes btnShine{0%,62%{left:-80%}82%,100%{left:135%}}
+.lt .btn-ghost{background:#FFFFFF;border:1.5px solid rgba(13,32,52,.35);color:#0F1115;font-weight:700;transition:all .18s ease}
+.lt .btn-ghost:hover{opacity:1;background:#101215;color:#FFFFFF;transform:translateY(-2px);box-shadow:0 12px 30px rgba(13,32,52,.3)}
+.lt .btn-outline{transition:all .18s ease}
+.lt .btn-outline:hover{opacity:1;border-color:rgba(13,32,52,.5);transform:translateY(-1px)}
+/* floating product cards (animated background) */
+.px{position:absolute;z-index:3;pointer-events:none;will-change:transform}
+.fcard{background:#FFFFFF;border:1px solid rgb(229,231,235);border-radius:14px;box-shadow:0 18px 50px rgba(20,60,110,.2);padding:12px 15px;display:flex;align-items:center;gap:10px;white-space:nowrap}
+.fcard .av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#FFFFFF;flex-shrink:0}
+.fcard b{font-size:12.5px;color:#0F1115;display:block;line-height:1.3}
+.fcard small{font-size:10.5px;color:#6B7280;display:block;line-height:1.4}
+.fc1{animation:fcA 9s ease-in-out infinite}
+.fc2{animation:fcB 11s ease-in-out infinite}
+.fc3{animation:fcC 10s ease-in-out infinite}
+@keyframes fcA{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-14px) rotate(-4deg)}}
+@keyframes fcB{0%,100%{transform:translateY(0) rotate(5deg)}50%{transform:translateY(-16px) rotate(3deg)}}
+@keyframes fcC{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-12px) rotate(-5deg)}}
+@media (max-width:900px){.px{display:none}}
 /* custom icon chips */
 .ic-chip{width:54px;height:54px;border-radius:14px;background:linear-gradient(rgb(238,242,246) 0%,#FFFFFF 100%);border:1px solid rgb(229,231,235);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .ic-chip svg{display:block}
@@ -1372,7 +1394,7 @@ function land(){
     <div id="wOk" style="display:none;margin-bottom:14px"><span style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:100px;padding:13px 22px;font-size:14px;color:#22C55E;font-weight:600">✓ You\'re on the list!</span></div>
     <button class="trust-line" onclick="go('onboard')"><b>✓</b> Free report: see who\'s slipping away&nbsp;&nbsp;&nbsp;<b>✓</b> 30-day free trial&nbsp;&nbsp;&nbsp;<b>✓</b> Cancel anytime</button>
     <div class="pills-marquee"><div class="pills-track">${PL.concat(PL).map(p=>`<div class="pill">${p.n}</div>`).join("")}</div></div>
-    <div class="shot-wrap"><div class="cloud c4"></div><div class="cloud c5"></div><div class="shot">
+    <div class="shot-wrap"><div class="cloud c4"></div><div class="cloud c5"></div><div class="px" data-px=".07" style="top:-30px;left:-72px"><div class="fcard fc1"><span class="av" style="background:#22C55E">SM</span><span><b>Sophia came back</b><small>Day-14 text · spent $84</small></span></div></div><div class="px" data-px=".11" style="top:34%;right:-78px"><div class="fcard fc2"><span class="av" style="background:#4DA6FF">MJ</span><span><b>Gift delivered</b><small>branded mug · follow up today</small></span></div></div><div class="px" data-px=".05" style="bottom:-26px;right:7%"><div class="fcard fc3"><span class="av" style="background:#E9B949"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 9.5 11.5 13 15 20 7"/><polyline points="14.5 7 20 7 20 12.5"/></svg></span><span><b>23 customers drifting</b><small>worth $9,840 — playbook armed</small></span></div></div><div class="shot">
       <div class="shot-bar"><span class="shot-dot" style="background:#FF5F57"></span><span class="shot-dot" style="background:#FEBC2E"></span><span class="shot-dot" style="background:#28C840"></span><span style="margin-left:12px;font-size:11.5px;color:rgba(240,244,255,.35)">app.goclicktide.com — June\'s Beauty Bar</span></div>
       <img src="dashboard-hero.png" alt="Clicktide dashboard: drift detection, win-back playbook, and recovered revenue" style="width:100%;height:auto;display:block" fetchpriority="high"/>
     </div></div>
@@ -3033,6 +3055,7 @@ async function svCust(){const tok=S?.token||SK;const n=document.getElementById("
 function bind(){
   if(scr==="dash")setTimeout(dLoad,50);
   if(scr==="samples")setTimeout(async()=>{await loadGiftCatalog();const el=document.getElementById("giftSampleGrid");if(el)el.innerHTML=giftSampleCards();},50);
+  if(scr==="land"&&!window._ctPx){window._ctPx=1;var pxT=false;window.addEventListener("scroll",function(){if(pxT)return;pxT=true;requestAnimationFrame(function(){pxT=false;var y=window.scrollY;document.querySelectorAll(".px").forEach(function(el){el.style.marginTop=(-y*parseFloat(el.getAttribute("data-px")||"0.05"))+"px";});});},{passive:true});}
   if(scr==="land")setTimeout(async()=>{await loadGiftCatalog();const el=document.getElementById("landingGiftSampleGrid");if(el)el.innerHTML=giftSampleCards(8);},50);
   setInterval(()=>{
     ntIdx=(ntIdx+1)%NT.length;const el=document.getElementById("ntf");
