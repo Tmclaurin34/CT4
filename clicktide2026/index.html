@@ -440,6 +440,12 @@ select option{background:#101828}
 .lt .btn-hero::after{content:"";position:absolute;top:0;left:-80%;width:55%;height:100%;background:linear-gradient(100deg,transparent 0%,rgba(255,255,255,.55) 50%,transparent 100%);transform:skewX(-20deg);animation:btnShine 3.2s ease-in-out infinite;pointer-events:none}
 @keyframes heroGlow{0%,100%{box-shadow:0 12px 30px rgba(233,169,59,.4)}50%{box-shadow:0 16px 44px rgba(233,169,59,.7)}}
 @media (prefers-reduced-motion: reduce){.lt .btn-hero,.lt .btn-hero::after{animation:none}}
+/* gift philosophy quote */
+.gquote{max-width:660px;margin:30px auto 38px;background:#FFFFFF;border:1px solid rgb(229,231,235);border-left:4px solid #E9B949;border-radius:14px;padding:24px 30px;text-align:left;box-shadow:0 14px 36px rgba(20,60,110,.08)}
+.gquote p{font-family:'Space Grotesk',sans-serif;font-size:clamp(17px,2vw,21px);font-weight:700;color:#0F1115;line-height:1.5;margin:0}
+.gquote p em{font-style:normal;color:#2E7CD6}
+.gquote small{display:block;margin-top:10px;font-size:12.5px;color:#6B7280;line-height:1.6}
+/* gift philosophy quote end */
 /* buttons that pop */
 .lt .btn-gold{position:relative;overflow:hidden;box-shadow:0 10px 26px rgba(13,32,52,.32),inset 0 1px 0 rgba(255,255,255,.16);transition:transform .18s ease,box-shadow .18s ease}
 .lt .btn-gold:hover{opacity:1;transform:translateY(-2px) scale(1.02);box-shadow:0 18px 40px rgba(13,32,52,.45)}
@@ -1619,6 +1625,8 @@ function land(){
         <span class="kick">The gifts</span>
         <h2 class="sec-title" style="font-size:clamp(24px,3vw,34px);margin-bottom:10px">Get your brand in someone\'s house — <span class="gold">forever.</span></h2>
         <p class="sec-sub" style="margin-bottom:0">An ad disappears in seconds. A branded mug gets used every morning for years — by your customer, in front of everyone they know. Preview the gifts below; sending unlocks with your plan.</p>
+      <div class="gquote"><p>"A discount says <em>come spend money</em>. A gift says <em>you mattered</em>."</p>
+      <small>Your lost customers didn\'t leave — they forgot. The gift isn\'t a reward for being gone; it\'s a reminder that they were part of something. And nobody throws away a free mug — your logo lives on their counter, working, every single morning.</small></div>
       </div>
       <div id="landingGiftSampleGrid" class="g4">${giftSampleCards(8)}</div>
       <div style="text-align:center;margin-top:26px"><button class="btn btn-ghost" onclick="go('samples')">See all gift samples →</button></div>
