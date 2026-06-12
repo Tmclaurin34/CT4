@@ -1068,7 +1068,7 @@ function ctSec(){
   var ov=document.createElement("div");
   ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px";
   ov.onclick=function(e){if(e.target===ov)document.body.removeChild(ov);};
-  ov.innerHTML='<div style="background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:28px;width:100%;max-width:470px;max-height:85vh;overflow:auto"><div style="font-size:30px;text-align:center;margin-bottom:8px">\ud83d\udd12</div><div style="font-family:&quot;Space Grotesk&quot;,sans-serif;font-size:19px;font-weight:800;text-align:center;margin-bottom:16px">Your POS stays completely safe</div>'
+  ov.innerHTML=LT('<div style="background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:28px;width:100%;max-width:470px;max-height:85vh;overflow:auto"><div style="font-size:30px;text-align:center;margin-bottom:8px">\ud83d\udd12</div><div style="font-family:&quot;Space Grotesk&quot;,sans-serif;font-size:19px;font-weight:800;text-align:center;margin-bottom:16px">Your POS stays completely safe</div>')
     +[["\ud83d\udd11","You log in on their site, not ours","Connecting uses your platform\u2019s official secure login (OAuth) \u2014 the same system banks use. Clicktide never sees or stores your password."],
       ["\ud83d\udc40","Read-only access","Clicktide can only VIEW your sales history and customer list. It cannot move money, issue refunds, change prices or products, or modify anything inside your point of sale."],
       ["\ud83d\udd0c","You hold the off switch","Disconnect any time with one click in Settings \u2014 or revoke access from your platform\u2019s own dashboard \u2014 and Clicktide\u2019s access ends instantly."],
@@ -1096,7 +1096,7 @@ async function shopifyConnect(){
   return new Promise((resolve)=>{
     const ov=document.createElement("div");
     ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px";
-    ov.innerHTML=`
+    ov.innerHTML=LT(`
       <div style="background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:28px;width:100%;max-width:400px">
         <div style="font-size:28px;margin-bottom:10px;text-align:center">🛒</div>
         <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:800;text-align:center;margin-bottom:6px">Connect Shopify</div>
@@ -1111,7 +1111,7 @@ async function shopifyConnect(){
           <button id="shopCancelBtn" style="flex:1;padding:12px;border-radius:100px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.07);color:#F0F4FF;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">Cancel</button>
           <button id="shopConnectBtn" style="flex:1;padding:12px;border-radius:100px;border:none;background:#FFD166;color:#080D18;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">Connect →</button>
         </div>
-      </div>`;
+      </div>`);
     document.body.appendChild(ov);
     const inp=document.getElementById("shopDomainInp");
     const err=document.getElementById("shopDomainErr");
@@ -1378,9 +1378,8 @@ function legalConsent(id){
 }
 
 function go(s){scr=s;R();}
-function R(){var lt=!(scr==="dash"&&S);document.body.style.background=lt?"#FAFCFF":"#080D18";var h=page();
-if(lt){h=h.split("rgba(240,244,255,").join("rgba(15,17,21,").split("#F0F4FF").join("#0F1115").split("color:#FFD166").join("color:#B8860B").split("color:#4DA6FF").join("color:#2776C4").split("background:#101828").join("background:#F4F6FA").split("background:#0C1220").join("background:#FFFFFF").split("background:#080D18").join("background:#FFFFFF").split("rgba(255,255,255,.07)").join("rgba(15,23,42,.1)").split("rgba(255,255,255,.08)").join("rgba(15,23,42,.1)").split("rgba(255,255,255,.1)").join("rgba(15,23,42,.12)").split("rgba(255,255,255,.15)").join("rgba(15,23,42,.18)");}
-document.getElementById("app").innerHTML=lt?'<div class="lt">'+h+'</div>':h;bind();}
+function LT(h){if(scr==="dash"&&S)return h;return h.split("rgba(240,244,255,").join("rgba(15,17,21,").split("#F0F4FF").join("#0F1115").split("color:#FFD166").join("color:#B8860B").split("color:#4DA6FF").join("color:#2776C4").split("background:#101828").join("background:#F4F6FA").split("background:#0C1220").join("background:#FFFFFF").split("background:#080D18").join("background:#FFFFFF").split("rgba(255,255,255,.07)").join("rgba(15,23,42,.1)").split("rgba(255,255,255,.08)").join("rgba(15,23,42,.1)").split("rgba(255,255,255,.1)").join("rgba(15,23,42,.12)").split("rgba(255,255,255,.15)").join("rgba(15,23,42,.18)");}
+function R(){var lt=!(scr==="dash"&&S);document.body.style.background=lt?"#FAFCFF":"#080D18";var h=lt?LT(page()):page();document.getElementById("app").innerHTML=lt?'<div class="lt">'+h+'</div>':h;bind();}
 
 function page(){
   if(scr==="land")return land();
@@ -1888,7 +1887,7 @@ function updateGiftGrid(){
     gCards+="</div>";
   });
   var gridEl=document.getElementById('giftGrid');
-  if(gridEl)gridEl.innerHTML=gCards;
+  if(gridEl)gridEl.innerHTML=LT(gCards);
   var noResEl=document.getElementById('noRes');
   if(noResEl){
     if(sq.length>0&&filtG.length===0){
@@ -1897,7 +1896,7 @@ function updateGiftGrid(){
       nrH+="<div style='font-size:12px;color:rgba(240,244,255,.45);margin-bottom:12px'>Add it as a custom gift - we will source and ship it.</div>";
       nrH+="<button class='btn btn-gold' data-q='"+sq+"' onclick='addCustomGift(this)' style='padding:8px 20px;font-size:12px'>+ Add "+sq+" as my gift</button>";
       nrH+="</div>";
-      noResEl.innerHTML=nrH;
+      noResEl.innerHTML=LT(nrH);
       noResEl.style.display='block';
     }else{
       noResEl.style.display='none';
@@ -2703,12 +2702,13 @@ function riSetSize(id){
 function riSetFrequency(days,vf){riFreqDays=days;riVf=vf;riRefreshChurn();riR();}
 function riSetRisk(mode){riRiskMode=mode;riRefreshChurn();riR();}
 function riShow(){riS=2;riR();}
-function riR(){document.getElementById("app").innerHTML=roi();bind();}
+function riR(){R();}
 function riPrv(){
   const B=riB==="other_custom"?{id:"other_custom",l:riOther||"Other Business",i:"🏢",c:"#94A3B8",lf:.30}:BZ.find(b=>b.id===riB);if(!B)return;
   const ch=Math.round(riCu*riCh),sv=Math.round(ch*B.lf),rc=sv*riAv,ml=Math.round((riAv/riGf)*10)/10;
   const el=document.getElementById("riPv");
   if(el)el.innerHTML=`<div><div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:800;color:${B.c};margin-bottom:2px">${sv}</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Saved/mo</div></div><div><div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:800;color:#22C55E;margin-bottom:2px">$${rc.toLocaleString()}</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Recovered</div></div><div><div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:800;color:#FFD166;margin-bottom:2px">${ml}×</div><div style="font-size:11px;color:rgba(240,244,255,.45)">ROI</div></div>`;
+  if(el&&!(scr==="dash"&&S))el.innerHTML=LT(el.innerHTML);
 }
 
 function dash(){
@@ -3003,7 +3003,7 @@ function giftAutoModal(){
             ["\ud83d\udee1\ufe0f","The guardrails stay on","Auto-send only fires when a mailing address is on file AND the campaign has a specific gift chosen. Anything else still comes to you for review. Customers who recently rated you 1\u20132 stars never get gifts."],
             ["\u23F8\ufe0f","You can turn it off anytime","Takes effect immediately \u2014 gifts go back to waiting for your approval."]];
   var body=rows.map(function(x){return '<div style="display:flex;gap:11px;margin-bottom:12px"><div style="font-size:18px;flex-shrink:0">'+x[0]+'</div><div><div style="font-size:13px;font-weight:700">'+x[1]+'</div><div style="font-size:11px;color:rgba(240,244,255,.55);line-height:1.6;margin-top:2px">'+x[2]+'</div></div></div>';}).join("");
-  ov.innerHTML='<div id="gaBox" style="background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:26px;width:100%;max-width:450px"><div style="font-size:28px;text-align:center;margin-bottom:8px">\ud83c\udf81</div><div style="font-family:Space Grotesk,sans-serif;font-size:18px;font-weight:800;text-align:center;margin-bottom:14px">Turn on gift auto-send?</div><div style="font-size:12px;font-weight:700;color:rgba(240,244,255,.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Here is exactly what happens</div>'+body+'<div style="display:flex;gap:10px;margin-top:16px"><button id="gaNo" style="flex:1;padding:12px;border-radius:100px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.07);color:#F0F4FF;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">Cancel</button><button id="gaNext" style="flex:1;padding:12px;border-radius:100px;border:none;background:#FFD166;color:#080D18;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">I understand \u2014 continue \u2192</button></div></div>';
+  ov.innerHTML=LT('<div id="gaBox" style="background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:26px;width:100%;max-width:450px"><div style="font-size:28px;text-align:center;margin-bottom:8px">\ud83c\udf81</div><div style="font-family:Space Grotesk,sans-serif;font-size:18px;font-weight:800;text-align:center;margin-bottom:14px">Turn on gift auto-send?</div><div style="font-size:12px;font-weight:700;color:rgba(240,244,255,.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Here is exactly what happens</div>')+body+'<div style="display:flex;gap:10px;margin-top:16px"><button id="gaNo" style="flex:1;padding:12px;border-radius:100px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.07);color:#F0F4FF;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">Cancel</button><button id="gaNext" style="flex:1;padding:12px;border-radius:100px;border:none;background:#FFD166;color:#080D18;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">I understand \u2014 continue \u2192</button></div></div>';
   document.body.appendChild(ov);
   document.getElementById("gaNo").onclick=function(){document.body.removeChild(ov);};
   document.getElementById("gaNext").onclick=function(){
@@ -3377,7 +3377,7 @@ function renderProtectionFields(){
 
 function updateProtFields(){
   var el=document.getElementById('protFields');
-  if(el)el.innerHTML=renderProtectionFields();
+  if(el)el.innerHTML=LT(renderProtectionFields());
 }
 
 
