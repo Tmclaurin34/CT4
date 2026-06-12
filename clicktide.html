@@ -23,36 +23,51 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg"><link rel="icon" type="image/png" sizes="64x64" href="favicon.png"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png"><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#080D18;color:#F0F4FF;font-family:'Inter',sans-serif}
-nav{position:sticky;top:0;z-index:99;display:flex;align-items:center;justify-content:space-between;padding:14px 32px;background:rgba(8,13,24,0.96);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,0.07)}
+body{background:#080D18;color:#F0F4FF;font-family:'Inter',sans-serif;overflow-x:clip}
+nav{position:sticky;top:0;z-index:99;display:flex;align-items:center;justify-content:space-between;padding:14px clamp(20px,4vw,44px);background:rgba(8,13,24,0.82);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);border-bottom:1px solid rgba(255,255,255,0.07)}
 .logo{display:flex;align-items:center;gap:9px;cursor:pointer}
 .logo-text{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase}
 .blue{color:#4DA6FF}.gold{color:#FFD166}.white{color:#F0F4FF}
-.btn{padding:9px 20px;border-radius:100px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:'Inter',sans-serif}
-.btn-gold{background:#FFD166;color:#080D18}
+.btn{padding:9px 20px;border-radius:100px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:'Inter',sans-serif;transition:transform .18s ease,filter .18s ease,opacity .18s ease}
+.btn-gold{background:#FFD166;color:#080D18;box-shadow:0 2px 16px rgba(255,209,102,.18)}
 .btn-ghost{background:rgba(255,255,255,0.07);color:#F0F4FF;border:1px solid rgba(255,255,255,0.1)}
 .btn-outline{background:transparent;color:rgba(240,244,255,0.5);border:1px solid rgba(255,255,255,0.1)}
-.btn:hover{opacity:0.85}
+.btn:hover{opacity:1;transform:translateY(-1px);filter:brightness(1.08)}
 .screen{display:none}.screen.on{display:block}
 /* HERO */
-.hero{padding:80px 32px 60px;text-align:center;position:relative;overflow:hidden}
-.hero:before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 20%,rgba(77,166,255,0.07),transparent 70%);pointer-events:none}
-.badge{display:inline-flex;align-items:center;gap:7px;background:rgba(77,166,255,0.08);border:1px solid rgba(77,166,255,0.2);border-radius:100px;padding:6px 16px;font-size:11px;font-weight:700;color:#4DA6FF;text-transform:uppercase;letter-spacing:.5px;margin-bottom:22px}
+.hero{padding:92px 24px 88px;text-align:center;position:relative;overflow:hidden}
+.hero:before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 75% 55% at 50% 0%,rgba(77,166,255,.13),transparent 65%),radial-gradient(ellipse 45% 40% at 82% 12%,rgba(255,209,102,.06),transparent 70%);pointer-events:none}
+.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(77,166,255,0.08);border:1px solid rgba(77,166,255,0.22);border-radius:100px;padding:7px 18px;font-size:11px;font-weight:700;color:#4DA6FF;text-transform:uppercase;letter-spacing:.14em;margin-bottom:28px;position:relative}
 .dot{width:6px;height:6px;border-radius:50%;background:#4DA6FF;animation:pulse 1.5s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
-h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(36px,6vw,66px);line-height:1.02;font-weight:800;letter-spacing:-2px;margin-bottom:20px}
-.sub{font-size:16px;line-height:1.75;color:rgba(240,244,255,.5);max-width:480px;margin:0 auto 30px}
-.input-row{display:flex;justify-content:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
-.email-inp{padding:13px 18px;border-radius:100px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#F0F4FF;font-size:14px;outline:none;width:240px;font-family:'Inter',sans-serif}
+h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(40px,6.4vw,78px);line-height:1.04;font-weight:800;letter-spacing:-.035em;margin-bottom:22px;position:relative}
+.grad-gold{background:linear-gradient(96deg,#FFE3A1 0%,#FFD166 45%,#E9B949 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{font-size:17px;line-height:1.7;color:rgba(240,244,255,.58);max-width:580px;margin:0 auto 34px;position:relative}
+.input-row{display:flex;justify-content:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;position:relative}
+.cta-group{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);border-radius:100px;padding:6px 6px 6px 20px;box-shadow:0 20px 60px rgba(0,0,0,.4);transition:border-color .2s ease}
+.cta-group:focus-within{border-color:rgba(255,209,102,.5)}
+.email-inp{padding:11px 6px;border:none;border-radius:100px;background:transparent;color:#F0F4FF;font-size:14.5px;outline:none;width:225px;font-family:'Inter',sans-serif}
+.email-inp::placeholder{color:rgba(240,244,255,.35)}
+.trust-line{background:transparent;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;color:rgba(240,244,255,.48);margin-top:14px;line-height:1.9;position:relative}
+.trust-line b{color:#22C55E;font-weight:700}
+.trust-line:hover{color:rgba(240,244,255,.78)}
+.shot-wrap{max-width:1080px;margin:64px auto 0;position:relative;z-index:1}
+.shot{position:relative;border-radius:18px;border:1px solid rgba(255,255,255,.13);background:#0C1220;box-shadow:0 40px 130px rgba(0,0,0,.6);overflow:hidden}
+.shot-bar{display:flex;align-items:center;gap:7px;padding:13px 18px;border-bottom:1px solid rgba(255,255,255,.07);background:#0A0F1C}
+.shot-dot{width:11px;height:11px;border-radius:50%}
+.shot img{width:100%;display:block}
+.kick{display:block;font-size:11.5px;font-weight:800;letter-spacing:.24em;text-transform:uppercase;color:#FFD166;text-align:center;margin-bottom:16px}
+.step-num{display:inline-flex;width:32px;height:32px;border-radius:10px;background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.25);color:#FFD166;font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:13px;align-items:center;justify-content:center;margin-bottom:14px}
+.cta-band{max-width:1080px;margin:0 auto;background:radial-gradient(ellipse 90% 130% at 50% -20%,rgba(255,209,102,.13),transparent 55%),radial-gradient(ellipse 70% 110% at 85% 110%,rgba(77,166,255,.1),transparent 60%),#0C1322;border:1px solid rgba(255,209,102,.28);border-radius:28px;padding:72px 36px;text-align:center;position:relative;overflow:hidden}
 .link-btn{background:transparent;border:none;color:#FFD166;font-size:13px;cursor:pointer;text-decoration:underline;font-family:'Inter',sans-serif}
 .cookie-bar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:500;width:min(560px,calc(100vw - 28px));background:#F8FAFC;color:#111827;border:1px solid rgba(15,23,42,.12);box-shadow:0 18px 60px rgba(0,0,0,.35);border-radius:16px;padding:16px 48px 16px 18px;font-size:13px;line-height:1.6;text-align:left}
 .cookie-bar a{color:#0B62D6;font-weight:800;text-decoration:underline}
 .cookie-x{position:absolute;right:14px;top:12px;width:28px;height:28px;border:0;background:transparent;color:#111827;font-size:24px;line-height:1;cursor:pointer}
-.site-footer{background:#111827;border-top:1px solid rgba(255,255,255,.08);padding:36px 32px 30px;color:rgba(240,244,255,.74)}
-.foot-wrap{max-width:980px;margin:0 auto}
+.site-footer{background:#0A0F1C;border-top:1px solid rgba(255,255,255,.07);padding:60px 32px 36px;color:rgba(240,244,255,.74)}
+.foot-wrap{max-width:1080px;margin:0 auto}
 .foot-top{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:28px}
 .foot-contact{color:#F0F4FF;font-weight:800;text-decoration:underline;text-underline-offset:4px}
 .foot-grid{display:grid;grid-template-columns:1.2fr repeat(3,1fr);gap:24px;margin-bottom:28px}
@@ -63,30 +78,34 @@ h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(36px,6vw,66px);line-he
 .foot-note{border-top:1px solid rgba(255,255,255,.12);padding-top:20px;font-size:11px;line-height:1.8;color:rgba(240,244,255,.48)}
 .foot-legal{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
 .foot-legal a{color:rgba(240,244,255,.58);font-size:11px;text-decoration:underline;text-underline-offset:3px}
-.pills{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:36px}
-.pill{padding:5px 12px;background:rgba(77,166,255,.06);border:1px solid rgba(77,166,255,.15);border-radius:100px;font-size:12px;color:rgba(240,244,255,.5)}
-.notif{position:fixed;top:80px;right:20px;background:#0C1220;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:50;max-width:280px;animation:fadeUp .4s ease}
+.pills{display:flex;justify-content:center;gap:9px;flex-wrap:wrap;margin-top:40px;position:relative}
+.pill{padding:7px 15px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:100px;font-size:12.5px;color:rgba(240,244,255,.55)}
+.notif{position:absolute;top:84px;right:22px;background:rgba(13,21,38,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:13px 17px;display:flex;align-items:center;gap:11px;box-shadow:0 14px 44px rgba(0,0,0,.5);z-index:50;max-width:290px;animation:fadeUp .4s ease}
 /* SECTIONS */
-.sec{padding:64px 32px}.sec-sur{background:#0C1220}
-.sec-title{font-family:'Space Grotesk',sans-serif;font-size:clamp(24px,4vw,42px);font-weight:800;letter-spacing:-1.5px;text-align:center;margin-bottom:12px}
-.sec-sub{color:rgba(240,244,255,.45);font-size:15px;text-align:center;margin-bottom:40px}
-.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;max-width:900px;margin:0 auto}
-.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:840px;margin:0 auto}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:840px;margin:0 auto}
-.card{background:#080D18;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:22px}
-.card-s{background:#0C1220;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:22px}
-.stat-n{font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:800;color:#FFD166;margin-bottom:6px}
+.sec{padding:96px 28px}.sec-sur{background:#0A101D;border-top:1px solid rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.05)}
+.sec-title{font-family:'Space Grotesk',sans-serif;font-size:clamp(30px,4.2vw,46px);font-weight:800;letter-spacing:-.03em;text-align:center;margin-bottom:16px}
+.sec-sub{color:rgba(240,244,255,.5);font-size:16px;line-height:1.7;text-align:center;margin:0 auto 52px;max-width:620px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:1080px;margin:0 auto}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:1020px;margin:0 auto}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:1020px;margin:0 auto}
+.card{background:#0B1322;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:26px;transition:transform .2s ease,border-color .2s ease}
+.card:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.18)}
+.card-s{background:#0D1526;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:26px;transition:transform .2s ease,border-color .2s ease}
+.card-s:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.18)}
+.stat-n{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#F0F4FF;margin-bottom:8px}
 /* PLAN */
-.plan{border-radius:18px;padding:24px;border:1px solid rgba(255,255,255,.07);background:#0C1220;position:relative}
-.plan.pop{background:#101828;border-color:rgba(255,209,102,.3);transform:translateY(-6px)}
-.plan-badge{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#FFD166;color:#080D18;padding:3px 14px;border-radius:100px;font-size:11px;font-weight:700;white-space:nowrap}
-.plan-price{font-family:'Space Grotesk',sans-serif;font-size:40px;font-weight:800;letter-spacing:-2px}
-.feat{list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;margin:14px 0 18px}
-.feat li{font-size:12px;color:rgba(240,244,255,.5);display:flex;gap:6px}
-.feat li::before{content:"✓";color:#22C55E;font-weight:700}
+.plan{border-radius:22px;padding:32px 28px;border:1px solid rgba(255,255,255,.08);background:#0B1322;position:relative;transition:transform .2s ease,border-color .2s ease}
+.plan:hover{border-color:rgba(255,255,255,.18)}
+.plan.pop{background:linear-gradient(180deg,#121A2E,#0D1424);border-color:rgba(255,209,102,.45);transform:translateY(-10px);box-shadow:0 30px 90px rgba(0,0,0,.5)}
+.plan-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#FFD166;color:#080D18;padding:4px 16px;border-radius:100px;font-size:11px;font-weight:800;white-space:nowrap;letter-spacing:.04em}
+.plan-price{font-family:'Space Grotesk',sans-serif;font-size:52px;font-weight:800;letter-spacing:-.04em}
+.feat{list-style:none;padding:0;display:flex;flex-direction:column;gap:10px;margin:18px 0 24px;text-align:left}
+.feat li{font-size:13px;color:rgba(240,244,255,.62);display:flex;gap:9px;line-height:1.5}
+.feat li::before{content:"✓";color:#22C55E;font-weight:700;flex-shrink:0}
 /* TYPE CARDS */
-.tc{border-radius:18px;padding:24px;border:1px solid rgba(255,255,255,.07);background:#0C1220}
-.tc.pop{background:#101828;border-color:rgba(255,209,102,.3);transform:translateY(-6px);position:relative}
+.tc{border-radius:20px;padding:30px 26px;border:1px solid rgba(255,255,255,.08);background:#0B1322;transition:transform .2s ease,border-color .2s ease}
+.tc:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.18)}
+.tc.pop{background:linear-gradient(180deg,#121A2E,#0D1424);border-color:rgba(255,209,102,.42);transform:translateY(-8px);position:relative;box-shadow:0 26px 80px rgba(0,0,0,.45)}
 /* AUTH */
 .auth{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:#080D18}
 .auth-card{width:100%;max-width:420px;background:#0C1220;border:1px solid rgba(255,255,255,.07);border-radius:22px;padding:32px}
@@ -190,8 +209,9 @@ select option{background:#101828}
 @media (max-width: 900px){
   nav{padding:12px 16px;gap:12px;align-items:flex-start}
   nav>div:last-child{flex-wrap:wrap;justify-content:flex-end;gap:8px}
-  .hero{padding:56px 18px 42px}
-  .sec{padding:48px 18px}
+  .hero{padding:64px 18px 56px}
+  .shot-wrap{margin-top:44px}
+  .sec{padding:64px 18px}
   .g4,.g3,.btg{grid-template-columns:repeat(2,minmax(0,1fr));max-width:640px}
   .g2{grid-template-columns:1fr;max-width:640px}
   .plan.pop,.tc.pop{transform:none}
@@ -213,9 +233,17 @@ select option{background:#101828}
   nav .btn{width:100%;padding:10px 12px}
   .logo-text{font-size:15px}
   h1{font-size:40px;letter-spacing:-1px}
-  .sub{font-size:14px;line-height:1.65}
-  .input-row{display:grid;grid-template-columns:1fr;width:100%;max-width:340px;margin-left:auto;margin-right:auto}
-  .email-inp{width:100%}
+  .sub{font-size:14.5px;line-height:1.7}
+  .badge{font-size:10px;letter-spacing:.08em;padding:6px 14px;white-space:normal;line-height:1.7;max-width:94%}
+  .trust-line{font-size:12px}
+  .input-row{width:100%}
+  .cta-group{display:flex;flex-direction:column;width:100%;max-width:360px;margin:0 auto;border-radius:22px;padding:10px;gap:8px}
+  .cta-group .email-inp{width:100%;text-align:center;padding:12px}
+  .cta-group .btn{width:100%;padding:13px}
+  .shot{border-radius:12px}
+  .shot-wrap{margin-top:36px}
+  .cta-band{padding:48px 20px;border-radius:22px}
+  .sec{padding:56px 16px}
   .g4,.g3,.btg,.bg,.gc{grid-template-columns:1fr!important}
   .card,.card-s,.tc,.plan,.dc,.rc,.auth-card,.ob-card{border-radius:14px;padding:16px}
   .sec-title{font-size:28px;letter-spacing:-.5px}
@@ -240,7 +268,7 @@ select option{background:#101828}
   .mb{max-height:calc(100vh - 24px)}
   .mh,.mbody{padding:14px}
   .pills{justify-content:flex-start}
-  .site-footer{padding:30px 20px}.foot-grid{grid-template-columns:1fr}.cookie-bar{top:10px;bottom:auto;font-size:12px;padding:14px 44px 14px 14px;border-radius:14px}
+  .site-footer{padding:30px 20px}.foot-grid{grid-template-columns:1fr}.cookie-bar{bottom:14px;font-size:12px;padding:14px 44px 14px 14px;border-radius:14px}
 }
 </style>
 </head>
@@ -1051,18 +1079,20 @@ function siteFooter(){
     <div class="foot-top">${logoH(22)}<a class="foot-contact" href="mailto:hello@goclicktide.com">Contact us</a></div>
     <div class="foot-grid">
       <div><div class="foot-title">Clicktide</div><div style="font-size:12px;line-height:1.8;color:rgba(240,244,255,.54)">Reward loyal customers and bring churn-risk customers back with automatic messages, rewards, and gifts.</div></div>
-      <div><div class="foot-title">Company</div><div class="foot-links"><button onclick="go('pricing')">Pricing</button><button onclick="go('roi')">ROI Calculator</button><a href="win-back-lost-customers.html" target="_blank">Win-back guide</a><a href="mailto:hello@goclicktide.com">Contact us</a></div></div>
+      <div><div class="foot-title">Resources</div><div class="foot-links"><button onclick="go('pricing')">Pricing</button><button onclick="go('roi')">ROI Calculator</button><a href="win-back-lost-customers.html" target="_blank">Win-back guide</a></div></div>
       <div><div class="foot-title">Product</div><div class="foot-links"><button onclick="go('onboard')">Start free trial</button><button onclick="go('login')">Customer login</button><button onclick="go('dash')">Dashboard</button></div></div>
       <div><div class="foot-title">Legal</div><div class="foot-links"><a href="terms.html" target="_blank">Terms of Use</a><a href="privacy.html" target="_blank">Privacy Policy</a><a href="billing-policy.html" target="_blank">Billing Policy</a></div></div>
     </div>
     <div class="foot-note">The information on this site is for general product and service information. Gift availability, delivery timing, platform integrations, and campaign results may vary by business, customer data, and connected provider.
-      <div class="foot-legal"><span>© 2026 Clicktide, a service of Six Seasons Partners LLC. All rights reserved.</span><a href="sms-policy.html" target="_blank">SMS Policy</a><a href="terms.html" target="_blank">Terms of Use</a><a href="privacy.html" target="_blank">Privacy Policy</a><a href="billing-policy.html" target="_blank">Billing Policy</a></div>
+      <div class="foot-legal"><span>© 2026 Clicktide, a service of Six Seasons Partners LLC. All rights reserved.</span><a href="sms-policy.html" target="_blank">SMS Policy</a></div>
     </div>
   </div></footer>`;
 }
 
-function giftSampleCards(){
-  const list=giftOptions();
+function giftSampleCards(limit){
+  let list=giftOptions();
+  if(limit)list=list.slice(0,limit);
+  let popShown=0;
   return list.map(function(g){
     return `<div class="card-s" style="text-align:left;padding:14px;display:flex;flex-direction:column;min-height:210px">
       <div style="height:104px;border-radius:12px;background:linear-gradient(135deg,#eef2f7,#e5ebf2);border:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;margin-bottom:12px;overflow:hidden;padding:10px;position:relative">
@@ -1070,7 +1100,7 @@ function giftSampleCards(){
       </div>
       <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
         <div style="font-size:14px;font-weight:800;color:#F0F4FF">${giftEsc(g.n)}</div>
-        ${g.pop?`<span style="font-size:10px;font-weight:800;color:#080D18;background:#FFD166;border-radius:999px;padding:2px 7px">Popular</span>`:""}
+        ${(g.pop&&popShown++<2)?`<span style="font-size:10px;font-weight:800;color:#080D18;background:#FFD166;border-radius:999px;padding:2px 7px">Popular</span>`:""}
       </div>
       <div style="font-size:12px;color:rgba(240,244,255,.52);line-height:1.55;flex:1">${giftEsc(g.s)}</div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:11px;border-top:1px solid rgba(255,255,255,.07)">
@@ -1099,72 +1129,87 @@ function land(){
   const n=NT[ntIdx];
   return`${navH()}
   <div class="hero">
-    <div class="badge"><span class="dot"></span>Shopify · Square · Stripe · 12+ platforms</div>
-    <h1>Send a gift.<br><span class="gold">Start a tide.</span></h1>
-    <p class="sub">Your customers aren't leaving — they're forgetting. Clicktide rewards your loyal customers and wins back the ones drifting away with automatic thank-yous, gifts, digital rewards, and personal messages sent at the exact moment they matter.</p>
+    <div class="badge"><span class="dot"></span>Live in 10 minutes · Read-only access · No new hardware</div>
+    <h1>Send a gift.<br><span class="grad-gold">Start a tide.</span></h1>
+    <p class="sub">Your customers aren\'t leaving — they\'re forgetting. Clicktide watches your register, notices the moment a regular starts drifting, and wins them back automatically — a friendly text, a real postcard, a branded gift on their doorstep.</p>
     <div class="input-row">
-      <input class="email-inp" id="hE" placeholder="your@email.com" type="email"/>
-      <button class="btn btn-gold" onclick="startTrial()">Start free trial →</button>
+      <div class="cta-group">
+        <input class="email-inp" id="hE" placeholder="your@email.com" type="email"/>
+        <button class="btn btn-gold" onclick="startTrial()">Start free trial →</button>
+      </div>
     </div>
-    <div id="wOk" style="display:none;margin-bottom:14px"><span style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:100px;padding:13px 22px;font-size:14px;color:#22C55E;font-weight:600">🎉 You're on the list!</span></div>
-    <button class="link-btn" onclick="go('onboard')">🔍 Includes a free drift assessment · cancel anytime — no charge for 30 days</button>
+    <div id="wOk" style="display:none;margin-bottom:14px"><span style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:100px;padding:13px 22px;font-size:14px;color:#22C55E;font-weight:600">🎉 You\'re on the list!</span></div>
+    <button class="trust-line" onclick="go('onboard')"><b>✓</b> Free report: see who\'s slipping away&nbsp;&nbsp;&nbsp;<b>✓</b> 30-day free trial&nbsp;&nbsp;&nbsp;<b>✓</b> Cancel anytime</button>
     <div class="pills">${PL.map(p=>`<div class="pill">${p.e} ${p.n}</div>`).join("")}</div>
+    <div class="shot-wrap"><div class="shot">
+      <div class="shot-bar"><span class="shot-dot" style="background:#FF5F57"></span><span class="shot-dot" style="background:#FEBC2E"></span><span class="shot-dot" style="background:#28C840"></span><span style="margin-left:12px;font-size:11.5px;color:rgba(240,244,255,.35)">app.goclicktide.com — June\'s Beauty Bar</span></div>
+      <img src="dashboard-hero.png" alt="Clicktide dashboard: drift detection, win-back playbook, and recovered revenue" style="width:100%;height:auto;display:block" fetchpriority="high"/>
+    </div></div>
   </div>
   <div class="notif" id="ntf"><span style="font-size:22px">${n.e}</span><div><div style="font-size:13px;font-weight:700">${n.t}</div><div style="font-size:11px;color:rgba(240,244,255,.45);margin-top:1px">${n.s}</div></div></div>
-  <div class="sec sec-sur"><div style="max-width:900px;margin:0 auto;text-align:center">
+  <div class="sec sec-sur"><div style="max-width:1080px;margin:0 auto;text-align:center">
+    <span class="kick">How it works</span>
     <h2 class="sec-title">Live in <span class="gold">10 minutes.</span></h2>
-    <div class="g4">${[["01","🔌","Connect","One-click OAuth on Square, Shopify, Stripe and 9 more."],["02","💛","Reward loyalty","Thank VIPs, frequent buyers, birthdays, referrals, and milestone customers."],["03","🌊","Win back churn","Catch inactive or slipping customers before they disappear."],["04","📊","Track","See which thank-yous and win-backs drive repeat visits."]].map(([n,i,t,d])=>`<div class="card" style="position:relative;overflow:hidden"><div style="position:absolute;top:-6px;right:8px;font-family:'Space Grotesk',sans-serif;font-size:64px;font-weight:800;color:rgba(255,255,255,.03);line-height:1">${n}</div><div style="font-size:26px;margin-bottom:10px">${i}</div><div style="font-size:14px;font-weight:700;margin-bottom:5px">${t}</div><div style="font-size:12px;line-height:1.7;color:rgba(240,244,255,.5)">${d}</div></div>`).join("")}</div>
+    <p class="sec-sub">Connect your register once — Clicktide learns every customer\'s rhythm and handles the rest on its own.</p>
+    <div class="g4">${[["1","Connect your register","One-click, read-only link to Square, Shopify, Stripe and 9 more. A year of customer history imports in about a minute."],["2","See your drift number","Instantly know how many customers quietly stopped coming back — and what they\'re worth in dollars."],["3","Install the playbook","One button arms your win-backs: a friendly text at day 14, a real postcard at day 30, a branded gift at day 45."],["4","Watch them come back","Any visit pauses everything automatically. Your dashboard counts every save in recovered revenue."]].map(([num,t,d])=>`<div class="card" style="text-align:left"><div class="step-num">${num}</div><div style="font-size:15px;font-weight:700;margin-bottom:7px">${t}</div><div style="font-size:13px;line-height:1.7;color:rgba(240,244,255,.52)">${d}</div></div>`).join("")}</div>
   </div></div>
-  <div class="sec"><div style="max-width:840px;margin:0 auto;text-align:center">
-    <h2 class="sec-title">One system for <span class="gold">loyalty and churn.</span></h2>
+  <div class="sec"><div style="max-width:1020px;margin:0 auto;text-align:center">
+    <span class="kick">One system</span>
+    <h2 class="sec-title">For <span class="gold">loyalty and churn.</span></h2>
     <p class="sec-sub">Reward the customers who already love you. Re-engage the ones who are starting to fade.</p>
-    <div class="g2" style="margin-bottom:28px">
+    <div class="g2" style="margin-bottom:48px">
       <div class="card-s" style="text-align:left">
-        <div style="font-size:30px;margin-bottom:10px">💛</div>
+        <div style="font-size:30px;margin-bottom:12px">💛</div>
         <div style="font-size:18px;font-weight:800;margin-bottom:8px">Reward loyal customers</div>
-        <div style="font-size:12px;line-height:1.8;color:rgba(240,244,255,.5)">Send birthday surprises, VIP thank-yous, milestone gifts, referral rewards, and personal notes that make regulars feel remembered.</div>
+        <div style="font-size:13px;line-height:1.8;color:rgba(240,244,255,.52)">Send birthday surprises, VIP thank-yous, milestone gifts, referral rewards, and personal notes that make regulars feel remembered.</div>
       </div>
       <div class="card-s" style="text-align:left">
-        <div style="font-size:30px;margin-bottom:10px">🌊</div>
+        <div style="font-size:30px;margin-bottom:12px">🌊</div>
         <div style="font-size:18px;font-weight:800;margin-bottom:8px">Win back churn-risk customers</div>
-        <div style="font-size:12px;line-height:1.8;color:rgba(240,244,255,.5)">Detect inactivity, low engagement, or slipping visit patterns, then send the right check-in, digital reward, or physical gift.</div>
+        <div style="font-size:13px;line-height:1.8;color:rgba(240,244,255,.52)">Detect inactivity, low engagement, or slipping visit patterns, then send the right check-in, digital reward, or physical gift.</div>
       </div>
     </div>
-    <h2 class="sec-title" style="font-size:clamp(22px,3vw,32px)">Three ways to <span class="gold">reach them.</span></h2>
-    
+    <h2 class="sec-title" style="font-size:clamp(24px,3vw,34px)">Three ways to <span class="gold">reach them.</span></h2>
+    <p class="sec-sub" style="margin-bottom:44px">Every send is personal, automatic, and pauses the moment they walk back in.</p>
     <div class="g3">
-      <div class="tc"><div style="font-size:32px;margin-bottom:10px">💬</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#4DA6FF;margin-bottom:6px">Free forever</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Message Only</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#4DA6FF;margin-bottom:8px">Free</div><div style="font-size:12px;color:rgba(240,244,255,.5);line-height:1.7;margin-bottom:14px">A personal check-in or thank you. No gift mentioned. Just human connection.</div><div style="background:rgba(77,166,255,.06);border:1px solid rgba(77,166,255,.15);border-radius:10px;padding:10px 12px;font-size:11px;color:rgba(240,244,255,.5);font-style:italic;margin-bottom:16px">"Hey Sarah, just checking in -- the team at Iron Forge misses you! Hope everything is going well."</div><button class="btn btn-ghost" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
-      <div class="tc pop"><div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#FFD166;color:#080D18;padding:3px 14px;border-radius:100px;font-size:11px;font-weight:700;white-space:nowrap">Most Powerful</div><div style="font-size:32px;margin-bottom:10px">📦</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#FFD166;margin-bottom:6px">Gifts from $2</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Physical Gift</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#FFD166;margin-bottom:8px">From $2</div><div style="font-size:12px;color:rgba(240,244,255,.5);line-height:1.7;margin-bottom:14px">Your brand in their house — forever. A mug on their desk, a bottle in their gym bag: your logo, seen every single morning, by them and everyone they know.</div><div style="background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.15);border-radius:10px;padding:10px 12px;font-size:11px;color:rgba(240,244,255,.5);font-style:italic;margin-bottom:16px">"Hey Sarah, keep an eye on your mailbox -- something is on its way from us. 🎁"</div><button class="btn btn-gold" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
-      <div class="tc"><div style="font-size:32px;margin-bottom:10px">💳</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#22C55E;margin-bottom:6px">Included in your plan</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Digital Gift</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#22C55E;margin-bottom:8px">Included</div><div style="font-size:12px;color:rgba(240,244,255,.5);line-height:1.7;margin-bottom:14px">You generate a promo code in your Square, Shopify, or Clover dashboard. Clicktide sends it to your customer automatically by email.</div><div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:10px;padding:10px 12px;font-size:11px;color:rgba(240,244,255,.5);font-style:italic;margin-bottom:16px">"Hey Sarah, here's something special from Iron Forge -- use code SARAH20 on your next visit!"</div><button class="btn btn-ghost" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
+      <div class="tc"><div style="font-size:32px;margin-bottom:12px">💬</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#4DA6FF;margin-bottom:6px">Free forever</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Message Only</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#4DA6FF;margin-bottom:10px">Free</div><div style="font-size:13px;color:rgba(240,244,255,.52);line-height:1.7;margin-bottom:14px">A personal check-in or thank you. No gift mentioned. Just human connection.</div><div style="background:rgba(77,166,255,.06);border:1px solid rgba(77,166,255,.15);border-radius:12px;padding:12px 14px;font-size:12px;color:rgba(240,244,255,.55);font-style:italic;margin-bottom:18px;text-align:left">"Hey Sarah, just checking in — the team at Iron Forge misses you! Hope everything is going well."</div><button class="btn btn-ghost" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
+      <div class="tc pop"><div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#FFD166;color:#080D18;padding:4px 16px;border-radius:100px;font-size:11px;font-weight:800;white-space:nowrap">Most Powerful</div><div style="font-size:32px;margin-bottom:12px">📦</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#FFD166;margin-bottom:6px">Gifts from $2</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Physical Gift</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#FFD166;margin-bottom:10px">From $2</div><div style="font-size:13px;color:rgba(240,244,255,.52);line-height:1.7;margin-bottom:14px">Your brand in their house — forever. A mug on their desk, a bottle in their gym bag: your logo, seen every single morning.</div><div style="background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.15);border-radius:12px;padding:12px 14px;font-size:12px;color:rgba(240,244,255,.55);font-style:italic;margin-bottom:18px;text-align:left">"Hey Sarah, keep an eye on your mailbox — something is on its way from us. 🎁"</div><button class="btn btn-gold" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
+      <div class="tc"><div style="font-size:32px;margin-bottom:12px">💳</div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#22C55E;margin-bottom:6px">Included in your plan</div><div style="font-size:17px;font-weight:700;margin-bottom:4px">Digital Gift</div><div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#22C55E;margin-bottom:10px">Included</div><div style="font-size:13px;color:rgba(240,244,255,.52);line-height:1.7;margin-bottom:14px">You generate a promo code in your Square, Shopify, or Clover dashboard. Clicktide sends it to your customer automatically.</div><div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:12px;padding:12px 14px;font-size:12px;color:rgba(240,244,255,.55);font-style:italic;margin-bottom:18px;text-align:left">"Hey Sarah, here\'s something special from Iron Forge — use code SARAH20 on your next visit!"</div><button class="btn btn-ghost" style="width:100%" onclick="go('pricing')">Choose a plan →</button></div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:14px">
-      <div class="tc" style="text-align:left"><div style="display:flex;gap:12px;align-items:flex-start"><div style="font-size:26px">🛡️</div><div><div style="font-size:15px;font-weight:700;margin-bottom:4px">One-click Win-Back Playbook</div><div style="font-size:12px;color:rgba(240,244,255,.5);line-height:1.7">One click installs your complete protection: a friendly text at day 14, a postcard at day 30, a small branded gift at day 45 — pre-written, fully editable, and it pauses the moment a customer comes back.</div><button class="btn btn-gold" style="margin-top:12px;padding:9px 18px" onclick="localStorage.setItem('ct_pb_intent','1');go('pricing')">Install it on your business →</button></div></div></div>
-      <div class="tc" style="text-align:left"><div style="display:flex;gap:12px;align-items:flex-start"><div style="font-size:26px">📈</div><div><div style="font-size:15px;font-weight:700;margin-bottom:4px">Monday Drift Report</div><div style="font-size:12px;color:rgba(240,244,255,.5);line-height:1.7">Every Monday morning: exactly which customers started drifting last week — names, days absent, and what they’re worth — so nobody slips away unnoticed.</div></div></div></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-top:18px">
+      <div class="tc" style="text-align:left"><div style="display:flex;gap:14px;align-items:flex-start"><div style="font-size:26px">🛡️</div><div><div style="font-size:15px;font-weight:700;margin-bottom:5px">One-click Win-Back Playbook</div><div style="font-size:13px;color:rgba(240,244,255,.52);line-height:1.7">One click installs your complete protection: a friendly text at day 14, a postcard at day 30, a small branded gift at day 45 — pre-written, fully editable, and it pauses the moment a customer comes back.</div><button class="btn btn-gold" style="margin-top:14px;padding:9px 18px" onclick="localStorage.setItem('ct_pb_intent','1');go('pricing')">Install it on your business →</button></div></div></div>
+      <div class="tc" style="text-align:left"><div style="display:flex;gap:14px;align-items:flex-start"><div style="font-size:26px">📈</div><div><div style="font-size:15px;font-weight:700;margin-bottom:5px">Monday Drift Report</div><div style="font-size:13px;color:rgba(240,244,255,.52);line-height:1.7">Every Monday morning: exactly which customers started drifting last week — names, days absent, and what they\'re worth — so nobody slips away unnoticed.</div></div></div></div>
     </div>
-    <div style="margin-top:42px;text-align:left">
-      <div style="text-align:center;margin-bottom:22px">
-        <div class="badge" style="margin-bottom:12px"><span class="dot"></span>Product samples</div>
-        <h2 class="sec-title" style="font-size:clamp(22px,3vw,32px);margin-bottom:8px">Get your brand in someone’s house — forever</h2>
+    <div style="margin-top:64px;text-align:left">
+      <div style="text-align:center;margin-bottom:30px">
+        <span class="kick">The gifts</span>
+        <h2 class="sec-title" style="font-size:clamp(24px,3vw,34px);margin-bottom:10px">Get your brand in someone\'s house — <span class="gold">forever.</span></h2>
         <p class="sec-sub" style="margin-bottom:0">An ad disappears in seconds. A branded mug gets used every morning for years — by your customer, in front of everyone they know. Preview the gifts below; sending unlocks with your plan.</p>
       </div>
-      <div id="landingGiftSampleGrid" class="g4">${giftSampleCards()}</div>
+      <div id="landingGiftSampleGrid" class="g4">${giftSampleCards(8)}</div>
+      <div style="text-align:center;margin-top:26px"><button class="btn btn-ghost" onclick="go('samples')">See all gift samples →</button></div>
     </div>
   </div></div>
-  <div class="sec sec-sur"><div style="max-width:900px;margin:0 auto;text-align:center">
-    <h2 class="sec-title">Protect both sides of <span class="gold">retention.</span></h2>
-    <div class="g4" style="margin-top:36px">${[["VIPs","Thank your best customers","before they feel ignored"],["Milestones","Celebrate moments","birthdays, visits, referrals"],["At-risk","Catch slipping customers","before churn becomes final"],["Recovered","Reinforce the comeback","after a customer returns"]].map(([v,l,s])=>`<div class="card" style="text-align:center"><div class="stat-n">${v}</div><div style="font-size:13px;font-weight:700;margin-bottom:4px">${l}</div><div style="font-size:11px;color:rgba(240,244,255,.45)">${s}</div></div>`).join("")}</div>
+  <div class="sec sec-sur"><div style="max-width:1080px;margin:0 auto;text-align:center">
+    <span class="kick">Coverage</span>
+    <h2 class="sec-title">Keep your regulars. <span class="gold">Recover the ones slipping away.</span></h2>
+    <div class="g4" style="margin-top:44px">${[["VIPs","Thank your best customers","before they feel ignored"],["Milestones","Celebrate moments","birthdays, visits, referrals"],["At-risk","Catch slipping customers","before churn becomes final"],["Recovered","Reinforce the comeback","after a customer returns"]].map(([v,l,s])=>`<div class="card" style="text-align:center"><div class="stat-n">${v}</div><div style="font-size:13.5px;font-weight:700;margin-bottom:5px">${l}</div><div style="font-size:12px;color:rgba(240,244,255,.48)">${s}</div></div>`).join("")}</div>
   </div></div>
-  <div class="sec"><div style="max-width:840px;margin:0 auto;text-align:center">
-    <h2 class="sec-title" id="pricing">Built for every <span class="gold">business size.</span></h2><div style="display:flex;justify-content:center"><div onclick="go('onboard')" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.3);border-radius:100px;padding:7px 16px;font-size:12px;font-weight:700;color:#FFD166;margin:12px 0 2px;cursor:pointer">🔍 Free drift assessment · 30-day free trial · cancel anytime — no charge for 30 days</div></div>
-    <p class="sec-sub">Subscription + pay-per-gift wallet. No surprise bills.</p>
-    <div class="g3">${[{n:"Local",p:29,c:"#22C55E",pop:false,f:["200 customers/mo","✉️ Messages included","💳 Digital gifts included","Physical gifts from wallet","Square & Clover","Basic analytics"]},{n:"Growth",p:99,c:"#FFD166",pop:true,f:["1,000 customers/mo","✉️ Messages included","💳 Digital gifts included","Physical gifts from wallet","All 12 integrations","Retention analytics","Branded packaging"]},{n:"Scale",p:299,c:"#4DA6FF",pop:false,f:["Unlimited customers","✉️ Messages included","💳 Digital gifts included","Physical gifts from wallet","AI triggers","White-label","Dedicated CSM"]}].map(pl=>`<div class="plan ${pl.pop?"pop":""}" style="position:relative">${pl.pop?`<div class="plan-badge">Most Popular</div>`:""}<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.45);margin-bottom:6px">${pl.n}</div><div class="plan-price" style="color:${pl.c}"><sup style="font-size:18px;vertical-align:super">$</sup>${pl.p}</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:14px">/month + gift wallet</div><div style="height:1px;background:rgba(255,255,255,.07);margin-bottom:14px"></div><ul class="feat">${pl.f.map(f=>`<li>${f}</li>`).join("")}</ul><button class="btn ${pl.pop?"btn-gold":"btn-ghost"}" style="width:100%" onclick="go('onboard')">Get started →</button></div>`).join("")}</div>
+  <div class="sec"><div style="max-width:1020px;margin:0 auto;text-align:center">
+    <span class="kick">Pricing</span>
+    <h2 class="sec-title" id="pricing">Built for every <span class="gold">business size.</span></h2><div style="display:flex;justify-content:center"><div onclick="go('onboard')" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.3);border-radius:100px;padding:8px 18px;font-size:12.5px;font-weight:700;color:#FFD166;margin:14px 0 4px;cursor:pointer">🔍 Free drift assessment · 30-day free trial · cancel anytime</div></div>
+    <p class="sec-sub" style="margin-bottom:44px">Subscription + pay-per-gift wallet. No surprise bills.</p>
+    <div class="g3">${[{n:"Local",p:29,c:"#22C55E",pop:false,f:["200 customers/mo","Messages included","Digital gifts included","Physical gifts from wallet","Square & Clover","Basic analytics"]},{n:"Growth",p:99,c:"#FFD166",pop:true,f:["1,000 customers/mo","Messages included","Digital gifts included","Physical gifts from wallet","All 12 integrations","Retention analytics","Branded packaging"]},{n:"Scale",p:299,c:"#4DA6FF",pop:false,f:["Unlimited customers","Messages included","Digital gifts included","Physical gifts from wallet","AI triggers","White-label — your branding only","Dedicated success manager"]}].map(pl=>`<div class="plan ${pl.pop?"pop":""}" style="position:relative">${pl.pop?`<div class="plan-badge">Most Popular</div>`:""}<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(240,244,255,.45);margin-bottom:10px">${pl.n}</div><div class="plan-price" style="color:#F0F4FF">$${pl.p}<span style="font-size:15px;letter-spacing:0;font-weight:600;color:rgba(240,244,255,.45)">/mo</span></div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:18px">+ pay-per-gift wallet</div><div style="height:1px;background:rgba(255,255,255,.07);margin-bottom:18px"></div><ul class="feat">${pl.f.map(f=>`<li>${f}</li>`).join("")}</ul><button class="btn ${pl.pop?"btn-gold":"btn-ghost"}" style="width:100%;padding:12px" onclick="go('onboard')">Get started →</button></div>`).join("")}</div>
   </div></div>
-  <div style="padding:60px 32px;text-align:center;border-top:1px solid rgba(255,255,255,.07)">
-    <h2 class="sec-title" style="margin-bottom:14px">Ready to start the <span class="gold">tide?</span></h2>
-    <p style="color:rgba(240,244,255,.45);font-size:15px;margin-bottom:28px">Join businesses rewarding loyal customers and winning back the ones at risk of churn.</p>
-    <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap">
-      <button class="btn btn-gold" style="padding:14px 36px;font-size:15px" onclick="go('onboard')">Start free trial →</button>
-      <button class="btn btn-outline" style="padding:14px 26px;font-size:15px" onclick="go('roi')">Calculate my ROI</button>
+  <div class="sec" style="padding-top:32px">
+    <div class="cta-band">
+      <span class="kick">Get started</span>
+      <h2 class="sec-title" style="margin-bottom:14px">Ready to start the <span class="grad-gold">tide?</span></h2>
+      <p style="color:rgba(240,244,255,.55);font-size:16px;margin-bottom:32px;line-height:1.7;max-width:520px;margin-left:auto;margin-right:auto">See your drift number free — most owners find thousands of dollars in customers they didn\'t know they\'d lost.</p>
+      <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
+        <button class="btn btn-gold" style="padding:15px 38px;font-size:15px" onclick="go('onboard')">Start free trial →</button>
+        <button class="btn btn-ghost" style="padding:15px 28px;font-size:15px" onclick="go('roi')">Calculate my ROI</button>
+      </div>
     </div>
   </div>${siteFooter()}${cookieBanner()}`;
 }
@@ -2757,7 +2802,7 @@ async function svCust(){const tok=S?.token||SK;const n=document.getElementById("
 function bind(){
   if(scr==="dash")setTimeout(dLoad,50);
   if(scr==="samples")setTimeout(async()=>{await loadGiftCatalog();const el=document.getElementById("giftSampleGrid");if(el)el.innerHTML=giftSampleCards();},50);
-  if(scr==="land")setTimeout(async()=>{await loadGiftCatalog();const el=document.getElementById("landingGiftSampleGrid");if(el)el.innerHTML=giftSampleCards();},50);
+  if(scr==="land")setTimeout(async()=>{await loadGiftCatalog();const el=document.getElementById("landingGiftSampleGrid");if(el)el.innerHTML=giftSampleCards(8);},50);
   setInterval(()=>{
     ntIdx=(ntIdx+1)%NT.length;const el=document.getElementById("ntf");
     if(el){el.style.animation="none";el.offsetHeight;el.style.animation="fadeUp .4s ease";el.innerHTML=`<span style="font-size:22px">${NT[ntIdx].e}</span><div><div style="font-size:13px;font-weight:700">${NT[ntIdx].t}</div><div style="font-size:11px;color:rgba(240,244,255,.45);margin-top:1px">${NT[ntIdx].s}</div></div>`;}
