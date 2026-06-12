@@ -1497,8 +1497,8 @@ function giftSampleCards(limit){
   let popShown=0;
   return list.map(function(g){
     return `<div class="card-s" style="text-align:left;padding:14px;display:flex;flex-direction:column;min-height:210px">
-      <div style="height:104px;border-radius:12px;background:linear-gradient(135deg,#eef2f7,#e5ebf2);border:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;margin-bottom:12px;overflow:hidden;padding:10px;position:relative">
-        ${g.image_url?`<div style="position:absolute;inset:-16px;background-image:url('${giftEsc(giftImgSrc(g.image_url))}');background-size:cover;background-position:center;filter:blur(14px);opacity:.34;transform:scale(1.04)"></div><img src="${giftEsc(giftImgSrc(g.image_url))}" alt="${giftEsc(g.n)}" style="width:100%;height:100%;object-fit:contain;display:block;position:relative;z-index:1"/>`:`<span class="ic-chip" style="width:52px;height:52px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 21 4 21 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="21" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></span>`}
+      <div style="height:172px;border-radius:12px;background:linear-gradient(180deg,#FFFFFF 0%,#F1F4F8 100%);border:1px solid rgb(235,237,241);display:flex;align-items:center;justify-content:center;margin-bottom:12px;overflow:hidden;padding:14px;position:relative">
+        ${g.image_url?`<div style="position:absolute;left:18%;right:18%;bottom:8px;height:14px;border-radius:50%;background:radial-gradient(ellipse,rgba(20,40,70,.16),transparent 70%)"></div><img src="${giftEsc(giftImgSrc(g.image_url))}" alt="${giftEsc(g.n)}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain;display:block;position:relative;z-index:1"/>`:`<span class="ic-chip" style="width:52px;height:52px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 21 4 21 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="21" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></span>`}
       </div>
       <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
         <div style="font-size:14px;font-weight:800;color:var(--gcn,#F0F4FF)">${giftEsc(g.n)}</div>
@@ -1510,7 +1510,28 @@ function giftSampleCards(limit){
         <span style="font-size:13px;font-weight:900;color:var(--gcp,#FFD166)">Est. $${Number(g.p||0).toFixed(2)}</span>
       </div>
     </div>`;
-  }).join("");
+  }).join("")+giftShowcaseExtras();
+}
+
+function giftShowcaseExtras(){
+  function card(img,name,sub,desc,price,badge){
+    return `<div class="card-s" style="text-align:left;padding:14px;display:flex;flex-direction:column;min-height:210px">
+      <div style="height:172px;border-radius:12px;background:linear-gradient(180deg,#FFFFFF 0%,#F1F4F8 100%);border:1px solid rgb(235,237,241);display:flex;align-items:center;justify-content:center;margin-bottom:12px;overflow:hidden;padding:8px;position:relative">
+        <img src="${img}" alt="${name}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:contain;display:block"/>
+      </div>
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
+        <div style="font-size:14px;font-weight:800;color:var(--gcn,#F0F4FF)">${name}</div>
+        <span style="font-size:10px;font-weight:800;color:#080D18;background:#FFD166;border-radius:999px;padding:2px 7px">${badge}</span>
+      </div>
+      <div style="font-size:12px;color:var(--gcs,rgba(240,244,255,.52));line-height:1.55;flex:1">${desc}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:11px;border-top:1px solid rgba(255,255,255,.07)">
+        <span style="font-size:11px;color:var(--gcc,rgba(240,244,255,.42));text-transform:uppercase;letter-spacing:.8px">${sub}</span>
+        <span style="font-size:13px;font-weight:900;color:var(--gcp,#FFD166)">${price}</span>
+      </div>
+    </div>`;
+  }
+  return card("/postcard-product.png","Mailed Postcard","mail","A real printed postcard — your design, their name, addressed and mailed for you. Nobody else sends mail anymore.","$1.50 / send","Included channel")
+   +card("/digital-product.png","Digital Gift Code","digital","A promo code from your own register, delivered automatically in a branded email at the perfect moment.","Included","Every plan");
 }
 
 function giftSamplePage(){
@@ -1656,7 +1677,7 @@ function land(){
       <div class="gquote"><p>"A discount says <em>come spend money</em>. A gift says <em>you mattered</em>."</p>
       <small>Your lost customers didn\'t leave — they forgot. The gift isn\'t a reward for being gone; it\'s a reminder that they were part of something. And nobody throws away a free mug — your logo lives on their counter, working, every single morning.</small></div>
       </div>
-      <div id="landingGiftSampleGrid" class="g4">${giftSampleCards(8)}</div>
+      <div id="landingGiftSampleGrid" class="g4">${giftSampleCards()}</div>
       <div style="text-align:center;margin-top:26px"><button class="btn btn-ghost" onclick="go('samples')">See all gift samples →</button></div>
     </div>
   </div></div>
@@ -3356,7 +3377,7 @@ function bind(){
     rvEls.forEach(function(el){rvIO.observe(el)});
   }
   if(scr==="land"&&!window._ctPx){window._ctPx=1;var pxT=false;window.addEventListener("scroll",function(){if(pxT)return;pxT=true;requestAnimationFrame(function(){pxT=false;var y=window.scrollY;document.querySelectorAll(".px").forEach(function(el){el.style.marginTop=(-y*parseFloat(el.getAttribute("data-px")||"0.05"))+"px";});});},{passive:true});}
-  if(scr==="land")setTimeout(async()=>{await loadGiftCatalog();const el=document.getElementById("landingGiftSampleGrid");if(el)el.innerHTML=giftSampleCards(8);},50);
+  if(scr==="land")setTimeout(async()=>{await loadGiftCatalog();const el=document.getElementById("landingGiftSampleGrid");if(el)el.innerHTML=giftSampleCards();},50);
   setInterval(()=>{
     ntIdx=(ntIdx+1)%NT.length;const el=document.getElementById("ntf");
     if(el){el.style.animation="none";el.offsetHeight;el.style.animation="fadeUp .4s ease";el.innerHTML=`<span style="font-size:22px">${NT[ntIdx].e}</span><div><div style="font-size:13px;font-weight:700">${NT[ntIdx].t}</div><div style="font-size:11px;color:var(--nts,rgba(240,244,255,.45));margin-top:1px">${NT[ntIdx].s}</div></div>`;}
