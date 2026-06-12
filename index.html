@@ -1491,13 +1491,13 @@ function siteFooter(){
   </div></footer>`;
 }
 
-var GIFT_SCENES={"6a29673e26549101eb068a6e":"/gift-mug.jpg","6a29aa6289df67850601573c":"/gift-tumbler.jpg","6a29674033921016810a3b09":"/gift-bottle.jpg","6a29aa5dbbf0294ff40c5261":"/gift-candle.jpg","6a29aa6826549101eb06be71":"/gift-magnet.jpg","6a29674567f98a3d3e02f367":"/gift-notebook.jpg","6a29aa53b68139813c069bcf":"/gift-postcards.jpg","6a29aa4d26549101eb06be65":"/gift-stickers.jpg","6a2967428133a057300bf742":"/gift-tote.jpg","6a29aa59b68139813c069bd2":"/gift-socks.jpg"};
+var GIFT_SCENES={"6a29673e26549101eb068a6e":"/brand-cafeluna.jpg","6a29aa6289df67850601573c":"/brand-daybreak.jpg","6a29674033921016810a3b09":"/brand-irontide.jpg","6a29aa5dbbf0294ff40c5261":"/brand-goldenhour.jpg","6a29aa6826549101eb06be71":"/brand-shoreauto.jpg","6a29674567f98a3d3e02f367":"/brand-mapleandmain.jpg","6a29aa53b68139813c069bcf":"/brand-harvesttable.jpg","6a29aa4d26549101eb06be65":"/brand-pawfect.jpg","6a2967428133a057300bf742":"/brand-bloomco.jpg","6a29aa59b68139813c069bd2":"/brand-summitpt.jpg"};
 function giftSceneFor(g){
   if(GIFT_SCENES[g.id])return GIFT_SCENES[g.id];
   var m=String(g.n||"").toLowerCase().match(/mug|tumbler|bottle|candle|magnet|notebook|postcard|sticker|tote|sock/);
   if(!m)return "";
-  var k={sock:"socks",postcard:"postcards",sticker:"stickers"}[m[0]]||m[0];
-  return "/gift-"+k+".jpg";
+  var k={mug:"cafeluna",tumbler:"daybreak",bottle:"irontide",candle:"goldenhour",magnet:"shoreauto",notebook:"mapleandmain",postcard:"harvesttable",sticker:"pawfect",tote:"bloomco",sock:"summitpt"}[m[0]];
+  return "/brand-"+k+".jpg";
 }
 function giftSampleCards(limit){
   let list=giftOptions();
@@ -1546,36 +1546,6 @@ function giftShowcaseExtras(){
    +card("/digital-channel.jpg","Digital Gift Code","digital","A promo code from your own register, delivered automatically in a branded email at the perfect moment.","Included","Every plan");
 }
 
-function brandSampleCards(){
-  function card(img,brand,type,product){
-    return `<div class="card-s" style="text-align:left;padding:14px;display:flex;flex-direction:column">
-      <div style="margin:-14px -14px 12px;height:208px;border-radius:17px 17px 0 0;overflow:hidden">
-        <img src="${img}" alt="${brand} branded ${product}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block"/>
-      </div>
-      <div style="font-size:14px;font-weight:800;color:var(--gcn,#F0F4FF);margin-bottom:4px">${brand}</div>
-      <div style="font-size:12px;color:var(--gcd,rgba(240,244,255,.52));line-height:1.5;flex:1">${type}</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:11px;border-top:1px solid var(--gcb,rgba(255,255,255,.07))">
-        <span style="font-size:11px;color:var(--gcc,rgba(240,244,255,.42));text-transform:uppercase;letter-spacing:.8px">${product}</span>
-        <span style="font-size:12px;font-weight:900;color:var(--gcp,#FFD166)">Your logo here</span>
-      </div>
-    </div>`;
-  }
-  return card("/brand-cafeluna.jpg","Café Luna","Local coffee shop","11oz Mug")
-   +card("/brand-irontide.jpg","Iron Tide Fitness","Neighborhood gym","Water Bottle")
-   +card("/brand-bloomco.jpg","Bloom & Co.","Hair studio","Tote Bag")
-   +card("/brand-goldenhour.jpg","Golden Hour","Day spa","Scented Candle")
-   +card("/brand-shoreauto.jpg","Shore Auto","Auto body shop","Magnet")
-   +card("/brand-pawfect.jpg","Pawfect","Dog grooming","Stickers");
-}
-
-function brandSampleBlock(){
-  return `<div style="text-align:center;margin-top:56px;margin-bottom:28px">
-      <span class="kick">With your brand</span>
-      <h3 class="sec-title" style="font-size:clamp(24px,3.4vw,38px)">Now imagine it with <span class="gold">your logo</span></h3>
-      <p class="sec-sub">The gifts above wear our logo. Here’s the same merch wearing six local businesses we made up — upload your logo once and every gift, postcard, and email prints with it automatically.</p>
-    </div>
-    <div class="g3">${brandSampleCards()}</div>`;
-}
 
 function giftSamplePage(){
   return `${navH()}<div class="sec" style="padding-top:76px">
@@ -1583,11 +1553,10 @@ function giftSamplePage(){
       <div style="text-align:center;margin-bottom:34px">
         <div class="badge" style="margin-bottom:14px"><span class="dot"></span>Preview before you pay</div>
         <h1 style="font-size:clamp(32px,5vw,56px);font-weight:800;letter-spacing:-2px;margin-bottom:14px">Gift <span class="gold">samples</span></h1>
-        <p class="sec-sub" style="margin-bottom:22px">Businesses can browse sample items before subscribing. Sending campaigns, charging the gift wallet, and fulfillment stay locked until billing is active.</p>
+        <p class="sec-sub" style="margin-bottom:22px">Browse sample items before subscribing — shown wearing sample businesses we made up; your own logo prints on everything automatically. Sending campaigns, charging the gift wallet, and fulfillment stay locked until billing is active.</p>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="btn btn-gold" onclick="go('pricing')">Choose plan</button><button class="btn btn-outline" onclick="go('land')">Back to site</button></div>
       </div>
       <div id="giftSampleGrid" class="g3">${giftSampleCards()}</div>
-      ${brandSampleBlock()}
     </div>
   </div>${siteFooter()}${cookieBanner()}`;
 }
@@ -1717,12 +1686,11 @@ function land(){
       <div style="text-align:center;margin-bottom:30px">
         <span class="kick">The gifts</span>
         <h2 class="sec-title" style="font-size:clamp(24px,3vw,34px);margin-bottom:10px">Get your brand in someone\'s house — <span class="gold">forever.</span></h2>
-        <p class="sec-sub" style="margin-bottom:0">An ad disappears in seconds. A branded mug gets used every morning for years — by your customer, in front of everyone they know. Preview the gifts below; sending unlocks with your plan.</p>
+        <p class="sec-sub" style="margin-bottom:0">An ad disappears in seconds. A branded mug gets used every morning for years — by your customer, in front of everyone they know. The samples below wear local businesses we made up — upload your logo once and every gift, postcard, and email prints with it automatically.</p>
       <div class="gquote"><p>"A discount says <em>come spend money</em>. A gift says <em>you mattered</em>."</p>
       <small>Your lost customers didn\'t leave — they forgot. The gift isn\'t a reward for being gone; it\'s a reminder that they were part of something. And nobody throws away a free mug — your logo lives on their counter, working, every single morning.</small></div>
       </div>
       <div id="landingGiftSampleGrid" class="g3">${giftSampleCards()}</div>
-      ${brandSampleBlock()}
       <div style="text-align:center;margin-top:26px"><button class="btn btn-ghost" onclick="go('samples')">See all gift samples →</button></div>
     </div>
   </div></div>
@@ -1897,7 +1865,7 @@ function onboard(){
     // Use the fulfillment catalog as the real gift options
     var allG=PRINTIFY_CATALOG;
     var filtG=sq.length>0?allG.filter(function(g){return g.n.toLowerCase().indexOf(sq.toLowerCase())>-1||g.s.toLowerCase().indexOf(sq.toLowerCase())>-1||g.cat.indexOf(sq.toLowerCase())>-1;}):allG;
-    var searchBar="<div style='position:relative;margin-bottom:14px'><input class='fi' id='gsearch' value='"+sq+"' placeholder='Search gifts (e.g. Shirt, Mug, Hoodie...)' oninput='obGiftSearch=this.value;updateGiftGrid()' onkeydown='giftEnter(event)' style='padding-right:90px'/><button onclick='updateGiftGrid()' style='position:absolute;right:6px;top:50%;transform:translateY(-50%);background:#FFD166;color:#080D18;border:none;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif'>Search</button></div>";
+    var searchBar="<div style='position:relative;margin-bottom:14px'><input class='fi' id='gsearch' value='"+sq+"' placeholder='Search gifts (e.g. Mug, Candle, Tote...)' oninput='obGiftSearch=this.value;updateGiftGrid()' onkeydown='giftEnter(event)' style='padding-right:90px'/><button onclick='updateGiftGrid()' style='position:absolute;right:6px;top:50%;transform:translateY(-50%);background:#FFD166;color:#080D18;border:none;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif'>Search</button></div>";
     var customRow="";
     if(sq.length>0&&filtG.length===0){
       customRow="<div style='background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);border-radius:12px;padding:16px;margin-bottom:14px;text-align:center'><div style='font-size:13px;font-weight:700;margin-bottom:6px'>No results for \""+sq+"\"</div><div style='font-size:12px;color:rgba(240,244,255,.45);margin-bottom:12px'>Add it as a custom gift -- we will source and ship it.</div><button class='btn btn-gold' data-q='"+sq+"' onclick='obCustomGift=this.dataset.q;obG=-1;obGiftSearch=String();R()' style='padding:8px 20px;font-size:12px'>+ Add \""+sq+"\" as my gift</button></div>";
@@ -2215,19 +2183,19 @@ function qualityHtml(q){
 
 // -- Fulfillment catalog ------------------------------------------------------
 // Curated list of blank products merchants can brand
+// Real shop products only — every item is one-size on purpose (no shirts/hoodies:
+// sizes are a guess, and a wrong-size gift backfires).
 const PRINTIFY_CATALOG=[
-  {id:"5d15ca528cd8f30117000056",variant_id:17887,e:"👕",n:"Unisex T-Shirt",s:"Bella+Canvas 3001",p:18,pop:true,cat:"apparel",image_url:"https://images.printify.com/66d81b70295ea4f038065152"},
-  {id:"5d15ca528cd8f30117000056",variant_id:17888,e:"👕",n:"Premium T-Shirt",s:"Next Level 3600",p:22,pop:false,cat:"apparel",image_url:"https://images.printify.com/66c32f6ebb0d2981ff0aa7f3"},
-  {id:"5d15ca528cd8f3011700006b",variant_id:18105,e:"🧢",n:"Snapback Hat",s:"Classic structured",p:24,pop:true,cat:"accessories",image_url:"https://images.printify.com/67ee6f80b6ff6deb0b0cb322"},
-  {id:"5d15ca528cd8f30117000067",variant_id:18098,e:"🧢",n:"Dad Hat",s:"Low profile cotton",p:20,pop:false,cat:"accessories",image_url:"https://images.printify.com/66dae085fa4ab6851b0f1172"},
-  {id:"64f1f3719b3bc6bb9a0f7a34",variant_id:72588,e:"☕",n:"11oz Mug",s:"Ceramic white glossy",p:14,pop:true,cat:"drinkware",image_url:"https://images.printify.com/66d05caa088c440c9a00bcf4"},
-  {id:"5d15ca528cd8f30117000053",variant_id:17876,e:"🥤",n:"20oz Tumbler",s:"Stainless steel",p:28,pop:true,cat:"drinkware",image_url:"https://images.printify.com/67c57f33abd6baa023010d93"},
-  {id:"5d15ca528cd8f30117000058",variant_id:17896,e:"👜",n:"Tote Bag",s:"Heavy cotton canvas",p:16,pop:true,cat:"bags",image_url:"https://images.printify.com/66cdad7e4535d849640e155b"},
-  {id:"5d15ca528cd8f30117000057",variant_id:17892,e:"🎒",n:"Drawstring Bag",s:"Lightweight polyester",p:18,pop:false,cat:"bags",image_url:"https://images.printify.com/66d8359f9935bc2b42015826"},
-  {id:"5d15ca528cd8f30117000065",variant_id:18090,e:"📓",n:"Spiral Notebook",s:"A5 matte cover",p:17,pop:true,cat:"stationery",image_url:"https://images.printify.com/66d5c96509831031450f1aa4"},
-  {id:"5d15ca528cd8f30117000064",variant_id:18086,e:"🖊️",n:"Pen+Notebook Set",s:"Premium combo",p:24,pop:false,cat:"stationery",image_url:"https://images.printify.com/6a16eb3cc42fcac5500c17a0"},
-  {id:"5d15ca528cd8f3011700005a",variant_id:17904,e:"🧥",n:"Pullover Hoodie",s:"Gildan 18500",p:38,pop:true,cat:"apparel",image_url:"https://images.printify.com/66dedd239da894140e0af9e2"},
-  {id:"5d15ca528cd8f3011700005e",variant_id:17920,e:"🩱",n:"Tank Top",s:"Bella+Canvas 3480",p:20,pop:false,cat:"apparel",image_url:"https://images.printify.com/66c347607850aaa91c011672"},
+  {id:"6a29aa4d26549101eb06be65",variant_id:45750,e:"🏷️",n:"Branded Stickers",s:"3″ × 3″ / White",p:1.58,pop:true,cat:"general",image_url:"https://images-api.printify.com/mockup/6a29aa4d26549101eb06be65/45750/16655/branded-stickers.jpg?camera_label=front"},
+  {id:"6a29673e26549101eb068a6e",variant_id:33719,e:"☕",n:"Branded Mug 11oz",s:"Ceramic white glossy",p:6.44,pop:true,cat:"drinkware",image_url:"https://images-api.printify.com/mockup/6a29673e26549101eb068a6e/33719/6400/branded-mug-11oz.jpg?camera_label=front"},
+  {id:"6a29674567f98a3d3e02f367",variant_id:34240,e:"📓",n:"Branded Spiral Notebook",s:"One size",p:8.29,pop:false,cat:"stationery",image_url:"https://images-api.printify.com/mockup/6a29674567f98a3d3e02f367/34240/3024/branded-spiral-notebook.jpg?camera_label=front"},
+  {id:"6a29aa53b68139813c069bcf",variant_id:68325,e:"💌",n:"Branded Postcards",s:"One size",p:8.94,pop:false,cat:"general",image_url:"https://images-api.printify.com/mockup/6a29aa53b68139813c069bcf/68325/7986/branded-postcards.jpg?camera_label=front"},
+  {id:"6a29aa59b68139813c069bd2",variant_id:44904,e:"🧦",n:"Branded Crew Socks",s:"3/4 Crew — one size",p:11.27,pop:false,cat:"general",image_url:"https://images-api.printify.com/mockup/6a29aa59b68139813c069bd2/44904/1241/branded-crew-socks.jpg?camera_label=left-front-and-back"},
+  {id:"6a29aa5dbbf0294ff40c5261",variant_id:74407,e:"🕯️",n:"Branded Scented Candle",s:"Comfort Spice / One size",p:11.67,pop:false,cat:"general",image_url:"https://images-api.printify.com/mockup/6a29aa5dbbf0294ff40c5261/74407/19310/branded-scented-candle.jpg?camera_label=front"},
+  {id:"6a29aa6826549101eb06be71",variant_id:74001,e:"🧲",n:"Branded Magnet",s:"White / 2″ × 2″ / Square",p:12,pop:false,cat:"general",image_url:"https://images-api.printify.com/mockup/6a29aa6826549101eb06be71/74001/18678/branded-magnet.jpg?camera_label=front"},
+  {id:"6a2967428133a057300bf742",variant_id:80814,e:"👜",n:"Branded Tote Bag",s:"13″ × 13″ / Beige",p:18.41,pop:true,cat:"bags",image_url:"https://images-api.printify.com/mockup/6a2967428133a057300bf742/80814/109687/branded-tote-bag.jpg?camera_label=front"},
+  {id:"6a29674033921016810a3b09",variant_id:76801,e:"🚰",n:"Branded Water Bottle",s:"White / 12oz",p:24.07,pop:false,cat:"drinkware",image_url:"https://images-api.printify.com/mockup/6a29674033921016810a3b09/76801/24233/branded-water-bottle.jpg?camera_label=front"},
+  {id:"6a29aa6289df67850601573c",variant_id:44519,e:"🥤",n:"Branded Tumbler 20oz",s:"Stainless steel",p:24.5,pop:false,cat:"drinkware",image_url:"https://images-api.printify.com/mockup/6a29aa6289df67850601573c/44519/849/branded-tumbler-20oz.jpg?camera_label=front"},
 ];
 
 let giftCatalog=[];
