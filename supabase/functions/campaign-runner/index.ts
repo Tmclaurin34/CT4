@@ -1,4 +1,4 @@
-// Clicktide campaign engine. v17 — high-ticket spend triggers (Spent $N+)
+// Clicktide campaign engine. v18 — single-order triggers (one $N+ cart) + lifetime spend triggers
 // Hourly via pg_cron (or staff admin). Customer-facing emails ship in a branded
 // shell and cite the customer's real last visit. Physical gifts respect the
 // business's gift_auto_send toggle: ON = order placed automatically through
@@ -62,6 +62,7 @@ type Customer = {
   loyalty_score?: number;
   last_visit_at?: string;
   last_order_at?: string;
+  last_order_amount?: number;
   sms_consent?: boolean;
   sms_unsubscribed_at?: string;
   address?: string;
@@ -189,12 +190,20 @@ function matchesTrigger(trigger: string, c: Customer, churnDays: number) {
   if (/first (purchase|visit|order|class|payment)|new customer|welcome/.test(t)) {
     return { match: visits >= 1, reason: "first" };
   }
-  if (num && /(visit|order|class|milestone)/.test(t)) {
+  if (num && /(visit|order|class|milestone)/.test(t) && !/\$/.test(t)) {
     return { match: visits >= num, reason: "milestone" };
   }
   // High-ticket / big-spender rewards: "Spent $500+", "High-Ticket $1,000", "premium package buyer"
   const dollarMatch = t.match(/\$\s*([\d,]+)/);
   const dollars = dollarMatch ? parseInt(dollarMatch[1].replace(/,/g, ""), 10) : null;
+  // Single big order: "Single order $500+", "one $500 cart", "big purchase over $500" —
+  // fires on the most recent order amount, within a 14-day freshness window so old
+  // orders never retro-trigger. Cooldown handles repeat big orders gracefully.
+  if (/(one|single|per)[- ]?(order|purchase|cart)|order (of|over)|cart (of|over)|big (order|purchase)/.test(t)) {
+    const threshold = dollars || 500;
+    const recent = since !== null && since <= 14;
+    return { match: recent && (Number(c.last_order_amount) || 0) >= threshold, reason: "bigorder" };
+  }
   if (/spent|high[- ]?ticket|big[- ]?spender|top customer|premium (buyer|package)/.test(t)) {
     const threshold = dollars || 500;
     return { match: (c.total_spent || 0) >= threshold, reason: "highticket" };

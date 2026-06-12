@@ -973,7 +973,7 @@ const MSG_V_ALIAS={boxing:"gym",cycling:"gym",swimming:"gym",wellness:"yoga",nai
 function tplsFor(t){
   var list=(MSG[t]||MSG.message_only).slice();
   var tr=(cmTr||"").toLowerCase();
-  if(/spent|high-?ticket|big spender|premium/.test(tr))list=MSG_X.highticket.concat(list);
+  if(/spent|high-?ticket|big spender|premium|single order|big order|cart/.test(tr))list=MSG_X.highticket.concat(list);
   else if(/birthday/.test(tr))list=MSG_X.birthday.concat(list);
   else if(/milestone|5th|10th|100th|class|anniversary|loyalty/.test(tr))list=MSG_X.milestone.concat(list);
   else if(/holiday|seasonal/.test(tr))list=MSG_X.holiday.concat(list);
@@ -3132,7 +3132,7 @@ function cModal(){
   </div>
   <div class="fg"><label class="fl">Campaign Name</label><input class="fi" id="cN" value="${cmN}" placeholder="${cmT==="message_only"?"Birthday Check-in":"Welcome Kit"}" oninput="cmN=this.value"/></div>
   <div class="fg"><label class="fl">Platform</label><select class="fi-sel" id="cPf" onchange="cmPf=this.value">${["Square","Shopify","Stripe","Toast","Clover","Mindbody"].map(p=>`<option value="${p}" ${cmPf===p?"selected":""}>${p}</option>`).join("")}</select></div>
-  <div class="fg"><label class="fl">Trigger</label><select class="fi-sel" id="cTr" onchange="cmTr=this.value"><option value="">Select trigger...</option>${["New Signup","First Purchase","5th Visit","30-day Inactive","Birthday","Churn Risk","Loyalty Milestone","Spent $500+ — High-Ticket Thank-You","Spent $1,000+ — VIP Gift"].map(t=>`<option value="${t}" ${cmTr===t?"selected":""}>${t}</option>`).join("")}</select></div>
+  <div class="fg"><label class="fl">Trigger</label><select class="fi-sel" id="cTr" onchange="cmTr=this.value"><option value="">Select trigger...</option>${["New Signup","First Purchase","5th Visit","30-day Inactive","Birthday","Churn Risk","Loyalty Milestone","Single Order $500+ — Instant Thank-You","Spent $500+ — High-Ticket Thank-You","Spent $1,000+ — VIP Gift"].map(t=>`<option value="${t}" ${cmTr===t?"selected":""}>${t}</option>`).join("")}</select></div>
   <div class="fg"><label class="fl">Delivery Channel</label><select class="fi-sel" id="cCh" onchange="cmCh=this.value;document.getElementById('smsHelp').style.display=this.value.includes('sms')?'block':'none'"><option value="email" ${cmCh==="email"?"selected":""}>Email</option><option value="sms" ${cmCh==="sms"?"selected":""}>SMS</option><option value="email_sms" ${cmCh==="email_sms"?"selected":""}>Email + SMS</option></select><div id="smsHelp" style="display:${cmCh.includes('sms')?'block':'none'};font-size:11px;color:rgba(240,244,255,.45);margin-top:6px">SMS sends only to customers with a saved phone number and SMS consent.</div></div>
   ${cmT==="survey"?`
   <div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:12px;padding:14px;margin-bottom:14px">

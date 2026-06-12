@@ -237,7 +237,7 @@ async function applyOrder(userId: string, o: Order): Promise<{ res: "updated" | 
       body: JSON.stringify({
         visits: (Number(ex.visits) || 0) + 1,
         total_spent: Math.round(((Number(ex.total_spent) || 0) + o.amount) * 100) / 100,
-        ...(newer ? { last_visit_at: o.at, last_order_at: o.at } : {}),
+        ...(newer ? { last_visit_at: o.at, last_order_at: o.at, last_order_amount: o.amount } : {}),
         ...(addAddr ? addAddr : {}),
       }),
     });
@@ -247,7 +247,7 @@ async function applyOrder(userId: string, o: Order): Promise<{ res: "updated" | 
     method: "POST", headers: { Prefer: "return=minimal" },
     body: JSON.stringify({
       user_id: userId, name: o.name || email || "Customer", email: email || null, phone: phone || null,
-      visits: 1, total_spent: o.amount, status: "active", last_visit_at: o.at, last_order_at: o.at, sms_consent: false,
+      visits: 1, total_spent: o.amount, last_order_amount: o.amount, status: "active", last_visit_at: o.at, last_order_at: o.at, sms_consent: false,
       ...(o.addr ? o.addr : {}),
     }),
   });

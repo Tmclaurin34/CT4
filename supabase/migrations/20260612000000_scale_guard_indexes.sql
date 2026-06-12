@@ -8,3 +8,6 @@ create index if not exists idx_wallet_user_created on public.wallet using btree 
 create index if not exists idx_sms_user_status_sent on public.sms_messages using btree (user_id, status, sent_at);
 create index if not exists idx_shipments_user on public.shipments using btree (user_id);
 create index if not exists idx_alerts_user_resolved on public.alerts using btree (user_id, resolved);
+
+-- Single-order trigger support (applied 2026-06-12 via MCP customers_last_order_amount)
+alter table public.customers add column if not exists last_order_amount numeric;
