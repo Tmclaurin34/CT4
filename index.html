@@ -280,7 +280,7 @@ select option{background:#101828}
 /* every page translates: light theme for all views */
 .lt [style*="background:#080D18"]{background:transparent!important}
 .lt .btn-outline{color:#3F434B;border-color:rgb(209,213,219);background:#FFFFFF}
-.lt .link-btn{color:#9A6E0E}
+.lt .link-btn{color:#2E7CD6}
 .lt .logo-text .white,.lt .white{color:#0F1115}
 .lt [style*="color:rgba(240,244,255"]{color:#5A5E66!important}
 .lt [style*="color:#F0F4FF"]{color:#0F1115!important}
@@ -715,7 +715,7 @@ const CATS=[
     {id:"medspa",l:"Med Spa",i:"✨",pl:"Square/Vagaro",lf:.38,ch:.18,av:150,dy:60,gf:10,cu:50},
     {id:"wellness",l:"Wellness Center",i:"🌿",pl:"Mindbody/Acuity",lf:.40,ch:.16,av:90,dy:45,gf:8,cu:60},
   ]},
-  {id:"food",l:"Food & Drink",i:"🍽️",c:"#FFD166",biz:[
+  {id:"food",l:"Food & Drink",i:"🍽️",c:"#D9941A",biz:[
     {id:"cafe",l:"Café & Coffee",i:"☕",pl:"Square/Toast",lf:.29,ch:.25,av:12,dy:21,gf:5,cu:400},
     {id:"resto",l:"Restaurant",i:"🍽️",pl:"Toast/Square",lf:.27,ch:.30,av:28,dy:45,gf:5,cu:500},
     {id:"bakery",l:"Bakery",i:"🧁",pl:"Square/Toast",lf:.30,ch:.25,av:18,dy:21,gf:5,cu:300},
@@ -1378,7 +1378,9 @@ function legalConsent(id){
 }
 
 function go(s){scr=s;R();}
-function R(){var lt=!(scr==="dash"&&S);document.body.style.background=lt?"#FAFCFF":"#080D18";document.getElementById("app").innerHTML=lt?'<div class="lt">'+page()+'</div>':page();bind();}
+function R(){var lt=!(scr==="dash"&&S);document.body.style.background=lt?"#FAFCFF":"#080D18";var h=page();
+if(lt){h=h.split("rgba(240,244,255,").join("rgba(15,17,21,").split("#F0F4FF").join("#0F1115").split("color:#FFD166").join("color:#B8860B").split("color:#4DA6FF").join("color:#2776C4").split("background:#101828").join("background:#F4F6FA").split("background:#0C1220").join("background:#FFFFFF").split("background:#080D18").join("background:#FFFFFF").split("rgba(255,255,255,.07)").join("rgba(15,23,42,.1)").split("rgba(255,255,255,.08)").join("rgba(15,23,42,.1)").split("rgba(255,255,255,.1)").join("rgba(15,23,42,.12)").split("rgba(255,255,255,.15)").join("rgba(15,23,42,.18)");}
+document.getElementById("app").innerHTML=lt?'<div class="lt">'+h+'</div>':h;bind();}
 
 function page(){
   if(scr==="land")return land();
@@ -1804,18 +1806,18 @@ function onboard(){
       ls2+="<label style='font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.45);display:block;margin-bottom:6px'>Your Business Logo <span style='font-size:10px;font-weight:400;text-transform:none;color:rgba(240,244,255,.3)'>-- optional but recommended</span></label>";
       ls2+="<label id='logoDropZone' style='display:block;border:2px dashed rgba(255,255,255,.1);border-radius:10px;padding:18px;text-align:center;cursor:pointer;background:rgba(255,255,255,.02);transition:all .2s'>";
       ls2+="<input type='file' accept='.png,.jpg,.jpeg,.svg' style='display:none' onchange='handleLogoUpload(this)'/>";
-      ls2+="<div style='font-size:22px;margin-bottom:6px'>🖼️</div>";
+      ls2+="<div style='margin-bottom:8px;display:flex;justify-content:center'><svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='#0F1115' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><rect x='3.5' y='4.5' width='17' height='15' rx='2'/><circle cx='9' cy='10' r='1.8'/><path d='M3.5 17l5-5 4 4 3-3 4.5 4.5'/></svg></div>";
       ls2+="<div style='font-size:13px;font-weight:600;margin-bottom:4px'>Click to upload your logo</div>";
       ls2+="<div style='font-size:11px;color:rgba(240,244,255,.45);margin-bottom:4px'>PNG · JPG · SVG</div>";
       ls2+="<div style='font-size:10px;color:rgba(240,244,255,.3)'>Minimum 2000×2000px · Recommended 3000×3000px+ · Original phone/camera files only</div>";
       ls2+="</label>";
       ls2+="<div style='background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);border-radius:8px;padding:10px 12px;margin-top:8px;font-size:11px;color:rgba(240,244,255,.6);line-height:1.6'>";
-      ls2+="&#9888;&#65039; <strong style='color:#FFD166'>Quality gate:</strong> screenshots, profile pictures, and social media downloads are rejected before fulfillment.";
+      ls2+="<strong style='color:#B8860B'>Quality gate:</strong> screenshots, profile pictures, and social media downloads are rejected before fulfillment.";
       ls2+="</div></div>";
       logoSection=ls2;
     }
 
-    c="<div style='font-size:30px;margin-bottom:6px'>🎁</div><h2 style='font-family:Space Grotesk,sans-serif;font-size:22px;font-weight:800;margin-bottom:4px'>Pick your gift</h2><p style='color:rgba(240,244,255,.45);font-size:13px;margin-bottom:14px'>Curated for <strong style='color:"+B.c+"'>"+B.l+"</strong>. Don't see yours? Search below.</p>"+searchBar+customRow+"<div class='gc'>"+gCards+"</div>"+logoSection+"<button class='btn-full "+(canGo?"btn-gold":"btn-ghost")+"' "+(canGo?"":"disabled")+" onclick='oNxt()'>Continue → Set triggers</button>";
+    c="<div style='margin-bottom:10px;display:flex;justify-content:center'><span class='ic-chip' style='width:52px;height:52px;margin:0 auto'><svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='#0F1115' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 12 20 21 4 21 4 12'/><rect x='2' y='7' width='20' height='5'/><line x1='12' y1='21' x2='12' y2='7'/><path d='M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z'/><path d='M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z'/></svg></span></div><h2 style='font-family:Space Grotesk,sans-serif;font-size:22px;font-weight:800;margin-bottom:4px'>Pick your gift</h2><p style='color:rgba(240,244,255,.45);font-size:13px;margin-bottom:14px'>Curated for <strong style='color:"+B.c+"'>"+B.l+"</strong>. Don't see yours? Search below.</p>"+searchBar+customRow+"<div class='gc'>"+gCards+"</div>"+logoSection+"<button class='btn-full "+(canGo?"btn-gold":"btn-ghost")+"' "+(canGo?"":"disabled")+" onclick='oNxt()'>Continue → Set triggers</button>";
   }
     else if(obS===4&&P){
       var _bz=getBizById(obB)||{dy:60};
@@ -2134,7 +2136,7 @@ async function loadGiftCatalog(){
 }
 function giftThumb(g){
   if(g.image_url)return `<img src="${giftEsc(giftImgSrc(g.image_url))}" alt="" style="width:42px;height:42px;object-fit:contain;border-radius:10px;display:block;margin:0 auto 6px;background:rgba(255,255,255,.06);padding:4px"/>`;
-  return `<div style="font-size:26px;margin-bottom:4px">${g.e}</div>`;
+  return `<svg width=\u002726\u0027 height=\u002726\u0027 viewBox=\u00270 0 24 24\u0027 fill=\u0027none\u0027 stroke=\u0027#B8860B\u0027 stroke-width=\u00271.5\u0027 stroke-linecap=\u0027round\u0027 stroke-linejoin=\u0027round\u0027 style=\u0027display:block;margin:0 auto 6px\u0027><polyline points=\u002720 12 20 21 4 21 4 12\u0027/><rect x=\u00272\u0027 y=\u00277\u0027 width=\u002720\u0027 height=\u00275\u0027/><line x1=\u002712\u0027 y1=\u002721\u0027 x2=\u002712\u0027 y2=\u00277\u0027/><path d=\u0027M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z\u0027/><path d=\u0027M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z\u0027/></svg>`;
 }
 let brandLogoUrl=localStorage.getItem("ct_brand_logo")||"";
 let brandLogoName=localStorage.getItem("ct_brand_logo_name")||"";
@@ -3646,7 +3648,7 @@ function emPropsHtml(){
     if(b.t==="image")html+='<div class="fg"><label class="fl">Image URL</label><input class="fi" value="'+giftEsc(b.url||"")+'" onchange="emBlocks['+emSelIdx+'].url=this.value;emRedraw()"/></div>';
     html+='<div style="display:flex;gap:6px"><button class="btn btn-ghost" style="flex:1;font-size:11px;padding:7px" onclick="emMove(-1)">↑</button><button class="btn btn-ghost" style="flex:1;font-size:11px;padding:7px" onclick="emMove(1)">↓</button><button class="btn" style="flex:1;background:rgba(255,77,109,.12);color:#FF4D6D;border:1px solid rgba(255,77,109,.2);font-size:11px;padding:7px" onclick="emDelBlock()">Delete</button></div>';
   }else{
-    html+='<div style="font-size:11px;color:rgba(240,244,255,.4);line-height:1.6;border-top:1px solid rgba(255,255,255,.08);padding-top:12px">Click any block in the email to edit, move, or delete it. Text edits happen right in the email.</div>';
+    html+='<div style="font-size:11px;color:rgba(15,17,21,.4);line-height:1.6;border-top:1px solid rgba(15,23,42,.12);padding-top:12px">Click any block in the email to edit, move, or delete it. Text edits happen right in the email.</div>';
   }
   return html;
 }
@@ -3663,7 +3665,7 @@ function emRedraw(){var c=document.getElementById("emCanvasWrap");if(c)c.innerHT
 async function emSave(){
   var st=document.getElementById("emStatus");
   if(!S||!S.token){if(st){st.textContent="Log in to save your template.";st.style.color="#FF6B6B";}return;}
-  if(st){st.textContent="Saving...";st.style.color="rgba(240,244,255,.5)";}
+  if(st){st.textContent="Saving...";st.style.color="rgba(15,17,21,.5)";}
   var payload={user_id:myId(),name:"Default",subject:emSubject,blocks:emBlocks,brand:emBrand,updated_at:new Date().toISOString()};
   try{
     var r;
@@ -3685,9 +3687,9 @@ if(!sid){sid=Date.now().toString(36)+Math.random().toString(36).slice(2,10);try{
 var open=false,msgs=[],dismissed=false,ti=0,greeted=false;
 var TEASERS=["How does Clicktide work?","What gifts can I send?","What is the average ROI?","Which platforms connect?","What does it cost?"];
 var GREET="Hey! I'm Maya. I help businesses reward loyal customers and win back churn-risk customers automatically -- with branded gifts, personal messages, and digital rewards. What type of business do you run?";
-function petals(id,size){var s='<svg width="'+size+'" height="'+size+'" viewBox="0 0 44 44"><defs><linearGradient id="'+id+'"><stop offset="0%" stop-color="#BAE6FD"/><stop offset="100%" stop-color="#4DA6FF"/></linearGradient></defs><g transform="translate(22,22)">';[0,51.4,102.8,154.2,205.6,257,308.4].forEach(function(r){s+='<path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#'+id+')" transform="rotate('+r+')" opacity=".9"/>';});return s+'<circle cx="0" cy="0" r="4.5" fill="#080D18"/></g></svg>';}
+function petals(id,size){var s='<svg width="'+size+'" height="'+size+'" viewBox="0 0 44 44"><defs><linearGradient id="'+id+'"><stop offset="0%" stop-color="#BAE6FD"/><stop offset="100%" stop-color="#2776C4"/></linearGradient></defs><g transform="translate(22,22)">';[0,51.4,102.8,154.2,205.6,257,308.4].forEach(function(r){s+='<path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#'+id+')" transform="rotate('+r+')" opacity=".9"/>';});return s+'<circle cx="0" cy="0" r="4.5" fill="#080D18"/></g></svg>';}
 var LOGO=petals("cwlgA",32);
-var CLOSE='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4DA6FF" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+var CLOSE='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2776C4" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
 var st=document.createElement("style");
 st.textContent="@keyframes cwFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}@keyframes cwPulse{0%,100%{box-shadow:0 4px 20px rgba(77,166,255,.3)}50%{box-shadow:0 4px 32px rgba(77,166,255,.6)}}";
 document.head.appendChild(st);
@@ -3695,18 +3697,18 @@ var wrap=document.createElement("div");
 wrap.style.cssText="position:fixed;left:16px;bottom:24px;z-index:900;display:flex;flex-direction:column;align-items:flex-start;gap:6px";
 try{var p=JSON.parse(localStorage.getItem("ct_chat_pos")||"null");if(p&&typeof p.l==="number"&&typeof p.b==="number"){wrap.style.left=p.l+"px";wrap.style.bottom=p.b+"px";if(p.l>window.innerWidth/2)wrap.style.alignItems="flex-end";}}catch(e){}
 var teaser=document.createElement("div");
-teaser.style.cssText="display:flex;align-items:center;gap:8px;background:#0C1220;border:1px solid rgba(77,166,255,.25);border-radius:16px 16px 16px 4px;padding:10px 14px;font-size:13px;color:#F0F4FF;max-width:230px;line-height:1.5;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.5);margin-bottom:4px";
-teaser.innerHTML='<b id="cwTeaserTxt" style="color:#4DA6FF;font-weight:700">'+TEASERS[0]+'</b><span id="cwTeaserX" style="color:rgba(240,244,255,.45);font-size:13px;padding:0 2px;cursor:pointer">✕</span>';
+teaser.style.cssText="display:flex;align-items:center;gap:8px;background:#FFFFFF;border:1px solid rgba(77,166,255,.25);border-radius:16px 16px 16px 4px;padding:10px 14px;font-size:13px;color:#0F1115;max-width:230px;line-height:1.5;cursor:pointer;box-shadow:0 8px 24px rgba(20,40,70,.25);margin-bottom:4px";
+teaser.innerHTML='<b id="cwTeaserTxt" style="color:#2776C4;font-weight:700">'+TEASERS[0]+'</b><span id="cwTeaserX" style="color:rgba(15,17,21,.45);font-size:13px;padding:0 2px;cursor:pointer">✕</span>';
 var btn=document.createElement("div");
 btn.innerHTML=LOGO;
 btn.style.cssText="width:56px;height:56px;border-radius:50%;background:#080D18;border:2px solid rgba(77,166,255,.35);display:flex;align-items:center;justify-content:center;cursor:grab;animation:cwFloat 3s ease-in-out infinite,cwPulse 3s ease-in-out infinite;flex-shrink:0;touch-action:none";
 wrap.appendChild(teaser);wrap.appendChild(btn);document.body.appendChild(wrap);
 var panel=document.createElement("div");
-panel.style.cssText="position:fixed;left:16px;bottom:96px;width:min(460px,calc(100vw - 32px));height:min(72vh,700px);background:#0C1220;border:1px solid rgba(255,255,255,.1);border-radius:18px;display:none;flex-direction:column;z-index:901;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden";
-panel.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);font-family:Inter,sans-serif"><div style="width:36px;height:36px;border-radius:50%;background:#101828;display:flex;align-items:center;justify-content:center;border:1px solid rgba(77,166,255,.25)">'+petals("cwlgB",24)+'</div><div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:800;color:#F0F4FF">Maya from Clicktide</div><div style="font-size:10px;color:rgba(240,244,255,.45);margin-top:1px;display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:#34D399;display:inline-block"></span>Online now · recorded to improve our service</div></div><div id="ctChatClose" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;color:rgba(240,244,255,.65);font-size:17px">✕</div></div><div id="ctChatLog" style="flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px"></div><div style="display:flex;gap:8px;padding:10px;border-top:1px solid rgba(255,255,255,.08)"><input id="ctChatIn" placeholder="Ask Maya anything..." style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:#101828;color:#F0F4FF;font-size:13px;outline:none;font-family:Inter,sans-serif"/><button id="ctChatSend" style="padding:10px 14px;border-radius:10px;border:none;background:#FFD166;color:#080D18;font-weight:700;font-size:13px;cursor:pointer;font-family:Inter,sans-serif">Send</button></div>';
+panel.style.cssText="position:fixed;left:16px;bottom:96px;width:min(460px,calc(100vw - 32px));height:min(72vh,700px);background:#FFFFFF;border:1px solid rgba(15,23,42,.12);border-radius:18px;display:none;flex-direction:column;z-index:901;box-shadow:0 18px 60px rgba(20,40,70,.25);overflow:hidden";
+panel.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(15,23,42,.12);font-family:Inter,sans-serif"><div style="width:36px;height:36px;border-radius:50%;background:#F4F6FA;display:flex;align-items:center;justify-content:center;border:1px solid rgba(77,166,255,.25)">'+petals("cwlgB",24)+'</div><div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:800;color:#0F1115">Maya from Clicktide</div><div style="font-size:10px;color:rgba(15,17,21,.45);margin-top:1px;display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:#34D399;display:inline-block"></span>Online now · recorded to improve our service</div></div><div id="ctChatClose" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;color:rgba(15,17,21,.65);font-size:17px">✕</div></div><div id="ctChatLog" style="flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px"></div><div style="display:flex;gap:8px;padding:10px;border-top:1px solid rgba(15,23,42,.12)"><input id="ctChatIn" placeholder="Ask Maya anything..." style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid rgba(15,23,42,.12);background:#F4F6FA;color:#0F1115;font-size:13px;outline:none;font-family:Inter,sans-serif"/><button id="ctChatSend" style="padding:10px 14px;border-radius:10px;border:none;background:#FFD166;color:#080D18;font-weight:700;font-size:13px;cursor:pointer;font-family:Inter,sans-serif">Send</button></div>';
 document.body.appendChild(panel);
 function esc2(t){return t.replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];});}
-function draw(){var log=document.getElementById("ctChatLog");if(!log)return;log.innerHTML=msgs.map(function(m){return '<div style="max-width:85%;padding:9px 12px;border-radius:12px;font-size:13px;line-height:1.55;font-family:Inter,sans-serif;white-space:pre-wrap;'+(m.r==="user"?"align-self:flex-end;background:#FFD166;color:#080D18":"align-self:flex-start;background:#101828;color:#F0F4FF;border:1px solid rgba(255,255,255,.07)")+'">'+esc2(m.t)+'</div>';}).join("");log.scrollTop=log.scrollHeight;}
+function draw(){var log=document.getElementById("ctChatLog");if(!log)return;log.innerHTML=msgs.map(function(m){return '<div style="max-width:85%;padding:9px 12px;border-radius:12px;font-size:13px;line-height:1.55;font-family:Inter,sans-serif;white-space:pre-wrap;'+(m.r==="user"?"align-self:flex-end;background:#FFD166;color:#080D18":"align-self:flex-start;background:#F4F6FA;color:#0F1115;border:1px solid rgba(15,23,42,.12)")+'">'+esc2(m.t)+'</div>';}).join("");log.scrollTop=log.scrollHeight;}
 function send(){var inp=document.getElementById("ctChatIn");var t=(inp.value||"").trim();if(!t)return;inp.value="";msgs.push({r:"user",t:t});msgs.push({r:"assistant",t:"..."});draw();var hdrs={"Content-Type":"application/json"};try{if(typeof S!=="undefined"&&S&&S.token)hdrs.Authorization="Bearer "+S.token;}catch(e){}
 fetch(FNB+"/support-chat",{method:"POST",headers:hdrs,body:JSON.stringify({session_id:sid,message:t})}).then(function(r){return r.json();}).then(function(d){msgs[msgs.length-1].t=(d&&d.reply)||"Hmm, try again?";draw();}).catch(function(){msgs[msgs.length-1].t="Connection hiccup — try again.";draw();});}
 function placePanel(){var r=btn.getBoundingClientRect();var vw=window.innerWidth,vh=window.innerHeight;var pw=Math.min(460,vw-32);var ph=Math.min(vh*0.72,700);var left=Math.max(8,Math.min(r.left,vw-pw-16));var bottom=(vh-r.top)+12;bottom=Math.max(16,Math.min(bottom,vh-ph-8));panel.style.left=left+"px";panel.style.bottom=bottom+"px";}
