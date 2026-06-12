@@ -56,7 +56,7 @@ Owner-operated local businesses with roughly 200–5,000 customers: salons, barb
 
 ## The plans (so you can place a buyer)
 
-All plans include the core loop: rhythm watching, the Win-Back Playbook, the Monday Drift Report, messages and promo-code delivery. Physical postcards and gifts are pay-per-send from the owner's wallet on every plan.
+All plans include the core loop: rhythm watching, the full 8-campaign library, the Win-Back Playbook, the Monday Drift Report, messages and promo-code delivery. Physical postcards and gifts are pay-per-send from the owner's wallet on every plan.
 
 | Plan | Price | Built for |
 |---|---|---|
