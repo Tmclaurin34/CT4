@@ -1,8 +1,15 @@
-# CI setup
+# CI setup (one manual step)
 
-The active GitHub Actions workflow lives at `.github/workflows/checks.yml`.
-It runs the launch-hardening checks: secret scan, HTML inline-script parse, and
-SECURITY DEFINER revoke coverage.
+`github-workflow-checks.yml` is a ready GitHub Actions workflow for the
+launch-hardening checks: secret scan, HTML inline-script parse, and SECURITY
+DEFINER revoke coverage.
 
-Keep `ci/github-workflow-checks.yml` as a parked copy/reference. Run the same
-checks locally before any deploy with `bash scripts/preflight.sh`.
+The current deploy token does not have GitHub's `workflow` scope, so pushes that
+create or update `.github/workflows/checks.yml` are rejected. Activate CI one of
+two ways:
+
+1. GitHub web UI -> Add file -> `.github/workflows/checks.yml` -> paste this file's contents, or
+2. Regenerate the PAT with the `workflow` scope and move `ci/github-workflow-checks.yml` to `.github/workflows/checks.yml`.
+
+Until then, run the same checks locally before any deploy with
+`bash scripts/preflight.sh`.
