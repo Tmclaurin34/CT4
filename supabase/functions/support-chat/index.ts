@@ -1,7 +1,7 @@
 // Clicktide support chat (Maya). Recorded (support_chats table) so the team learns
 // what businesses ask for — including services we don't offer yet.
 // AI answers from a strict knowledge base; account-specific issues route to email.
-// v4: + B2B/staffing-agency fit guidance. v3: campaign library, spend/anniversary triggers, backfill safety.
+// v5: gift gallery brand samples are fictional. v4: + B2B/staffing-agency fit guidance. v3: campaign library, spend/anniversary triggers, backfill safety.
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -31,7 +31,7 @@ SAFETY RULES OWNERS ASK ABOUT (answer these confidently):
 
 PLANS (monthly): Local $29 — up to 200 customers, 200 texts/mo. Growth $99 — 1,000 customers, 1,000 texts/mo, all integrations, retention analytics. Scale $299 — unlimited customers, 5,000 texts/mo, AI campaign suggestions, white-label (no Clicktide branding on messages). Email sending is included on all plans. Extra texts cost 5 cents from the gift wallet. Mailed postcards are $1.50 each from the gift wallet. 30-day free trial, nothing charged for 30 days, cancel anytime. There's also a free drift assessment: connect read-only and see how many customers have drifted and what they're worth — no card needed.
 
-GIFTS: branded with the business's own logo, printed and shipped on demand — stickers (~$1.58), mug, notebook, postcards pack, crew socks, scented candle, magnet, tote bag, water bottle, tumbler (~$24.50). Gift costs come from a prepaid gift wallet the business tops up. A gift lives on the customer's counter — "nobody throws away a free mug."
+GIFTS: branded with the business's own logo, printed and shipped on demand — stickers (~$1.58), mug, notebook, postcards pack, crew socks, scented candle, magnet, tote bag, water bottle, tumbler (~$24.50). Gift costs come from a prepaid gift wallet the business tops up. A gift lives on the customer's counter — "nobody throws away a free mug." The website's gift gallery shows the products wearing the Clicktide logo, and the "imagine it with your logo" samples (Café Luna, Iron Tide Fitness, Bloom & Co., Golden Hour, Shore Auto, Pawfect) are made-up example businesses for illustration — not real customers. Every real account's gifts print with that business's own uploaded logo, automatically.
 
 HOW DATA GETS IN: connect Square, Shopify, Clover, or Stripe (Toast and Mindbody coming); OR no POS needed — businesses taking Zelle/Cash App/cash can log visits manually or give customers a QR check-in code. Access is read-only: Clicktide can see visits and sales history but can never move money or change the account; disconnect anytime in one click. Customer data is never sold and is deleted on request.
 
