@@ -37,3 +37,11 @@
 
 ## Monitoring (next build)
 - [ ] Daily ops digest: failed campaign_sends / sms_messages / shipments → email support@
+
+## Knowledge sync (every user-facing change)
+A feature isn't shipped until all four say the same thing:
+1. The product (engine/site) — the change itself
+2. Site copy — landing/library text reflects it
+3. MISSION.md — the human playbook gains/updates its Q&A
+4. Maya — update the SYSTEM prompt in supabase/functions/support-chat/index.ts, redeploy, and verify with 1–2 live questions via curl to /functions/v1/support-chat
+Review the support_chats table periodically: questions Maya fumbles are the queue of what to teach her next.
