@@ -7,6 +7,7 @@ const corsHeaders = {
 type CheckoutBody = {
   type?: string;
   plan?: string;
+  campaign_mode?: string;
   amount?: number;
   email?: string;
   business_name?: string;
@@ -22,6 +23,12 @@ const planPrices: Record<string, string> = {
   Growth: "price_1ThbjeGWBWEX8wHsElMt4z3Z",  // $149/mo
   Scale: "price_1ThbjeGWBWEX8wHsNrw2mjPF",   // $349/mo
 };
+const canonicalPlans = Object.keys(planPrices);
+
+function normalizePlan(plan: unknown) {
+  const raw = String(plan || "").trim().toLowerCase();
+  return canonicalPlans.find((name) => name.toLowerCase() === raw) || "";
+}
 
 // 30-day free trial on every plan — card collected up front, first charge on day 30.
 const TRIAL_DAYS = "30";
@@ -93,10 +100,14 @@ Deno.serve(async (req) => {
   const isWalletTopup = body.type === "wallet_topup";
   const isSubscription = !body.type || body.type === "subscription";
   if (!isWalletTopup && !isSubscription) return json({ error: "Invalid checkout type" }, 400);
+  const subscriptionPlan = isSubscription ? normalizePlan(body.plan) : "";
+  if (isSubscription && !subscriptionPlan) {
+    return json({ error: `Unknown or missing plan: ${body.plan ?? "(none)"}` }, 400);
+  }
 
   const successUrl = safeUrl(body.success_url) || (isWalletTopup
     ? `${origin}/?session=wallet_success`
-    : `${origin}/?session=success&plan=${encodeURIComponent(body.plan || "")}`);
+    : `${origin}/?session=success&plan=${encodeURIComponent(subscriptionPlan)}`);
   const cancelUrl = safeUrl(body.cancel_url) || `${origin}/?session=cancelled`;
 
   const form = new URLSearchParams();
@@ -141,12 +152,10 @@ Deno.serve(async (req) => {
     form.set("payment_intent_data[metadata][amount]", amount.toFixed(2));
   } else {
     // Never substitute a plan silently — a $49 buyer must not get a $149 checkout.
-    if (!body.plan || !planPrices[body.plan]) {
-      return json({ error: `Unknown or missing plan: ${body.plan ?? "(none)"}` }, 400);
-    }
     if (!isValidEmail(body.email)) return json({ error: "A valid email is required" }, 400);
-    const plan = body.plan;
+    const plan = subscriptionPlan;
     const priceId = planPrices[plan];
+    const campaignMode = body.campaign_mode === "skip" ? "skip" : "setup";
 
     form.set("mode", "subscription");
     form.set("line_items[0][price]", priceId);
@@ -154,9 +163,11 @@ Deno.serve(async (req) => {
     form.set("subscription_data[trial_period_days]", TRIAL_DAYS);
     form.set("metadata[type]", "subscription");
     form.set("metadata[plan]", plan);
+    form.set("metadata[campaign_mode]", campaignMode);
     form.set("metadata[business_name]", body.business_name || "");
     form.set("metadata[user_id]", body.user_id || "");
     form.set("subscription_data[metadata][plan]", plan);
+    form.set("subscription_data[metadata][campaign_mode]", campaignMode);
     form.set("subscription_data[metadata][business_name]", body.business_name || "");
     form.set("subscription_data[metadata][user_id]", body.user_id || "");
   }
@@ -177,5 +188,5 @@ Deno.serve(async (req) => {
     return json({ error: data?.error?.message || "Stripe checkout failed" }, stripeResponse.status);
   }
 
-  return json({ url: data.url, id: data.id });
+  return json({ url: data.url, id: data.id, plan: isSubscription ? subscriptionPlan : undefined, price_id: isSubscription ? planPrices[subscriptionPlan] : undefined });
 });

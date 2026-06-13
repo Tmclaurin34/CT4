@@ -6,3 +6,4 @@
 *.zip
 .venv/
 node_modules/
+supabase/.temp/

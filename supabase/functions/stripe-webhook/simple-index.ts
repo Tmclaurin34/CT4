@@ -2,6 +2,20 @@ const stripeKey = Deno.env.get("STRIPE_SECRET_KEY") || "";
 const whsec = Deno.env.get("STRIPE_WEBHOOK_SECRET") || "";
 const supa = Deno.env.get("SUPABASE_URL") || "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const pricePlans: Record<string, string> = {
+  price_1ThaasGWBWEX8wHssSYEbwEl: "Local",
+  price_1ThbjeGWBWEX8wHsElMt4z3Z: "Growth",
+  price_1ThbjeGWBWEX8wHsNrw2mjPF: "Scale",
+};
+
+function normalizePlan(value: unknown) {
+  const raw = String(value || "").trim().toLowerCase();
+  return ["Local", "Growth", "Scale"].find((plan) => plan.toLowerCase() === raw) || "";
+}
+
+function planFromPrice(priceId: unknown) {
+  return pricePlans[String(priceId || "")] || "";
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -53,12 +67,13 @@ async function saveSubscription(sub: Record<string, unknown>, fallback: Record<s
   const meta = (sub.metadata || fallback.metadata || {}) as Record<string, string>;
   const item = (sub.items as { data?: Array<{ price?: { id?: string } }> } | undefined)?.data?.[0];
   const periodEnd = sub.current_period_end as number | undefined;
+  const priceId = item?.price?.id || fallback.price_id || null;
   const fields = {
-    plan: meta.plan || fallback.plan || "Growth",
+    plan: normalizePlan(meta.plan) || normalizePlan(fallback.plan) || planFromPrice(priceId) || "Growth",
     stripe_customer_id: sub.customer || fallback.customer || null,
     stripe_subscription_id: sub.id || fallback.subscription || null,
     stripe_subscription_status: sub.status || fallback.payment_status || null,
-    stripe_price_id: item?.price?.id || null,
+    stripe_price_id: priceId,
     stripe_current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
   };
   if (meta.user_id && await patchProfile("user_id=eq." + encodeURIComponent(meta.user_id), fields)) return;

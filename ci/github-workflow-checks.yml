@@ -46,7 +46,7 @@ jobs:
           set -e
           node -e '
             const fs = require("fs");
-            const files = ["index.html","clicktide.html","clicktide2026/index.html","clicktide2026/clicktide.html","gift-address.html"].filter(f=>fs.existsSync(f));
+            const files = ["index.html","clicktide.html","clicktide-professional.html","clicktide2026/index.html","clicktide2026/clicktide.html","clicktide2026/clicktide-professional.html","gift-address.html"].filter(f=>fs.existsSync(f));
             let bad = 0;
             for (const f of files) {
               const html = fs.readFileSync(f, "utf8");

@@ -36,7 +36,7 @@ echo "— HTML inline-script parse —"
 python3 - <<'PY'
 import re, json, subprocess, sys
 bad = 0
-for f in ["index.html","clicktide.html","clicktide2026/index.html","clicktide2026/clicktide.html","gift-address.html"]:
+for f in ["index.html","clicktide.html","clicktide-professional.html","clicktide2026/index.html","clicktide2026/clicktide.html","clicktide2026/clicktide-professional.html","gift-address.html"]:
     try: html = open(f, encoding="utf-8").read()
     except FileNotFoundError: continue
     n = 0

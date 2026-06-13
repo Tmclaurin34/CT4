@@ -524,12 +524,30 @@ const NT=[{e:"📦",t:"Package delivered!",s:"Sarah M. received her welcome kit"
 const FN=`${SU}/functions/v1`;
 // -- Clicktide Stripe subscription prices (public price ids) ------------------
 const STRIPE_PRICE_IDS={
-  Local:"price_1TfFL5GWBWEX8wHsZ7A1zUpY",
-  Growth:"price_1TfFM4GWBWEX8wHsd0xaDyaA",
-  Scale:"price_1TfFMgGWBWEX8wHsRS3XgPtb"
+  Local:"price_1ThaasGWBWEX8wHssSYEbwEl",
+  Growth:"price_1ThbjeGWBWEX8wHsElMt4z3Z",
+  Scale:"price_1ThbjeGWBWEX8wHsNrw2mjPF"
 };
-async function createCheckoutSession(plan,email,businessName){
-  const priceId=STRIPE_PRICE_IDS[plan]||STRIPE_PRICE_IDS.Growth;
+const PLAN_NAMES=Object.keys(STRIPE_PRICE_IDS);
+function normalizePlan(plan){
+  const raw=String(plan||"").trim().toLowerCase();
+  return PLAN_NAMES.find(function(p){return p.toLowerCase()===raw;})||"";
+}
+function storedPlan(){
+  try{return normalizePlan(localStorage.getItem("ct_plan"));}catch(e){return "";}
+}
+function saveSelectedPlan(plan){
+  const next=normalizePlan(plan)||storedPlan()||"Growth";
+  obPl=next;
+  try{localStorage.setItem("ct_plan",next);}catch(e){}
+  return next;
+}
+function selectedPlan(){return normalizePlan(obPl)||storedPlan()||"Growth";}
+async function createCheckoutSession(plan,email,businessName,campaignMode){
+  plan=normalizePlan(plan);
+  if(!STRIPE_PRICE_IDS[plan]){alert("Please pick a plan first.");return "";}
+  const priceId=STRIPE_PRICE_IDS[plan];
+  const campaign=campaignMode==="skip"?"skip":"setup";
   try{
     const r=await fetch(`${FN}/create-checkout-session`,{
       method:"POST",
@@ -537,10 +555,11 @@ async function createCheckoutSession(plan,email,businessName){
       body:JSON.stringify({
         plan,
         price_id:priceId,
+        campaign_mode:campaign,
         email,
         business_name:businessName||"",
         user_id:myId()||"",
-        success_url:window.location.origin+"/?session=success&plan="+encodeURIComponent(plan)+"&biz="+encodeURIComponent(businessName||""),
+        success_url:window.location.origin+"/?session=success&plan="+encodeURIComponent(plan)+"&campaign="+encodeURIComponent(campaign)+"&biz="+encodeURIComponent(businessName||""),
         cancel_url:window.location.origin+"/?session=cancelled"
       })
     });
@@ -749,9 +768,10 @@ function mindbodyConnect(){
 
   // Stripe redirect
   if(params.get("session")==="success"){
-    const plan=params.get("plan")||"Growth";
+    const plan=saveSelectedPlan(params.get("plan")||"Growth");
     const biz=params.get("biz")||"";
-    obPl=plan;obN=biz;obS=6;
+    obCampaignSkipped=params.get("campaign")==="skip";
+    obN=biz;obS=6;scr="onboard";
     history.replaceState({},"",window.location.pathname);
     return;
   }
@@ -788,7 +808,7 @@ function mindbodyConnect(){
 })();
 
 let ntIdx=0,scr="land";
-let obS=0,obCat=null,obB=null,obP=null,obC=false,obG=null,obT=[],obE="",obPw="",obN="",obNm="",obPh="",obBph="",obBem="",obAddr="",obCity="",obState="",obZip="",obPl="Growth",obOther="",obImport=null,obGiftSearch="",obCustomGift=null,obLogoFile=null,obLogoUrl=null,obLogoName="",obLogoStorageUrl=null,obDy=null;
+let obS=0,obCat=null,obB=null,obP=null,obC=false,obG=null,obT=[],obE="",obPw="",obN="",obNm="",obPh="",obBph="",obBem="",obAddr="",obCity="",obState="",obZip="",obPl=storedPlan()||"Growth",obOther="",obImport=null,obGiftSearch="",obCustomGift=null,obLogoFile=null,obLogoUrl=null,obLogoName="",obLogoStorageUrl=null,obDy=null,obCampaignSkipped=false;
 let riS=0,riB=null,riCatSel=null,riOther="",riSize="small",riFreqDays=15,riRiskMode="miss2",riCu=100,riAv=60,riCh=.20,riDy=30,riGf=22,riPl=99,riVf=2,riLm=12;
 let dpg="overview",cmT="message_only",cmN="",cmTr="",cmGN="",cmGC="",cmG=null,cmPf="Square",cmCh="email",cmM="",cmTi=0,showCM=false,cmProt={delay:7,cancelOnRefund:true,minSpend:0,cooldown:90,productName:"",minOrderVal:0};
 
@@ -935,7 +955,7 @@ function land(){
   <div class="sec"><div style="max-width:840px;margin:0 auto;text-align:center">
     <h2 class="sec-title" id="pricing">Built for every <span class="gold">business size.</span></h2>
     <p class="sec-sub">Subscription + pay-per-gift wallet. No surprise bills.</p>
-    <div class="g3">${[{n:"Local",p:29,c:"#22C55E",pop:false,f:["200 customers/mo","✉️ Messages included","💳 Digital gifts included","Physical gifts from wallet","Square & Clover","Basic analytics"]},{n:"Growth",p:99,c:"#FFD166",pop:true,f:["1,000 customers/mo","✉️ Messages included","💳 Digital gifts included","Physical gifts from wallet","All 12 integrations","Retention analytics","Branded packaging"]},{n:"Scale",p:299,c:"#4DA6FF",pop:false,f:["Unlimited customers","✉️ Messages included","💳 Digital gifts included","Physical gifts from wallet","AI triggers","White-label","Dedicated CSM"]}].map(pl=>`<div class="plan ${pl.pop?"pop":""}" style="position:relative">${pl.pop?`<div class="plan-badge">Most Popular</div>`:""}<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.45);margin-bottom:6px">${pl.n}</div><div class="plan-price" style="color:${pl.c}"><sup style="font-size:18px;vertical-align:super">$</sup>${pl.p}</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:14px">/month + gift wallet</div><div style="height:1px;background:rgba(255,255,255,.07);margin-bottom:14px"></div><ul class="feat">${pl.f.map(f=>`<li>${f}</li>`).join("")}</ul><button class="btn ${pl.pop?"btn-gold":"btn-ghost"}" style="width:100%" onclick="go('onboard')">Get started →</button></div>`).join("")}</div>
+    <div class="g3">${[{n:"Local",p:49,c:"#22C55E",pop:false,f:["200 customers/mo","✉️ Messages included","💳 Digital gifts included","Physical gifts from wallet","Square & Clover","Basic analytics"]},{n:"Growth",p:149,c:"#FFD166",pop:true,f:["1,000 customers/mo","✉️ Messages included","💳 Digital gifts included","Physical gifts from wallet","All 12 integrations","Retention analytics","Branded packaging"]},{n:"Scale",p:349,c:"#4DA6FF",pop:false,f:["Unlimited customers","✉️ Messages included","💳 Digital gifts included","Physical gifts from wallet","AI triggers","White-label","Dedicated CSM"]}].map(pl=>`<div class="plan ${pl.pop?"pop":""}" style="position:relative">${pl.pop?`<div class="plan-badge">Most Popular</div>`:""}<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.45);margin-bottom:6px">${pl.n}</div><div class="plan-price" style="color:${pl.c}"><sup style="font-size:18px;vertical-align:super">$</sup>${pl.p}</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:14px">/month + gift wallet</div><div style="height:1px;background:rgba(255,255,255,.07);margin-bottom:14px"></div><ul class="feat">${pl.f.map(f=>`<li>${f}</li>`).join("")}</ul><button class="btn ${pl.pop?"btn-gold":"btn-ghost"}" style="width:100%" onclick="selPlan('${pl.n}')">Get started →</button></div>`).join("")}</div>
   </div></div>
   <div style="padding:60px 32px;text-align:center;border-top:1px solid rgba(255,255,255,.07)">
     <h2 class="sec-title" style="margin-bottom:14px">Ready to start the <span class="gold">tide?</span></h2>
@@ -963,7 +983,7 @@ function authP(mode){
     <div class="fg"><label class="fl">Business Email</label><input class="fi" id="aBem" type="email" placeholder="hello@business.com"/></div>
     <div class="fg"><label class="fl">Street Address</label><input class="fi" id="aAddr" placeholder="123 Main St"/></div>
     <div class="fg" style="display:flex;gap:8px"><div style="flex:2"><label class="fl">City</label><input class="fi" id="aCity" placeholder="City"/></div><div style="flex:1"><label class="fl">State</label><input class="fi" id="aState" placeholder="NY"/></div><div style="flex:1"><label class="fl">ZIP</label><input class="fi" id="aZip" placeholder="11542"/></div></div>`:""}
-    ${!il?`<div class="fg"><label class="fl">Plan</label><select class="fi-sel" id="aPl"><option value="Local">Local -- $29/mo</option><option value="Growth" selected>Growth -- $99/mo ★</option><option value="Scale">Scale -- $299/mo</option></select></div>${legalConsent("aAgree")}`:""}
+    ${!il?`<div class="fg"><label class="fl">Plan</label><select class="fi-sel" id="aPl"><option value="Local">Local -- $49/mo</option><option value="Growth" selected>Growth -- $149/mo ★</option><option value="Scale">Scale -- $349/mo</option></select></div>${legalConsent("aAgree")}`:""}
     <div class="err" id="aErr"></div>
     <button class="btn-full btn-gold" id="aSub" onclick="doAuth('${mode}')" style="margin-bottom:16px">${il?"Log in →":"Create my account →"}</button>
     <div style="text-align:center;font-size:13px;color:rgba(240,244,255,.45)">${il?"Don't have an account? ":"Already have an account? "}<button class="link-btn" onclick="go('${il?"onboard":"login"}')">${il?"Sign up free":"Log in"}</button></div>
@@ -984,7 +1004,7 @@ async function doAuth(mode){
   const city=document.getElementById("aCity")?.value||"";
   const state=document.getElementById("aState")?.value||"";
   const zip=document.getElementById("aZip")?.value||"";
-  const pl=document.getElementById("aPl")?.value||"Growth";
+  const pl=il?selectedPlan():saveSelectedPlan(document.getElementById("aPl")?.value||"Growth");
   const err=document.getElementById("aErr");
   const btn=document.getElementById("aSub");
   if(il){ if(!e||!p){err.textContent="Please enter your email and password";err.style.display="block";return;} }
@@ -1036,7 +1056,7 @@ function onboard(){
     var canCont=obB||(obCat==="other"&&obOther.length>1);
     c="<div style='font-size:30px;margin-bottom:8px'>🏢</div><h2 style='font-family:Space Grotesk,sans-serif;font-size:22px;font-weight:800;margin-bottom:6px'>What type of business?</h2><p style='color:rgba(240,244,255,.45);font-size:13px;margin-bottom:16px;line-height:1.6'>Pick a category then your specific type.</p><div class='bg'>"+catGrid+"</div>"+bizWrap+"<button class='btn-full btn-gold' style='margin-top:16px;"+(canCont?"":"opacity:.4;cursor:not-allowed")+"' "+(canCont?"":"disabled")+" onclick='oNxt()'>Continue →</button>";
   }
-  else if(obS===1&&B)c=`<div style="font-size:30px;margin-bottom:8px">🔌</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Connect your platform</h2><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:14px">Best for <strong>${B.l}</strong>: ${B.pl}</p>${!obC?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">${PL.map(p=>`<div style="padding:12px;border:2px solid ${obP===p.id?"#4DA6FF":"rgba(255,255,255,.07)"};border-radius:12px;cursor:pointer;background:${obP===p.id?"rgba(77,166,255,.06)":"transparent"}" onclick="oPlt('${p.id}')"><div style="font-size:20px;margin-bottom:5px">${p.e}</div><div style="font-size:12px;font-weight:700;margin-bottom:1px">${p.n}</div><div style="font-size:10px;color:rgba(240,244,255,.45)">${p.d}</div></div>`).join("")}</div><button class="btn-full ${obP?"btn-gold":"btn-ghost"}" ${!obP?"disabled":""} id="cBtn" onclick="oCon()">${obP?`Connect ${P?.n} →`:"Select a platform"}</button>`:`<div class="conn-box"><span style="font-size:24px">${P?.e}</span><div><div style="font-weight:700;color:#22C55E;font-size:14px">${P?.n} connected!</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-top:2px">Webhooks live · Events streaming</div></div></div><button class="btn-full btn-gold" onclick="oNxt()">Continue → Pick your gift</button>`}`;
+  else if(obS===1&&B)c=`<div style="font-size:30px;margin-bottom:8px">🔌</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Connect your platform</h2><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:14px">Best for <strong>${B.l}</strong>: ${B.pl}</p>${!obC?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">${PL.map(p=>`<div style="padding:12px;border:2px solid ${obP===p.id?"#4DA6FF":"rgba(255,255,255,.07)"};border-radius:12px;cursor:pointer;background:${obP===p.id?"rgba(77,166,255,.06)":"transparent"}" onclick="oPlt('${p.id}')"><div style="font-size:20px;margin-bottom:5px">${p.e}</div><div style="font-size:12px;font-weight:700;margin-bottom:1px">${p.n}</div><div style="font-size:10px;color:rgba(240,244,255,.45)">${p.d}</div></div>`).join("")}</div><button class="btn-full ${obP?"btn-gold":"btn-ghost"}" ${!obP?"disabled":""} id="cBtn" onclick="oCon()">${obP?`Connect ${P?.n} →`:"Select a platform"}</button>`:`<div class="conn-box"><span style="font-size:24px">${P?.e}</span><div><div style="font-weight:700;color:#22C55E;font-size:14px">${P?.n} connected!</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-top:2px">Webhooks live · Events streaming</div></div></div><div style="display:flex;flex-direction:column;gap:8px"><button class="btn-full btn-gold" onclick="startCampaignSetup()">Set up first campaign →</button><button class="btn-full btn-ghost" onclick="skipCampaignSetup()">Skip campaign setup → Payment</button></div>`}`;
   else if(obS===2&&B){
     var sq=obGiftSearch||"";
     // Use the fulfillment catalog as the real gift options
@@ -1091,7 +1111,7 @@ function onboard(){
       logoSection=ls2;
     }
 
-    c="<div style='font-size:30px;margin-bottom:6px'>🎁</div><h2 style='font-family:Space Grotesk,sans-serif;font-size:22px;font-weight:800;margin-bottom:4px'>Pick your gift</h2><p style='color:rgba(240,244,255,.45);font-size:13px;margin-bottom:14px'>Curated for <strong style='color:"+B.c+"'>"+B.l+"</strong>. Don't see yours? Search below.</p>"+searchBar+customRow+"<div class='gc'>"+gCards+"</div>"+logoSection+"<button class='btn-full "+(canGo?"btn-gold":"btn-ghost")+"' "+(canGo?"":"disabled")+" onclick='oNxt()'>Continue → Set triggers</button>";
+    c="<div style='font-size:30px;margin-bottom:6px'>🎁</div><h2 style='font-family:Space Grotesk,sans-serif;font-size:22px;font-weight:800;margin-bottom:4px'>Pick your gift</h2><p style='color:rgba(240,244,255,.45);font-size:13px;margin-bottom:14px'>Curated for <strong style='color:"+B.c+"'>"+B.l+"</strong>. Don't see yours? Search below.</p>"+searchBar+customRow+"<div class='gc'>"+gCards+"</div>"+logoSection+"<button class='btn-full "+(canGo?"btn-gold":"btn-ghost")+"' "+(canGo?"":"disabled")+" onclick='oNxt()'>Continue → Set triggers</button><button class='btn-full btn-ghost' style='margin-top:8px' onclick='skipCampaignSetup()'>Skip campaign setup → Payment</button>";
   }
     else if(obS===3&&P){
       var _bz=getBizById(obB)||{dy:60};
@@ -1106,7 +1126,7 @@ function onboard(){
         <div style="display:flex;gap:8px;margin-bottom:10px">${_presetBtns}</div>
         <div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:rgba(240,244,255,.45)">Custom:</span><input type="number" min="3" max="730" value="${obDy}" oninput="obDy=parseInt(this.value)||60" style="width:80px;padding:7px 10px;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:#101828;color:#F0F4FF;font-size:13px"/><span style="font-size:12px;color:rgba(240,244,255,.45)">days</span></div>
       </div>
-      <button class="btn-full ${obT.length?"btn-gold":"btn-ghost"}" ${!obT.length?"disabled":""} onclick="oNxt()">Continue → Create account</button>`;
+      <button class="btn-full ${obT.length?"btn-gold":"btn-ghost"}" ${!obT.length?"disabled":""} onclick="oNxt()">Continue → Create account</button><button class="btn-full btn-ghost" style="margin-top:8px" onclick="skipCampaignSetup()">Skip campaign setup → Payment</button>`;
     }
   else if(obS===5){
     var importContent="";
@@ -1123,8 +1143,8 @@ function onboard(){
   }
   else if(obS===4)c=`<div style="font-size:30px;margin-bottom:6px">👤</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Create your account</h2><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:16px">Almost done!</p><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin-bottom:8px">Your details</div><div class="fg"><label class="fl">Your Name</label><input class="fi" id="oNm" value="${obNm}" placeholder="Jane Smith" oninput="obNm=this.value"/></div><div class="fg"><label class="fl">Personal Email (your login)</label><input class="fi" id="oE" value="${obE}" type="email" placeholder="you@email.com" oninput="obE=this.value"/></div><div class="fg"><label class="fl">Password</label><input class="fi" id="oPw" value="${obPw}" type="password" placeholder="••••••••" oninput="obPw=this.value"/></div><div class="fg"><label class="fl">Personal Phone</label><input class="fi" id="oPh" value="${obPh}" type="tel" placeholder="(555) 555-5555" oninput="obPh=this.value"/></div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin:14px 0 8px">Business details</div><div class="fg"><label class="fl">Business Name</label><input class="fi" id="oN" value="${obN}" placeholder="${B?.l||"Your Business"}" oninput="obN=this.value"/></div><div class="fg"><label class="fl">Business Phone</label><input class="fi" id="oBph" value="${obBph}" type="tel" placeholder="(555) 555-5555" oninput="obBph=this.value"/></div><div class="fg"><label class="fl">Business Email</label><input class="fi" id="oBem" value="${obBem}" type="email" placeholder="hello@business.com" oninput="obBem=this.value"/></div><div class="fg"><label class="fl">Street Address</label><input class="fi" id="oAddr" value="${obAddr}" placeholder="123 Main St" oninput="obAddr=this.value"/></div><div class="fg" style="display:flex;gap:8px"><div style="flex:2"><label class="fl">City</label><input class="fi" id="oCity" value="${obCity}" placeholder="City" oninput="obCity=this.value"/></div><div style="flex:1"><label class="fl">State</label><input class="fi" id="oState" value="${obState}" placeholder="NY" oninput="obState=this.value"/></div><div style="flex:1"><label class="fl">ZIP</label><input class="fi" id="oZip" value="${obZip}" placeholder="11542" oninput="obZip=this.value"/></div></div><div class="fg"><label class="fl">Choose Your Plan</label>
 <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:4px">
-  ${[{v:"Local",p:"$29/mo",d:"200 customers/mo",f:["Messages included","Promo codes included","Physical gifts from wallet","Square & Clover"]},{v:"Growth",p:"$99/mo",d:"1,000 customers/mo",pop:true,f:["Messages included","Promo codes included","Physical gifts from wallet","All 12 integrations","Retention analytics"]},{v:"Scale",p:"$299/mo",d:"Unlimited customers",f:["Messages included","Promo codes included","Physical gifts from wallet","AI triggers","White-label"]}].map(pl=>`
-  <div onclick="obPl='${pl.v}';document.querySelectorAll('.pl-opt').forEach(e=>e.classList.remove('on'));this.classList.add('on')" class="pl-opt ${obPl===pl.v?"on":""}" style="padding:14px;border:2px solid ${obPl===pl.v?"#FFD166":"rgba(255,255,255,.07)"};border-radius:12px;cursor:pointer;background:${obPl===pl.v?"rgba(255,209,102,.08)":"transparent"};transition:all .15s">
+  ${[{v:"Local",p:"$49/mo",d:"200 customers/mo",f:["Messages included","Promo codes included","Physical gifts from wallet","Square & Clover"]},{v:"Growth",p:"$149/mo",d:"1,000 customers/mo",pop:true,f:["Messages included","Promo codes included","Physical gifts from wallet","All 12 integrations","Retention analytics"]},{v:"Scale",p:"$349/mo",d:"Unlimited customers",f:["Messages included","Promo codes included","Physical gifts from wallet","AI triggers","White-label"]}].map(pl=>`
+  <div onclick="saveSelectedPlan('${pl.v}');document.querySelectorAll('.pl-opt').forEach(e=>e.classList.remove('on'));this.classList.add('on')" class="pl-opt ${obPl===pl.v?"on":""}" style="padding:14px;border:2px solid ${obPl===pl.v?"#FFD166":"rgba(255,255,255,.07)"};border-radius:12px;cursor:pointer;background:${obPl===pl.v?"rgba(255,209,102,.08)":"transparent"};transition:all .15s">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
       <div style="font-size:14px;font-weight:700">${pl.v} ${pl.pop?"⭐":""}</div>
       <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:800;color:#FFD166">${pl.p}</div>
@@ -1133,8 +1153,8 @@ function onboard(){
     <div style="display:flex;flex-wrap:wrap;gap:4px">${pl.f.map(f=>`<span style="font-size:10px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.15);color:#22C55E;padding:2px 7px;border-radius:100px">✓ ${f}</span>`).join("")}</div>
   </div>`).join("")}
 </div>
-<input type="hidden" id="oPl" value="${obPl}"/></div>${legalConsent("oAgree")}<div class="err" id="oErr"></div><button class="btn-full btn-gold" id="oSub" onclick="oSignup()" style="margin-bottom:12px">Create account & go live →</button><div style="text-align:center;font-size:12px;color:rgba(240,244,255,.45)">Already have an account? <button class="link-btn" onclick="go('login')">Log in</button></div>`;
-  else if(obS===6){const g=obG!==null?GF[obB]?.[obG]:null;c=`<div style="text-align:center"><div style="font-size:52px;margin-bottom:12px">🚀</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">You're live!</h2><p style="color:rgba(240,244,255,.45);font-size:14px;line-height:1.7;margin-bottom:20px">Your Clicktide campaign is active and ready.</p><ul style="list-style:none;padding:0;background:#101828;border-radius:13px;padding:16px;margin-bottom:20px;text-align:left">${[`${B?.i} ${B?.l}`,`${P?.e} ${P?.n} connected`,`🎁 ${g?.n||"--"}`,`⚡ ${obT.length} trigger${obT.length!==1?"s":""}`,`💬 Message Only: Free`,`📦 Physical gifts: From $7`].map(i=>`<li style="font-size:12px;color:rgba(240,244,255,.45);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:8px"><span style="color:#22C55E">✓</span>${i}</li>`).join("")}</ul><div style="display:flex;gap:10px"><button class="btn btn-gold" style="flex:1;padding:12px" onclick="go('dash')">Open Dashboard →</button><button class="btn btn-ghost" style="flex:1;padding:12px" onclick="go('login')">Log in</button></div></div>`;}
+<input type="hidden" id="oPl" value="${selectedPlan()}"/></div>${legalConsent("oAgree")}<div class="err" id="oErr"></div><button class="btn-full btn-gold" id="oSub" onclick="oSignup()" style="margin-bottom:12px">Create account & go live →</button><div style="text-align:center;font-size:12px;color:rgba(240,244,255,.45)">Already have an account? <button class="link-btn" onclick="go('login')">Log in</button></div>`;
+  else if(obS===6){const g=obG!==null?GF[obB]?.[obG]:null;const rows=[`${B?.i||""} ${B?.l||"Business"}`,`${selectedPlan()} plan`,`${P?.e||""} ${P?.n||"Platform"} connected`,obCampaignSkipped?"Campaign setup skipped":`🎁 ${g?.n||"--"}`,obCampaignSkipped?"No campaign will send until you create one":`⚡ ${obT.length} trigger${obT.length!==1?"s":""}`,`💬 Message Only: Free`,`📦 Postcards & gifts from $2`];c=`<div style="text-align:center"><div style="font-size:52px;margin-bottom:12px">🚀</div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">You're subscribed!</h2><p style="color:rgba(240,244,255,.45);font-size:14px;line-height:1.7;margin-bottom:20px">${obCampaignSkipped?"No campaign is active yet. You can send one-off gifts or create a campaign whenever you're ready.":"Your plan is active. Open the dashboard to review and launch your first campaign."}</p><ul style="list-style:none;padding:0;background:#101828;border-radius:13px;padding:16px;margin-bottom:20px;text-align:left">${rows.map(i=>`<li style="font-size:12px;color:rgba(240,244,255,.45);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:8px"><span style="color:#22C55E">✓</span>${i}</li>`).join("")}</ul><div style="display:flex;gap:10px"><button class="btn btn-gold" style="flex:1;padding:12px" onclick="go('dash')">Open Dashboard →</button><button class="btn btn-ghost" style="flex:1;padding:12px" onclick="go('login')">Log in</button></div></div>`;}
   var aiHintHtml='';
   if(aiHint||aiHintLoading){aiHintHtml="<div style='background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.2);border-radius:12px;padding:12px 14px;margin-top:12px;display:flex;align-items:flex-start;gap:9px'><div style='font-size:16px;flex-shrink:0'>✨</div><div style='font-size:12px;color:rgba(240,244,255,.7);line-height:1.6'>"+(aiHintLoading?"<span style='color:rgba(240,244,255,.35)'>AI thinking...</span>":aiHint)+"</div></div>";}
   var stBarH=steps.map(function(s,i){return '<div class="sp '+(i===obS?'on':i<obS?'dn':'pd')+'">'+s+'</div>';}).join('');
@@ -1357,6 +1377,8 @@ function oCon(){
 }
 function oNxt(){if(obS===1&&!obC)return;obS++;R();}
 function oBck(){obS--;if(obS===1)obC=false;R();}
+function startCampaignSetup(){obCampaignSkipped=false;oNxt();}
+function skipCampaignSetup(){obCampaignSkipped=true;obG=null;obCustomGift=null;obT=[];obS=4;R();}
 async function oSignup(){
   const e=document.getElementById("oE")?.value||obE;
   const p=document.getElementById("oPw")?.value||obPw;
@@ -1371,11 +1393,12 @@ async function oSignup(){
   const zip=document.getElementById("oZip")?.value||obZip;
   const err=document.getElementById("oErr");
   const btn=document.getElementById("oSub");
+  const chosenPlan=saveSelectedPlan(obPl);
   const v=validSignup({name:nm,email:e,phone:ph,pw:p,biz:n,bphone:bph,bemail:bem,address:addr,city:city,state:state,zip:zip}); if(v){err.textContent=v;err.style.display="block";return;}
   if(!document.getElementById("oAgree")?.checked){err.textContent="Please agree to the Terms, Privacy Policy, Billing Policy, and service authorization.";err.style.display="block";return;}
   btn.textContent="Creating account...";btn.disabled=true;err.style.display="none";
   try{
-    const meta={business_name:n,contact_name:nm,phone:ph,business_phone:bph,business_email:bem,address:addr,city:city,state:state,zip:zip,plan:obPl,churn_days:obDy||60,business_type:obB||obCat||"other",legal_terms_accepted_at:new Date().toISOString(),legal_terms_version:"2026-06-08",legal_authorized_services:true};
+    const meta={business_name:n,contact_name:nm,phone:ph,business_phone:bph,business_email:bem,address:addr,city:city,state:state,zip:zip,plan:chosenPlan,churn_days:obDy||60,business_type:obB||obCat||"other",legal_terms_accepted_at:new Date().toISOString(),legal_terms_version:"2026-06-08",legal_authorized_services:true};
     // 1. Create Supabase account
     const r=await au.up(e,p,meta);
     if(r.access_token){
@@ -1389,7 +1412,7 @@ async function oSignup(){
     }
     // 2. Create Stripe checkout session
     btn.textContent="Redirecting to payment...";
-    const checkoutUrl=await createCheckoutSession(obPl,e,n);
+    const checkoutUrl=await createCheckoutSession(chosenPlan,e,n,obCampaignSkipped?"skip":"setup");
     if(checkoutUrl){
       window.location.href=checkoutUrl;
     }else{
@@ -1940,9 +1963,9 @@ function joinW(){const e=document.getElementById("hE")?.value;if(e){document.que
 
 function pricingP(){
   var plans=[
-    {v:"Local",p:29,c:"#22C55E",cu:"200 customers/mo",pop:false,f:["Messages included","Promo codes included","Square & Clover","Basic analytics","Physical gifts from wallet","Email support"]},
-    {v:"Growth",p:99,c:"#FFD166",cu:"1,000 customers/mo",pop:true,f:["Messages included","Promo codes included","All 12 integrations","Retention analytics","Branded packaging","Priority support","Physical gifts from wallet"]},
-    {v:"Scale",p:299,c:"#4DA6FF",cu:"Unlimited customers",pop:false,f:["Messages included","Promo codes included","All integrations","AI triggers","White-label","A/B testing","Dedicated CSM","Physical gifts from wallet"]}
+    {v:"Local",p:49,c:"#22C55E",cu:"200 customers/mo",pop:false,f:["Messages included","Promo codes included","Square & Clover","Basic analytics","Physical gifts from wallet","Email support"]},
+    {v:"Growth",p:149,c:"#FFD166",cu:"1,000 customers/mo",pop:true,f:["Messages included","Promo codes included","All 12 integrations","Retention analytics","Branded packaging","Priority support","Physical gifts from wallet"]},
+    {v:"Scale",p:349,c:"#4DA6FF",cu:"Unlimited customers",pop:false,f:["Messages included","Promo codes included","All integrations","AI triggers","White-label","A/B testing","Dedicated CSM","Physical gifts from wallet"]}
   ];
   var cards="";
   for(var i=0;i<plans.length;i++){
@@ -2045,7 +2068,7 @@ function updateProtFields(){
 
 
 function selPlan(plan){
-  obPl=plan;
+  saveSelectedPlan(plan);
   go('onboard');
 }
 
@@ -2055,7 +2078,7 @@ async function checkoutPlan(plan,email){
     if(!e)return;
     email=e;
   }
-  const url=await createCheckoutSession(plan,email,"New Business");
+  const url=await createCheckoutSession(saveSelectedPlan(plan),email,"New Business","skip");
   if(url)window.location.href=url;
   else go('onboard');
 }
@@ -2102,14 +2125,14 @@ Key selling points to push:
 - Customers who receive gifts have 3.2x higher lifetime value
 - Works with Square, Shopify, Clover, Stripe and 9 more platforms
 - Start FREE -- no credit card needed
-- Plans from just $29/month -- less than one lost customer
+- Plans from just $49/month -- less than one lost customer
 
 Three gift types:
 - Message Only: FREE -- personal check-in texts
 - Digital Gift: included in plan -- promo codes sent automatically
 - Physical Gift: from $7 -- branded items shipped to customers
 
-Plans: Local $29/mo (200 customers), Growth $99/mo (1,000 customers), Scale $299/mo (unlimited)
+Plans: Local $49/mo (200 customers), Growth $149/mo (1,000 customers), Scale $349/mo (unlimited)
 
 Rules:
 - Always end with a call to action -- push them to "Get started free" or "Start your free trial"
@@ -2178,7 +2201,7 @@ async function sendChat() {
 var _ctOpen=false,_ctMsgs=[],_ctLoading=false,_ctTi=0,_ctDismissed=false;
 var _ctTeasers=['💬 How does Clicktide work?','🎁 What gifts can I send?','📈 What is the average ROI?','🔌 Which platforms?','💳 What does it cost?'];
 var _ctProxy='https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1/ai-proxy';
-var _ctSys="You are Maya from Clicktide. Be warm, energetic and sales-focused. Clicktide auto-sends branded gifts, digital rewards, and personal messages to reward loyal customers and win back churn-risk customers. 14x ROI, 91% gift open rate. Plans from $29/mo. Always end with a CTA to sign up free. Max 2-3 sentences.";
+var _ctSys="You are Maya from Clicktide. Be warm, energetic and sales-focused. Clicktide auto-sends branded gifts, digital rewards, and personal messages to reward loyal customers and win back churn-risk customers. 14x ROI, 91% gift open rate. Plans from $49/mo. Always end with a CTA to sign up free. Max 2-3 sentences.";
 
 function _ctRender(){
   var wrap=document.getElementById('ctWrap');
