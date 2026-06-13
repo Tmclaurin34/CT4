@@ -67,6 +67,41 @@ function normalizePhone(v?: string | null) {
   return "";
 }
 
+// Obviously-fake / placeholder numbers — or the merchant's own line — must never
+// be used to match or store a customer, or every walk-in entered with a store
+// default phone collapses into one fake mega-customer. `own` holds the business's
+// own numbers (last 10 digits).
+function isJunkPhone(phone: string, own: Set<string>) {
+  const last10 = (phone || "").replace(/\D/g, "").slice(-10);
+  if (last10.length < 10) return true;
+  if (/^(\d)\1{9}$/.test(last10)) return true;
+  if (last10 === "1234567890" || last10 === "0123456789" || last10 === "1234567891") return true;
+  if (/^555/.test(last10)) return true;
+  return own.has(last10);
+}
+
+// Escape LIKE/ILIKE metacharacters so an email matches literally yet
+// case-insensitively — an underscore in an address must not act as a wildcard
+// and merge two different people.
+function escapeLike(s: string) {
+  return s.replace(/([\\%_])/g, "\\$1");
+}
+
+// The business's own phone numbers (last 10 digits), so a walk-in ticket rung up
+// against the store's number is never treated as a real customer.
+async function businessOwnNumbers(userId: string): Promise<Set<string>> {
+  const set = new Set<string>();
+  try {
+    const rows = await rest(`/rest/v1/clicktide?user_id=eq.${encodeURIComponent(userId)}&select=phone,business_phone&limit=1`);
+    const r = Array.isArray(rows) ? rows[0] : null;
+    for (const v of [r?.phone, r?.business_phone]) {
+      const d = String(v || "").replace(/\D/g, "").slice(-10);
+      if (d.length === 10) set.add(d);
+    }
+  } catch { /* best effort */ }
+  return set;
+}
+
 // Build a usable US mailing address or nothing — partial addresses can't be mailed.
 function cleanAddr(line1?: string, line2?: string, city?: string, state?: string, zip?: string, country?: string): Addr | undefined {
   const c = String(country || "").trim().toUpperCase();
@@ -219,19 +254,26 @@ async function stripeOrders(c: Conn, since: string): Promise<Order[]> {
 }
 
 // ---- upsert one customer's new activity ----
-async function applyOrder(userId: string, o: Order): Promise<{ res: "updated" | "created" | "skipped"; addrAdded: boolean }> {
+async function applyOrder(userId: string, o: Order, own: Set<string>): Promise<{ res: "updated" | "created" | "skipped"; addrAdded: boolean }> {
   const email = (o.email || "").trim().toLowerCase();
-  const phone = normalizePhone(o.phone);
+  const rawPhone = normalizePhone(o.phone);
+  const phone = isJunkPhone(rawPhone, own) ? "" : rawPhone; // never match or store junk/own numbers
   if (!email && !phone) return { res: "skipped", addrAdded: false };
   const ors: string[] = [];
-  if (email) ors.push(`email.ilike.${encodeURIComponent(email)}`);
+  if (email) ors.push(`email.ilike.${encodeURIComponent(escapeLike(email))}`);
   if (phone) ors.push(`phone.eq.${encodeURIComponent(phone)}`, `phone.like.*${phone.replace(/\D/g, "").slice(-10)}`);
-  const rows = await rest(`/rest/v1/customers?user_id=eq.${userId}&or=(${ors.join(",")})&select=id,visits,total_spent,last_visit_at,first_order_at,address,city,state,zip&limit=1`);
+  const rows = await rest(`/rest/v1/customers?user_id=eq.${userId}&or=(${ors.join(",")})&select=id,name,email,phone,visits,total_spent,last_visit_at,first_order_at,address,city,state,zip&limit=1`);
   const ex = Array.isArray(rows) ? rows[0] : null;
   if (ex) {
     const newer = !ex.last_visit_at || Date.parse(o.at) > Date.parse(ex.last_visit_at);
     const hasAddr = !!(ex.address && ex.city && ex.state && ex.zip);
     const addAddr = !hasAddr && o.addr ? o.addr : null;
+    // Identifier backfill: capture any strong identifier this record was missing, so
+    // the customer still matches after a future phone or email change (their other ID holds).
+    const backfill: Record<string, unknown> = {};
+    if (!ex.email && email) backfill.email = email;
+    if (!ex.phone && phone) backfill.phone = phone;
+    if ((!ex.name || !String(ex.name).trim()) && o.name) backfill.name = o.name;
     await rest(`/rest/v1/customers?id=eq.${ex.id}`, {
       method: "PATCH", headers: { Prefer: "return=minimal" },
       body: JSON.stringify({
@@ -240,6 +282,7 @@ async function applyOrder(userId: string, o: Order): Promise<{ res: "updated" | 
         ...(newer ? { last_visit_at: o.at, last_order_at: o.at, last_order_amount: o.amount } : {}),
         ...((!ex.first_order_at || Date.parse(o.at) < Date.parse(ex.first_order_at)) ? { first_order_at: o.at } : {}),
         ...(addAddr ? addAddr : {}),
+        ...backfill,
       }),
     });
     return { res: "updated", addrAdded: !!addAddr };
@@ -277,16 +320,18 @@ Deno.serve(async (req) => {
   ) as Conn[];
 
   const results: Record<string, unknown>[] = [];
+  const ownNumbersCache: Record<string, Set<string>> = {};
   for (const c of conns) {
     const fetcher = fetchers[c.platform];
     if (!fetcher || !c.access_token) { results.push({ platform: c.platform, skipped: "no fetcher or token" }); continue; }
     const since = c.last_synced_at || new Date(Date.now() - FIRST_SYNC_DAYS * 86400000).toISOString();
     try {
+      const own = ownNumbersCache[c.user_id] || (ownNumbersCache[c.user_id] = await businessOwnNumbers(c.user_id));
       const orders = await fetcher(c, since);
       let updated = 0, created = 0, capped = 0, addresses = 0;
       for (const o of orders) {
         try {
-          const r = await applyOrder(c.user_id, o);
+          const r = await applyOrder(c.user_id, o, own);
           if (r.res === "updated") updated++;
           if (r.res === "created") created++;
           if (r.addrAdded) addresses++;

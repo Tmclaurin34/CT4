@@ -44,6 +44,18 @@ function normalizePhone(value: string) {
   return "";
 }
 
+// Obviously-fake / placeholder numbers that must never identify a customer
+// (0000000000, 5555555555, 1234567890, area code 555, etc.). Without this guard
+// every junk entry collapses into one fake "customer".
+function isJunkPhone(phone: string) {
+  const last10 = (phone || "").replace(/\D/g, "").slice(-10);
+  if (last10.length < 10) return true;
+  if (/^(\d)\1{9}$/.test(last10)) return true;
+  if (last10 === "1234567890" || last10 === "0123456789" || last10 === "1234567891") return true;
+  if (/^555/.test(last10)) return true;
+  return false;
+}
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function businessInfo(userId: string) {
@@ -87,7 +99,7 @@ Deno.serve(async (req) => {
   const bizName = info.name;
 
   const phone = normalizePhone(String(body.phone || ""));
-  if (!phone) return json({ error: "Please enter a valid phone number" }, 400);
+  if (!phone || isJunkPhone(phone)) return json({ error: "Please enter a valid phone number" }, 400);
   const name = String(body.name || "").trim().slice(0, 80);
   const consent = body.consent === true;
   const digits = phone.replace(/\D/g, "").slice(-10);
