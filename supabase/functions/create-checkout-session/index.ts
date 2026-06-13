@@ -15,6 +15,8 @@ type CheckoutBody = {
   cancel_url?: string;
 };
 
+// Prices are HARDCODED on purpose: stale GROWTH_PRICE_ID/SCALE_PRICE_ID env vars
+// on the project would silently override fallbacks — never reintroduce env reads here.
 const planPrices: Record<string, string> = {
   Local: "price_1ThaasGWBWEX8wHssSYEbwEl",   // $49/mo
   Growth: "price_1ThbjeGWBWEX8wHsElMt4z3Z",  // $149/mo
@@ -42,6 +44,10 @@ function allowedRedirect(url: string) {
 }
 function safeUrl(value: unknown) {
   return typeof value === "string" && allowedRedirect(value) ? value : "";
+}
+
+function isValidEmail(value: unknown) {
+  return typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
 function json(body: unknown, status = 200) {
@@ -85,6 +91,9 @@ Deno.serve(async (req) => {
   const rawOrigin = req.headers.get("origin") || "";
   const origin = allowedRedirect(rawOrigin + "/") ? rawOrigin : "https://goclicktide.com";
   const isWalletTopup = body.type === "wallet_topup";
+  const isSubscription = !body.type || body.type === "subscription";
+  if (!isWalletTopup && !isSubscription) return json({ error: "Invalid checkout type" }, 400);
+
   const successUrl = safeUrl(body.success_url) || (isWalletTopup
     ? `${origin}/?session=wallet_success`
     : `${origin}/?session=success&plan=${encodeURIComponent(body.plan || "")}`);
@@ -99,7 +108,12 @@ Deno.serve(async (req) => {
     "custom_text[terms_of_service_acceptance][message]",
     "I agree to Clicktide's Terms, Privacy Policy, Billing Policy, and authorize Clicktide to provide messaging, customer retention, platform connection, and gift fulfillment services for my business.",
   );
-  if (body.user_id) form.set("client_reference_id", body.user_id);
+  if (body.user_id) {
+    const authUserId = await authedUserId(req);
+    if (!authUserId) return json({ error: "Login is required for account checkout" }, 401);
+    if (authUserId !== body.user_id) return json({ error: "Not allowed to start checkout for this account" }, 403);
+    form.set("client_reference_id", body.user_id);
+  }
 
   if (isWalletTopup) {
     const amount = Number(body.amount || 0);
@@ -130,6 +144,7 @@ Deno.serve(async (req) => {
     if (!body.plan || !planPrices[body.plan]) {
       return json({ error: `Unknown or missing plan: ${body.plan ?? "(none)"}` }, 400);
     }
+    if (!isValidEmail(body.email)) return json({ error: "A valid email is required" }, 400);
     const plan = body.plan;
     const priceId = planPrices[plan];
 
