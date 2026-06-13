@@ -1604,7 +1604,7 @@ async function resumeOnboarding(existingBiz){
   if(hasPaidAccess(biz)){clearOnboardingProgress();await setBizFields({onboarding_complete:true}).catch(function(){});go("dash");return;}
   if(!obB&&!obCat)obS=0;
   else if(obS<2)obS=2;
-  obAwaitConfirm=false;scr="onboard";history.pushState({view:"onboard"},"","");R();
+  obAwaitConfirm=false;scr="onboard";R();
 }
 async function goDashboardOrResume(){
   if(!S){go("login");return;}
@@ -1622,7 +1622,6 @@ function openDashboardNow(){
   if(S&&S.token){try{setBizFields({onboarding_complete:true});}catch(e){}}
   obAwaitConfirm=false;
   scr="dash";
-  try{history.pushState({view:"dash"},"","");}catch(e){}
   R();
 }
 
@@ -1766,7 +1765,7 @@ function navKey(){return scr+"|"+(scr==="dash"&&S?dpg:"")+"|"+(scr==="onboard"?(
 function navState(){return {scr:scr,dpg:(typeof dpg!=="undefined"?dpg:"overview"),obS:(typeof obS!=="undefined"?obS:0),obC:(typeof obC!=="undefined"?obC:false)};}
 function navSync(){if(!__navReady||__navRestoring)return;var k=navKey();if(k!==__navKey){__navKey=k;try{history.pushState(navState(),"","");}catch(e){}}}
 function navRestore(st){__navRestoring=true;scr=(st&&(st.scr||st.view))||"land";if(st){if(typeof st.obS!=="undefined")obS=st.obS;if(typeof st.obC!=="undefined")obC=st.obC;}if(scr==="dash"&&S){if(st&&typeof st.dpg!=="undefined")dpg=st.dpg;try{paintDash();dLoad();}catch(e){R();}}else{R();}__navKey=navKey();__navRestoring=false;}
-function R(){if(scr==="onboard")saveOnboardingProgress();var lt=true;document.body.style.background="#FAFCFF";var h=LT(page());document.getElementById("app").innerHTML='<div class="lt">'+h+'</div>';bind();navSync();}
+function R(){if(scr==="onboard")saveOnboardingProgress();var lt=true;document.body.style.background="#FAFCFF";var h=LT(page());document.getElementById("app").innerHTML='<div class="lt">'+h+'</div>';bind();navSync();if(scr==="dash"&&S){try{dLoad();}catch(e){}}}
 
 function page(){
   if(scr==="land")return land();
@@ -4217,7 +4216,6 @@ function bind(){
     }
   },true);}
 
-  if(scr==="dash")setTimeout(dLoad,50);
   if(scr==="samples")setTimeout(async()=>{await loadGiftCatalog();const el=document.getElementById("giftSampleGrid");if(el)el.innerHTML=giftSampleCards();},50);
   if(scr==="land"){if(!(window.CSS&&CSS.supports("offset-path",'path("M0 0 H10")'))){document.querySelectorAll(".orb").forEach(function(o){o.style.display="none"});}var pfFit=function(){document.querySelectorAll(".pflow").forEach(function(w){var st=w.querySelector(".pstage");if(!st)return;var sc=Math.min(1,w.clientWidth/1000);st.style.transform="scale("+sc+")";w.style.height=(285*sc)+"px";});};pfFit();if(!window._ctPfR){window._ctPfR=1;window.addEventListener("resize",pfFit);}}
   if(scr==="land"&&("IntersectionObserver" in window)){
