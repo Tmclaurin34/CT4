@@ -3246,6 +3246,36 @@ async function sendPhysicalGift({campaignId,customerId,customerName,customerEmai
   return data;
 }
 
+function shippingAddressComplete(a){
+  return !!(a&&a.address1&&a.city&&a.region&&/^[0-9]{5}(-[0-9]{4})?$/.test(String(a.zip||"").trim()));
+}
+function shippingAddressText(a){
+  return [a?.address1,a?.city,a?.region,a?.zip].filter(Boolean).join(", ");
+}
+function applyVerifiedAddress(a,n){
+  n=n||{};
+  return {
+    address1:String(n.address1||a.address1||"").trim(),
+    city:String(n.city||a.city||"").trim(),
+    region:String(n.region||a.region||"").trim(),
+    zip:String(n.zip||a.zip||"").trim(),
+    country:String(n.country||a.country||"US").trim()||"US",
+    email:a.email||""
+  };
+}
+async function verifyShippingAddress(a){
+  if(!shippingAddressComplete(a))return {valid:false,error:"Add street, city, state, and a valid ZIP before sending a gift."};
+  try{
+    const r=await fetch(`${FN}/validate-address`,{method:"POST",headers:{"Content-Type":"application/json",apikey:SK,Authorization:`Bearer ${S?.token||SK}`},body:JSON.stringify({address:a.address1,city:a.city,state:a.region,zip:a.zip})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)return {valid:false,error:d.error||"Address verification failed."};
+    if(d.valid===true)return {valid:true,address:applyVerifiedAddress(a,d.normalized),matched:d.matched||shippingAddressText(a),source:d.source||"validator"};
+    return {valid:false,error:d.error||"We couldn't verify that shipping address. Double-check it before sending."};
+  }catch(e){
+    return {valid:false,error:"Address verification is unavailable right now. Try again before sending."};
+  }
+}
+
 function manualGiftChanged(){
   const sel=document.getElementById("mgGift");
   const g=giftOptions()[Number(sel?.value||0)]||giftOptions()[0];
@@ -3298,16 +3328,20 @@ async function sendManualGiftNow(btn){
   const balance=Number(document.getElementById("mgGift")?.dataset.balance||0);
   const name=(document.getElementById("mgName")?.value||"").trim();
   const email=(document.getElementById("mgEmail")?.value||"").trim();
-  const address={address1:(document.getElementById("mgAddr")?.value||"").trim(),city:(document.getElementById("mgCity")?.value||"").trim(),region:(document.getElementById("mgState")?.value||"").trim(),zip:(document.getElementById("mgZip")?.value||"").trim(),country:"US",email:email};
+  let address={address1:(document.getElementById("mgAddr")?.value||"").trim(),city:(document.getElementById("mgCity")?.value||"").trim(),region:(document.getElementById("mgState")?.value||"").trim(),zip:(document.getElementById("mgZip")?.value||"").trim(),country:"US",email:email};
   if(!gift){alert("Choose a gift first.");return;}
   if(!name||!email){alert("Add the customer's name and email first.");return;}
-  if(!address.address1||!address.city||!address.region||!address.zip){alert("Add a complete mailing address before shipping a gift.");return;}
+  if(!shippingAddressComplete(address)){alert("Add a complete mailing address before shipping a gift.");return;}
   if(cost>balance){alert("Not enough gift wallet funds. Add funds before sending this gift.");return;}
-  if(!confirm("Send "+gift.n+" to "+name+" now? Your gift wallet will be charged $"+cost.toFixed(2)+"."))return;
+  if(btn){btn.disabled=true;btn.textContent="Verifying address...";}
+  const verified=await verifyShippingAddress(address);
+  if(!verified.valid){alert(verified.error);if(btn){btn.disabled=false;btn.textContent="Send gift now";}return;}
+  address=Object.assign({},verified.address,{email:email});
+  if(!confirm("Send "+gift.n+" to "+name+" now? Your gift wallet will be charged $"+cost.toFixed(2)+".")){if(btn){btn.disabled=false;btn.textContent="Send gift now";}return;}
   if(btn){btn.disabled=true;btn.textContent="Sending...";}
   try{
     const biz=await loadBiz()||{};
-    await fetch(SU+"/rest/v1/customers?id=eq."+encodeURIComponent(customerId),{method:"PATCH",headers:Object.assign({},h(S?.token||SK),{Prefer:"return=minimal"}),body:JSON.stringify({address:address.address1,city:address.city,state:address.region,zip:address.zip})});
+    await fetch(SU+"/rest/v1/customers?id=eq."+encodeURIComponent(customerId),{method:"PATCH",headers:Object.assign({},h(S?.token||SK),{Prefer:"return=minimal"}),body:JSON.stringify({address:address.address1,city:address.city,state:address.region,zip:address.zip,address_confirmed_at:new Date().toISOString()})});
     await sendPhysicalGift({campaignId:"manual-gift-"+Date.now(),customerId:customerId,customerName:name,customerEmail:email,address:address,gift:gift,logoUrl:biz.logo_url||null,businessName:biz.business_name||"",giftCost:cost});
     document.querySelector(".ov")?.remove();
     alert("Gift sent. You can track it in Shipments.");
@@ -3318,15 +3352,28 @@ async function sendManualGiftNow(btn){
   }
 }
 
-var giftCartCustomers=[],giftCartSelected={},giftCartBalance=0,giftCartBiz={};
+var giftCartCustomers=[],giftCartItems=[],giftCartBalance=0,giftCartBiz={};
 function giftCartAddressOk(c){
-  return !!(c&&(c.address||"").trim()&&(c.city||"").trim()&&(c.state||"").trim()&&(c.zip||"").trim());
+  return shippingAddressComplete(giftCartAddress(c));
 }
 function giftCartAddress(c){
   return {address1:(c.address||"").trim(),city:(c.city||"").trim(),region:(c.state||"").trim(),zip:(c.zip||"").trim(),country:"US",email:c.email||""};
 }
-function giftCartPicked(){
-  return giftCartCustomers.filter(function(c){return giftCartSelected[String(c.id)];});
+function giftCartVerified(c){
+  return !!(c&&c.address_confirmed_at&&giftCartAddressOk(c));
+}
+function giftCartGiftOptions(selected){
+  return giftOptions().map(function(g,i){return "<option value='"+i+"' "+(Number(selected)===i?"selected":"")+">"+giftEsc(g.n)+" - $"+Number(g.p||0).toFixed(2)+"</option>";}).join("");
+}
+function giftCartItemGift(item){
+  return giftOptions()[Number(item.giftIndex||0)]||giftOptions()[0];
+}
+function giftCartTotal(){
+  return giftCartItems.reduce(function(sum,item){const g=giftCartItemGift(item);return sum+Number(g?.p||0);},0);
+}
+function giftCartAddressBadge(item){
+  const source=item.verifiedSource==="google"?"Google verified":item.verifiedSource==="census"?"Verified":"Verified";
+  return "<span style='font-size:10px;color:#22C55E;font-weight:800'>✓ "+source+"</span>";
 }
 async function oGiftCart(){
   if(!await requirePaidAction())return;
@@ -3338,21 +3385,20 @@ async function oGiftCart(){
     loadBiz().catch(()=>({}))
   ]);
   giftCartCustomers=Array.isArray(out[0])?out[0]:[];
-  giftCartSelected={};
+  giftCartItems=[];
   giftCartBalance=Number(Array.isArray(out[1])&&out[1][0]?out[1][0].balance:0);
   giftCartBiz=out[2]||{};
-  if(!giftCartCustomers.length){alert("Add customers before building a gift cart.");return;}
-  const opts=giftOptions().map(function(g,i){return "<option value='"+i+"'>"+giftEsc(g.n)+" - $"+Number(g.p||0).toFixed(2)+"</option>";}).join("");
   document.body.insertAdjacentHTML("beforeend",modal("Gift cart",`
-    <div style="background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:rgba(240,244,255,.65);line-height:1.6">Pick one gift, search your customer list, then confirm each recipient before adding them to the cart. Nothing ships until the final wallet confirmation.</div>
-    <div class="fg"><label class="fl">Gift for this cart</label><select class="fi-sel" id="giftCartGift" onchange="giftCartRender()">${opts}</select></div>
+    <div style="background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:rgba(240,244,255,.65);line-height:1.6">Search customers or type a manual recipient. Each cart line can have its own gift. Every recipient needs a complete verified shipping address before anything ships.</div>
+    <div class="fg"><label class="fl">Gift to add from customer list</label><select class="fi-sel" id="giftCartDefaultGift">${giftCartGiftOptions(0)}</select></div>
     <div style="display:flex;justify-content:space-between;gap:12px;background:#101828;border-radius:10px;padding:11px 12px;margin:-4px 0 14px;flex-wrap:wrap"><span style="font-size:12px;color:rgba(240,244,255,.5)">Wallet: <b style="color:#F0F4FF">$${giftCartBalance.toFixed(2)}</b></span><span style="font-size:12px;color:rgba(240,244,255,.5)">Selected: <b id="giftCartCount" style="color:#F0F4FF">0</b></span><span style="font-size:12px;color:rgba(240,244,255,.5)">Total: <b id="giftCartTotal" style="color:#22C55E">$0.00</b></span></div>
     <input class="fi" id="giftCartSearch" placeholder="Search customers by name or email" oninput="giftCartRender()" style="margin-bottom:12px"/>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
       <div><div class="fl" style="margin-bottom:7px">Customers</div><div id="giftCartList" style="max-height:330px;overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.025)"></div></div>
-      <div><div class="fl" style="margin-bottom:7px">Cart</div><div id="giftCartBasket" style="max-height:330px;overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.025)"></div></div>
+      <div><div class="fl" style="margin-bottom:7px">Manual recipient</div><div style="border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.025);padding:12px"><input class="fi" id="gcmName" placeholder="Customer name" style="margin-bottom:8px"/><input class="fi" id="gcmEmail" type="email" placeholder="Email optional" style="margin-bottom:8px"/><select class="fi-sel" id="gcmGift" style="margin-bottom:8px">${giftCartGiftOptions(0)}</select><input class="fi" id="gcmAddr" placeholder="Street address" style="margin-bottom:8px"/><div style="display:flex;gap:8px;margin-bottom:8px"><input class="fi" id="gcmCity" placeholder="City" style="flex:2"/><input class="fi" id="gcmState" placeholder="State" style="flex:1"/><input class="fi" id="gcmZip" placeholder="ZIP" style="flex:1"/></div><button class="btn btn-gold" style="width:100%;padding:9px 12px;font-size:11px" onclick="giftCartAddManual(this)">Verify + Add manual recipient</button></div></div>
     </div>
-    <label style="display:flex;align-items:flex-start;gap:8px;margin:13px 0 8px;font-size:11px;color:rgba(240,244,255,.62);line-height:1.5"><input id="giftCartConfirm" type="checkbox" style="margin-top:2px"/> I confirmed these recipients should receive this gift and their mailing addresses are usable.</label>
+    <div style="margin-top:12px"><div class="fl" style="margin-bottom:7px">Cart</div><div id="giftCartBasket" style="max-height:330px;overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.025)"></div></div>
+    <label style="display:flex;align-items:flex-start;gap:8px;margin:13px 0 8px;font-size:11px;color:rgba(240,244,255,.62);line-height:1.5"><input id="giftCartConfirm" type="checkbox" style="margin-top:2px"/> I confirmed every recipient, gift, and verified shipping address in this cart.</label>
     <div id="giftCartNote" style="font-size:11px;color:rgba(240,244,255,.48);line-height:1.6;margin-bottom:12px"></div>
     <div style="display:flex;gap:10px"><button class="btn-full btn-gold" id="giftCartSend" onclick="sendGiftCart(this)">Send selected gifts</button><button class="btn btn-ghost" style="padding:10px 20px" onclick="this.closest('.ov').remove()">Cancel</button></div>
   `));
@@ -3363,11 +3409,9 @@ async function oGiftCart(){
 }
 function giftCartRender(){
   const q=(document.getElementById("giftCartSearch")?.value||"").toLowerCase().trim();
-  const gift=giftOptions()[Number(document.getElementById("giftCartGift")?.value||0)]||giftOptions()[0];
-  const picked=giftCartPicked();
-  const each=Number(gift?.p||0),total=each*picked.length;
+  const total=giftCartTotal();
   const countEl=document.getElementById("giftCartCount"),totalEl=document.getElementById("giftCartTotal"),note=document.getElementById("giftCartNote"),send=document.getElementById("giftCartSend");
-  if(countEl)countEl.textContent=String(picked.length);
+  if(countEl)countEl.textContent=String(giftCartItems.length);
   if(totalEl){totalEl.textContent="$"+total.toFixed(2);totalEl.style.color=total>giftCartBalance?"#FF9F4D":"#22C55E";}
   const filtered=giftCartCustomers.filter(function(c){
     const hay=String((c.name||"")+" "+(c.email||"")+" "+(c.phone||"")).toLowerCase();
@@ -3376,59 +3420,108 @@ function giftCartRender(){
   const list=document.getElementById("giftCartList");
   if(list){
     list.innerHTML=filtered.length?filtered.map(function(c){
-      const id=String(c.id),ok=giftCartAddressOk(c),added=!!giftCartSelected[id];
-      const sub=(c.email||c.phone||"No contact")+" · "+(ok?((c.city||"")+", "+(c.state||"")):"Need mailing address");
-      const btn=added?'<button class="btn btn-ghost" style="padding:6px 9px;font-size:10px" disabled>Added</button>':ok?'<button class="btn btn-gold" data-cid="'+giftEsc(id)+'" style="padding:6px 9px;font-size:10px" onclick="giftCartAdd(this.dataset.cid)">Confirm + Add</button>':'<button class="btn btn-ghost" style="padding:6px 9px;font-size:10px;opacity:.55" disabled>Need address</button>';
+      const id=String(c.id),ok=giftCartAddressOk(c),verified=giftCartVerified(c);
+      const sub=(c.email||c.phone||"No contact")+" · "+(verified?"✓ Verified on file":ok?"Address on file · needs verify":"Need full shipping address");
+      const btn=ok?'<button class="btn btn-gold" data-cid="'+giftEsc(id)+'" style="padding:6px 9px;font-size:10px" onclick="giftCartAddCustomer(this.dataset.cid,this)">'+(verified?"Add":"Verify + Add")+'</button>':'<button class="btn btn-ghost" style="padding:6px 9px;font-size:10px;opacity:.55" disabled>Need address</button>';
       return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;border-bottom:1px solid rgba(255,255,255,.06)"><div style="min-width:0"><div style="font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+giftEsc(c.name||"Customer")+'</div><div style="font-size:10px;color:rgba(240,244,255,.42);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+giftEsc(sub)+'</div></div>'+btn+'</div>';
-    }).join(""):'<div style="padding:18px;text-align:center;font-size:12px;color:rgba(240,244,255,.45)">No customers found.</div>';
+    }).join(""):'<div style="padding:18px;text-align:center;font-size:12px;color:rgba(240,244,255,.45)">'+(giftCartCustomers.length?"No customers found.":"No saved customers yet — use Manual recipient.")+'</div>';
   }
   const basket=document.getElementById("giftCartBasket");
   if(basket){
-    basket.innerHTML=picked.length?picked.map(function(c){
-      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;border-bottom:1px solid rgba(255,255,255,.06)"><div style="min-width:0"><div style="font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+giftEsc(c.name||"Customer")+'</div><div style="font-size:10px;color:rgba(240,244,255,.42);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+giftEsc((c.address||"")+", "+(c.city||"")+", "+(c.state||"")+" "+(c.zip||""))+'</div></div><button class="btn btn-ghost" data-cid="'+giftEsc(c.id)+'" style="padding:6px 9px;font-size:10px" onclick="giftCartRemove(this.dataset.cid)">Remove</button></div>';
-    }).join(""):'<div style="padding:18px;text-align:center;font-size:12px;color:rgba(240,244,255,.45)">Add confirmed customers here.</div>';
+    basket.innerHTML=giftCartItems.length?giftCartItems.map(function(item){
+      const gift=giftCartItemGift(item),cost=Number(gift?.p||0);
+      return '<div style="display:grid;grid-template-columns:minmax(150px,1fr) minmax(160px,1fr) auto;gap:10px;padding:11px;border-bottom:1px solid rgba(255,255,255,.06);align-items:center"><div style="min-width:0"><div style="font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+giftEsc(item.name||"Customer")+'</div><div style="font-size:10px;color:rgba(240,244,255,.42);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+giftEsc(shippingAddressText(item.address))+'</div><div style="margin-top:3px">'+giftCartAddressBadge(item)+'</div></div><div><select class="fi-sel" style="font-size:11px;padding:7px 9px" onchange="giftCartSetGift(\''+giftEsc(item.id)+'\',this.value)">'+giftCartGiftOptions(item.giftIndex)+'</select><div style="font-size:10px;color:#22C55E;margin-top:4px;font-weight:800">$'+cost.toFixed(2)+'</div></div><button class="btn btn-ghost" data-iid="'+giftEsc(item.id)+'" style="padding:7px 10px;font-size:10px" onclick="giftCartRemove(this.dataset.iid)">Remove</button></div>';
+    }).join(""):'<div style="padding:18px;text-align:center;font-size:12px;color:rgba(240,244,255,.45)">Add verified recipients here.</div>';
   }
   if(note){
-    if(!picked.length){note.textContent="Choose customers from the list to build the cart.";note.style.color="rgba(240,244,255,.48)";}
+    if(!giftCartItems.length){note.textContent="Choose customers from the list or add a manual recipient to build the cart.";note.style.color="rgba(240,244,255,.48)";}
     else if(total>giftCartBalance){note.textContent="Add wallet funds before this cart can ship.";note.style.color="#FF9F4D";}
-    else {note.textContent="Ready for final confirmation. Gifts will ship one by one and appear in Shipments.";note.style.color="rgba(240,244,255,.58)";}
+    else {note.textContent="Ready for final confirmation. Every cart line has a verified shipping address.";note.style.color="rgba(240,244,255,.58)";}
   }
   if(send){
-    send.disabled=!picked.length||total>giftCartBalance;
-    send.textContent=picked.length?"Send "+picked.length+" gift"+(picked.length===1?"":"s"):"Send selected gifts";
+    send.disabled=!giftCartItems.length||total>giftCartBalance;
+    send.textContent=giftCartItems.length?"Send "+giftCartItems.length+" gift"+(giftCartItems.length===1?"":"s"):"Send selected gifts";
   }
 }
-function giftCartAdd(id){
+function giftCartMakeItem(fields){
+  return Object.assign({id:"gci-"+Date.now()+"-"+Math.random().toString(36).slice(2,8),verified:true},fields);
+}
+async function giftCartAddCustomer(id,btn){
   const c=giftCartCustomers.find(function(x){return String(x.id)===String(id);});
   if(!c)return;
   if(!giftCartAddressOk(c)){alert("Add a complete mailing address before adding this customer.");return;}
-  if(!confirm("Add "+(c.name||"this customer")+" to the gift cart? Confirm this is the right recipient and mailing address."))return;
-  giftCartSelected[String(id)]=true;
+  const giftIndex=Number(document.getElementById("giftCartDefaultGift")?.value||0);
+  const gift=giftOptions()[giftIndex]||giftOptions()[0];
+  let address=giftCartAddress(c),source=c.address_confirmed_at?"on_file":"";
+  if(!c.address_confirmed_at){
+    if(btn){btn.disabled=true;btn.textContent="Verifying...";}
+    const verified=await verifyShippingAddress(address);
+    if(btn){btn.disabled=false;btn.textContent="Verify + Add";}
+    if(!verified.valid){alert(verified.error);return;}
+    address=Object.assign({},verified.address,{email:c.email||""});
+    source=verified.source||"validator";
+    await fetch(SU+"/rest/v1/customers?id=eq."+encodeURIComponent(c.id),{method:"PATCH",headers:Object.assign({},h(S?.token||SK),{Prefer:"return=minimal"}),body:JSON.stringify({address:address.address1,city:address.city,state:address.region,zip:address.zip,address_confirmed_at:new Date().toISOString()})});
+    c.address=address.address1;c.city=address.city;c.state=address.region;c.zip=address.zip;c.address_confirmed_at=new Date().toISOString();
+  }
+  const duplicate=giftCartItems.some(function(x){return String(x.customerId||"")===String(c.id)&&Number(x.giftIndex)===giftIndex;});
+  if(duplicate&&!confirm((c.name||"This customer")+" already has this gift in the cart. Add another one anyway?"))return;
+  if(!confirm("Add "+(c.name||"this customer")+" to the gift cart with "+(gift?.n||"this gift")+"?\nShip to: "+shippingAddressText(address)))return;
+  giftCartItems.push(giftCartMakeItem({source:"customer",customerId:String(c.id),name:c.name||"Customer",email:c.email||"",address:address,giftIndex:giftIndex,verifiedSource:source||"on_file"}));
+  giftCartRender();
+}
+async function giftCartAddManual(btn){
+  const name=(document.getElementById("gcmName")?.value||"").trim();
+  const email=(document.getElementById("gcmEmail")?.value||"").trim();
+  const giftIndex=Number(document.getElementById("gcmGift")?.value||0);
+  let address={address1:(document.getElementById("gcmAddr")?.value||"").trim(),city:(document.getElementById("gcmCity")?.value||"").trim(),region:(document.getElementById("gcmState")?.value||"").trim(),zip:(document.getElementById("gcmZip")?.value||"").trim(),country:"US",email:email};
+  if(!name){alert("Add the recipient's full name first.");return;}
+  if(email&&!isEmail(email)){alert("That email doesn't look right. Leave it blank or enter a valid email.");return;}
+  if(!shippingAddressComplete(address)){alert("Add street, city, state, and a valid ZIP before adding this recipient.");return;}
+  if(btn){btn.disabled=true;btn.textContent="Verifying...";}
+  const verified=await verifyShippingAddress(address);
+  if(btn){btn.disabled=false;btn.textContent="Verify + Add manual recipient";}
+  if(!verified.valid){alert(verified.error);return;}
+  address=Object.assign({},verified.address,{email:email});
+  const gift=giftOptions()[giftIndex]||giftOptions()[0];
+  if(!confirm("Add "+name+" to the gift cart with "+(gift?.n||"this gift")+"?\nShip to: "+shippingAddressText(address)))return;
+  giftCartItems.push(giftCartMakeItem({source:"manual",customerId:null,name:name,email:email,address:address,giftIndex:giftIndex,verifiedSource:verified.source||"validator"}));
+  ["gcmName","gcmEmail","gcmAddr","gcmCity","gcmState","gcmZip"].forEach(function(id){const el=document.getElementById(id);if(el)el.value="";});
+  giftCartRender();
+}
+function giftCartSetGift(id,value){
+  const item=giftCartItems.find(function(x){return x.id===id;});
+  if(item)item.giftIndex=Number(value)||0;
   giftCartRender();
 }
 function giftCartRemove(id){
-  delete giftCartSelected[String(id)];
+  giftCartItems=giftCartItems.filter(function(x){return x.id!==id;});
   giftCartRender();
 }
 async function sendGiftCart(btn){
-  const picked=giftCartPicked();
-  const gift=giftOptions()[Number(document.getElementById("giftCartGift")?.value||0)];
-  const each=Number(gift?.p||0),total=each*picked.length;
-  if(!gift){alert("Choose a gift first.");return;}
-  if(!picked.length){alert("Add customers to the cart first.");return;}
+  const total=giftCartTotal();
+  if(!giftCartItems.length){alert("Add gifts to the cart first.");return;}
+  const bad=giftCartItems.find(function(item){return !item.verified||!shippingAddressComplete(item.address);});
+  if(bad){alert("Every cart line needs a verified full shipping address before sending.");return;}
   if(total>giftCartBalance){alert("Not enough gift wallet funds for this cart.");return;}
-  if(!document.getElementById("giftCartConfirm")?.checked){alert("Confirm the recipients and addresses before sending.");return;}
-  if(!confirm("Send "+picked.length+" "+gift.n+" gift"+(picked.length===1?"":"s")+" now? Your gift wallet will be charged about $"+total.toFixed(2)+"."))return;
-  if(btn){btn.disabled=true;btn.textContent="Sending 0/"+picked.length+"...";}
+  if(!document.getElementById("giftCartConfirm")?.checked){alert("Confirm every recipient, gift, and verified address before sending.");return;}
+  if(!confirm("Send "+giftCartItems.length+" gift"+(giftCartItems.length===1?"":"s")+" now? Your gift wallet will be charged about $"+total.toFixed(2)+"."))return;
+  if(btn){btn.disabled=true;btn.textContent="Sending 0/"+giftCartItems.length+"...";}
   const batchId="manual-gift-bulk-"+Date.now();
   let sent=0;const failed=[];
-  for(const c of picked){
+  for(const item of giftCartItems){
     try{
-      await sendPhysicalGift({campaignId:batchId+"-"+c.id,customerId:String(c.id),customerName:c.name||"Customer",customerEmail:c.email||"",address:giftCartAddress(c),gift:gift,logoUrl:giftCartBiz.logo_url||null,businessName:giftCartBiz.business_name||"",giftCost:each});
+      let customerId=item.customerId||null;
+      if(!customerId){
+        const created=await db.ins("customers",{name:item.name,email:item.email||null,address:item.address.address1,city:item.address.city,state:item.address.region,zip:item.address.zip,address_confirmed_at:new Date().toISOString(),business_id:"manual-gift-cart",total_spent:0,status:"active",user_id:myId()},S?.token||SK);
+        if(created&&created.message)throw new Error(String(created.message).replace("PLAN_CUSTOMER_LIMIT_REACHED:","Plan limit reached:"));
+        customerId=Array.isArray(created)&&created[0]?.id?String(created[0].id):null;
+      }
+      const gift=giftCartItemGift(item);
+      await sendPhysicalGift({campaignId:batchId+"-"+item.id,customerId:customerId,customerName:item.name||"Customer",customerEmail:item.email||"",address:item.address,gift:gift,logoUrl:giftCartBiz.logo_url||null,businessName:giftCartBiz.business_name||"",giftCost:Number(gift?.p||0)});
       sent++;
-      if(btn)btn.textContent="Sending "+sent+"/"+picked.length+"...";
+      if(btn)btn.textContent="Sending "+sent+"/"+giftCartItems.length+"...";
     }catch(e){
-      failed.push((c.name||"Customer")+": "+(e.message||"failed"));
+      failed.push((item.name||"Customer")+": "+(e.message||"failed"));
     }
   }
   btn?.closest(".ov")?.remove();
@@ -3616,8 +3709,30 @@ async function svCM(){
 
 function modal(title,body){return`<div class="ov" onclick="if(event.target===this)this.remove()"><div class="mb"><div class="mh"><div class="mt">${title}</div><button class="mc" onclick="this.closest('.ov').remove()">✕</button></div><div class="mbody">${body}</div></div></div>`;}
 
-function oAC(){document.body.insertAdjacentHTML("beforeend",modal("Add Customer",`<div class="fg"><label class="fl">Full Name</label><input class="fi" id="cNm" placeholder="Sarah Mitchell"/></div><div class="fg"><label class="fl">Email</label><input class="fi" id="cEm" type="email" placeholder="sarah@example.com"/></div><div class="fg"><label class="fl">Phone for SMS</label><input class="fi" id="cPh" type="tel" placeholder="(555) 123-4567"/></div><label style="display:flex;gap:9px;align-items:flex-start;margin:-4px 0 14px;color:rgba(240,244,255,.62);font-size:12px;line-height:1.5"><input id="cSmsOk" type="checkbox" style="margin-top:2px"> Customer agreed to receive SMS messages from this business.</label><div class="fg"><label class="fl">Mailing Address <span style="opacity:.5;text-transform:none">(for postcards &amp; gifts)</span></label><input class="fi" id="cAddr" placeholder="123 Main St"/></div><div class="fg" style="display:flex;gap:8px"><div style="flex:2"><label class="fl">City</label><input class="fi" id="cCity" placeholder="City"/></div><div style="flex:1"><label class="fl">State</label><input class="fi" id="cState" placeholder="NY"/></div><div style="flex:1"><label class="fl">ZIP</label><input class="fi" id="cZip" placeholder="11542"/></div></div><div class="fg"><label class="fl">Business</label><input class="fi" id="cBz" placeholder="Iron Forge Gym"/></div><div class="fg"><label class="fl">Total Spent ($)</label><input class="fi" id="cSp" type="number" placeholder="0"/></div><div style="display:flex;gap:10px"><button class="btn-full btn-gold" onclick="svCust()">Save</button><button class="btn btn-ghost" style="padding:10px 20px" onclick="this.closest('.ov').remove()">Cancel</button></div>`));}
-async function svCust(){const tok=S?.token||SK;const n=document.getElementById("cNm")?.value,e=document.getElementById("cEm")?.value,ph=document.getElementById("cPh")?.value||"",smsOk=!!document.getElementById("cSmsOk")?.checked;if(!n||!e)return;if(smsOk&&!ph.trim()){alert("Add a phone number before turning on SMS consent.");return}try{const res=await db.ins("customers",{name:n,email:e,phone:ph||null,sms_consent:smsOk,sms_consent_at:smsOk?new Date().toISOString():null,address:document.getElementById("cAddr")?.value||null,city:document.getElementById("cCity")?.value||null,state:document.getElementById("cState")?.value||null,zip:document.getElementById("cZip")?.value||null,business_id:document.getElementById("cBz")?.value||"",total_spent:parseFloat(document.getElementById("cSp")?.value)||0,status:"active",user_id:myId()},tok);if(res&&res.message){alert(String(res.message).replace("PLAN_CUSTOMER_LIMIT_REACHED:","Plan limit reached:"));return;}document.querySelector(".ov")?.remove();dLoad();}catch(ex){alert(ex.message);}}
+function oAC(){document.body.insertAdjacentHTML("beforeend",modal("Add Customer",`<div class="fg"><label class="fl">Full Name</label><input class="fi" id="cNm" placeholder="Sarah Mitchell"/></div><div class="fg"><label class="fl">Email</label><input class="fi" id="cEm" type="email" placeholder="sarah@example.com"/></div><div class="fg"><label class="fl">Phone for SMS</label><input class="fi" id="cPh" type="tel" placeholder="(555) 123-4567"/></div><label style="display:flex;gap:9px;align-items:flex-start;margin:-4px 0 14px;color:rgba(240,244,255,.62);font-size:12px;line-height:1.5"><input id="cSmsOk" type="checkbox" style="margin-top:2px"> Customer agreed to receive SMS messages from this business.</label><div style="border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;margin-bottom:14px;background:rgba(255,255,255,.025)"><div style="font-size:11px;font-weight:800;color:rgba(240,244,255,.5);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Shipping address for postcards &amp; gifts</div><div class="fg"><label class="fl">Street Address</label><input class="fi" id="cAddr" placeholder="123 Main St"/></div><div class="fg" style="display:flex;gap:8px"><div style="flex:2"><label class="fl">City</label><input class="fi" id="cCity" placeholder="City"/></div><div style="flex:1"><label class="fl">State</label><input class="fi" id="cState" placeholder="NY"/></div><div style="flex:1"><label class="fl">ZIP</label><input class="fi" id="cZip" placeholder="11542"/></div></div><div style="font-size:10px;color:rgba(240,244,255,.42);line-height:1.5">Leave address blank if you only want to save the customer. If any address field is entered, Clicktide requires the full address and verifies it before saving.</div></div><div class="fg"><label class="fl">Business</label><input class="fi" id="cBz" placeholder="Iron Forge Gym"/></div><div class="fg"><label class="fl">Total Spent ($)</label><input class="fi" id="cSp" type="number" placeholder="0"/></div><div style="display:flex;gap:10px"><button class="btn-full btn-gold" onclick="svCust(this)">Save</button><button class="btn btn-ghost" style="padding:10px 20px" onclick="this.closest('.ov').remove()">Cancel</button></div>`));}
+async function svCust(btn){
+  const tok=S?.token||SK,n=(document.getElementById("cNm")?.value||"").trim(),e=(document.getElementById("cEm")?.value||"").trim(),ph=document.getElementById("cPh")?.value||"",smsOk=!!document.getElementById("cSmsOk")?.checked;
+  if(!n||!e){alert("Add the customer's name and email first.");return;}
+  if(!isEmail(e)){alert("That email doesn't look right.");return;}
+  if(smsOk&&!ph.trim()){alert("Add a phone number before turning on SMS consent.");return}
+  let address={address1:(document.getElementById("cAddr")?.value||"").trim(),city:(document.getElementById("cCity")?.value||"").trim(),region:(document.getElementById("cState")?.value||"").trim(),zip:(document.getElementById("cZip")?.value||"").trim(),country:"US",email:e};
+  const hasAnyAddress=!!(address.address1||address.city||address.region||address.zip);
+  let addressFields={address:null,city:null,state:null,zip:null,address_confirmed_at:null};
+  if(hasAnyAddress){
+    if(!shippingAddressComplete(address)){alert("If you enter an address, add street, city, state, and a valid ZIP.");return;}
+    if(btn){btn.disabled=true;btn.textContent="Verifying address...";}
+    const verified=await verifyShippingAddress(address);
+    if(!verified.valid){alert(verified.error);if(btn){btn.disabled=false;btn.textContent="Save";}return;}
+    address=Object.assign({},verified.address,{email:e});
+    addressFields={address:address.address1,city:address.city,state:address.region,zip:address.zip,address_confirmed_at:new Date().toISOString()};
+  }
+  if(btn){btn.disabled=true;btn.textContent="Saving...";}
+  try{
+    const res=await db.ins("customers",Object.assign({name:n,email:e,phone:ph||null,sms_consent:smsOk,sms_consent_at:smsOk?new Date().toISOString():null,business_id:document.getElementById("cBz")?.value||"",total_spent:parseFloat(document.getElementById("cSp")?.value)||0,status:"active",user_id:myId()},addressFields),tok);
+    if(res&&res.message){alert(String(res.message).replace("PLAN_CUSTOMER_LIMIT_REACHED:","Plan limit reached:"));if(btn){btn.disabled=false;btn.textContent="Save";}return;}
+    document.querySelector(".ov")?.remove();dLoad();
+  }catch(ex){alert(ex.message);if(btn){btn.disabled=false;btn.textContent="Save";}}
+}
 
 
 

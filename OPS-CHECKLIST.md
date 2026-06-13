@@ -15,6 +15,7 @@
 - [ ] `PRINTIFY_API_TOKEN` + `PRINTIFY_SHOP_ID` + `PRINTIFY_WEBHOOK_SECRET`
 - [ ] `STRIPE_SECRET_KEY` + plan price ids (`LOCAL_PRICE_ID` / `GROWTH_PRICE_ID` / `SCALE_PRICE_ID`)
 - [ ] `ANTHROPIC_API_KEY` (AI suggestions, support chat)
+- [ ] `GOOGLE_ADDRESS_VALIDATION_API_KEY` or `GOOGLE_MAPS_API_KEY` (turns on Google Address Validation for shipping; Census fallback works without it)
 
 ## Webhooks (point at the new project URL)
 - [ ] Stripe → `/functions/v1/stripe-webhook` (checkout + subscription events)

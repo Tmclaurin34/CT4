@@ -60,6 +60,46 @@ function normalizeAddress(raw: unknown, customerName: string, customerEmail: str
   };
 }
 
+function addressComplete(address: Address) {
+  return !!(String(address.address1 || "").trim() &&
+    String(address.city || "").trim() &&
+    String(address.region || "").trim() &&
+    /^[0-9]{5}(-[0-9]{4})?$/.test(String(address.zip || "").trim()));
+}
+
+async function validateShipmentAddress(address: Address) {
+  if (!addressComplete(address)) {
+    throw new AppError("A complete shipping address is required before sending a gift", 400);
+  }
+  const response = await fetch(`${supabaseUrl}/functions/v1/validate-address`, {
+    method: "POST",
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      address: address.address1,
+      city: address.city,
+      state: address.region,
+      zip: address.zip,
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data?.valid !== true) {
+    throw new AppError(data?.error || "Shipping address could not be verified", 400);
+  }
+  const normalized = data?.normalized || {};
+  return {
+    ...address,
+    address1: String(normalized.address1 || address.address1 || "").trim(),
+    city: String(normalized.city || address.city || "").trim(),
+    region: String(normalized.region || address.region || "").trim(),
+    zip: String(normalized.zip || address.zip || "").trim(),
+    country: String(normalized.country || address.country || "US").trim() || "US",
+  };
+}
+
 async function supabaseFetch(path: string, init: RequestInit = {}) {
   const response = await fetch(`${supabaseUrl}${path}`, {
     ...init,
@@ -260,7 +300,7 @@ Deno.serve(async (req) => {
     const customerEmail = String(body.customer_email || "");
     const giftName = String(body.gift_name || "Gift");
     const campaignId = body.campaign_id ? String(body.campaign_id) : null;
-    const address = normalizeAddress(body.address, customerName, customerEmail);
+    const address = await validateShipmentAddress(normalizeAddress(body.address, customerName, customerEmail));
     const giftCost = dollars(body.gift_cost);
 
     // Business branding: request logo wins, then the saved profile logo.
