@@ -24,7 +24,7 @@ h1{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin:
 </head>
 <body>
 <div class="card" id="card">
-  <div style="font-size:34px">👋</div>
+  <div style="margin-bottom:4px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#FFD166" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></svg></div>
   <h1 id="bizName">Check in</h1>
   <div class="sub">Tap in your phone number and you're done.</div>
   <div class="err" id="err"></div>
@@ -78,7 +78,7 @@ function go(ev){
     if(x.d&&x.d.ok){
       var who=x.d.first_name||"there";
       document.getElementById("card").innerHTML=
-        '<div class="done">'+(x.d.already?"✅":"🎉")+'</div>'+
+        '<div class="done"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.5 2.5 5-5.5"/></svg></div>'+
         '<h1>'+(x.d.already?"Already checked in!":"You\'re checked in, "+who+"!")+'</h1>'+
         '<div class="sub">'+(x.d.already?"We counted your visit earlier today.":"Thanks for coming back to "+(x.d.business_name||"us")+". See you next time!")+'</div>'+
         (WL?'':'<div class="power">Powered by <b>CLICKTIDE</b> · goclicktide.com</div>');

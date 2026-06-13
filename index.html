@@ -161,6 +161,13 @@ h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(40px,6.4vw,78px);line-
 .lt .dr{border-bottom:1px solid rgba(16,18,21,.06)}
 .lt .empty{background:#FFFFFF;border:1px dashed rgba(16,18,21,.14)}
 .lt .di{background:rgba(16,18,21,.04)}
+/* Light modals (gift cart, add customer, etc.) */
+.ov.lt{background:rgba(15,23,42,.45)}
+.lt .mb{background:#FFFFFF;border:1px solid rgba(16,18,21,.1);box-shadow:0 24px 70px rgba(16,18,21,.22)}
+.lt .mh{border-bottom:1px solid rgba(16,18,21,.08)}
+.lt .mt{color:#0F1115}
+.lt .mc{color:#6B6F76}
+.lt .mbody{color:#0F1115}
 /* MODAL */
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:300;padding:20px}
 .mb{background:#0C1220;border:1px solid rgba(255,255,255,.07);border-radius:20px;width:100%;max-width:500px;max-height:90vh;overflow:auto}
@@ -3795,19 +3802,19 @@ function giftCartRender(){
   }).slice(0,80);
   const list=document.getElementById("giftCartList");
   if(list){
-    list.innerHTML=filtered.length?filtered.map(function(c){
+    list.innerHTML=LT(filtered.length?filtered.map(function(c){
       const id=String(c.id),ok=giftCartAddressOk(c),verified=giftCartVerified(c);
       const sub=(c.email||c.phone||"No contact")+" · "+(verified?"✓ Verified on file":ok?"Address on file · needs verify":"Need full shipping address");
-      const btn=ok?'<button class="btn btn-gold" data-cid="'+giftEsc(id)+'" style="padding:6px 9px;font-size:10px" onclick="giftCartAddCustomer(this.dataset.cid,this)">'+(verified?"Add":"Verify + Add")+'</button>':'<button class="btn btn-ghost" style="padding:6px 9px;font-size:10px;opacity:.55" disabled>Need address</button>';
+      const btn=ok?'<button class="btn btn-gold" data-cid="'+giftEsc(id)+'" style="padding:6px 9px;font-size:10px" onclick="giftCartAddCustomer(this.dataset.cid,this)">'+(verified?"Add":"Verify + Add")+'</button>':'<button class="btn btn-outline" data-cid="'+giftEsc(id)+'" style="padding:6px 9px;font-size:10px" onclick="giftCartNeedsAddress(this.dataset.cid)">+ Add address</button>';
       return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;border-bottom:1px solid rgba(255,255,255,.06)"><div style="min-width:0"><div style="font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+giftEsc(c.name||"Customer")+'</div><div style="font-size:10px;color:rgba(240,244,255,.42);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+giftEsc(sub)+'</div></div>'+btn+'</div>';
-    }).join(""):'<div style="padding:18px;text-align:center;font-size:12px;color:rgba(240,244,255,.45)">'+(giftCartCustomers.length?"No customers found.":"No saved customers yet — use Manual recipient.")+'</div>';
+    }).join(""):'<div style="padding:18px;text-align:center;font-size:12px;color:rgba(240,244,255,.45)">'+(giftCartCustomers.length?"No customers found.":"No saved customers yet — use Manual recipient.")+'</div>');
   }
   const basket=document.getElementById("giftCartBasket");
   if(basket){
-    basket.innerHTML=giftCartItems.length?giftCartItems.map(function(item){
+    basket.innerHTML=LT(giftCartItems.length?giftCartItems.map(function(item){
       const gift=giftCartItemGift(item),cost=Number(gift?.p||0);
       return '<div style="display:grid;grid-template-columns:minmax(150px,1fr) minmax(160px,1fr) auto;gap:10px;padding:11px;border-bottom:1px solid rgba(255,255,255,.06);align-items:center"><div style="min-width:0"><div style="font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+giftEsc(item.name||"Customer")+'</div><div style="font-size:10px;color:rgba(240,244,255,.42);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+giftEsc(shippingAddressText(item.address))+'</div><div style="margin-top:3px">'+giftCartAddressBadge(item)+'</div></div><div><select class="fi-sel" style="font-size:11px;padding:7px 9px" onchange="giftCartSetGift(\''+giftEsc(item.id)+'\',this.value)">'+giftCartGiftOptions(item.giftIndex)+'</select><div style="font-size:10px;color:#22C55E;margin-top:4px;font-weight:800">$'+cost.toFixed(2)+'</div></div><button class="btn btn-ghost" data-iid="'+giftEsc(item.id)+'" style="padding:7px 10px;font-size:10px" onclick="giftCartRemove(this.dataset.iid)">Remove</button></div>';
-    }).join(""):'<div style="padding:18px;text-align:center;font-size:12px;color:rgba(240,244,255,.45)">Add verified recipients here.</div>';
+    }).join(""):'<div style="padding:18px;text-align:center;font-size:12px;color:rgba(240,244,255,.45)">Add verified recipients here.</div>');
   }
   if(note){
     if(!giftCartItems.length){note.textContent="Choose customers from the list or add a manual recipient to build the cart.";note.style.color="rgba(240,244,255,.48)";}
@@ -3872,6 +3879,14 @@ function giftCartSetGift(id,value){
 function giftCartRemove(id){
   giftCartItems=giftCartItems.filter(function(x){return x.id!==id;});
   giftCartRender();
+}
+// A saved customer has no address yet — open the single-send flow where the
+// owner can type and verify the address, then ship the gift.
+function giftCartNeedsAddress(id){
+  var c=giftCartCustomers.find(function(x){return String(x.id)===String(id);});
+  document.querySelector(".ov")?.remove();
+  oGiftNow(id);
+  if(c&&c.name)setTimeout(function(){var a=document.getElementById("mgAddr");if(a)a.focus();},250);
 }
 async function sendGiftCart(btn){
   if(giftCartSending)return; // a batch is already in flight — never double-ship
@@ -4104,7 +4119,7 @@ async function svCM(){
   catch(ex){err.textContent=ex.message;err.style.display="block";}
 }
 
-function modal(title,body){return`<div class="ov" onclick="if(event.target===this)this.remove()"><div class="mb"><div class="mh"><div class="mt">${title}</div><button class="mc" onclick="this.closest('.ov').remove()">✕</button></div><div class="mbody">${body}</div></div></div>`;}
+function modal(title,body){return LT(`<div class="ov lt" onclick="if(event.target===this)this.remove()"><div class="mb"><div class="mh"><div class="mt">${title}</div><button class="mc" onclick="this.closest('.ov').remove()">✕</button></div><div class="mbody">${body}</div></div></div>`);}
 
 function oAC(){document.body.insertAdjacentHTML("beforeend",modal("Add Customer",`<div class="fg"><label class="fl">Full Name</label><input class="fi" id="cNm" placeholder="Sarah Mitchell"/></div><div class="fg"><label class="fl">Email</label><input class="fi" id="cEm" type="email" placeholder="sarah@example.com"/></div><div class="fg"><label class="fl">Phone for SMS</label><input class="fi" id="cPh" type="tel" placeholder="(555) 123-4567"/></div><label style="display:flex;gap:9px;align-items:flex-start;margin:-4px 0 14px;color:rgba(240,244,255,.62);font-size:12px;line-height:1.5"><input id="cSmsOk" type="checkbox" style="margin-top:2px"> Customer agreed to receive SMS messages from this business.</label><div style="border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;margin-bottom:14px;background:rgba(255,255,255,.025)"><div style="font-size:11px;font-weight:800;color:rgba(240,244,255,.5);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Shipping address for postcards &amp; gifts</div><div class="fg"><label class="fl">Street Address</label><input class="fi" id="cAddr" placeholder="123 Main St"/></div><div class="fg" style="display:flex;gap:8px"><div style="flex:2"><label class="fl">City</label><input class="fi" id="cCity" placeholder="City"/></div><div style="flex:1"><label class="fl">State</label><input class="fi" id="cState" placeholder="NY"/></div><div style="flex:1"><label class="fl">ZIP</label><input class="fi" id="cZip" placeholder="11542"/></div></div><div style="font-size:10px;color:rgba(240,244,255,.42);line-height:1.5">Leave address blank if you only want to save the customer. If any address field is entered, Clicktide requires the full address and verifies it before saving.</div></div><div class="fg"><label class="fl">Business</label><input class="fi" id="cBz" placeholder="Iron Forge Gym"/></div><div class="fg"><label class="fl">Total Spent ($)</label><input class="fi" id="cSp" type="number" placeholder="0"/></div><div style="display:flex;gap:10px"><button class="btn-full btn-gold" onclick="svCust(this)">Save</button><button class="btn btn-ghost" style="padding:10px 20px" onclick="this.closest('.ov').remove()">Cancel</button></div>`));}
 async function svCust(btn){
