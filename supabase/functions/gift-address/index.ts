@@ -33,6 +33,23 @@ async function rest(path: string, init: RequestInit = {}) {
   return data;
 }
 
+async function verifyAddress(address: string, city: string, state: string, zip: string) {
+  const response = await fetch(`${supabaseUrl}/functions/v1/validate-address`, {
+    method: "POST",
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ address, city, state, zip }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data?.valid !== true) {
+    throw new Error(data?.error || "We could not verify that shipping address. Please double-check it.");
+  }
+  return data?.normalized || { address1: address, city, region: state, zip, country: "US" };
+}
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function customerByToken(token: string) {
@@ -72,10 +89,17 @@ Deno.serve(async (req) => {
       const zip = String(body.zip || "").trim().slice(0, 12);
       if (!address || !city || !state || !zip) return json({ error: "Please fill in every field." }, 400);
       if (!/^[0-9]{5}(-[0-9]{4})?$/.test(zip)) return json({ error: "That ZIP code doesn't look right." }, 400);
+      const verified = await verifyAddress(address, city, state, zip);
       await rest(`/rest/v1/customers?id=eq.${c.id}`, {
         method: "PATCH",
         headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({ address, city, state, zip, address_confirmed_at: new Date().toISOString() }),
+        body: JSON.stringify({
+          address: String(verified.address1 || address),
+          city: String(verified.city || city),
+          state: String(verified.region || state),
+          zip: String(verified.zip || zip),
+          address_confirmed_at: new Date().toISOString(),
+        }),
       });
       return json({ ok: true });
     }

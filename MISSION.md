@@ -29,7 +29,7 @@ Clicktide exists because **the cheapest, warmest, most profitable customer any b
    - **The moment the customer visits again, all future sends stop automatically.** (One honest caveat: physical mail can't be recalled — a postcard printed before the visit may still arrive. Everything *after* the visit stops.)
 4. **Every Monday: the Drift Report** — an email telling the owner who started drifting last week, how long they've been gone, and an estimate of what they're worth.
 5. **After visits, customers can be asked how it went** — feedback reaches the owner, and leaving a Google review is made easy. (See internal notes before answering detailed review-policy questions.)
-6. **Owners can also send gifts by hand.** Not every gesture needs a campaign: a business can pick one customer, or build a small gift cart from a searchable customer list, choose a gift, confirm each recipient and wallet cost, and send immediately as a thank-you, apology, save, VIP moment, or relationship touch.
+6. **Owners can also send gifts by hand.** Not every gesture needs a campaign: a business can pick one customer, or build a gift cart from a searchable customer list, choose different gifts per recipient, confirm each verified shipping address and wallet cost, and send immediately as a thank-you, apology, save, VIP moment, or relationship touch.
 
 The name is the idea: ads are waves — loud, expensive, they crash and disappear. **Loyalty is the tide. It brings people back.**
 
@@ -111,6 +111,9 @@ A texting-only buyer fits **Local at $49** — if they never fund the wallet, th
 
 **"Can I just send one gift without setting up a campaign?"**
 > "Yes. Go to the customer, click Send gift now, pick the gift, confirm the mailing address, and approve the wallet cost. If you want to send the same gift to a few people, use Gift Cart: search customers, confirm each recipient before adding them, then approve the total before anything ships. It does not start a campaign or change the customer's rhythm. It's for moments where the owner already knows the reason: thank-you, apology, VIP save, birthday, referral, or 'we just want this person to feel remembered today.'"
+
+**"Can I send different gifts to different customers in one cart?"**
+> "Yes. Gift Cart works like checkout: search existing customers or type a manual recipient, verify the full shipping address, choose the gift for that line, and remove or change any line before sending. Every line must show a verified address before the final send button works. If a customer does not have an address on file, add it manually and verify it first, or send that person individually from their customer record."
 
 **"What if my logo or customer photo is too low quality to print?"**
 > "Clicktide scores the image before fulfillment and warns you if it may print soft. For usable-but-soft files, the dashboard can make a print-ready copy by upscaling, sharpening, and rechecking the artwork. It still asks the owner to review the improved version before it goes onto a real gift. If the original is truly too small or blurry, the honest fix is uploading the original high-resolution logo or photo."
