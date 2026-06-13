@@ -1744,27 +1744,18 @@ function legalConsent(id){
   </label>`;
 }
 
-function go(s){if(scr==="onboard")saveOnboardingProgress();if(scr!==s)history.pushState({view:s},"","");scr=s;R();}
-window.addEventListener("popstate",function(e){
-  // Mid-onboarding (e.g. the Connect-platform step): the browser Back button
-  // should walk back through the steps you were doing, not drop you on the home
-  // screen. Step back one onboarding screen and keep onboarding in history.
-  if(scr==="onboard"&&typeof obS!=="undefined"&&obS>0){
-    try{history.pushState({view:"onboard"},"","");}catch(_){}
-    oBck();
-    return;
-  }
-  // On a dashboard sub-page, Back returns to the Overview before leaving the
-  // dashboard, instead of jumping straight out.
-  if(scr==="dash"&&S&&typeof dpg!=="undefined"&&dpg!=="overview"&&!(e.state&&e.state.view&&e.state.view!=="dash")){
-    try{history.pushState({view:"dash"},"","");}catch(_){}
-    dGo("overview");
-    return;
-  }
-  scr=(e.state&&e.state.view)||"land";R();
-});
+function go(s){if(scr==="onboard")saveOnboardingProgress();scr=s;R();}
+window.addEventListener("popstate",function(e){navRestore(e.state);});
 function LT(h){return h.split("rgba(240,244,255,").join("rgba(15,17,21,").split("#F0F4FF").join("#0F1115").split("color:#FFD166").join("color:#B8860B").split("color:#4DA6FF").join("color:#2776C4").split("background:#101828").join("background:#F4F6FA").split("background:#0C1220").join("background:#FFFFFF").split("background:#080D18").join("background:#FFFFFF").split("rgba(255,255,255,.07)").join("rgba(15,23,42,.1)").split("rgba(255,255,255,.08)").join("rgba(15,23,42,.1)").split("rgba(255,255,255,.1)").join("rgba(15,23,42,.12)").split("rgba(255,255,255,.15)").join("rgba(15,23,42,.18)");}
-function R(){if(scr==="onboard")saveOnboardingProgress();var lt=true;document.body.style.background="#FAFCFF";var h=LT(page());document.getElementById("app").innerHTML='<div class="lt">'+h+'</div>';bind();}
+// -- Unified back/forward history. Every distinct location — top-level screen,
+// onboarding step, and dashboard tab — becomes a history entry, so the browser
+// Back/Forward buttons always return to the exact screen you were on.
+var __navKey=null,__navRestoring=false,__navReady=false;
+function navKey(){return scr+"|"+(scr==="dash"&&S?dpg:"")+"|"+(scr==="onboard"?(typeof obS!=="undefined"?obS:""):"");}
+function navState(){return {scr:scr,dpg:(typeof dpg!=="undefined"?dpg:"overview"),obS:(typeof obS!=="undefined"?obS:0),obC:(typeof obC!=="undefined"?obC:false)};}
+function navSync(){if(!__navReady||__navRestoring)return;var k=navKey();if(k!==__navKey){__navKey=k;try{history.pushState(navState(),"","");}catch(e){}}}
+function navRestore(st){__navRestoring=true;scr=(st&&(st.scr||st.view))||"land";if(st){if(typeof st.obS!=="undefined")obS=st.obS;if(typeof st.obC!=="undefined")obC=st.obC;}if(scr==="dash"&&S){if(st&&typeof st.dpg!=="undefined")dpg=st.dpg;try{paintDash();dLoad();}catch(e){R();}}else{R();}__navKey=navKey();__navRestoring=false;}
+function R(){if(scr==="onboard")saveOnboardingProgress();var lt=true;document.body.style.background="#FAFCFF";var h=LT(page());document.getElementById("app").innerHTML='<div class="lt">'+h+'</div>';bind();navSync();}
 
 function page(){
   if(scr==="land")return land();
@@ -2949,7 +2940,7 @@ async function oPay(){
   else{if(btn){btn.textContent="Continue \u2192 Payment";btn.disabled=false;}obS=5;saveOnboardingProgress();R();}
 }
 function oNxt(){if(obS===2&&!obC)return;obS++;saveOnboardingProgress();R();}
-function oBck(){obS--;if(obS===2)obC=false;saveOnboardingProgress();R();}
+function oBck(){if(window.history.length>1){history.back();}else{obS--;if(obS===2)obC=false;saveOnboardingProgress();R();}}
 function startCampaignSetup(){obCampaignSkipped=false;saveOnboardingProgress();oNxt();}
 function skipCampaignSetup(){obCampaignSkipped=true;obG=null;obCustomGift=null;obT=[];saveOnboardingProgress();oPay();}
 async function oSignup(){
@@ -3299,7 +3290,7 @@ function dash(){
 // Re-render the dashboard through the light path (same as R()) so incremental
 // navigation stays light instead of falling back to the raw dark markup.
 function paintDash(){document.getElementById("app").innerHTML='<div class="lt">'+LT(dash())+'</div>';bind();}
-function dGo(p){dpg=p;paintDash();dLoad();}
+function dGo(p){dpg=p;paintDash();dLoad();navSync();}
 
 async function dLoad(){
   const tok=S?.token||SK;const el=document.getElementById("dC");if(!el)return;
@@ -4409,7 +4400,7 @@ window.addEventListener("unhandledrejection",function(){var a=document.getElemen
 // Wrap the renderer so a boot-time throw shows recovery instead of a blank page.
 (function(){var _R=R;R=function(){try{return _R.apply(this,arguments);}catch(e){ctRecoveryUI();throw e;}};})();
 
-history.replaceState({view:scr},"","");
+__navReady=true;__navKey=navKey();history.replaceState(navState(),"","");
 try{R();}catch(e){ctRecoveryUI();}
 
 </script>
