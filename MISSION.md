@@ -146,6 +146,12 @@ A texting-only buyer fits **Local at $49** — if they never fund the wallet, th
 - "Protect what you already paid to earn."
 - "The thank-you after their biggest yes is the cheapest insurance in business."
 
+## Account & login basics
+
+- **Forgot password:** "Forgot password?" on the login page emails a reset link (from support@goclicktide.com — check spam). The link opens a "Choose a new password" screen; expired link → just request a fresh one.
+- **Staying signed in:** login has a "Keep me logged in on this device" checkbox. Checked = stay signed in on that device; unchecked = signed out when the browser closes. When logged in, the top of the site shows a green chip with your email plus Dashboard and Log out.
+- **Changing business info:** during signup, the Back button lets you fix anything before finishing. After signup, Dashboard → Settings; saving a change asks for a 6-digit code sent to the email or phone already on the account (expires in 15 minutes). That's a safety feature, not friction — it stops anyone who slipped into a dashboard from quietly renaming the business. Every change request is logged; support can see the history in back office (Changes tab) when a client needs help.
+
 ## If the question isn't in this document
 
 Answer the way a trusted neighbor would: honest, plain, no pressure. If it involves money, custom promises, refunds, partnerships, or anything legal — **"let me check with Charles"** is the right answer, every time. Charles: support@goclicktide.com.

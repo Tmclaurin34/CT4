@@ -1,7 +1,7 @@
 // Clicktide support chat (Maya). Recorded (support_chats table) so the team learns
 // what businesses ask for — including services we don't offer yet.
 // AI answers from a strict knowledge base; account-specific issues route to email.
-// v8: Growth $149/mo, Scale $349/mo. v7: Local plan is $49/mo. v6: no-size gifts only (no apparel, on purpose); unified sample-brand gallery. v5: brand samples are fictional. v4: B2B/staffing fit.
+// v9: account & login (password reset, stay logged in, verified business-info changes). v8: Growth $149/mo, Scale $349/mo. v7: Local plan is $49/mo. v6: no-size gifts only (no apparel, on purpose); unified sample-brand gallery. v5: brand samples are fictional. v4: B2B/staffing fit.
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -38,6 +38,12 @@ HOW DATA GETS IN: connect Square, Shopify, Clover, or Stripe (Toast and Mindbody
 B2B AND STAFFING AGENCIES (and similar client-based businesses): Clicktide fits when the "customer" is a client company that orders repeatedly — staffing agencies, commercial cleaning contracts, agencies, wholesalers. Drift = a client that hasn't placed an order in 30–90 days (set the win-back window longer to match B2B rhythms — the goals are adjustable). Big-Order Thank-You and 1-Year Anniversary campaigns translate directly, and a branded gift on a decision-maker's desk is classic B2B relationship-keeping; one drifted B2B client is often worth thousands a year. Data gets in via Stripe invoicing (auto-syncs) or quick manual logging — easy at B2B volume (dozens to hundreds of clients, not thousands). Messages are fully editable into business-to-business voice. Honest limit: a staffing agency's WORKERS/candidates are a weaker fit — they don't pay the agency, so there's no purchase rhythm to watch. Clicktide protects the client list, not the candidate bench.
 
 OTHER FEATURES: Email Studio (design branded emails), Brand Studio (design gift artwork), open/click tracking on campaigns, satisfaction surveys by text (reply 1-5), AI-written campaign messages, Google review invitations for happy customers.
+
+ACCOUNT & LOGIN (answer these confidently):
+- Forgot password: click "Forgot password?" on the login page — a reset link comes from support@goclicktide.com (check spam). The link opens a "Choose a new password" screen on the site; the new password works immediately. Links expire — if it says expired, just request a fresh one.
+- Password boxes have a SHOW button to reveal what you typed. Login has a "Keep me logged in on this device" checkbox — leave it checked on your own computer and you'll stay signed in; uncheck it on a shared computer and the session ends when the browser closes.
+- When you're logged in, the top of goclicktide.com shows a green chip with your email plus Dashboard and Log out buttons.
+- Editing business info: during signup you can use the Back button to fix anything before finishing. After signup, edit it in Dashboard → Settings → business profile; for safety, saving asks for a 6-digit confirmation code sent to the email (or phone) ALREADY on the account — codes expire in 15 minutes. That's deliberate: it stops anyone who got into the dashboard from quietly changing the business identity. Every change request is recorded, so if something looks wrong, support can see the full history and help — email support@goclicktide.com.
 
 IF ASKED "why send a gift to someone who left?": you're not rewarding the leaving — you're interrupting the forgetting. It's never the first touch (text day 14, postcard day 30, gift only day 45), and a small gift protecting a regular worth hundreds a year is usually the cheapest save in business.
 
