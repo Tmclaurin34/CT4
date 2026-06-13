@@ -3828,14 +3828,13 @@ async function oGiftCart(){
   giftCartBalance=Number(Array.isArray(out[1])&&out[1][0]?out[1][0].balance:0);
   giftCartBiz=out[2]||{};
   document.body.insertAdjacentHTML("beforeend",modal("Gift cart",`
-    <div style="background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:rgba(240,244,255,.65);line-height:1.6">Search customers or type a manual recipient. Each cart line can have its own gift. Every recipient needs a complete verified shipping address before anything ships.</div>
+    <div style="background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:rgba(240,244,255,.65);line-height:1.6">Search and pick the saved customers you want to gift. Each cart line can have its own gift, and every customer needs a verified shipping address before anything ships.</div>
     <div class="fg"><label class="fl">Gift to add from customer list</label><select class="fi-sel" id="giftCartDefaultGift">${giftCartGiftOptions(0)}</select></div>
     <div style="display:flex;justify-content:space-between;gap:12px;background:#101828;border-radius:10px;padding:11px 12px;margin:-4px 0 14px;flex-wrap:wrap"><span style="font-size:12px;color:rgba(240,244,255,.5)">Wallet: <b style="color:#F0F4FF">$${giftCartBalance.toFixed(2)}</b></span><span style="font-size:12px;color:rgba(240,244,255,.5)">Selected: <b id="giftCartCount" style="color:#F0F4FF">0</b></span><span style="font-size:12px;color:rgba(240,244,255,.5)">Total: <b id="giftCartTotal" style="color:#0F1115">$0.00</b></span></div>
     <input class="fi" id="giftCartSearch" placeholder="Search customers by name or email" oninput="giftCartRender()" style="margin-bottom:12px"/>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
       <div><div class="fl" style="margin-bottom:7px">Customers</div><div id="giftCartList" style="max-height:330px;overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.025)"></div></div>
-      <div><div class="fl" style="margin-bottom:7px">Manual recipient</div><div style="border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.025);padding:12px"><input class="fi" id="gcmName" placeholder="Customer name" style="margin-bottom:8px"/><input class="fi" id="gcmEmail" type="email" placeholder="Email optional" style="margin-bottom:8px"/><select class="fi-sel" id="gcmGift" style="margin-bottom:8px">${giftCartGiftOptions(0)}</select><input class="fi" id="gcmAddr" placeholder="Street address" style="margin-bottom:8px"/><div style="display:flex;gap:8px;margin-bottom:8px"><input class="fi" id="gcmCity" placeholder="City" style="flex:2"/><input class="fi" id="gcmState" placeholder="State" style="flex:1"/><input class="fi" id="gcmZip" placeholder="ZIP" style="flex:1"/></div><button class="btn btn-gold" style="width:100%;padding:9px 12px;font-size:11px" onclick="giftCartAddManual(this)">Verify + Add manual recipient</button></div></div>
-    </div>
+          </div>
     <div style="margin-top:12px"><div class="fl" style="margin-bottom:7px">Cart</div><div id="giftCartBasket" style="max-height:330px;overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.025)"></div></div>
     <label style="display:flex;align-items:flex-start;gap:8px;margin:13px 0 8px;font-size:11px;color:rgba(240,244,255,.62);line-height:1.5"><input id="giftCartConfirm" type="checkbox" style="margin-top:2px"/> I confirmed every recipient, gift, and verified shipping address in this cart.</label>
     <div id="giftCartNote" style="font-size:11px;color:rgba(240,244,255,.48);line-height:1.6;margin-bottom:12px"></div>
@@ -3864,7 +3863,7 @@ function giftCartRender(){
       const sub=(c.email||c.phone||"No contact")+" · "+(verified?"✓ Verified on file":ok?"Address on file · needs verify":"Need full shipping address");
       const btn=ok?'<button class="btn btn-gold" data-cid="'+giftEsc(id)+'" style="padding:6px 9px;font-size:10px" onclick="giftCartAddCustomer(this.dataset.cid,this)">'+(verified?"Add":"Verify + Add")+'</button>':'<button class="btn btn-outline" data-cid="'+giftEsc(id)+'" style="padding:6px 9px;font-size:10px" onclick="giftCartNeedsAddress(this.dataset.cid)">+ Add address</button>';
       return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;border-bottom:1px solid rgba(255,255,255,.06)"><div style="min-width:0"><div style="font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+giftEsc(c.name||"Customer")+'</div><div style="font-size:10px;color:rgba(240,244,255,.42);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+giftEsc(sub)+'</div></div>'+btn+'</div>';
-    }).join(""):'<div style="padding:18px;text-align:center;font-size:12px;color:rgba(240,244,255,.45)">'+(giftCartCustomers.length?"No customers found.":"No saved customers yet — use Manual recipient.")+'</div>');
+    }).join(""):'<div style="padding:18px;text-align:center;font-size:12px;color:rgba(240,244,255,.45)">'+(giftCartCustomers.length?"No customers found.":"No saved customers yet — add a customer first.")+'</div>');
   }
   const basket=document.getElementById("giftCartBasket");
   if(basket){
@@ -3874,7 +3873,7 @@ function giftCartRender(){
     }).join(""):'<div style="padding:18px;text-align:center;font-size:12px;color:rgba(240,244,255,.45)">Add verified recipients here.</div>');
   }
   if(note){
-    if(!giftCartItems.length){note.textContent="Choose customers from the list or add a manual recipient to build the cart.";note.style.color="rgba(240,244,255,.48)";}
+    if(!giftCartItems.length){note.textContent="Choose customers from the list to build the cart.";note.style.color="rgba(240,244,255,.48)";}
     else if(total>giftCartBalance){note.textContent="Add wallet funds before this cart can ship.";note.style.color="#FF9F4D";}
     else {note.textContent="Ready for final confirmation. Every cart line has a verified shipping address.";note.style.color="rgba(240,244,255,.58)";}
   }
