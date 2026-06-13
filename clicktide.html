@@ -1745,7 +1745,18 @@ function legalConsent(id){
 }
 
 function go(s){if(scr==="onboard")saveOnboardingProgress();scr=s;R();}
-window.addEventListener("popstate",function(e){navRestore(e.state);});
+function ctOverlayOpen(){return (typeof showCM!=="undefined"&&showCM)||!!document.querySelector(".ov");}
+function ctCloseOverlay(){
+  if(typeof showCM!=="undefined"&&showCM){try{xCM();}catch(e){showCM=false;}return true;}
+  var ovs=document.querySelectorAll(".ov");
+  if(ovs.length){ovs[ovs.length-1].remove();return true;}
+  return false;
+}
+// Back/swipe should close an open modal first, not jump back through the dashboard.
+window.addEventListener("popstate",function(e){
+  if(ctOverlayOpen()){ctCloseOverlay();try{history.pushState(navState(),"","");__navKey=navKey();}catch(_){}return;}
+  navRestore(e.state);
+});
 function LT(h){return h.split("rgba(240,244,255,").join("rgba(15,17,21,").split("#F0F4FF").join("#0F1115").split("color:#FFD166").join("color:#B8860B").split("color:#4DA6FF").join("color:#2776C4").split("background:#101828").join("background:#F4F6FA").split("background:#0C1220").join("background:#FFFFFF").split("background:#080D18").join("background:#FFFFFF").split("rgba(255,255,255,.07)").join("rgba(15,23,42,.1)").split("rgba(255,255,255,.08)").join("rgba(15,23,42,.1)").split("rgba(255,255,255,.1)").join("rgba(15,23,42,.12)").split("rgba(255,255,255,.15)").join("rgba(15,23,42,.18)");}
 // -- Unified back/forward history. Every distinct location — top-level screen,
 // onboarding step, and dashboard tab — becomes a history entry, so the browser
