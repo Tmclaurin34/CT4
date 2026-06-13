@@ -654,11 +654,114 @@ const db={
   async upd(t,id,d,tok){await fetch(`${SU}/rest/v1/${t}?id=eq.${id}`,{method:"PATCH",headers:{...h(tok),Prefer:"return=representation"},body:JSON.stringify(d)});},
   async del(t,id,tok){await fetch(`${SU}/rest/v1/${t}?id=eq.${id}`,{method:"DELETE",headers:h(tok)});}
 };
+function authRedirectTo(){return window.location.origin+window.location.pathname;}
 const au={
-  async up(e,p,m){const r=await fetch(`${SU}/auth/v1/signup`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e,password:p,data:m})});const d=await r.json();if(d.error)throw new Error(d.error.message);return d;},
-  async in(e,p){const r=await fetch(`${SU}/auth/v1/token?grant_type=password`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e,password:p})});const d=await r.json();if(d.error)throw new Error(d.error.message);return d;},
+  async up(e,p,m){const r=await fetch(`${SU}/auth/v1/signup?redirect_to=${encodeURIComponent(authRedirectTo())}`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e,password:p,data:m})});const d=await r.json();if(!r.ok){const c=d.error_code||d.error;if(c==="user_already_exists"||/already.*regist/i.test(d.msg||""))throw new Error("An account with this email already exists — log in instead, or use Forgot password.");throw new Error(d.msg||d.error_description||(d.error&&d.error.message)||"Sign-up failed — please try again");}return d;},
+  async in(e,p){const r=await fetch(`${SU}/auth/v1/token?grant_type=password`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e,password:p})});const d=await r.json();if(!r.ok){const c=d.error_code||d.error;if(c==="email_not_confirmed")throw new Error("Your account exists but the email isn't confirmed yet. Check your inbox and spam for the activation link, or click Resend email below.");throw new Error(d.msg||d.error_description||(d.error&&d.error.message)||"Wrong email or password");}return d;},
   async out(t){await fetch(`${SU}/auth/v1/logout`,{method:"POST",headers:{apikey:SK,Authorization:`Bearer ${t}`}});}
 };
+
+// -- Session persistence. "Keep me logged in" stores the session (incl. refresh
+// token) in localStorage; otherwise sessionStorage, so it ends with the browser.
+function sessStore(){return localStorage.getItem("ct_stay")==="0"?sessionStorage:localStorage;}
+function saveSession(d,stay){
+  if(typeof stay==="boolean")localStorage.setItem("ct_stay",stay?"1":"0");
+  var st=sessStore();
+  S={token:d.access_token,user:d.user||(S&&S.user)||null};
+  st.setItem("ct",d.access_token);
+  if(d.user)st.setItem("cu",JSON.stringify(d.user));
+  if(d.refresh_token)st.setItem("ct_rt",d.refresh_token);
+  var exp=d.expires_at?Number(d.expires_at):(d.expires_in?Math.floor(Date.now()/1000)+Number(d.expires_in):0);
+  if(exp)st.setItem("ct_exp",String(exp));
+}
+function clearSession(){S=null;[localStorage,sessionStorage].forEach(function(st){["ct","cu","ct_rt","ct_exp"].forEach(function(k){st.removeItem(k);});});}
+async function refreshSession(){
+  var st=sessStore(),rt=st.getItem("ct_rt");
+  if(!rt)return false;
+  try{
+    var r=await fetch(`${SU}/auth/v1/token?grant_type=refresh_token`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({refresh_token:rt})});
+    var d=await r.json();
+    if(!r.ok||!d.access_token)return false;
+    saveSession(d);
+    return true;
+  }catch(e){return false;}
+}
+// On page load: confirm the stored token is still alive; if not, refresh it,
+// and if that fails end the stale session so the nav shows the real state.
+async function resumeSession(t){
+  try{
+    var exp=Number(sessStore().getItem("ct_exp")||0);
+    var stale=exp&&(Date.now()/1000)>exp-120;
+    if(!stale){
+      var r=await fetch(`${SU}/auth/v1/user`,{headers:{apikey:SK,Authorization:"Bearer "+t}});
+      if(r.ok){ensureBizProfile(t,S.user);return;}
+      if(r.status!==401&&r.status!==403)return; // network blip — keep the session
+    }
+    if(await refreshSession()){ensureBizProfile(S.token,S.user);}
+    else{clearSession();R();}
+  }catch(e){}
+}
+
+function pwToggleBtn(id){return `<button type="button" tabindex="-1" onclick="togglePw('${id}',this)" aria-label="Show password" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:0;padding:0;cursor:pointer;color:rgba(240,244,255,.45);font-size:10.5px;font-weight:800;letter-spacing:1px">SHOW</button>`;}
+function togglePw(id,btn){var i=document.getElementById(id);if(!i)return;var s=i.type==="password";i.type=s?"text":"password";btn.textContent=s?"HIDE":"SHOW";btn.setAttribute("aria-label",s?"Hide password":"Show password");}
+
+function cleanAuthUrl(){history.replaceState({},"",window.location.pathname);}
+function authErrMsg(d,fallback){return(d&&(d.message||d.msg||d.error_description||d.error))||fallback;}
+function authTokenTypes(type){
+  const t=String(type||"email").toLowerCase();
+  const order=t==="signup"?["signup","email"]:t==="email"?["email","signup"]:[t,"email","signup"];
+  return order.filter(function(x,i,a){return x&&a.indexOf(x)===i;});
+}
+async function verifyAuthTokenHash(tokenHash,type){
+  let last=null;
+  for(const t of authTokenTypes(type)){
+    const r=await fetch(SU+"/auth/v1/verify",{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({token_hash:tokenHash,type:t})});
+    const d=await r.json().catch(function(){return{};});
+    if(r.ok&&!d.error)return d;
+    last=d;
+  }
+  throw new Error(authErrMsg(last,"Email confirmation failed. Please request a new link."));
+}
+async function exchangeAuthCode(code){
+  const body={auth_code:code};
+  const verifier=sessionStorage.getItem("sb-code-verifier")||sessionStorage.getItem("code_verifier")||localStorage.getItem("sb-code-verifier")||localStorage.getItem("code_verifier")||"";
+  if(verifier)body.code_verifier=verifier;
+  const r=await fetch(SU+"/auth/v1/token?grant_type=pkce",{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const d=await r.json().catch(function(){return{};});
+  if(!r.ok||d.error)throw new Error(authErrMsg(d,"Email confirmation code could not be completed. Please request a new link."));
+  return d;
+}
+function showPasswordReset(token){
+  window.__rcTok=token;
+  cleanAuthUrl();
+  document.body.insertAdjacentHTML("beforeend",modal("Choose a new password",`
+    <div style="font-size:13px;color:rgba(240,244,255,.62);line-height:1.65;margin-bottom:14px">Set a new password for your Clicktide account. You'll use it the next time you log in.</div>
+    <div class="fg"><label class="fl">New password</label><div style="position:relative"><input class="fi" id="rcPw" type="password" autocomplete="new-password" placeholder="At least 6 characters" style="padding-right:52px"/>${pwToggleBtn("rcPw")}</div></div>
+    <div id="rcErr" style="display:none;color:#FF6B6B;font-size:12px;margin-bottom:10px"></div>
+    <button class="btn-full btn-gold" onclick="doPwReset(this)">Update password →</button>
+  `));
+}
+async function finishAuthReturn(token,user,type,sessionData){
+  const kind=String(type||"email").toLowerCase();
+  if(kind==="recovery"){showPasswordReset(token);return;}
+  if(!token){
+    cleanAuthUrl();
+    scr="login";R();
+    setTimeout(function(){alert("Email confirmed. Please log in to continue.");},80);
+    return;
+  }
+  let u=user;
+  if(!u||!u.id){
+    const r=await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+token}});
+    u=await r.json();
+  }
+  if(!u||!u.id)throw new Error("Email confirmed, but Clicktide could not load the account. Please log in.");
+  saveSession(Object.assign({},sessionData||{},{access_token:token,user:u}),true);
+  await ensureBizProfile(token,u);
+  if(typeof finishPendingMindbodyActivation==="function")await finishPendingMindbodyActivation().catch(function(){});
+  fetch(FN+"/send-welcome-email",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:"{}"}).catch(function(){});
+  obAwaitConfirm=false;scr="onboard";obS=2;history.replaceState({view:"onboard"},"","");R();
+}
 
 // Ensure a logged-in user has a business profile row in clicktide (safe to call every time).
 async function ensureBizProfile(tok,user,extra){
@@ -712,13 +815,52 @@ async function requirePaidAction(){
   document.body.insertAdjacentHTML("beforeend",modal("Billing required",`<div style="font-size:13px;color:rgba(240,244,255,.65);line-height:1.7;margin-bottom:16px">This action requires an active Clicktide subscription. Finish checkout or update billing before sending campaigns, adding wallet funds, or creating shipments.</div><div style="display:flex;gap:10px"><button class="btn-full btn-gold" onclick="this.closest('.ov').remove();go('pricing')">Choose plan</button><button class="btn btn-ghost" style="padding:10px 20px" onclick="this.closest('.ov').remove()">Close</button></div>`));
   return false;
 }
-// Save the business profile form (Settings).
+// Save the business profile form (Settings). Changes only apply after the
+// owner confirms a 6-digit code sent to the email or phone already on file;
+// every request is logged in business_profile_changes for back office.
 async function saveBizProfile(){
   const g=id=>document.getElementById(id)?.value||"";
   const st=document.getElementById("pfStatus");
-  if(st){st.textContent="Saving...";st.style.color="rgba(240,244,255,.45)";}
-  const ok=await setBizFields({business_name:g("pfName"),contact_name:g("pfContact"),phone:g("pfPhone"),business_type:g("pfType"),business_phone:g("pfBphone"),business_email:g("pfBemail"),website:g("pfSite"),address:g("pfAddr"),city:g("pfCity"),state:g("pfState"),zip:g("pfZip")});
-  if(st){st.textContent=ok?"Saved ✓":"Couldn't save — please try again";st.style.color=ok?"#22C55E":"#FF6B6B";}
+  const fields={business_name:g("pfName"),contact_name:g("pfContact"),phone:g("pfPhone"),business_type:g("pfType"),business_phone:g("pfBphone"),business_email:g("pfBemail"),website:g("pfSite"),address:g("pfAddr"),city:g("pfCity"),state:g("pfState"),zip:g("pfZip")};
+  if(st){st.textContent="Checking changes...";st.style.color="rgba(240,244,255,.45)";}
+  const biz=await loadBiz()||{};
+  const changed={};
+  Object.keys(fields).forEach(function(k){if(String(fields[k]||"").trim()!==String(biz[k]||"").trim())changed[k]=fields[k];});
+  if(!Object.keys(changed).length){if(st){st.textContent="Nothing changed";}return;}
+  window.__bcFields=changed;
+  if(st)st.textContent="Sending confirmation code...";
+  bizChangeRequest("email");
+}
+async function bizChangeRequest(channel){
+  const st=document.getElementById("pfStatus");
+  try{
+    const r=await fetch(FN+"/confirm-biz-change",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+S.token},body:JSON.stringify({action:"request",fields:window.__bcFields,channel})});
+    const d=await r.json();
+    if(!r.ok||!d.ok)throw new Error(d.error||"Could not send the confirmation code");
+    window.__bcId=d.id;
+    document.getElementById("bcCode")?.closest(".ov")?.remove();
+    document.body.insertAdjacentHTML("beforeend",modal("Confirm your change",`<div style="font-size:13px;color:rgba(240,244,255,.62);line-height:1.65;margin-bottom:14px">To keep your account safe, we ${channel==="sms"?"texted":"emailed"} a 6-digit code to <b style="color:#F0F4FF">${giftEsc(d.sent_to)}</b>. Enter it below to apply:</div><div style="background:#101828;border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:rgba(240,244,255,.6);line-height:1.7">${Object.keys(window.__bcFields).map(function(k){return '<div><span style="opacity:.55">'+giftEsc(k.replace(/_/g," "))+':</span> '+giftEsc(String(window.__bcFields[k])||"(cleared)")+'</div>';}).join("")}</div><div class="fg"><label class="fl">6-digit code</label><input class="fi" id="bcCode" inputmode="numeric" maxlength="6" placeholder="123456"/></div><div id="bcErr" style="display:none;color:#FF6B6B;font-size:12px;margin-bottom:10px"></div><button class="btn-full btn-gold" onclick="bizChangeConfirm(this)">Confirm change →</button><div style="text-align:center;margin-top:12px"><button type="button" class="link-btn" style="font-size:12px" onclick="bizChangeRequest('${channel==="sms"?"email":"sms"}')">${channel==="sms"?"Email me the code instead":"Text me the code instead"}</button></div>`));
+    if(st)st.textContent="";
+  }catch(ex){
+    const be=document.getElementById("bcErr");
+    if(be){be.textContent=ex.message;be.style.display="block";}
+    else if(st){st.textContent=ex.message;st.style.color="#FF6B6B";}
+  }
+}
+async function bizChangeConfirm(btn){
+  const code=(document.getElementById("bcCode")?.value||"").trim();
+  const be=document.getElementById("bcErr");
+  if(!/^\d{6}$/.test(code)){if(be){be.textContent="Enter the 6-digit code from the message.";be.style.display="block";}return;}
+  if(btn){btn.disabled=true;btn.textContent="Confirming...";}
+  try{
+    const r=await fetch(FN+"/confirm-biz-change",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+S.token},body:JSON.stringify({action:"confirm",id:window.__bcId,code:code})});
+    const d=await r.json();
+    if(!r.ok||!d.ok)throw new Error(d.error||"Could not confirm the change");
+    document.getElementById("bcCode")?.closest(".ov")?.remove();
+    const st=document.getElementById("pfStatus");
+    if(st){st.textContent="Saved ✓ — change confirmed";st.style.color="#22C55E";}
+    if(typeof dLoad==="function")dLoad();
+  }catch(ex){if(be){be.textContent=ex.message;be.style.display="block";}if(btn){btn.disabled=false;btn.textContent="Confirm change →";}}
 }
 // Validate signup inputs; returns "" if OK, otherwise a friendly error message.
 function isEmail(x){return x&&/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x.trim());}
@@ -738,7 +880,7 @@ function validSignup(d){
   return"";
 }
 let S=null;
-try{const t=localStorage.getItem("ct");const u=localStorage.getItem("cu");if(t&&u){S={token:t,user:JSON.parse(u)};ensureBizProfile(t,S.user);}}catch{}
+try{const t=sessStore().getItem("ct");const u=sessStore().getItem("cu");if(t&&u){S={token:t,user:JSON.parse(u)};resumeSession(t);}}catch{}
 const CATS=[
   {id:"fitness",l:"Health & Fitness",i:"💪",c:"#FF4D6D",biz:[
     {id:"gym",l:"Gym",i:"🏋️",pl:"Square/Mindbody",lf:.38,ch:.18,av:65,dy:45,gf:7,cu:120},
@@ -1018,7 +1160,8 @@ const STRIPE_PRICE_IDS={
   Scale:"price_1ThbjeGWBWEX8wHsNrw2mjPF"
 };
 async function createCheckoutSession(plan,email,businessName){
-  const priceId=STRIPE_PRICE_IDS[plan]||STRIPE_PRICE_IDS.Growth;
+  if(!STRIPE_PRICE_IDS[plan]){alert("Please pick a plan first.");return "";}
+  const priceId=STRIPE_PRICE_IDS[plan];
   try{
     const r=await fetch(`${FN}/create-checkout-session`,{
       method:"POST",
@@ -1346,32 +1489,58 @@ let dpg="overview",cmT="message_only",cmN="",cmTr="",cmGN="",cmGC="",cmG=null,cm
 // -- Handle OAuth callback redirect back to this page ------------------------
 // Edge functions redirect to: goclicktide.com?ct_platform=square&ct_merchant=xxx&ct_name=Yyy
 // or on error: goclicktide.com?ct_error=...
-(function handleOAuthReturn(){
-  // Email-confirmation link return: #access_token=...&type=signup
-  if(window.location.hash&&window.location.hash.indexOf("access_token=")>-1){
-    try{
-      var hp=new URLSearchParams(window.location.hash.substring(1));
-      var at=hp.get("access_token");
-      if(at){
-        history.replaceState({},"",window.location.pathname);
-        fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+at}}).then(function(r){return r.json();}).then(function(u){
-          if(u&&u.id){
-            S={token:at,user:u};
-            localStorage.setItem("ct",at);localStorage.setItem("cu",JSON.stringify(u));
-            ensureBizProfile(at,u).then(function(){
-              fetch(FN+"/send-welcome-email",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+at},body:"{}"}).catch(function(){});
-            });
-            obAwaitConfirm=false;scr="onboard";obS=2;R();
-          }
-        }).catch(function(){});
-      }
-    }catch(e){}
-  }
+(async function handleOAuthReturn(){
+  try{obPl=localStorage.getItem("ct_plan")||obPl;}catch(e){}
   const params=new URLSearchParams(window.location.search);
+  const hashParams=new URLSearchParams((window.location.hash||"").replace(/^#/,""));
+
+  const authError=params.get("error_description")||hashParams.get("error_description")||params.get("error")||hashParams.get("error")||params.get("error_code")||hashParams.get("error_code");
+  if(authError&&!params.get("ct_error")){
+    cleanAuthUrl();
+    scr="login";R();
+    const msg=(authError==="otp_expired"||authError==="access_denied")?"That link has expired or was already used. Use Forgot password on the login screen to get a fresh one.":"Email link failed: "+authError+"\n\nPlease request a new confirmation link or log in if your email is already confirmed.";
+    setTimeout(function(){alert(msg);},80);
+    return;
+  }
+
+  try{
+    const authType=params.get("type")||hashParams.get("type")||"email";
+    const hashToken=hashParams.get("access_token");
+    if(hashToken){
+      cleanAuthUrl();
+      await finishAuthReturn(hashToken,null,authType,{refresh_token:hashParams.get("refresh_token")||"",expires_in:hashParams.get("expires_in")||"",expires_at:hashParams.get("expires_at")||""});
+      return;
+    }
+    const tokenHash=params.get("token_hash")||hashParams.get("token_hash")||params.get("token")||hashParams.get("token");
+    if(tokenHash){
+      const verified=await verifyAuthTokenHash(tokenHash,authType);
+      const session=verified.session||verified;
+      const token=session.access_token||verified.access_token||"";
+      const user=verified.user||session.user||null;
+      cleanAuthUrl();
+      await finishAuthReturn(token,user,authType,session);
+      return;
+    }
+    const code=params.get("code");
+    if(code&&!params.get("ct_platform")&&!params.get("session")){
+      const exchanged=await exchangeAuthCode(code);
+      const session=exchanged.session||exchanged;
+      const token=session.access_token||exchanged.access_token||"";
+      const user=exchanged.user||session.user||null;
+      cleanAuthUrl();
+      await finishAuthReturn(token,user,authType,session);
+      return;
+    }
+  }catch(e){
+    cleanAuthUrl();
+    scr="login";R();
+    setTimeout(function(){alert((e&&e.message)||"Email confirmation failed. Please request a new link or log in if your email is already confirmed.");},80);
+    return;
+  }
 
   // Stripe redirect
   if(params.get("session")==="success"){
-    const plan=params.get("plan")||"Growth";
+    const plan=params.get("plan")||obPl;
     const biz=params.get("biz")||"";
     obPl=plan;obN=biz;obS=6;
     history.replaceState({},"",window.location.pathname);
@@ -1426,7 +1595,8 @@ function legalConsent(id){
   </label>`;
 }
 
-function go(s){scr=s;R();}
+function go(s){if(scr!==s)history.pushState({view:s},"","");scr=s;R();}
+window.addEventListener("popstate",function(e){scr=(e.state&&e.state.view)||"land";R();});
 function LT(h){if(scr==="dash"&&S)return h;return h.split("rgba(240,244,255,").join("rgba(15,17,21,").split("#F0F4FF").join("#0F1115").split("color:#FFD166").join("color:#B8860B").split("color:#4DA6FF").join("color:#2776C4").split("background:#101828").join("background:#F4F6FA").split("background:#0C1220").join("background:#FFFFFF").split("background:#080D18").join("background:#FFFFFF").split("rgba(255,255,255,.07)").join("rgba(15,23,42,.1)").split("rgba(255,255,255,.08)").join("rgba(15,23,42,.1)").split("rgba(255,255,255,.1)").join("rgba(15,23,42,.12)").split("rgba(255,255,255,.15)").join("rgba(15,23,42,.18)");}
 function R(){var lt=!(scr==="dash"&&S);document.body.style.background=lt?"#FAFCFF":"#080D18";var h=lt?LT(page()):page();document.getElementById("app").innerHTML=lt?'<div class="lt">'+h+'</div>':h;bind();}
 
@@ -1467,7 +1637,7 @@ function navH(lt){
   return`<nav class="nav-lt">${logoH(20)}<div style="display:flex;gap:10px;align-items:center">
   <button class="btn btn-outline" onclick="go('roi')">ROI Calculator</button>
   <button class="btn btn-outline" onclick="go('samples')">Gift Samples</button>
-  ${S?`<button class="btn btn-gold" onclick="go('dash')">Dashboard →</button>`:`<button class="btn btn-ghost" style="margin-right:2px" onclick="go('login')">Log in</button><button class="btn btn-gold" onclick="go('onboard')">Get started →</button>`}
+  ${S?`<span title="${giftEsc(S.user?.email||"")}" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#16803C;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:999px;padding:6px 12px;max-width:190px"><span style="width:7px;height:7px;border-radius:50%;background:#22C55E;flex-shrink:0"></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${giftEsc(S.user?.email||"Logged in")}</span></span><button class="btn btn-gold" onclick="go('dash')">Dashboard →</button><button class="btn btn-ghost" onclick="dOut()">Log out</button>`:`<button class="btn btn-ghost" style="margin-right:2px" onclick="go('login')">Log in</button><button class="btn btn-gold" onclick="go('onboard')">Get started →</button>`}
   </div></nav>`;
 }
 
@@ -1737,7 +1907,7 @@ function land(){
     </div></div>
     <h2 class="sec-title" id="pricing">Built for every <span class="gold">business size.</span></h2><div style="display:flex;justify-content:center"><div onclick="go('onboard')" style="display:inline-flex;align-items:center;gap:8px;background:#101215;border:1px solid #101215;border-radius:100px;padding:8px 18px;font-size:12.5px;font-weight:700;color:#F6F5F1;margin:14px 0 4px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.5" y1="15.5" x2="21" y2="21"/></svg> Free drift assessment · 30-day free trial · cancel anytime</div></div>
     <p class="sec-sub" style="margin-bottom:44px">Subscription + pay-per-gift wallet. No surprise bills.</p>
-    <div class="g3">${[{n:"Local",p:49,c:"#22C55E",pop:false,f:["200 customers/mo","All 8 library campaigns + Win-Back Playbook","Monday Drift Report","Texts & emails included","Physical gifts from wallet","Square & Clover","Basic analytics"]},{n:"Growth",p:149,c:"#FFD166",pop:true,f:["1,000 customers/mo","Everything in Local","All 12 integrations","Retention analytics","Email & Brand Studio","Gift auto-send + Google review funnel","Branded packaging & priority support"]},{n:"Scale",p:349,c:"#4DA6FF",pop:false,f:["Unlimited customers","Everything in Growth","5,000 texts/mo","AI campaign suggestions","White-label — your branding only","Custom dashboard colors","Dedicated success manager"]}].map((pl,ix)=>`<div class="mat" style="animation-delay:${ix*0.8}s" onclick="go('onboard')" role="button" tabindex="0"><div class="plan ${pl.pop?"pop":""}" style="position:relative">${pl.pop?`<div class="plan-badge">Most Popular</div>`:""}<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--plname,#6B6F76);margin-bottom:10px">${pl.n}</div><div class="plan-price" style="color:var(--plprice,#F0F4FF)">$${pl.p}<span style="font-size:15px;letter-spacing:0;font-weight:600;color:var(--plsub,#6B6F76)">/mo</span></div><div style="font-size:12px;color:var(--plsub,#6B6F76);margin-bottom:18px">+ pay-per-gift wallet</div><div style="height:1px;background:var(--pldiv,rgba(255,255,255,.07));margin-bottom:18px"></div><ul class="feat">${pl.f.map(f=>`<li>${f}</li>`).join("")}</ul><button class="btn ${pl.pop?"btn-gold":"btn-ghost"}" style="width:100%;padding:12px" onclick="go('onboard')">Get started →</button></div></div>`).join("")}</div>
+    <div class="g3">${[{n:"Local",p:49,c:"#22C55E",pop:false,f:["200 customers/mo","All 8 library campaigns + Win-Back Playbook","Monday Drift Report","Texts & emails included","Physical gifts from wallet","Square & Clover","Basic analytics"]},{n:"Growth",p:149,c:"#FFD166",pop:true,f:["1,000 customers/mo","Everything in Local","All 12 integrations","Retention analytics","Email & Brand Studio","Gift auto-send + Google review funnel","Branded packaging & priority support"]},{n:"Scale",p:349,c:"#4DA6FF",pop:false,f:["Unlimited customers","Everything in Growth","5,000 texts/mo","AI campaign suggestions","White-label — your branding only","Custom dashboard colors","Dedicated success manager"]}].map((pl,ix)=>`<div class="mat" style="animation-delay:${ix*0.8}s" onclick="selPlan('${pl.n}')" role="button" tabindex="0"><div class="plan ${pl.pop?"pop":""}" style="position:relative">${pl.pop?`<div class="plan-badge">Most Popular</div>`:""}<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--plname,#6B6F76);margin-bottom:10px">${pl.n}</div><div class="plan-price" style="color:var(--plprice,#F0F4FF)">$${pl.p}<span style="font-size:15px;letter-spacing:0;font-weight:600;color:var(--plsub,#6B6F76)">/mo</span></div><div style="font-size:12px;color:var(--plsub,#6B6F76);margin-bottom:18px">+ pay-per-gift wallet</div><div style="height:1px;background:var(--pldiv,rgba(255,255,255,.07));margin-bottom:18px"></div><ul class="feat">${pl.f.map(f=>`<li>${f}</li>`).join("")}</ul><button class="btn ${pl.pop?"btn-gold":"btn-ghost"}" style="width:100%;padding:12px" onclick="event.stopPropagation();selPlan('${pl.n}')">Get started →</button></div></div>`).join("")}</div>
   </div></div>
   <div class="sec"><div style="max-width:1080px;margin:0 auto;text-align:center">
     <span class="kick">Questions, answered</span>
@@ -1766,7 +1936,8 @@ function authP(mode){
     <div class="auth-sub">${il?"Log in to your Clicktide dashboard":"No credit card required · Cancel anytime"}</div>
     ${!il?`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin:4px 0 8px">Your details</div><div class="fg"><label class="fl">Your Name</label><input class="fi" id="aNm" placeholder="Jane Smith"/></div>`:""}
     <div class="fg"><label class="fl">${il?"Email":"Personal Email (your login)"}</label><input class="fi" id="aE" type="email" placeholder="you@email.com"/></div>
-    <div class="fg"><label class="fl">Password</label><input class="fi" id="aP" type="password" placeholder="••••••••"/></div>
+    <div class="fg"><label class="fl">Password</label><div style="position:relative"><input class="fi" id="aP" type="password" placeholder="••••••••" autocomplete="${il?"current-password":"new-password"}" style="padding-right:52px"/>${pwToggleBtn("aP")}</div></div>
+    ${il?`<label style="display:flex;gap:8px;align-items:center;margin:-6px 0 14px;font-size:12.5px;color:rgba(240,244,255,.55);cursor:pointer"><input type="checkbox" id="aStay" checked style="accent-color:#FFD166"> Keep me logged in on this device</label>`:""}
     ${!il?`<div class="fg"><label class="fl">Personal Phone</label><input class="fi" id="aPh" type="tel" placeholder="(555) 555-5555"/></div>
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin:14px 0 8px">Business details</div>
     <div class="fg"><label class="fl">Business Name</label><input class="fi" id="aN" placeholder="Iron Forge Gym"/></div>
@@ -1774,7 +1945,7 @@ function authP(mode){
     <div class="fg"><label class="fl">Business Email</label><input class="fi" id="aBem" type="email" placeholder="hello@business.com"/></div>
     <div class="fg"><label class="fl">Street Address</label><input class="fi" id="aAddr" placeholder="123 Main St"/></div>
     <div class="fg" style="display:flex;gap:8px"><div style="flex:2"><label class="fl">City</label><input class="fi" id="aCity" placeholder="City"/></div><div style="flex:1"><label class="fl">State</label><input class="fi" id="aState" placeholder="NY"/></div><div style="flex:1"><label class="fl">ZIP</label><input class="fi" id="aZip" placeholder="11542"/></div></div>`:""}
-    ${!il?`<div class="fg"><label class="fl">Plan</label><select class="fi-sel" id="aPl"><option value="Local">Local -- $49/mo</option><option value="Growth" selected>Growth -- $149/mo ★</option><option value="Scale">Scale -- $349/mo</option></select></div>${legalConsent("aAgree")}`:""}
+    ${!il?`<div class="fg"><label class="fl">Plan</label><select class="fi-sel" id="aPl"><option value="Local"${obPl==="Local"?" selected":""}>Local -- $49/mo</option><option value="Growth"${obPl==="Growth"?" selected":""}>Growth -- $149/mo ★</option><option value="Scale"${obPl==="Scale"?" selected":""}>Scale -- $349/mo</option></select></div>${legalConsent("aAgree")}`:""}
     <div class="err" id="aErr"></div>
     <button class="btn-full btn-gold" id="aSub" onclick="doAuth('${mode}')" style="margin-bottom:16px">${il?"Log in →":"Create my account →"}</button><div style="text-align:center;margin-top:10px"><button type="button" class="link-btn" onclick="forgotPw()" style="font-size:12px">Forgot password?</button></div>
     <div style="text-align:center;font-size:13px;color:rgba(240,244,255,.45)">${il?"Don't have an account? ":"Already have an account? "}<button class="link-btn" onclick="go('${il?"onboard":"login"}')">${il?"Sign up free":"Log in"}</button></div>
@@ -1799,7 +1970,7 @@ async function doAuth(mode){
   const err=document.getElementById("aErr");
   const btn=document.getElementById("aSub");
   if(il){ if(!e||!p){err.textContent="Please enter your email and password";err.style.display="block";return;} }
-  else { const v=validSignup({name:nm,email:e,phone:ph,pw:p,biz:n,bphone:bph,bemail:bem,address:addr2?addr+", "+addr2:addr,city:city,state:state,zip:zip}); if(v){err.textContent=v;err.style.display="block";return;} if(!document.getElementById("aAgree")?.checked){err.textContent="Please agree to the Terms, Privacy Policy, Billing Policy, and service authorization.";err.style.display="block";return;} }
+  else { const v=validSignup({name:nm,email:e,phone:ph,pw:p,biz:n,bphone:bph,bemail:bem,address:addr,city:city,state:state,zip:zip}); if(v){err.textContent=v;err.style.display="block";return;} if(!document.getElementById("aAgree")?.checked){err.textContent="Please agree to the Terms, Privacy Policy, Billing Policy, and service authorization.";err.style.display="block";return;} }
   btn.textContent=il?"Logging in...":"Creating account...";btn.disabled=true;err.style.display="none";
   try{
     const meta={business_name:n,contact_name:nm,phone:ph,business_phone:bph,business_email:bem,address:addr,city:city,state:state,zip:zip,plan:pl,legal_terms_accepted_at:new Date().toISOString(),legal_terms_version:"2026-06-08",legal_authorized_services:true};
@@ -1814,9 +1985,11 @@ async function doAuth(mode){
         var _vr=await fetch(SU+"/auth/v1/factors/"+_fs[0].id+"/verify",{method:"POST",headers:{apikey:SK,Authorization:"Bearer "+r.access_token,"Content-Type":"application/json"},body:JSON.stringify({challenge_id:_chd.id,code:String(_code).trim()})});
         var _vrd=await _vr.json();
         if(!_vr.ok){err.textContent="Wrong 2-step code — try again.";err.style.display="block";btn.disabled=false;btn.textContent=il?"Log in →":"Create my account →";return;}
-        if(_vrd.access_token){r.access_token=_vrd.access_token;if(_vrd.user)r.user=_vrd.user;}
+        if(_vrd.access_token){r.access_token=_vrd.access_token;if(_vrd.user)r.user=_vrd.user;if(_vrd.refresh_token)r.refresh_token=_vrd.refresh_token;if(_vrd.expires_in)r.expires_in=_vrd.expires_in;}
       }
-      S={token:r.access_token,user:r.user||{email:e}};localStorage.setItem("ct",r.access_token);localStorage.setItem("cu",JSON.stringify(S.user));await ensureBizProfile(r.access_token,S.user,{...meta,email:e});go("dash");}
+      const stay=il?!!document.getElementById("aStay")?.checked:true;
+      saveSession({access_token:r.access_token,refresh_token:r.refresh_token,expires_in:r.expires_in,user:r.user||{email:e}},stay);
+      await ensureBizProfile(r.access_token,S.user,{...meta,email:e});go("dash");}
     else{err.textContent=il?"Invalid credentials":"Account created! Check your email for the activation link, then log in.";err.style.display="block";}
   }catch(ex){err.textContent=ex.message;err.style.display="block";}
   btn.disabled=false;btn.textContent=il?"Log in →":"Create my account →";
@@ -1945,10 +2118,10 @@ function onboard(){
     "</div><button class='btn-full btn-gold' "+(obImport?"":"disabled style='opacity:.4;cursor:not-allowed'")+" onclick='oNxt()'>"+( obImport==="csv"?"Continue →":obImport==="platform"?"Sync & Continue →":"Skip & Go Live →")+"</button>";
   }
   else if(obS===1&&obAwaitConfirm)c=`<div style="text-align:center"><div style="margin-bottom:12px;display:flex;justify-content:center"><span class="ic-chip" style="width:52px;height:52px;margin:0 auto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v7H3v-7z"/><path d="M3 18h18"/><path d="M15 7v4M9 21v-3"/></svg></span></div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">Check your email!</h2><p style="color:rgba(240,244,255,.5);font-size:14px;line-height:1.8;margin-bottom:20px">We sent a link to <strong style="color:#F0F4FF">${obE}</strong>.<br/>Click it to activate your account and pick up right where you left off.</p><button class="btn btn-ghost" style="padding:10px 18px" onclick="resendConfirm(this)">Didn't get it? Resend email</button><div style="font-size:11px;color:rgba(240,244,255,.35);margin-top:14px">Check spam too — it comes from support@goclicktide.com</div></div>`;
-  else if(obS===1)c=`<div style="margin-bottom:10px;display:flex;justify-content:center"><span class="ic-chip" style="width:52px;height:52px;margin:0 auto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/></svg></span></div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">Create your account</h2><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:16px">Create your login — then connect your platform. Fields marked <span style="color:#FF4D6D">*</span> are required.</p><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin-bottom:8px">Your details</div><div class="fg"><label class="fl">Your Name <span style="color:#FF4D6D">*</span></label><input class="fi" id="oNm" value="${obNm}" placeholder="Jane Smith" oninput="obNm=this.value"/></div><div class="fg"><label class="fl">Personal Email (your login) <span style="color:#FF4D6D">*</span></label><input class="fi" id="oE" value="${obE}" type="email" placeholder="you@email.com" oninput="obE=this.value"/></div><div class="fg"><label class="fl">Password <span style="color:#FF4D6D">*</span></label><input class="fi" id="oPw" value="${obPw}" type="password" placeholder="••••••••" oninput="obPw=this.value"/></div><div class="fg"><label class="fl">Personal Phone <span style="color:#FF4D6D">*</span></label><input class="fi" id="oPh" value="${obPh}" type="tel" placeholder="(555) 555-5555" oninput="obPh=this.value"/></div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin:14px 0 8px">Business details</div><div class="fg"><label class="fl">Business Name <span style="color:#FF4D6D">*</span></label><input class="fi" id="oN" value="${obN}" placeholder="${B?.l||"Your Business"}" oninput="obN=this.value"/></div><div class="fg"><label class="fl">Business Phone <span style="color:#FF4D6D">*</span></label><input class="fi" id="oBph" value="${obBph}" type="tel" placeholder="(555) 555-5555" oninput="obBph=this.value"/></div><div class="fg"><label class="fl">Business Email <span style="color:#FF4D6D">*</span></label><input class="fi" id="oBem" value="${obBem}" type="email" placeholder="hello@business.com" oninput="obBem=this.value"/></div><div class="fg"><label class="fl">Street Address <span style="color:#FF4D6D">*</span></label><input class="fi" id="oAddr" value="${obAddr}" placeholder="123 Main St" oninput="obAddr=this.value"/></div><div class="fg"><label class="fl">Apt / Suite / Unit <span style="opacity:.5;text-transform:none">(optional)</span></label><input class="fi" id="oAddr2" value="${obAddr2}" placeholder="Apt 4B" oninput="obAddr2=this.value"/></div><div class="fg" style="display:flex;gap:8px"><div style="flex:2"><label class="fl">City <span style="color:#FF4D6D">*</span></label><input class="fi" id="oCity" value="${obCity}" placeholder="City" oninput="obCity=this.value"/></div><div style="flex:1"><label class="fl">State <span style="color:#FF4D6D">*</span></label><input class="fi" id="oState" value="${obState}" placeholder="NY" oninput="obState=this.value"/></div><div style="flex:1"><label class="fl">ZIP <span style="color:#FF4D6D">*</span></label><input class="fi" id="oZip" value="${obZip}" placeholder="11542" oninput="obZip=this.value"/></div></div><div class="fg"><label class="fl">Choose Your Plan</label>
+  else if(obS===1)c=`<div style="margin-bottom:10px;display:flex;justify-content:center"><span class="ic-chip" style="width:52px;height:52px;margin:0 auto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/></svg></span></div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">${S?"Edit your details":"Create your account"}</h2><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:16px">${S?"Update anything that changed — your edits save straight to your account.":"Create your login — then connect your platform."} Fields marked <span style="color:#FF4D6D">*</span> are required.</p><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin-bottom:8px">Your details</div><div class="fg"><label class="fl">Your Name <span style="color:#FF4D6D">*</span></label><input class="fi" id="oNm" value="${obNm}" placeholder="Jane Smith" oninput="obNm=this.value"/></div><div class="fg"><label class="fl">Personal Email (your login) <span style="color:#FF4D6D">*</span></label><input class="fi" id="oE" value="${S?(S.user?.email||obE):obE}" type="email" placeholder="you@email.com" oninput="obE=this.value"${S?' disabled style="opacity:.6;cursor:not-allowed"':''}/></div>${S?"":`<div class="fg"><label class="fl">Password <span style="color:#FF4D6D">*</span></label><div style="position:relative"><input class="fi" id="oPw" value="${obPw}" type="password" placeholder="••••••••" autocomplete="new-password" style="padding-right:52px" oninput="obPw=this.value"/>${pwToggleBtn("oPw")}</div></div>`}<div class="fg"><label class="fl">Personal Phone <span style="color:#FF4D6D">*</span></label><input class="fi" id="oPh" value="${obPh}" type="tel" placeholder="(555) 555-5555" oninput="obPh=this.value"/></div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin:14px 0 8px">Business details</div><div class="fg"><label class="fl">Business Name <span style="color:#FF4D6D">*</span></label><input class="fi" id="oN" value="${obN}" placeholder="${B?.l||"Your Business"}" oninput="obN=this.value"/></div><div class="fg"><label class="fl">Business Phone <span style="color:#FF4D6D">*</span></label><input class="fi" id="oBph" value="${obBph}" type="tel" placeholder="(555) 555-5555" oninput="obBph=this.value"/></div><div class="fg"><label class="fl">Business Email <span style="color:#FF4D6D">*</span></label><input class="fi" id="oBem" value="${obBem}" type="email" placeholder="hello@business.com" oninput="obBem=this.value"/></div><div class="fg"><label class="fl">Street Address <span style="color:#FF4D6D">*</span></label><input class="fi" id="oAddr" value="${obAddr}" placeholder="123 Main St" oninput="obAddr=this.value"/></div><div class="fg"><label class="fl">Apt / Suite / Unit <span style="opacity:.5;text-transform:none">(optional)</span></label><input class="fi" id="oAddr2" value="${obAddr2}" placeholder="Apt 4B" oninput="obAddr2=this.value"/></div><div class="fg" style="display:flex;gap:8px"><div style="flex:2"><label class="fl">City <span style="color:#FF4D6D">*</span></label><input class="fi" id="oCity" value="${obCity}" placeholder="City" oninput="obCity=this.value"/></div><div style="flex:1"><label class="fl">State <span style="color:#FF4D6D">*</span></label><input class="fi" id="oState" value="${obState}" placeholder="NY" oninput="obState=this.value"/></div><div style="flex:1"><label class="fl">ZIP <span style="color:#FF4D6D">*</span></label><input class="fi" id="oZip" value="${obZip}" placeholder="11542" oninput="obZip=this.value"/></div></div><div class="fg"><label class="fl">Choose Your Plan</label>
 <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:4px">
   ${[{v:"Local",p:"$49/mo",d:"200 customers/mo",f:["Messages included","Promo codes included","Physical gifts from wallet","Square & Clover"]},{v:"Growth",p:"$149/mo",d:"1,000 customers/mo",pop:true,f:["Messages included","Promo codes included","Physical gifts from wallet","All 12 integrations","Retention analytics"]},{v:"Scale",p:"$349/mo",d:"Unlimited customers",f:["Messages included","Promo codes included","Physical gifts from wallet","AI triggers","White-label"]}].map(pl=>`
-  <div onclick="obPl='${pl.v}';document.querySelectorAll('.pl-opt').forEach(function(e){e.style.borderColor='rgba(255,255,255,.07)';e.style.background='transparent'});this.style.borderColor='#FFD166';this.style.background='rgba(255,209,102,.08)'" class="pl-opt ${obPl===pl.v?"on":""}" style="padding:14px;border:2px solid ${obPl===pl.v?"#FFD166":"rgba(255,255,255,.07)"};border-radius:12px;cursor:pointer;background:${obPl===pl.v?"rgba(255,209,102,.08)":"transparent"};transition:all .15s">
+  <div onclick="obPl='${pl.v}';try{localStorage.setItem('ct_plan',obPl)}catch(e){};document.querySelectorAll('.pl-opt').forEach(function(e){e.style.borderColor='rgba(255,255,255,.07)';e.style.background='transparent'});this.style.borderColor='#FFD166';this.style.background='rgba(255,209,102,.08)'" class="pl-opt ${obPl===pl.v?"on":""}" style="padding:14px;border:2px solid ${obPl===pl.v?"#FFD166":"rgba(255,255,255,.07)"};border-radius:12px;cursor:pointer;background:${obPl===pl.v?"rgba(255,209,102,.08)":"transparent"};transition:all .15s">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
       <div style="font-size:14px;font-weight:700">${pl.v}</div>
       <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:800;color:#FFD166">${pl.p}</div>
@@ -1957,7 +2130,7 @@ function onboard(){
     <div style="display:flex;flex-wrap:wrap;gap:4px">${pl.f.map(f=>`<span style="font-size:10px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.15);color:#22C55E;padding:2px 7px;border-radius:100px">✓ ${f}</span>`).join("")}</div>
   </div>`).join("")}
 </div>
-<input type="hidden" id="oPl" value="${obPl}"/></div>${legalConsent("oAgree")}<div class="err" id="oErr"></div><button class="btn-full btn-gold" id="oSub" onclick="oSignup()" style="margin-bottom:12px">Create account →</button><div style="text-align:center;font-size:12px;color:rgba(240,244,255,.45)">Already have an account? <button class="link-btn" onclick="go('login')">Log in</button></div>`;
+<input type="hidden" id="oPl" value="${obPl}"/></div>${S?"":legalConsent("oAgree")}<div class="err" id="oErr"></div><button class="btn-full btn-gold" id="oSub" onclick="oSignup()" style="margin-bottom:12px">${S?"Save changes →":"Create account →"}</button>${S?"":`<div style="text-align:center;font-size:12px;color:rgba(240,244,255,.45)">Already have an account? <button class="link-btn" onclick="go('login')">Log in</button></div>`}`;
   else if(obS===6){const g=obG!==null?GF[obB]?.[obG]:null;c=`<div style="text-align:center"><div style="margin-bottom:12px;display:flex;justify-content:center"><span class="ic-chip" style="width:52px;height:52px;margin:0 auto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c3 2 5 6 5 10l-2.5 2.5h-5L7 12c0-4 2-8 5-10z"/><circle cx="12" cy="9" r="1.8"/><path d="M7 15l-2 5 5-2M17 15l2 5-5-2"/></svg></span></div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">You're live!</h2><p style="color:rgba(240,244,255,.45);font-size:14px;line-height:1.7;margin-bottom:20px">Your Clicktide campaign is active and ready.</p><ul style="list-style:none;padding:0;background:#101828;border-radius:13px;padding:16px;margin-bottom:20px;text-align:left">${[`${B?.l}`,`${P?.n} connected`,`Gift: ${g?.n||"--"}`,`${obT.length} trigger${obT.length!==1?"s":""}`,`Message Only: Free`,`Postcards & gifts from $2`].map(i=>`<li style="font-size:12px;color:rgba(240,244,255,.45);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:8px"><span style="color:#22C55E">✓</span>${i}</li>`).join("")}</ul><div style="display:flex;gap:10px"><button class="btn btn-gold" style="flex:1;padding:12px" onclick="go('dash')">Open Dashboard →</button><button class="btn btn-ghost" style="flex:1;padding:12px" onclick="go('login')">Log in</button></div></div>`;}
   var aiHintHtml='';
   if(aiHint||aiHintLoading){aiHintHtml="<div style='background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.2);border-radius:12px;padding:12px 14px;margin-top:12px;display:flex;align-items:flex-start;gap:9px'><div style='font-size:16px;flex-shrink:0'>✨</div><div style='font-size:12px;color:rgba(240,244,255,.7);line-height:1.6'>"+(aiHintLoading?"<span style='color:rgba(240,244,255,.35)'>AI thinking...</span>":aiHint)+"</div></div>";}
@@ -2151,7 +2324,7 @@ async function analyzePrintUpload(file,opts){
   if(lightingScore<7)warnings.push("Lighting looks too dark, too bright, or heavily shadowed.");
   if(compressionScore<5)warnings.push("The file looks heavily compressed. Avoid Facebook, Instagram, Messenger, WhatsApp, or TikTok downloads.");
   const faceInfo=await detectFaces(img,metrics.canvas);
-  let faceScore=10,faceValue=faceInfo.available?"No face detected":"Browser face check unavailable";
+  let faceScore=10,faceValue=faceInfo.available?"No face detected":"Skipped";
   if(faceInfo.available&&faceInfo.faces.length){
     const largest=faceInfo.faces.reduce(function(a,b){return (b.boundingBox.width*b.boundingBox.height)>(a.boundingBox.width*a.boundingBox.height)?b:a;},faceInfo.faces[0]);
     const pct=(largest.boundingBox.width*largest.boundingBox.height)/(metrics.canvas.width*metrics.canvas.height);
@@ -2607,6 +2780,17 @@ async function oSignup(){
   const zip=document.getElementById("oZip")?.value||obZip;
   const err=document.getElementById("oErr");
   const btn=document.getElementById("oSub");
+  if(S&&S.user){
+    // Already signed up and came back to edit — update the profile, don't re-create the account.
+    const v0=validSignup({name:nm,email:S.user.email||e,phone:ph,pw:"unchanged",biz:n,bphone:bph,bemail:bem,address:addr,city:city,state:state,zip:zip});
+    if(v0){err.textContent=v0;err.style.display="block";return;}
+    btn.textContent="Saving...";btn.disabled=true;err.style.display="none";
+    const ok=await setBizFields({business_name:n,contact_name:nm,phone:ph,business_phone:bph,business_email:bem,address:addr2?addr+", "+addr2:addr,city:city,state:state,zip:zip,business_type:obB||obCat||"other",plan:obPl});
+    btn.disabled=false;btn.textContent="Save changes →";
+    if(ok){localStorage.setItem("ct_biztype",obB||obCat||"other");obS=2;R();}
+    else{err.textContent="Couldn't save your changes — please try again.";err.style.display="block";}
+    return;
+  }
   const v=validSignup({name:nm,email:e,phone:ph,pw:p,biz:n,bphone:bph,bemail:bem,address:addr,city:city,state:state,zip:zip}); if(v){err.textContent=v;err.style.display="block";return;}
   if(!document.getElementById("oAgree")?.checked){err.textContent="Please agree to the Terms, Privacy Policy, Billing Policy, and service authorization.";err.style.display="block";return;}
   if(!obAddrOverride){
@@ -2627,9 +2811,7 @@ async function oSignup(){
     // 1. Create Supabase account
     const r=await au.up(e,p,meta);
     if(r.access_token){
-      S={token:r.access_token,user:r.user||{email:e}};
-      localStorage.setItem("ct",r.access_token);
-      localStorage.setItem("cu",JSON.stringify(S.user));
+      saveSession({access_token:r.access_token,refresh_token:r.refresh_token,expires_in:r.expires_in,user:r.user||{email:e}},true);
       localStorage.setItem("ct_churn",String(obDy||60));
       localStorage.setItem("ct_biztype",obB||obCat||"other");
       await ensureBizProfile(r.access_token,S.user,{...meta,email:e});
@@ -2989,7 +3171,7 @@ async function dLoad(){
       var alertBanner="";
       if(_atRisk.length>0){alertBanner+='<div style="background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.25);border-radius:12px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:10px"><div style="font-size:20px">⛔</div><div><div style="font-size:13px;font-weight:700;color:#FF4D6D;margin-bottom:2px">'+_atRisk.length+' unhappy customer'+(_atRisk.length>1?"s":"")+' — gifts blocked</div><div style="font-size:12px;color:rgba(240,244,255,.5)">'+_atRisk.map(function(x){return x.c.name;}).join(", ")+'. Rated 1-2 stars. A gift would feel hollow — reach out personally instead.</div></div></div>';}
       if(_winback.length>0){alertBanner+='<div style="background:rgba(255,159,77,.1);border:1px solid rgba(255,159,77,.25);border-radius:12px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:10px"><div style="font-size:20px">🎯</div><div><div style="font-size:13px;font-weight:700;color:#FF9F4D;margin-bottom:2px">'+_winback.length+' valuable customer'+(_winback.length>1?"s":"")+' slipping away — win-back gift queued</div><div style="font-size:12px;color:rgba(240,244,255,.5)">'+_winback.map(function(x){return x.c.name;}).join(", ")+'. High spenders going quiet. Auto-sending a gift to bring them back.</div></div></div>';}
-      el.innerHTML=alertBanner+'<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="showCheckinQR()">📱 Check-in QR</button><button class="btn btn-ghost" onclick="oGiftCart()">🎁 Gift Cart</button><button class="btn btn-gold" onclick="oAC()">+ Add Customer</button></div>'+(cuArr.length===0?'<div class="empty"><div style="font-size:36px;margin-bottom:10px">👥</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No customers yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Add your first customer.</div><button class="btn btn-gold" onclick="oAC()">Add Customer</button></div>':'<div class="dc"><div style="display:grid;grid-template-columns:1.1fr 1.3fr 70px 110px 110px 80px 130px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.07);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.3)"><span>Name</span><span>Email</span><span>Score</span><span>Status</span><span>Action</span><span>Spent</span><span>Actions</span></div>'+_scored.map(function(x){var c=x.c,r=x.s;return '<div style="display:grid;grid-template-columns:1.1fr 1.3fr 70px 110px 110px 80px 130px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.07);align-items:center"><div style="font-size:13px;font-weight:600">'+c.name+'</div><div style="font-size:12px;color:rgba(240,244,255,.45);overflow:hidden;text-overflow:ellipsis">'+c.email+'</div><div style="font-size:14px;font-weight:800;color:'+tierColor(r.tier)+'">'+r.score+'</div><div style="font-size:11px;font-weight:600;color:'+tierColor(r.tier)+'">'+r.tier+'</div><div>'+giftLabel(r.gift)+'</div><div style="font-size:13px;font-weight:600;color:#22C55E">$'+(c.total_spent||0)+'</div><div style="display:flex;gap:5px;justify-content:flex-end"><button class="btn btn-ghost" style="padding:5px 8px;font-size:10px" onclick="logVisit('+c.id+','+(c.visits||0)+','+(c.total_spent||0)+')">+ Visit</button><button class="btn btn-gold" data-cid="'+giftEsc(c.id)+'" style="padding:5px 8px;font-size:10px" onclick="oGiftNow(this.dataset.cid)">Gift</button></div></div>';}).join('')+'</div>');
+      el.innerHTML=alertBanner+'<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="showCheckinQR()">📱 Check-in QR</button><button class="btn btn-ghost" onclick="oGiftCart()">🎁 Gift Cart</button><button class="btn btn-gold" onclick="oAC()">+ Add Customer</button></div>'+(cuArr.length===0?'<div class="empty"><div style="font-size:36px;margin-bottom:10px">👥</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No customers yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Add your first customer.</div><button class="btn btn-gold" onclick="oAC()">Add Customer</button></div>':'<div class="dc"><div style="display:grid;grid-template-columns:1.1fr 1.3fr 70px 110px 110px 80px 130px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.07);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.3)"><span>Name</span><span>Email</span><span>Score</span><span>Status</span><span>Action</span><span>Spent</span><span>Actions</span></div>'+_scored.map(function(x){var c=x.c,r=x.s;return '<div style="display:grid;grid-template-columns:1.1fr 1.3fr 70px 110px 110px 80px 130px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.07);align-items:center"><div style="font-size:13px;font-weight:600">'+giftEsc(c.name||"")+'</div><div style="font-size:12px;color:rgba(240,244,255,.45);overflow:hidden;text-overflow:ellipsis">'+giftEsc(c.email||"")+'</div><div style="font-size:14px;font-weight:800;color:'+tierColor(r.tier)+'">'+r.score+'</div><div style="font-size:11px;font-weight:600;color:'+tierColor(r.tier)+'">'+r.tier+'</div><div>'+giftLabel(r.gift)+'</div><div style="font-size:13px;font-weight:600;color:#22C55E">$'+(c.total_spent||0)+'</div><div style="display:flex;gap:5px;justify-content:flex-end"><button class="btn btn-ghost" style="padding:5px 8px;font-size:10px" onclick="logVisit('+c.id+','+(c.visits||0)+','+(c.total_spent||0)+')">+ Visit</button><button class="btn btn-gold" data-cid="'+giftEsc(c.id)+'" style="padding:5px 8px;font-size:10px" onclick="oGiftNow(this.dataset.cid)">Gift</button></div></div>';}).join('')+'</div>');
     }
     else if(dpg==="wallet"){
       const txR=await db.sel("wallet",scope("order=created_at.desc"),tok).catch(()=>[]);
@@ -3187,7 +3369,7 @@ async function tGiftAuto(btn){
 }
 async function tCmp(id,st){if(st!=="active"&&!await requirePaidAction())return;await db.upd("campaigns",id,{status:st==="active"?"paused":"active"},S?.token||SK);dLoad();}
 async function dCmp(id){if(!confirm("Delete?"))return;await db.del("campaigns",id,S?.token||SK);dLoad();}
-async function dOut(){try{if(S?.token)await au.out(S.token);}catch{}S=null;localStorage.removeItem("ct");localStorage.removeItem("cu");go("land");}
+async function dOut(){try{if(S?.token)await au.out(S.token);}catch{}clearSession();go("land");}
 
 // Connect a platform from the Settings page (stores where to return)
 async function connectPlatformDash(platform){
@@ -3216,7 +3398,7 @@ async function disconnectPlatform(platform){
 }
 
 // -- Send a physical gift -----------------------------------------------------
-async function sendPhysicalGift({campaignId,customerId,customerName,customerEmail,address,giftIndex,gift:giftInput,logoUrl,businessName,giftCost}){
+async function sendPhysicalGift({campaignId,customerId,customerName,customerEmail,address,giftIndex,gift:giftInput,logoUrl,businessName,giftCost,addressOverride}){
   const gift=giftInput||giftOptions()[giftIndex]||PRINTIFY_CATALOG[giftIndex];
   if(!gift){console.error("Invalid gift option");return;}
   const cost=Number(giftCost||gift.cost||gift.p||gift.estimated_cost||0);
@@ -3226,6 +3408,7 @@ async function sendPhysicalGift({campaignId,customerId,customerName,customerEmai
     headers:{"Content-Type":"application/json",apikey:SK,Authorization:`Bearer ${S?.token||SK}`},
     body:JSON.stringify({
       campaign_id:campaignId,
+      address_override:addressOverride===true,
       user_id:myId(),
       merchant_id:myId(),
       gift_cost:cost,
@@ -3270,10 +3453,21 @@ async function verifyShippingAddress(a){
     const d=await r.json().catch(()=>({}));
     if(!r.ok)return {valid:false,error:d.error||"Address verification failed."};
     if(d.valid===true)return {valid:true,address:applyVerifiedAddress(a,d.normalized),matched:d.matched||shippingAddressText(a),source:d.source||"validator"};
-    return {valid:false,error:d.error||"We couldn't verify that shipping address. Double-check it before sending."};
+    if(d.valid===false)return {valid:false,error:d.error||"We couldn't verify that shipping address. Double-check it before sending."};
+    return {valid:false,unavailable:true,error:"Address verification is temporarily down — we couldn't check this address."};
   }catch(e){
-    return {valid:false,error:"Address verification is unavailable right now. Try again before sending."};
+    return {valid:false,unavailable:true,error:"Address verification is temporarily down — we couldn't check this address."};
   }
+}
+// Owner-facing fallback: when the validator rejects or is down, the owner can
+// explicitly confirm the address as typed ("money needs a yes" — a human yes
+// counts). Server still requires address_override for unverified shipping.
+async function verifyOrOverrideAddress(a){
+  const v=await verifyShippingAddress(a);
+  if(v.valid)return v;
+  if(confirm((v.error||"We couldn't verify that address.")+"\n\nUse it exactly as typed anyway? Double-check it first — a gift shipped to a wrong address can't be recovered."))
+    return {valid:true,address:applyVerifiedAddress(a,null),matched:shippingAddressText(a),source:"owner_override",override:true};
+  return v;
 }
 
 function manualGiftChanged(){
@@ -3294,6 +3488,8 @@ function manualGiftChanged(){
 }
 
 async function oGiftNow(customerId){
+  if(document.getElementById("mgAddr")||window.__mgOpening)return; // already open or opening
+  window.__mgOpening=true;setTimeout(function(){window.__mgOpening=false;},2500);
   if(!await requirePaidAction())return;
   await loadGiftCatalog();
   const tok=S?.token||SK;
@@ -3334,15 +3530,15 @@ async function sendManualGiftNow(btn){
   if(!shippingAddressComplete(address)){alert("Add a complete mailing address before shipping a gift.");return;}
   if(cost>balance){alert("Not enough gift wallet funds. Add funds before sending this gift.");return;}
   if(btn){btn.disabled=true;btn.textContent="Verifying address...";}
-  const verified=await verifyShippingAddress(address);
+  const verified=await verifyOrOverrideAddress(address);
   if(!verified.valid){alert(verified.error);if(btn){btn.disabled=false;btn.textContent="Send gift now";}return;}
   address=Object.assign({},verified.address,{email:email});
   if(!confirm("Send "+gift.n+" to "+name+" now? Your gift wallet will be charged $"+cost.toFixed(2)+".")){if(btn){btn.disabled=false;btn.textContent="Send gift now";}return;}
   if(btn){btn.disabled=true;btn.textContent="Sending...";}
   try{
     const biz=await loadBiz()||{};
-    await fetch(SU+"/rest/v1/customers?id=eq."+encodeURIComponent(customerId),{method:"PATCH",headers:Object.assign({},h(S?.token||SK),{Prefer:"return=minimal"}),body:JSON.stringify({address:address.address1,city:address.city,state:address.region,zip:address.zip,address_confirmed_at:new Date().toISOString()})});
-    await sendPhysicalGift({campaignId:"manual-gift-"+Date.now(),customerId:customerId,customerName:name,customerEmail:email,address:address,gift:gift,logoUrl:biz.logo_url||null,businessName:biz.business_name||"",giftCost:cost});
+    await fetch(SU+"/rest/v1/customers?id=eq."+encodeURIComponent(customerId),{method:"PATCH",headers:Object.assign({},h(S?.token||SK),{Prefer:"return=minimal"}),body:JSON.stringify({address:address.address1,city:address.city,state:address.region,zip:address.zip,address_confirmed_at:verified.override?null:new Date().toISOString()})});
+    await sendPhysicalGift({campaignId:"manual-gift-"+Date.now(),customerId:customerId,customerName:name,customerEmail:email,address:address,gift:gift,logoUrl:biz.logo_url||null,businessName:biz.business_name||"",giftCost:cost,addressOverride:verified.override===true});
     document.querySelector(".ov")?.remove();
     alert("Gift sent. You can track it in Shipments.");
     dpg="shipments";dLoad();
@@ -3352,7 +3548,7 @@ async function sendManualGiftNow(btn){
   }
 }
 
-var giftCartCustomers=[],giftCartItems=[],giftCartBalance=0,giftCartBiz={};
+var giftCartCustomers=[],giftCartItems=[],giftCartBalance=0,giftCartBiz={},giftCartSending=false;
 function giftCartAddressOk(c){
   return shippingAddressComplete(giftCartAddress(c));
 }
@@ -3372,10 +3568,15 @@ function giftCartTotal(){
   return giftCartItems.reduce(function(sum,item){const g=giftCartItemGift(item);return sum+Number(g?.p||0);},0);
 }
 function giftCartAddressBadge(item){
-  const source=item.verifiedSource==="google"?"Google verified":item.verifiedSource==="census"?"Verified":"Verified";
+  if(item.verifiedSource==="owner_override")return "<span style='font-size:10px;color:#FF9F4D;font-weight:800'>⚠ Owner confirmed (unverified)</span>";
+  if(item.verifiedSource==="on_file")return "<span style='font-size:10px;color:#22C55E;font-weight:800'>✓ On file</span>";
+  const source=item.verifiedSource==="google"?"Google verified":"Verified";
   return "<span style='font-size:10px;color:#22C55E;font-weight:800'>✓ "+source+"</span>";
 }
 async function oGiftCart(){
+  if(document.getElementById("giftCartSend"))return; // already open or opening
+  if(window.__gcOpening)return;window.__gcOpening=true;
+  try{
   if(!await requirePaidAction())return;
   await loadGiftCatalog();
   const tok=S?.token||SK;
@@ -3385,7 +3586,8 @@ async function oGiftCart(){
     loadBiz().catch(()=>({}))
   ]);
   giftCartCustomers=Array.isArray(out[0])?out[0]:[];
-  giftCartItems=[];
+  // keep any cart built earlier this session — an accidental close shouldn't destroy verified lines
+  giftCartItems=Array.isArray(giftCartItems)?giftCartItems:[];
   giftCartBalance=Number(Array.isArray(out[1])&&out[1][0]?out[1][0].balance:0);
   giftCartBiz=out[2]||{};
   document.body.insertAdjacentHTML("beforeend",modal("Gift cart",`
@@ -3406,6 +3608,7 @@ async function oGiftCart(){
   const box=ovs[ovs.length-1]?.querySelector(".mb");
   if(box)box.style.maxWidth="820px";
   giftCartRender();
+  }finally{window.__gcOpening=false;}
 }
 function giftCartRender(){
   const q=(document.getElementById("giftCartSearch")?.value||"").toLowerCase().trim();
@@ -3438,7 +3641,7 @@ function giftCartRender(){
     else if(total>giftCartBalance){note.textContent="Add wallet funds before this cart can ship.";note.style.color="#FF9F4D";}
     else {note.textContent="Ready for final confirmation. Every cart line has a verified shipping address.";note.style.color="rgba(240,244,255,.58)";}
   }
-  if(send){
+  if(send&&!giftCartSending){
     send.disabled=!giftCartItems.length||total>giftCartBalance;
     send.textContent=giftCartItems.length?"Send "+giftCartItems.length+" gift"+(giftCartItems.length===1?"":"s"):"Send selected gifts";
   }
@@ -3455,12 +3658,12 @@ async function giftCartAddCustomer(id,btn){
   let address=giftCartAddress(c),source=c.address_confirmed_at?"on_file":"";
   if(!c.address_confirmed_at){
     if(btn){btn.disabled=true;btn.textContent="Verifying...";}
-    const verified=await verifyShippingAddress(address);
+    const verified=await verifyOrOverrideAddress(address);
     if(btn){btn.disabled=false;btn.textContent="Verify + Add";}
     if(!verified.valid){alert(verified.error);return;}
     address=Object.assign({},verified.address,{email:c.email||""});
     source=verified.source||"validator";
-    await fetch(SU+"/rest/v1/customers?id=eq."+encodeURIComponent(c.id),{method:"PATCH",headers:Object.assign({},h(S?.token||SK),{Prefer:"return=minimal"}),body:JSON.stringify({address:address.address1,city:address.city,state:address.region,zip:address.zip,address_confirmed_at:new Date().toISOString()})});
+    await fetch(SU+"/rest/v1/customers?id=eq."+encodeURIComponent(c.id),{method:"PATCH",headers:Object.assign({},h(S?.token||SK),{Prefer:"return=minimal"}),body:JSON.stringify({address:address.address1,city:address.city,state:address.region,zip:address.zip,address_confirmed_at:verified.override?null:new Date().toISOString()})});
     c.address=address.address1;c.city=address.city;c.state=address.region;c.zip=address.zip;c.address_confirmed_at=new Date().toISOString();
   }
   const duplicate=giftCartItems.some(function(x){return String(x.customerId||"")===String(c.id)&&Number(x.giftIndex)===giftIndex;});
@@ -3478,7 +3681,7 @@ async function giftCartAddManual(btn){
   if(email&&!isEmail(email)){alert("That email doesn't look right. Leave it blank or enter a valid email.");return;}
   if(!shippingAddressComplete(address)){alert("Add street, city, state, and a valid ZIP before adding this recipient.");return;}
   if(btn){btn.disabled=true;btn.textContent="Verifying...";}
-  const verified=await verifyShippingAddress(address);
+  const verified=await verifyOrOverrideAddress(address);
   if(btn){btn.disabled=false;btn.textContent="Verify + Add manual recipient";}
   if(!verified.valid){alert(verified.error);return;}
   address=Object.assign({},verified.address,{email:email});
@@ -3498,6 +3701,7 @@ function giftCartRemove(id){
   giftCartRender();
 }
 async function sendGiftCart(btn){
+  if(giftCartSending)return; // a batch is already in flight — never double-ship
   const total=giftCartTotal();
   if(!giftCartItems.length){alert("Add gifts to the cart first.");return;}
   const bad=giftCartItems.find(function(item){return !item.verified||!shippingAddressComplete(item.address);});
@@ -3505,29 +3709,40 @@ async function sendGiftCart(btn){
   if(total>giftCartBalance){alert("Not enough gift wallet funds for this cart.");return;}
   if(!document.getElementById("giftCartConfirm")?.checked){alert("Confirm every recipient, gift, and verified address before sending.");return;}
   if(!confirm("Send "+giftCartItems.length+" gift"+(giftCartItems.length===1?"":"s")+" now? Your gift wallet will be charged about $"+total.toFixed(2)+"."))return;
+  giftCartSending=true;
   if(btn){btn.disabled=true;btn.textContent="Sending 0/"+giftCartItems.length+"...";}
   const batchId="manual-gift-bulk-"+Date.now();
-  let sent=0;const failed=[];
-  for(const item of giftCartItems){
-    try{
-      let customerId=item.customerId||null;
-      if(!customerId){
-        const created=await db.ins("customers",{name:item.name,email:item.email||null,address:item.address.address1,city:item.address.city,state:item.address.region,zip:item.address.zip,address_confirmed_at:new Date().toISOString(),business_id:"manual-gift-cart",total_spent:0,status:"active",user_id:myId()},S?.token||SK);
-        if(created&&created.message)throw new Error(String(created.message).replace("PLAN_CUSTOMER_LIMIT_REACHED:","Plan limit reached:"));
-        customerId=Array.isArray(created)&&created[0]?.id?String(created[0].id):null;
+  const items=giftCartItems.slice(); // snapshot — edits to the open cart can't change what was confirmed
+  let sent=0;const failed=[];const sentIds={};
+  try{
+    for(const item of items){
+      try{
+        let customerId=item.customerId||null;
+        if(!customerId){
+          const created=await db.ins("customers",{name:item.name,email:item.email||null,address:item.address.address1,city:item.address.city,state:item.address.region,zip:item.address.zip,address_confirmed_at:item.verifiedSource==="owner_override"?null:new Date().toISOString(),business_id:"manual-gift-cart",total_spent:0,status:"active",user_id:myId()},S?.token||SK);
+          if(created&&created.message)throw new Error(String(created.message).replace("PLAN_CUSTOMER_LIMIT_REACHED:","Plan limit reached:"));
+          customerId=Array.isArray(created)&&created[0]?.id?String(created[0].id):null;
+          item.customerId=customerId; // remember it — a retry must not create a duplicate customer
+        }
+        const gift=giftCartItemGift(item);
+        await sendPhysicalGift({campaignId:batchId+"-"+item.id,customerId:customerId,customerName:item.name||"Customer",customerEmail:item.email||"",address:item.address,gift:gift,logoUrl:giftCartBiz.logo_url||null,businessName:giftCartBiz.business_name||"",giftCost:Number(gift?.p||0),addressOverride:item.verifiedSource==="owner_override"});
+        sent++;sentIds[item.id]=true;
+        if(btn)btn.textContent="Sending "+sent+"/"+items.length+"...";
+      }catch(e){
+        failed.push((item.name||"Customer")+": "+(e.message||"failed"));
       }
-      const gift=giftCartItemGift(item);
-      await sendPhysicalGift({campaignId:batchId+"-"+item.id,customerId:customerId,customerName:item.name||"Customer",customerEmail:item.email||"",address:item.address,gift:gift,logoUrl:giftCartBiz.logo_url||null,businessName:giftCartBiz.business_name||"",giftCost:Number(gift?.p||0)});
-      sent++;
-      if(btn)btn.textContent="Sending "+sent+"/"+giftCartItems.length+"...";
-    }catch(e){
-      failed.push((item.name||"Customer")+": "+(e.message||"failed"));
     }
+  }finally{giftCartSending=false;}
+  giftCartItems=giftCartItems.filter(function(x){return !sentIds[x.id];}); // keep failed lines for retry
+  if(failed.length){
+    if(btn){btn.disabled=false;}
+    giftCartRender();
+    alert("Sent "+sent+" gift"+(sent===1?"":"s")+". Could not send "+failed.length+":\n"+failed.join("\n")+"\n\nThe failed lines are still in your cart — fix and retry, or remove them.");
+  }else{
+    btn?.closest(".ov")?.remove();
+    alert("Gift cart sent. You can track everything in Shipments.");
+    dpg="shipments";dLoad();
   }
-  btn?.closest(".ov")?.remove();
-  if(failed.length)alert("Sent "+sent+" gift"+(sent===1?"":"s")+". Could not send: "+failed.slice(0,3).join("; ")+(failed.length>3?" and "+(failed.length-3)+" more.":"."));
-  else alert("Gift cart sent. You can track everything in Shipments.");
-  dpg="shipments";dLoad();
 }
 
 function oWalletTopup(){
@@ -3590,9 +3805,18 @@ async function forgotPw(){
   var e=document.getElementById("aE")?.value||prompt("Enter your account email:")||"";
   if(!e||e.indexOf("@")<0){alert("Enter a valid email first.");return;}
   try{
-    await fetch(SU+"/auth/v1/recover",{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e})});
+    await fetch(SU+"/auth/v1/recover?redirect_to="+encodeURIComponent(authRedirectTo()),{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e})});
     alert("Reset link sent to "+e+" — check your inbox and spam. It comes from support@goclicktide.com.");
   }catch(ex){alert("Could not send reset email: "+ex.message);}
+}
+async function resendConfirm(btn){
+  var e=obE||document.getElementById("oE")?.value||document.getElementById("aE")?.value||"";
+  if(!e||e.indexOf("@")<0){alert("Enter your email first.");return;}
+  if(btn){btn.disabled=true;btn.textContent="Sending...";}
+  try{
+    await fetch(SU+"/auth/v1/resend?redirect_to="+encodeURIComponent(authRedirectTo()),{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({type:"signup",email:e})});
+    if(btn)btn.textContent="Sent ✓ — check spam too";
+  }catch(_){if(btn){btn.disabled=false;btn.textContent="Didn't get it? Resend email";}}
 }
 async function doPwReset(btn){
   var p=document.getElementById("rcPw")?.value||"";
@@ -3721,10 +3945,10 @@ async function svCust(btn){
   if(hasAnyAddress){
     if(!shippingAddressComplete(address)){alert("If you enter an address, add street, city, state, and a valid ZIP.");return;}
     if(btn){btn.disabled=true;btn.textContent="Verifying address...";}
-    const verified=await verifyShippingAddress(address);
+    const verified=await verifyOrOverrideAddress(address);
     if(!verified.valid){alert(verified.error);if(btn){btn.disabled=false;btn.textContent="Save";}return;}
     address=Object.assign({},verified.address,{email:e});
-    addressFields={address:address.address1,city:address.city,state:address.region,zip:address.zip,address_confirmed_at:new Date().toISOString()};
+    addressFields={address:address.address1,city:address.city,state:address.region,zip:address.zip,address_confirmed_at:verified.override?null:new Date().toISOString()};
   }
   if(btn){btn.disabled=true;btn.textContent="Saving...";}
   try{
@@ -3883,6 +4107,7 @@ function updateProtFields(){
 
 function selPlan(plan){
   obPl=plan;
+  try{localStorage.setItem("ct_plan",plan);}catch(e){}
   go('onboard');
 }
 
@@ -3923,6 +4148,7 @@ async function getAIHint(step, context){
   R();
 }
 
+history.replaceState({view:scr},"","");
 R();
 
 </script>

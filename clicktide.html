@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Clicktide — Customer Loyalty &amp; Win-Back Gifts for Local Businesses</title>
 <meta name="description" content="Your customers aren't leaving — they're forgetting. Clicktide wins them back automatically with branded gifts, mailed postcards, emails, and texts. Built for gyms, salons, cafés, and local businesses. Plans from $49/mo."/>
-<link rel="canonical" href="https://goclicktide.com/"/>
+<link rel="canonical" href="https://goclicktide.com/clicktide"/>
 <meta name="color-scheme" content="only light"/>
 <meta name="theme-color" content="#080D18"/>
 <meta property="og:type" content="website"/>
 <meta property="og:site_name" content="Clicktide"/>
-<meta property="og:url" content="https://goclicktide.com/"/>
+<meta property="og:url" content="https://goclicktide.com/clicktide"/>
 <meta property="og:title" content="Clicktide — Customer Loyalty &amp; Win-Back Gifts for Local Businesses"/>
 <meta property="og:description" content="Your customers aren't leaving — they're forgetting. Automatic retention for local businesses: branded gifts, mailed postcards, emails, and texts triggered by real customer behavior."/>
 <meta property="og:image" content="https://goclicktide.com/og-image.png"/>
@@ -654,8 +654,9 @@ const db={
   async upd(t,id,d,tok){await fetch(`${SU}/rest/v1/${t}?id=eq.${id}`,{method:"PATCH",headers:{...h(tok),Prefer:"return=representation"},body:JSON.stringify(d)});},
   async del(t,id,tok){await fetch(`${SU}/rest/v1/${t}?id=eq.${id}`,{method:"DELETE",headers:h(tok)});}
 };
+function authRedirectTo(){return window.location.origin+window.location.pathname;}
 const au={
-  async up(e,p,m){const r=await fetch(`${SU}/auth/v1/signup`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e,password:p,data:m})});const d=await r.json();if(!r.ok){const c=d.error_code||d.error;if(c==="user_already_exists"||/already.*regist/i.test(d.msg||""))throw new Error("An account with this email already exists — log in instead, or use Forgot password.");throw new Error(d.msg||d.error_description||(d.error&&d.error.message)||"Sign-up failed — please try again");}return d;},
+  async up(e,p,m){const r=await fetch(`${SU}/auth/v1/signup?redirect_to=${encodeURIComponent(authRedirectTo())}`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e,password:p,data:m})});const d=await r.json();if(!r.ok){const c=d.error_code||d.error;if(c==="user_already_exists"||/already.*regist/i.test(d.msg||""))throw new Error("An account with this email already exists — log in instead, or use Forgot password.");throw new Error(d.msg||d.error_description||(d.error&&d.error.message)||"Sign-up failed — please try again");}return d;},
   async in(e,p){const r=await fetch(`${SU}/auth/v1/token?grant_type=password`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e,password:p})});const d=await r.json();if(!r.ok){const c=d.error_code||d.error;if(c==="email_not_confirmed")throw new Error("Your account exists but the email isn't confirmed yet. Check your inbox and spam for the activation link, or click Resend email below.");throw new Error(d.msg||d.error_description||(d.error&&d.error.message)||"Wrong email or password");}return d;},
   async out(t){await fetch(`${SU}/auth/v1/logout`,{method:"POST",headers:{apikey:SK,Authorization:`Bearer ${t}`}});}
 };
@@ -703,6 +704,64 @@ async function resumeSession(t){
 
 function pwToggleBtn(id){return `<button type="button" tabindex="-1" onclick="togglePw('${id}',this)" aria-label="Show password" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:0;padding:0;cursor:pointer;color:rgba(240,244,255,.45);font-size:10.5px;font-weight:800;letter-spacing:1px">SHOW</button>`;}
 function togglePw(id,btn){var i=document.getElementById(id);if(!i)return;var s=i.type==="password";i.type=s?"text":"password";btn.textContent=s?"HIDE":"SHOW";btn.setAttribute("aria-label",s?"Hide password":"Show password");}
+
+function cleanAuthUrl(){history.replaceState({},"",window.location.pathname);}
+function authErrMsg(d,fallback){return(d&&(d.message||d.msg||d.error_description||d.error))||fallback;}
+function authTokenTypes(type){
+  const t=String(type||"email").toLowerCase();
+  const order=t==="signup"?["signup","email"]:t==="email"?["email","signup"]:[t,"email","signup"];
+  return order.filter(function(x,i,a){return x&&a.indexOf(x)===i;});
+}
+async function verifyAuthTokenHash(tokenHash,type){
+  let last=null;
+  for(const t of authTokenTypes(type)){
+    const r=await fetch(SU+"/auth/v1/verify",{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({token_hash:tokenHash,type:t})});
+    const d=await r.json().catch(function(){return{};});
+    if(r.ok&&!d.error)return d;
+    last=d;
+  }
+  throw new Error(authErrMsg(last,"Email confirmation failed. Please request a new link."));
+}
+async function exchangeAuthCode(code){
+  const body={auth_code:code};
+  const verifier=sessionStorage.getItem("sb-code-verifier")||sessionStorage.getItem("code_verifier")||localStorage.getItem("sb-code-verifier")||localStorage.getItem("code_verifier")||"";
+  if(verifier)body.code_verifier=verifier;
+  const r=await fetch(SU+"/auth/v1/token?grant_type=pkce",{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const d=await r.json().catch(function(){return{};});
+  if(!r.ok||d.error)throw new Error(authErrMsg(d,"Email confirmation code could not be completed. Please request a new link."));
+  return d;
+}
+function showPasswordReset(token){
+  window.__rcTok=token;
+  cleanAuthUrl();
+  document.body.insertAdjacentHTML("beforeend",modal("Choose a new password",`
+    <div style="font-size:13px;color:rgba(240,244,255,.62);line-height:1.65;margin-bottom:14px">Set a new password for your Clicktide account. You'll use it the next time you log in.</div>
+    <div class="fg"><label class="fl">New password</label><div style="position:relative"><input class="fi" id="rcPw" type="password" autocomplete="new-password" placeholder="At least 6 characters" style="padding-right:52px"/>${pwToggleBtn("rcPw")}</div></div>
+    <div id="rcErr" style="display:none;color:#FF6B6B;font-size:12px;margin-bottom:10px"></div>
+    <button class="btn-full btn-gold" onclick="doPwReset(this)">Update password →</button>
+  `));
+}
+async function finishAuthReturn(token,user,type,sessionData){
+  const kind=String(type||"email").toLowerCase();
+  if(kind==="recovery"){showPasswordReset(token);return;}
+  if(!token){
+    cleanAuthUrl();
+    scr="login";R();
+    setTimeout(function(){alert("Email confirmed. Please log in to continue.");},80);
+    return;
+  }
+  let u=user;
+  if(!u||!u.id){
+    const r=await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+token}});
+    u=await r.json();
+  }
+  if(!u||!u.id)throw new Error("Email confirmed, but Clicktide could not load the account. Please log in.");
+  saveSession(Object.assign({},sessionData||{},{access_token:token,user:u}),true);
+  await ensureBizProfile(token,u);
+  if(typeof finishPendingMindbodyActivation==="function")await finishPendingMindbodyActivation().catch(function(){});
+  fetch(FN+"/send-welcome-email",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:"{}"}).catch(function(){});
+  obAwaitConfirm=false;scr="onboard";obS=2;history.replaceState({view:"onboard"},"","");R();
+}
 
 // Ensure a logged-in user has a business profile row in clicktide (safe to call every time).
 async function ensureBizProfile(tok,user,extra){
@@ -1430,40 +1489,54 @@ let dpg="overview",cmT="message_only",cmN="",cmTr="",cmGN="",cmGC="",cmG=null,cm
 // -- Handle OAuth callback redirect back to this page ------------------------
 // Edge functions redirect to: goclicktide.com?ct_platform=square&ct_merchant=xxx&ct_name=Yyy
 // or on error: goclicktide.com?ct_error=...
-(function handleOAuthReturn(){
+(async function handleOAuthReturn(){
   try{obPl=localStorage.getItem("ct_plan")||obPl;}catch(e){}
-  // Email-confirmation link return: #access_token=...&type=signup
-  // Password-recovery link return: #access_token=...&type=recovery -> show reset form, don't log in
-  if(window.location.hash&&window.location.hash.indexOf("access_token=")>-1){
-    try{
-      var hp=new URLSearchParams(window.location.hash.substring(1));
-      var at=hp.get("access_token");
-      var htype=hp.get("type");
-      if(at&&htype==="recovery"){
-        history.replaceState({},"",window.location.pathname);
-        window.__rcTok=at;
-        document.body.insertAdjacentHTML("beforeend",modal("Choose a new password",`<div style="font-size:13px;color:rgba(240,244,255,.62);line-height:1.65;margin-bottom:14px">Set a new password for your Clicktide account. You'll use it the next time you log in.</div><div class="fg"><label class="fl">New password</label><div style="position:relative"><input class="fi" id="rcPw" type="password" autocomplete="new-password" placeholder="At least 6 characters" style="padding-right:52px"/>${pwToggleBtn("rcPw")}</div></div><div id="rcErr" style="display:none;color:#FF6B6B;font-size:12px;margin-bottom:10px"></div><button class="btn-full btn-gold" onclick="doPwReset(this)">Update password →</button>`));
-      }else if(at){
-        var hrt=hp.get("refresh_token"),hexp=hp.get("expires_in");
-        history.replaceState({},"",window.location.pathname);
-        fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+at}}).then(function(r){return r.json();}).then(function(u){
-          if(u&&u.id){
-            saveSession({access_token:at,refresh_token:hrt,expires_in:hexp,user:u},true);
-            ensureBizProfile(at,u).then(function(){
-              fetch(FN+"/send-welcome-email",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+at},body:"{}"}).catch(function(){});
-            });
-            obAwaitConfirm=false;scr="onboard";obS=2;history.replaceState({view:"onboard"},"","");R();
-          }
-        }).catch(function(){});
-      }
-    }catch(e){}
-  }
-  else if(window.location.hash&&(window.location.hash.indexOf("error_code=otp_expired")>-1||window.location.hash.indexOf("error=access_denied")>-1)){
-    history.replaceState({},"",window.location.pathname);
-    alert("That link has expired or was already used. Use ‘Forgot password?’ on the login screen to get a fresh one.");
-    scr="login";
-  }
   const params=new URLSearchParams(window.location.search);
+  const hashParams=new URLSearchParams((window.location.hash||"").replace(/^#/,""));
+
+  const authError=params.get("error_description")||hashParams.get("error_description")||params.get("error")||hashParams.get("error")||params.get("error_code")||hashParams.get("error_code");
+  if(authError&&!params.get("ct_error")){
+    cleanAuthUrl();
+    scr="login";R();
+    const msg=(authError==="otp_expired"||authError==="access_denied")?"That link has expired or was already used. Use Forgot password on the login screen to get a fresh one.":"Email link failed: "+authError+"\n\nPlease request a new confirmation link or log in if your email is already confirmed.";
+    setTimeout(function(){alert(msg);},80);
+    return;
+  }
+
+  try{
+    const authType=params.get("type")||hashParams.get("type")||"email";
+    const hashToken=hashParams.get("access_token");
+    if(hashToken){
+      cleanAuthUrl();
+      await finishAuthReturn(hashToken,null,authType,{refresh_token:hashParams.get("refresh_token")||"",expires_in:hashParams.get("expires_in")||"",expires_at:hashParams.get("expires_at")||""});
+      return;
+    }
+    const tokenHash=params.get("token_hash")||hashParams.get("token_hash")||params.get("token")||hashParams.get("token");
+    if(tokenHash){
+      const verified=await verifyAuthTokenHash(tokenHash,authType);
+      const session=verified.session||verified;
+      const token=session.access_token||verified.access_token||"";
+      const user=verified.user||session.user||null;
+      cleanAuthUrl();
+      await finishAuthReturn(token,user,authType,session);
+      return;
+    }
+    const code=params.get("code");
+    if(code&&!params.get("ct_platform")&&!params.get("session")){
+      const exchanged=await exchangeAuthCode(code);
+      const session=exchanged.session||exchanged;
+      const token=session.access_token||exchanged.access_token||"";
+      const user=exchanged.user||session.user||null;
+      cleanAuthUrl();
+      await finishAuthReturn(token,user,authType,session);
+      return;
+    }
+  }catch(e){
+    cleanAuthUrl();
+    scr="login";R();
+    setTimeout(function(){alert((e&&e.message)||"Email confirmation failed. Please request a new link or log in if your email is already confirmed.");},80);
+    return;
+  }
 
   // Stripe redirect
   if(params.get("session")==="success"){
@@ -1897,7 +1970,7 @@ async function doAuth(mode){
   const err=document.getElementById("aErr");
   const btn=document.getElementById("aSub");
   if(il){ if(!e||!p){err.textContent="Please enter your email and password";err.style.display="block";return;} }
-  else { const v=validSignup({name:nm,email:e,phone:ph,pw:p,biz:n,bphone:bph,bemail:bem,address:addr2?addr+", "+addr2:addr,city:city,state:state,zip:zip}); if(v){err.textContent=v;err.style.display="block";return;} if(!document.getElementById("aAgree")?.checked){err.textContent="Please agree to the Terms, Privacy Policy, Billing Policy, and service authorization.";err.style.display="block";return;} }
+  else { const v=validSignup({name:nm,email:e,phone:ph,pw:p,biz:n,bphone:bph,bemail:bem,address:addr,city:city,state:state,zip:zip}); if(v){err.textContent=v;err.style.display="block";return;} if(!document.getElementById("aAgree")?.checked){err.textContent="Please agree to the Terms, Privacy Policy, Billing Policy, and service authorization.";err.style.display="block";return;} }
   btn.textContent=il?"Logging in...":"Creating account...";btn.disabled=true;err.style.display="none";
   try{
     const meta={business_name:n,contact_name:nm,phone:ph,business_phone:bph,business_email:bem,address:addr,city:city,state:state,zip:zip,plan:pl,legal_terms_accepted_at:new Date().toISOString(),legal_terms_version:"2026-06-08",legal_authorized_services:true};
@@ -3732,7 +3805,7 @@ async function forgotPw(){
   var e=document.getElementById("aE")?.value||prompt("Enter your account email:")||"";
   if(!e||e.indexOf("@")<0){alert("Enter a valid email first.");return;}
   try{
-    await fetch(SU+"/auth/v1/recover?redirect_to="+encodeURIComponent(window.location.origin+window.location.pathname),{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e})});
+    await fetch(SU+"/auth/v1/recover?redirect_to="+encodeURIComponent(authRedirectTo()),{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e})});
     alert("Reset link sent to "+e+" — check your inbox and spam. It comes from support@goclicktide.com.");
   }catch(ex){alert("Could not send reset email: "+ex.message);}
 }
@@ -3741,7 +3814,7 @@ async function resendConfirm(btn){
   if(!e||e.indexOf("@")<0){alert("Enter your email first.");return;}
   if(btn){btn.disabled=true;btn.textContent="Sending...";}
   try{
-    await fetch(SU+"/auth/v1/resend",{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({type:"signup",email:e})});
+    await fetch(SU+"/auth/v1/resend?redirect_to="+encodeURIComponent(authRedirectTo()),{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({type:"signup",email:e})});
     if(btn)btn.textContent="Sent ✓ — check spam too";
   }catch(_){if(btn){btn.disabled=false;btn.textContent="Didn't get it? Resend email";}}
 }
