@@ -147,6 +147,20 @@ h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(40px,6.4vw,78px);line-
 .ba{background:rgba(34,197,94,.1);color:#22C55E;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700}
 .bp{background:rgba(255,209,102,.1);color:#FFD166;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700}
 .empty{text-align:center;padding:36px 24px;background:#0C1220;border:1px dashed rgba(255,255,255,.1);border-radius:16px}
+/* DASHBOARD — light "tide-sky" theme, matched to the public site */
+.lt .dash{background:#FAFCFF}
+.lt .sb{background:#FFFFFF;border-right:1px solid rgba(16,18,21,.07)}
+.lt .sb-logo{border-bottom:1px solid rgba(16,18,21,.07)}
+.lt .ni{color:#5A5E66}
+.lt .ni:hover{background:rgba(16,18,21,.045)}
+.lt .ni.on{background:rgba(39,118,196,.1);color:#2776C4;font-weight:700}
+.lt .sb-foot{border-top:1px solid rgba(16,18,21,.07)}
+.lt .dt{color:#101215}
+.lt .ds,.lt .sl,.lt .dsub{color:#8A8E96}
+.lt .sc,.lt .dc{background:#FFFFFF;border:1px solid rgba(16,18,21,.08);box-shadow:0 1px 3px rgba(16,18,21,.05)}
+.lt .dr{border-bottom:1px solid rgba(16,18,21,.06)}
+.lt .empty{background:#FFFFFF;border:1px dashed rgba(16,18,21,.14)}
+.lt .di{background:rgba(16,18,21,.04)}
 /* MODAL */
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:300;padding:20px}
 .mb{background:#0C1220;border:1px solid rgba(255,255,255,.07);border-radius:20px;width:100%;max-width:500px;max-height:90vh;overflow:auto}
@@ -1691,8 +1705,8 @@ function legalConsent(id){
 
 function go(s){if(scr==="onboard")saveOnboardingProgress();if(scr!==s)history.pushState({view:s},"","");scr=s;R();}
 window.addEventListener("popstate",function(e){scr=(e.state&&e.state.view)||"land";R();});
-function LT(h){if(scr==="dash"&&S)return h;return h.split("rgba(240,244,255,").join("rgba(15,17,21,").split("#F0F4FF").join("#0F1115").split("color:#FFD166").join("color:#B8860B").split("color:#4DA6FF").join("color:#2776C4").split("background:#101828").join("background:#F4F6FA").split("background:#0C1220").join("background:#FFFFFF").split("background:#080D18").join("background:#FFFFFF").split("rgba(255,255,255,.07)").join("rgba(15,23,42,.1)").split("rgba(255,255,255,.08)").join("rgba(15,23,42,.1)").split("rgba(255,255,255,.1)").join("rgba(15,23,42,.12)").split("rgba(255,255,255,.15)").join("rgba(15,23,42,.18)");}
-function R(){if(scr==="onboard")saveOnboardingProgress();var lt=!(scr==="dash"&&S);document.body.style.background=lt?"#FAFCFF":"#080D18";var h=lt?LT(page()):page();document.getElementById("app").innerHTML=lt?'<div class="lt">'+h+'</div>':h;bind();}
+function LT(h){return h.split("rgba(240,244,255,").join("rgba(15,17,21,").split("#F0F4FF").join("#0F1115").split("color:#FFD166").join("color:#B8860B").split("color:#4DA6FF").join("color:#2776C4").split("background:#101828").join("background:#F4F6FA").split("background:#0C1220").join("background:#FFFFFF").split("background:#080D18").join("background:#FFFFFF").split("rgba(255,255,255,.07)").join("rgba(15,23,42,.1)").split("rgba(255,255,255,.08)").join("rgba(15,23,42,.1)").split("rgba(255,255,255,.1)").join("rgba(15,23,42,.12)").split("rgba(255,255,255,.15)").join("rgba(15,23,42,.18)");}
+function R(){if(scr==="onboard")saveOnboardingProgress();var lt=true;document.body.style.background="#FAFCFF";var h=LT(page());document.getElementById("app").innerHTML='<div class="lt">'+h+'</div>';bind();}
 
 function page(){
   if(scr==="land")return land();
@@ -2722,7 +2736,7 @@ function pickCampaignGift(i){
   cmG=i;
   const g=giftOptions()[i];
   if(g){cmGN=g.n;cmGC=String(g.p||0);}
-  document.getElementById("app").innerHTML=dash();bind();dLoad();
+  paintDash();dLoad();
 }
 
 function addCustomGift(btn){
@@ -3158,23 +3172,57 @@ function riPrv(){
   const ch=Math.round(riCu*riCh),sv=Math.round(ch*B.lf),rc=sv*riAv,ml=Math.round((riAv/riGf)*10)/10;
   const el=document.getElementById("riPv");
   if(el)el.innerHTML=`<div><div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:800;color:${B.c};margin-bottom:2px">${sv}</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Saved/mo</div></div><div><div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:800;color:#22C55E;margin-bottom:2px">$${rc.toLocaleString()}</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Recovered</div></div><div><div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:800;color:#FFD166;margin-bottom:2px">${ml}×</div><div style="font-size:11px;color:rgba(240,244,255,.45)">ROI</div></div>`;
-  if(el&&!(scr==="dash"&&S))el.innerHTML=LT(el.innerHTML);
+  if(el)el.innerHTML=LT(el.innerHTML);
 }
 
+// Dashboard line icons — same stroke style as the public site (no emoji).
+function dIco(id){
+  var P={
+    overview:'<rect x="3" y="3" width="7.5" height="8.5" rx="1.4"/><rect x="13.5" y="3" width="7.5" height="5" rx="1.4"/><rect x="13.5" y="11" width="7.5" height="10" rx="1.4"/><rect x="3" y="14.5" width="7.5" height="6.5" rx="1.4"/>',
+    customers:'<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c.7-3.2 3-4.8 5.5-4.8s4.8 1.6 5.5 4.8"/><path d="M16 5.3a3 3 0 0 1 0 5.6"/><path d="M17.6 20c-.3-1.9-1.2-3.3-2.6-4.1"/>',
+    campaigns:'<path d="M13 3 4.5 13.5H10l-1 7.5 9-11H12.5z"/>',
+    shipments:'<path d="M3 7.5 12 3l9 4.5v9L12 21 3 16.5z"/><path d="M3 7.5 12 12l9-4.5"/><path d="M12 12v9"/>',
+    wallet:'<rect x="3" y="6" width="18" height="13" rx="2.6"/><path d="M3 10.5h18"/><circle cx="16.6" cy="14.5" r="1.3"/>',
+    brand:'<path d="M12 3a9 9 0 1 0 1 18c1.4 0 1.8-1.1 1.2-2.2-.6-1.1-.1-2.4 1.1-2.6l1.4-.2A4.2 4.2 0 0 0 21 12a9 9 0 0 0-9-9z"/><circle cx="8" cy="11" r="1"/><circle cx="12" cy="8" r="1"/><circle cx="16" cy="11" r="1"/>',
+    email:'<rect x="3" y="5" width="18" height="14" rx="2.6"/><path d="m4 7.5 8 5.5 8-5.5"/>',
+    settings:'<circle cx="12" cy="12" r="3.2"/><path d="M12 2.6v2.5M12 18.9v2.5M21.4 12h-2.5M5.1 12H2.6M18.6 5.4l-1.8 1.8M7.2 16.8l-1.8 1.8M18.6 18.6l-1.8-1.8M7.2 7.2 5.4 5.4"/>'
+  };
+  return '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">'+(P[id]||P.overview)+'</svg>';
+}
+// General line icons for card headers + empty states (replaces decorative emoji).
+function gI(name,sz,col){
+  sz=sz||20;col=col||"currentColor";
+  var P={
+    bolt:'<path d="M13 3 4.5 13.5H10l-1 7.5 9-11H12.5z"/>',
+    box:'<path d="M3 7.5 12 3l9 4.5v9L12 21 3 16.5z"/><path d="M3 7.5 12 12l9-4.5"/><path d="M12 12v9"/>',
+    people:'<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c.7-3.2 3-4.8 5.5-4.8s4.8 1.6 5.5 4.8"/><path d="M16 5.3a3 3 0 0 1 0 5.6"/><path d="M17.6 20c-.3-1.9-1.2-3.3-2.6-4.1"/>',
+    card:'<rect x="3" y="6" width="18" height="13" rx="2.6"/><path d="M3 10.5h18"/>',
+    palette:'<path d="M12 3a9 9 0 1 0 1 18c1.4 0 1.8-1.1 1.2-2.2-.6-1.1-.1-2.4 1.1-2.6l1.4-.2A4.2 4.2 0 0 0 21 12a9 9 0 0 0-9-9z"/><circle cx="8" cy="11" r="1"/><circle cx="12" cy="8" r="1"/><circle cx="16" cy="11" r="1"/>',
+    mail:'<rect x="3" y="5" width="18" height="14" rx="2.6"/><path d="m4 7.5 8 5.5 8-5.5"/>',
+    alert:'<path d="M12 3 2.5 20.5h19z"/><path d="M12 10v4.5"/><path d="M12 18.1v.1"/>',
+    gift:'<rect x="3.5" y="11" width="17" height="9.5" rx="1"/><rect x="2.5" y="7.5" width="19" height="4" rx="1"/><path d="M12 7.5V20.5"/><path d="M12 7.5C12 5 10.4 3.5 8.7 3.5 7.2 3.5 6 4.6 6 6s1.2 1.5 2.7 1.5z"/><path d="M12 7.5C12 5 13.6 3.5 15.3 3.5 16.8 3.5 18 4.6 18 6s-1.2 1.5-2.7 1.5z"/>',
+    star:'<path d="M12 3.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8L12 17l-5.3 2.6 1-5.8-4.2-4.1 5.9-.9z"/>',
+    printer:'<path d="M6.5 9.5V3.5h11v6"/><rect x="3" y="9.5" width="18" height="7.5" rx="1.6"/><rect x="6.5" y="14" width="11" height="6.5" rx="1"/>'
+  };
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="'+col+'" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;flex-shrink:0">'+(P[name]||"")+'</svg>';
+}
 function dash(){
   const nav=[{id:"overview",i:"📊",l:"Overview"},{id:"customers",i:"👥",l:"Customers"},{id:"campaigns",i:"⚡",l:"Campaigns"},{id:"shipments",i:"📦",l:"Shipments"},{id:"wallet",i:"💳",l:"Wallet"},{id:"studio",i:"🎨",l:"Brand Studio"},{id:"emails",i:"✉️",l:"Email Studio"},{id:"settings",i:"⚙️",l:"Settings"}];
   return`<div class="dash">${ctTheme()}
   <div class="sb"><div class="sb-logo">${(bizLock&&String(bizLock?.plan||"").toLowerCase()==="scale"&&bizLock.logo_url)?`<div style="display:flex;align-items:center;gap:8px;padding:0 2px"><img src="${bizLock.logo_url}" style="width:26px;height:26px;border-radius:6px;object-fit:contain"/><span style="font-weight:800;font-size:12px;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px">${(bizLock.business_name||"").toUpperCase()}</span></div>`:logoH(18)}</div>
-  <div class="sb-nav">${nav.map(n=>`<button class="ni ${dpg===n.id?"on":""}" onclick="dGo('${n.id}')"><span style="font-size:14px">${n.i}</span>${n.l}</button>`).join("")}</div>
+  <div class="sb-nav">${nav.map(n=>`<button class="ni ${dpg===n.id?"on":""}" onclick="dGo('${n.id}')">${dIco(n.id)}${n.l}</button>`).join("")}</div>
   <div class="sb-foot">${S?.user?.email?`<div style="font-size:10px;color:rgba(240,244,255,.15);padding:4px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${S.user.email}</div>`:""}
   <button class="ni" onclick="go('land')">← Back to site</button>
   <button class="ni" style="background:rgba(255,77,109,.1);color:#FF4D6D" onclick="dOut()">⏻ Log out</button></div></div>
-  <div class="dm"><div class="dh"><div><div class="dt">${nav.find(n=>n.id===dpg)?.i} ${nav.find(n=>n.id===dpg)?.l}</div><div class="ds">Clicktide · Real data</div></div><button class="btn btn-gold" onclick="oCM()">+ New Campaign</button></div>
+  <div class="dm"><div class="dh"><div><div class="dt" style="display:flex;align-items:center;gap:9px">${dIco(dpg)}${nav.find(n=>n.id===dpg)?.l}</div><div class="ds">Clicktide · Real data</div></div><button class="btn btn-gold" onclick="oCM()">+ New Campaign</button></div>
   <div id="dC"><div style="display:flex;align-items:center;justify-content:center;padding:40px"><div style="width:32px;height:32px;border:3px solid rgba(255,255,255,.1);border-top:3px solid #FFD166;border-radius:50%;animation:spin .8s linear infinite"></div></div></div></div>
   </div>${showCM?cModal():""}`;
 }
 
-function dGo(p){dpg=p;document.getElementById("app").innerHTML=dash();bind();dLoad();}
+// Re-render the dashboard through the light path (same as R()) so incremental
+// navigation stays light instead of falling back to the raw dark markup.
+function paintDash(){document.getElementById("app").innerHTML='<div class="lt">'+LT(dash())+'</div>';bind();}
+function dGo(p){dpg=p;paintDash();dLoad();}
 
 async function dLoad(){
   const tok=S?.token||SK;const el=document.getElementById("dC");if(!el)return;
@@ -3203,8 +3251,8 @@ async function dLoad(){
         }
       }catch(e){revealHtml="";}
       el.innerHTML=paidBanner+revealHtml+`<div class="sg">${[["Customers",u.length,"#FFD166"],["Campaigns",c.length,"#22C55E"],["Gifts Sent",sh.length,"#4DA6FF"],["Wallet","$"+bal,"#06B6D4"]].map(([l,v,cc])=>`<div class="sc"><div class="sl">${l}</div><div class="sn" style="color:${cc}">${v}</div></div>`).join("")}</div>
-      <div class="dc"><div class="dch"><div class="dct">Campaigns</div><button class="link-btn" onclick="oCM()">+ New →</button></div>${c.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">⚡</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No campaigns yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Create your first campaign.</div><button class="btn btn-gold" onclick="oCM()">Create Campaign</button></div>`:c.slice(0,4).map(cc=>`<div class="dr"><div class="di" style="background:rgba(255,209,102,.1)">${cc.campaign_type==="message_only"?"💬":cc.campaign_type==="digital_gift"?"💳":cc.campaign_type==="survey"?"⭐":"📦"}</div><div style="flex:1"><div class="dn">${cc.name}</div><div class="dsub">${cc.trigger} · ${cc.gift_name}</div></div><span class="${cc.status==="active"?"ba":"bp"}">${cc.status==="active"?"● Active":"⏸ Paused"}</span></div>`).join("")}</div>
-      <div class="dc"><div class="dch"><div class="dct">Recent Shipments</div></div>${sh.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">📦</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No shipments yet</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Shipments appear when campaigns fire.</div></div>`:sh.map(s=>`<div class="dr"><div class="di" style="background:rgba(77,166,255,.1)">📦</div><div style="flex:1"><div class="dn">${s.customer_name}</div><div class="dsub">${s.gift}</div></div><span class="bp">${s.status||"Processing"}</span></div>`).join("")}</div>`;
+      <div class="dc"><div class="dch"><div class="dct">Campaigns</div><button class="link-btn" onclick="oCM()">+ New →</button></div>${c.length===0?`<div class="empty"><div style="margin-bottom:10px">${gI('bolt',34,'rgba(16,18,21,.22)')}</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No campaigns yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Create your first campaign.</div><button class="btn btn-gold" onclick="oCM()">Create Campaign</button></div>`:c.slice(0,4).map(cc=>`<div class="dr"><div class="di" style="background:rgba(255,209,102,.1)">${cc.campaign_type==="message_only"?"💬":cc.campaign_type==="digital_gift"?"💳":cc.campaign_type==="survey"?"⭐":"📦"}</div><div style="flex:1"><div class="dn">${cc.name}</div><div class="dsub">${cc.trigger} · ${cc.gift_name}</div></div><span class="${cc.status==="active"?"ba":"bp"}">${cc.status==="active"?"● Active":"⏸ Paused"}</span></div>`).join("")}</div>
+      <div class="dc"><div class="dch"><div class="dct">Recent Shipments</div></div>${sh.length===0?`<div class="empty"><div style="margin-bottom:10px">${gI('box',34,'rgba(16,18,21,.22)')}</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No shipments yet</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Shipments appear when campaigns fire.</div></div>`:sh.map(s=>`<div class="dr"><div class="di" style="background:rgba(77,166,255,.1)">📦</div><div style="flex:1"><div class="dn">${s.customer_name}</div><div class="dsub">${s.gift}</div></div><span class="bp">${s.status||"Processing"}</span></div>`).join("")}</div>`;
     }
     else if(dpg==="campaigns"){
       const cR=await db.sel("campaigns",scope("order=created_at.desc"),tok).catch(()=>[]);
@@ -3258,7 +3306,7 @@ async function dLoad(){
         aiSugHtml='<div class="dc" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><div class="dct">✨ AI campaign suggestions</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-top:3px">AI studies your customer patterns and proposes ready-to-run campaigns. A Scale plan feature.</div></div><button class="btn btn-ghost" style="padding:8px 16px" onclick="go(\'pricing\')">Upgrade to Scale</button></div>';
       }
       var libHtml='<div class="dc" style="margin-top:14px"><div class="dch"><div><div class="dct">Campaign Library</div><div class="dsub" style="margin-top:2px">Ready-made campaigns — install any of them, adjust the goal, run as many at once as you like. Each runs independently with its own cooldown. Safe by design: campaigns only react to activity that happens after you turn them on (imported history never triggers a blast), nothing fires for 48h after your first register connection, and gifts always wait for your approval unless auto-send is on.</div></div></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">'+CAMPAIGN_RECIPES.map(function(r,i){return '<div style="border:1px solid rgba(255,255,255,.08);border-radius:11px;padding:13px;display:flex;flex-direction:column"><div style="font-size:12.5px;font-weight:700;margin-bottom:4px">'+r.n+'</div><div style="font-size:11px;color:rgba(240,244,255,.5);line-height:1.6;flex:1">'+r.d+'</div><div style="font-size:10px;color:rgba(240,244,255,.35);margin:8px 0 8px">'+r.tr+' · '+(r.ct==="physical_gift"?"gift":r.ct==="postcard"?"postcard":"message")+'</div><button class="btn btn-ghost" style="width:100%;padding:8px" onclick="instRecipe('+i+')">Install & customize →</button></div>';}).join('')+'</div></div>';
-      el.innerHTML=paidBanner+pbHtml+aiSugHtml+libHtml+(c.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">⚡</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No campaigns yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Create your first campaign.</div><button class="btn btn-gold" onclick="oCM()">Create Campaign</button></div>`:c.map(cc=>`<div class="dc" style="margin-bottom:11px"><div style="display:flex;align-items:flex-start;gap:12px"><div class="di" style="background:rgba(255,209,102,.1);width:40px;height:40px;font-size:18px;flex-shrink:0">${cc.campaign_type==="message_only"?"💬":cc.campaign_type==="digital_gift"?"💳":cc.campaign_type==="survey"?"⭐":"📦"}</div><div style="flex:1"><div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><div style="font-size:13px;font-weight:700">${cc.name}</div><span class="${cc.status==="active"?"ba":"bp"}">${cc.status==="active"?"● Active":"⏸ Paused"}</span></div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:6px">Trigger: ${cc.trigger} · ${cc.gift_name}</div>${evChips(cc.id)}${cc.message?`<div style="font-size:11px;color:rgba(240,244,255,.45);background:#101828;border-radius:8px;padding:8px 10px;line-height:1.6;font-style:italic;white-space:pre-wrap">"${cc.message}"</div>`:""}${cc.sms_message&&cc.sms_message!==cc.message?`<div style="font-size:11px;color:rgba(240,244,255,.45);background:#101828;border-radius:8px;padding:8px 10px;line-height:1.6;font-style:italic;margin-top:6px;white-space:pre-wrap">📱 Text version: "${cc.sms_message}"</div>`:""}</div><div style="display:flex;gap:7px;flex-shrink:0"><button class="btn btn-ghost" style="padding:6px 11px;font-size:11px" onclick="tCmp('${cc.id}','${cc.status}')">${cc.status==="active"?"Pause":"Resume"}</button><button class="btn" style="background:rgba(255,77,109,.1);color:#FF4D6D;border:1px solid rgba(255,77,109,.2);padding:6px 11px;font-size:11px" onclick="dCmp('${cc.id}')">Delete</button></div></div></div>`).join(""));
+      el.innerHTML=paidBanner+pbHtml+aiSugHtml+libHtml+(c.length===0?`<div class="empty"><div style="margin-bottom:10px">${gI('bolt',34,'rgba(16,18,21,.22)')}</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No campaigns yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Create your first campaign.</div><button class="btn btn-gold" onclick="oCM()">Create Campaign</button></div>`:c.map(cc=>`<div class="dc" style="margin-bottom:11px"><div style="display:flex;align-items:flex-start;gap:12px"><div class="di" style="background:rgba(255,209,102,.1);width:40px;height:40px;font-size:18px;flex-shrink:0">${cc.campaign_type==="message_only"?"💬":cc.campaign_type==="digital_gift"?"💳":cc.campaign_type==="survey"?"⭐":"📦"}</div><div style="flex:1"><div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><div style="font-size:13px;font-weight:700">${cc.name}</div><span class="${cc.status==="active"?"ba":"bp"}">${cc.status==="active"?"● Active":"⏸ Paused"}</span></div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:6px">Trigger: ${cc.trigger} · ${cc.gift_name}</div>${evChips(cc.id)}${cc.message?`<div style="font-size:11px;color:rgba(240,244,255,.45);background:#101828;border-radius:8px;padding:8px 10px;line-height:1.6;font-style:italic;white-space:pre-wrap">"${cc.message}"</div>`:""}${cc.sms_message&&cc.sms_message!==cc.message?`<div style="font-size:11px;color:rgba(240,244,255,.45);background:#101828;border-radius:8px;padding:8px 10px;line-height:1.6;font-style:italic;margin-top:6px;white-space:pre-wrap">📱 Text version: "${cc.sms_message}"</div>`:""}</div><div style="display:flex;gap:7px;flex-shrink:0"><button class="btn btn-ghost" style="padding:6px 11px;font-size:11px" onclick="tCmp('${cc.id}','${cc.status}')">${cc.status==="active"?"Pause":"Resume"}</button><button class="btn" style="background:rgba(255,77,109,.1);color:#FF4D6D;border:1px solid rgba(255,77,109,.2);padding:6px 11px;font-size:11px" onclick="dCmp('${cc.id}')">Delete</button></div></div></div>`).join(""));
     }
     else if(dpg==="customers"){
       const cu=await db.sel("customers",scope("order=created_at.desc"),tok).catch(()=>[]);
@@ -3275,27 +3323,27 @@ async function dLoad(){
       var alertBanner="";
       if(_atRisk.length>0){alertBanner+='<div style="background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.25);border-radius:12px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:10px"><div style="font-size:20px">⛔</div><div><div style="font-size:13px;font-weight:700;color:#FF4D6D;margin-bottom:2px">'+_atRisk.length+' unhappy customer'+(_atRisk.length>1?"s":"")+' — gifts blocked</div><div style="font-size:12px;color:rgba(240,244,255,.5)">'+_atRisk.map(function(x){return x.c.name;}).join(", ")+'. Rated 1-2 stars. A gift would feel hollow — reach out personally instead.</div></div></div>';}
       if(_winback.length>0){alertBanner+='<div style="background:rgba(255,159,77,.1);border:1px solid rgba(255,159,77,.25);border-radius:12px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:10px"><div style="font-size:20px">🎯</div><div><div style="font-size:13px;font-weight:700;color:#FF9F4D;margin-bottom:2px">'+_winback.length+' valuable customer'+(_winback.length>1?"s":"")+' slipping away — win-back gift queued</div><div style="font-size:12px;color:rgba(240,244,255,.5)">'+_winback.map(function(x){return x.c.name;}).join(", ")+'. High spenders going quiet. Auto-sending a gift to bring them back.</div></div></div>';}
-      el.innerHTML=alertBanner+'<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="showCheckinQR()">📱 Check-in QR</button><button class="btn btn-ghost" onclick="oGiftCart()">🎁 Gift Cart</button><button class="btn btn-gold" onclick="oAC()">+ Add Customer</button></div>'+(cuArr.length===0?'<div class="empty"><div style="font-size:36px;margin-bottom:10px">👥</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No customers yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Add your first customer.</div><button class="btn btn-gold" onclick="oAC()">Add Customer</button></div>':'<div class="dc"><div style="display:grid;grid-template-columns:1.1fr 1.3fr 70px 110px 110px 80px 130px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.07);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.3)"><span>Name</span><span>Email</span><span>Score</span><span>Status</span><span>Action</span><span>Spent</span><span>Actions</span></div>'+_scored.map(function(x){var c=x.c,r=x.s;return '<div style="display:grid;grid-template-columns:1.1fr 1.3fr 70px 110px 110px 80px 130px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.07);align-items:center"><div style="font-size:13px;font-weight:600">'+giftEsc(c.name||"")+'</div><div style="font-size:12px;color:rgba(240,244,255,.45);overflow:hidden;text-overflow:ellipsis">'+giftEsc(c.email||"")+'</div><div style="font-size:14px;font-weight:800;color:'+tierColor(r.tier)+'">'+r.score+'</div><div style="font-size:11px;font-weight:600;color:'+tierColor(r.tier)+'">'+r.tier+'</div><div>'+giftLabel(r.gift)+'</div><div style="font-size:13px;font-weight:600;color:#22C55E">$'+(c.total_spent||0)+'</div><div style="display:flex;gap:5px;justify-content:flex-end"><button class="btn btn-ghost" style="padding:5px 8px;font-size:10px" onclick="logVisit('+c.id+','+(c.visits||0)+','+(c.total_spent||0)+')">+ Visit</button><button class="btn btn-gold" data-cid="'+giftEsc(c.id)+'" style="padding:5px 8px;font-size:10px" onclick="oGiftNow(this.dataset.cid)">Gift</button></div></div>';}).join('')+'</div>');
+      el.innerHTML=alertBanner+'<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="showCheckinQR()">📱 Check-in QR</button><button class="btn btn-ghost" onclick="oGiftCart()">🎁 Gift Cart</button><button class="btn btn-gold" onclick="oAC()">+ Add Customer</button></div>'+(cuArr.length===0?'<div class="empty"><div style="margin-bottom:10px">'+gI("people",34,"rgba(16,18,21,.22)")+'</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No customers yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Add your first customer.</div><button class="btn btn-gold" onclick="oAC()">Add Customer</button></div>':'<div class="dc"><div style="display:grid;grid-template-columns:1.1fr 1.3fr 70px 110px 110px 80px 130px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.07);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.3)"><span>Name</span><span>Email</span><span>Score</span><span>Status</span><span>Action</span><span>Spent</span><span>Actions</span></div>'+_scored.map(function(x){var c=x.c,r=x.s;return '<div style="display:grid;grid-template-columns:1.1fr 1.3fr 70px 110px 110px 80px 130px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.07);align-items:center"><div style="font-size:13px;font-weight:600">'+giftEsc(c.name||"")+'</div><div style="font-size:12px;color:rgba(240,244,255,.45);overflow:hidden;text-overflow:ellipsis">'+giftEsc(c.email||"")+'</div><div style="font-size:14px;font-weight:800;color:'+tierColor(r.tier)+'">'+r.score+'</div><div style="font-size:11px;font-weight:600;color:'+tierColor(r.tier)+'">'+r.tier+'</div><div>'+giftLabel(r.gift)+'</div><div style="font-size:13px;font-weight:600;color:#22C55E">$'+(c.total_spent||0)+'</div><div style="display:flex;gap:5px;justify-content:flex-end"><button class="btn btn-ghost" style="padding:5px 8px;font-size:10px" onclick="logVisit('+c.id+','+(c.visits||0)+','+(c.total_spent||0)+')">+ Visit</button><button class="btn btn-gold" data-cid="'+giftEsc(c.id)+'" style="padding:5px 8px;font-size:10px" onclick="oGiftNow(this.dataset.cid)">Gift</button></div></div>';}).join('')+'</div>');
     }
     else if(dpg==="wallet"){
       const txR=await db.sel("wallet",scope("order=created_at.desc"),tok).catch(()=>[]);
       const tx=Array.isArray(txR)?txR:[];
       const bal=tx[0]?.balance||0;
       el.innerHTML=paidBanner+`<div class="g2" style="margin-bottom:16px"><div style="background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.2);border-radius:14px;padding:20px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#FFD166;margin-bottom:8px">Gift Wallet</div><div style="font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:800;color:#FFD166;margin-bottom:6px">$${Number(bal||0).toFixed(2)}</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:12px">Available for this business only</div><button class="btn btn-gold" onclick="oWalletTopup()" style="margin-bottom:10px">Add Funds</button><div style="font-size:12px;color:rgba(240,244,255,.55);line-height:1.6">Funds are charged through Stripe and credited after Stripe confirms payment. Gifts deduct from this business wallet when they are sent.</div></div><div class="dc">${[["Transactions",tx.length],["Gift spend","$"+tx.filter(t=>Number(t.amount)<0&&t.transaction_type!=="refund").reduce((a,t)=>a+Math.abs(Number(t.amount||0)),0).toFixed(2)],["Total added","$"+tx.filter(t=>Number(t.amount)>0).reduce((a,t)=>a+Number(t.amount||0),0).toFixed(2)]].map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.07)"><span style="font-size:12px;color:rgba(240,244,255,.45)">${l}</span><span style="font-size:13px;font-weight:700">${v}</span></div>`).join("")}</div></div>
-      <div class="dc"><div class="dch"><div class="dct">Transactions</div></div>${tx.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">💳</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No transactions yet</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Wallet activity will appear here when funds are added or gifts are sent.</div></div>`:tx.map(t=>`<div style="display:grid;grid-template-columns:1fr 70px 80px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07);align-items:center"><div style="font-size:12px;font-weight:600">${t.desc}</div><div style="font-size:12px;font-weight:700;color:${t.amount>0?"#22C55E":"#FF4D6D"};text-align:right">${t.amount>0?"+$"+t.amount:"-$"+Math.abs(t.amount)}</div><div style="font-size:12px;font-weight:600;text-align:right">$${t.balance}</div></div>`).join("")}</div>`;
+      <div class="dc"><div class="dch"><div class="dct">Transactions</div></div>${tx.length===0?`<div class="empty"><div style="margin-bottom:10px">${gI('card',34,'rgba(16,18,21,.22)')}</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No transactions yet</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Wallet activity will appear here when funds are added or gifts are sent.</div></div>`:tx.map(t=>`<div style="display:grid;grid-template-columns:1fr 70px 80px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07);align-items:center"><div style="font-size:12px;font-weight:600">${t.desc}</div><div style="font-size:12px;font-weight:700;color:${t.amount>0?"#22C55E":"#FF4D6D"};text-align:right">${t.amount>0?"+$"+t.amount:"-$"+Math.abs(t.amount)}</div><div style="font-size:12px;font-weight:600;text-align:right">$${t.balance}</div></div>`).join("")}</div>`;
     }
     else if(dpg==="shipments"){
       const shR=await db.sel("shipments",scope("order=created_at.desc"),tok).catch(()=>[]);
       const sh=Array.isArray(shR)?shR:[];
-      el.innerHTML=paidBanner+`${sh.length===0?`<div class="empty"><div style="font-size:36px;margin-bottom:10px">📦</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No shipments yet</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Shipments appear here when campaigns or one-off gifts send.</div></div>`:`<div class="dc">${sh.map(s=>`<div class="dr"><div class="di" style="background:rgba(77,166,255,.1)">📦</div><div style="flex:1"><div class="dn">${s.customer_name}</div><div class="dsub">${s.gift} · ${s.campaign||""}</div></div><span class="bp">${s.status||"Processing"}</span></div>`).join("")}</div>`}`;
+      el.innerHTML=paidBanner+`${sh.length===0?`<div class="empty"><div style="margin-bottom:10px">${gI('box',34,'rgba(16,18,21,.22)')}</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No shipments yet</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Shipments appear here when campaigns or one-off gifts send.</div></div>`:`<div class="dc">${sh.map(s=>`<div class="dr"><div class="di" style="background:rgba(77,166,255,.1)">📦</div><div style="flex:1"><div class="dn">${s.customer_name}</div><div class="dsub">${s.gift} · ${s.campaign||""}</div></div><span class="bp">${s.status||"Processing"}</span></div>`).join("")}</div>`}`;
     }
     else if(dpg==="studio"){
       await loadGiftCatalog();
-      el.innerHTML=paid?studioPage():paidBanner+'<div class="empty"><div style="font-size:36px;margin-bottom:10px">🎨</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">Brand Studio unlocks with an active plan</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Choose a plan to design your gift proofs.</div></div>';
+      el.innerHTML=paid?studioPage():paidBanner+'<div class="empty"><div style="margin-bottom:10px">'+gI("palette",34,"rgba(16,18,21,.22)")+'</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">Brand Studio unlocks with an active plan</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Choose a plan to design your gift proofs.</div></div>';
       if(paid)setTimeout(studioInit,0);
     }
     else if(dpg==="emails"){
-      el.innerHTML=paid?emailStudioPage():paidBanner+'<div class="empty"><div style="font-size:36px;margin-bottom:10px">✉️</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">Email Studio unlocks with an active plan</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Choose a plan to design your customer emails.</div></div>';
+      el.innerHTML=paid?emailStudioPage():paidBanner+'<div class="empty"><div style="margin-bottom:10px">'+gI("mail",34,"rgba(16,18,21,.22)")+'</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">Email Studio unlocks with an active plan</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Choose a plan to design your customer emails.</div></div>';
       if(paid){await emLoad();emRedraw();}
     }
     else if(dpg==="settings"){
@@ -3350,17 +3398,17 @@ async function dLoad(){
       ];
       const otherCards=`
         <div class="dc" style="display:flex;align-items:center;gap:9px;border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.04)">
-          <span style="font-size:20px">🖨️</span>
+          <span>${gI('printer',19,'#5A5E66')}</span>
           <div style="flex:1">
             <div style="font-size:12px;font-weight:700;margin-bottom:2px">Gift fulfillment</div>
             <div style="font-size:11px;color:#22C55E">● Active · Gifts print and ship on demand</div>
           </div>
           <span style="font-size:10px;font-weight:700;color:#22C55E">Connected</span>
         </div>
-        <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">🎨</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Dashboard appearance <span style="font-size:9px;background:rgba(77,166,255,.15);color:#4DA6FF;border-radius:100px;padding:2px 8px;margin-left:4px">SCALE</span></div><div style="font-size:11px;color:rgba(240,244,255,.45)">${String(bizLock?.plan||"").toLowerCase()==="scale"?"Your logo in the sidebar, your accent on the buttons, your color on the whole background:":"Put your logo and brand color on the dashboard itself — a Scale feature."}</div></div>${String(bizLock?.plan||"").toLowerCase()==="scale"?`<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0"><input type="color" id="dColInp" value="${bizLock?.dashboard_color||'#FFD166'}" style="width:38px;height:30px;border:none;background:none;cursor:pointer"/><span style="font-size:8px;color:rgba(240,244,255,.4);letter-spacing:.5px">ACCENT</span></div><div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0"><input type="color" id="dBgInp" value="${bizLock?.dashboard_bg||'#080D18'}" style="width:38px;height:30px;border:none;background:none;cursor:pointer"/><span style="font-size:8px;color:rgba(240,244,255,.4);letter-spacing:.5px">THEME</span></div><button class="btn btn-gold" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="saveDCol(this)">Save</button>`:`<button class="btn btn-ghost" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="go('pricing')">Upgrade</button>`}</div>
-        <div class="dc"><div style="display:flex;align-items:center;gap:9px;margin-bottom:8px"><span style="font-size:20px">⭐</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Google review link</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Happy customers (4–5 star survey ratings) get invited to leave you a Google review automatically.</div></div></div><div style="display:flex;gap:8px"><input class="fi" id="gRevInp" value="${bizLock?.google_review_url||''}" placeholder="https://g.page/r/.../review" style="flex:1"/><button class="btn btn-gold" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="saveGRev(this)">Save</button></div></div>
-        <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">🎁</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Physical gift sending</div><div style="font-size:11px;color:rgba(240,244,255,.45)">${bizLock?.gift_auto_send?"Auto-send — gifts ship automatically, paid from your wallet":"Approval required — you review each gift before it ships"}</div></div><button class="btn ${bizLock?.gift_auto_send?"btn-gold":"btn-ghost"}" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="tGiftAuto(this)">${bizLock?.gift_auto_send?"Auto-send: ON":"Auto-send: OFF"}</button></div>
-        <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:20px">📧</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Email delivery</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Managed by Clicktide for campaign messages</div></div><span style="font-size:10px;color:#FFD166;font-weight:700">Back office</span></div>
+        <div class="dc" style="display:flex;align-items:center;gap:9px"><span>${gI('palette',19,'#5A5E66')}</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Dashboard appearance <span style="font-size:9px;background:rgba(77,166,255,.15);color:#4DA6FF;border-radius:100px;padding:2px 8px;margin-left:4px">SCALE</span></div><div style="font-size:11px;color:rgba(240,244,255,.45)">${String(bizLock?.plan||"").toLowerCase()==="scale"?"Your logo in the sidebar, your accent on the buttons, your color on the whole background:":"Put your logo and brand color on the dashboard itself — a Scale feature."}</div></div>${String(bizLock?.plan||"").toLowerCase()==="scale"?`<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0"><input type="color" id="dColInp" value="${bizLock?.dashboard_color||'#FFD166'}" style="width:38px;height:30px;border:none;background:none;cursor:pointer"/><span style="font-size:8px;color:rgba(240,244,255,.4);letter-spacing:.5px">ACCENT</span></div><div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0"><input type="color" id="dBgInp" value="${bizLock?.dashboard_bg||'#080D18'}" style="width:38px;height:30px;border:none;background:none;cursor:pointer"/><span style="font-size:8px;color:rgba(240,244,255,.4);letter-spacing:.5px">THEME</span></div><button class="btn btn-gold" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="saveDCol(this)">Save</button>`:`<button class="btn btn-ghost" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="go('pricing')">Upgrade</button>`}</div>
+        <div class="dc"><div style="display:flex;align-items:center;gap:9px;margin-bottom:8px"><span>${gI('star',19,'#5A5E66')}</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Google review link</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Happy customers (4–5 star survey ratings) get invited to leave you a Google review automatically.</div></div></div><div style="display:flex;gap:8px"><input class="fi" id="gRevInp" value="${bizLock?.google_review_url||''}" placeholder="https://g.page/r/.../review" style="flex:1"/><button class="btn btn-gold" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="saveGRev(this)">Save</button></div></div>
+        <div class="dc" style="display:flex;align-items:center;gap:9px"><span>${gI('gift',19,'#5A5E66')}</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Physical gift sending</div><div style="font-size:11px;color:rgba(240,244,255,.45)">${bizLock?.gift_auto_send?"Auto-send — gifts ship automatically, paid from your wallet":"Approval required — you review each gift before it ships"}</div></div><button class="btn ${bizLock?.gift_auto_send?"btn-gold":"btn-ghost"}" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="tGiftAuto(this)">${bizLock?.gift_auto_send?"Auto-send: ON":"Auto-send: OFF"}</button></div>
+        <div class="dc" style="display:flex;align-items:center;gap:9px"><span>${gI('mail',19,'#5A5E66')}</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Email delivery</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Managed by Clicktide for campaign messages</div></div><span style="font-size:10px;color:#FFD166;font-weight:700">Back office</span></div>
         <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:12px;font-weight:800;color:#4DA6FF;width:24px;text-align:center">SMS</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">SMS delivery</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Twilio sends texts only to opted-in customers</div></div><span style="font-size:10px;color:#FFD166;font-weight:700">Back office</span></div>
       `;
 
@@ -3398,7 +3446,9 @@ async function dLoad(){
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.35);margin-bottom:10px">Other integrations</div>
         <div class="g2">${otherCards}</div>`;
     }
-  }catch(ex){if(el)el.innerHTML=`<div class="empty"><div style="font-size:36px;margin-bottom:10px">⚠️</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">Error</div><div style="font-size:13px;color:rgba(240,244,255,.45)">${ex.message}</div></div>`;}
+  }catch(ex){if(el)el.innerHTML=`<div class="empty"><div style="margin-bottom:10px">${gI('alert',34,'rgba(16,18,21,.22)')}</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">Error</div><div style="font-size:13px;color:rgba(240,244,255,.45)">${ex.message}</div></div>`;}
+  // Light-translate whatever any branch rendered into #dC (LT is idempotent).
+  try{var _dc=document.getElementById("dC");if(_dc)_dc.innerHTML=LT(_dc.innerHTML);}catch(e){}
 }
 
 async function saveDCol(btn){
@@ -3863,8 +3913,8 @@ async function startWalletTopup(){
   if(url)window.location.href=url;
 }
 
-async function oCM(){if(!await requirePaidAction())return;await loadGiftCatalog();showCM=true;document.getElementById("app").innerHTML=dash();bind();dLoad();}
-function xCM(){showCM=false;cmT="message_only";cmN="";cmTr="";cmGN="";cmGC="";cmG=null;cmCh="email";cmM="";cmTi=0;cmPcDesign="bold";cmAiOpts=[];cmProt={delay:7,cancelOnRefund:true,minSpend:0,cooldown:90,productName:"",minOrderVal:0};document.getElementById("app").innerHTML=dash();bind();dLoad();}
+async function oCM(){if(!await requirePaidAction())return;await loadGiftCatalog();showCM=true;paintDash();dLoad();}
+function xCM(){showCM=false;cmT="message_only";cmN="";cmTr="";cmGN="";cmGC="";cmG=null;cmCh="email";cmM="";cmTi=0;cmPcDesign="bold";cmAiOpts=[];cmProt={delay:7,cancelOnRefund:true,minSpend:0,cooldown:90,productName:"",minOrderVal:0};paintDash();dLoad();}
 
 function cModal(){
   const tpls=tplsFor(cmT);
@@ -3904,7 +3954,7 @@ function cModal(){
   </div></div></div>`;
 }
 
-function sCT(t){cmT=t;cmM="";cmTi=0;document.getElementById("app").innerHTML=dash();bind();dLoad();}
+function sCT(t){cmT=t;cmM="";cmTi=0;paintDash();dLoad();}
 async function forgotPw(){
   var e=document.getElementById("aE")?.value||prompt("Enter your account email:")||"";
   if(!e||e.indexOf("@")<0){alert("Enter a valid email first.");return;}
@@ -3985,7 +4035,7 @@ async function mfaDisable(){
   if(!confirm("Turn off 2-step verification?"))return;
   try{await fetch(SU+"/auth/v1/factors/"+f.id,{method:"DELETE",headers:{apikey:SK,Authorization:"Bearer "+S.token}});loadMfaStatus();}catch(ex){alert(ex.message);}
 }
-function sAI(i){var t=cmAiOpts[i]||"";cmM=t;cmTi=-1;document.getElementById("app").innerHTML=dash();bind();dLoad();}
+function sAI(i){var t=cmAiOpts[i]||"";cmM=t;cmTi=-1;paintDash();dLoad();}
 async function aiWriteMsg(){
   var b=document.getElementById("aiWriteBtn");if(b){b.textContent="Thinking...";b.disabled=true;}
   try{
@@ -4000,7 +4050,7 @@ async function aiWriteMsg(){
     cmAiOpts=m?JSON.parse(m[0]).slice(0,3).map(String):[];
     if(!cmAiOpts.length)alert("AI couldn't write suggestions right now — try again.");
   }catch(e){cmAiOpts=[];alert("AI writing failed: "+e.message);}
-  document.getElementById("app").innerHTML=dash();bind();dLoad();
+  paintDash();dLoad();
 }
 function sTP(i,t){cmTi=i;cmM=t;const el=document.getElementById("cM");if(el)el.value=t;document.querySelectorAll(".tpl").forEach((e,idx)=>e.classList.toggle("sel",idx===i));}
 
