@@ -4420,6 +4420,8 @@ try{R();}catch(e){ctRecoveryUI();}
 <script>
 // ---- Clicktide Brand Studio (Fabric.js) v2 ----
 var stuCanvas=null,stuProduct=null,stuLogoObj=null,stuFont="Inter",stuColor="#FFD166",stuPrintRect=null,stuStep=1,stuMockup=null;
+// Brand Studio v2 — clean product photo + logo placement + real Printify proof.
+var bsIdx=0,bsX=0.5,bsY=0.5,bsScale=0.45,bsLogo="",bsProofUrl="",BS_BOX=0.5;
 // A plain, blank product silhouette to design on — never another brand's photo.
 function studioMockupPaths(id){
   var name=String(id||"").toLowerCase();
@@ -4446,47 +4448,99 @@ function studioLoadFonts(){
 }
 
 function studioPage(){
-  var gifts=giftOptions();
-  var opts=gifts.map(function(g,i){return '<option value="'+i+'">'+giftEsc(g.n)+' (~$'+Number(g.p||0).toFixed(0)+')</option>';}).join('');
-  var fonts=STU_FONTS.map(function(f){return '<option style="font-family:\''+f+'\'"'+(f===stuFont?' selected':'')+'>'+f+'</option>';}).join('');
-  var swatches=STU_COLORS.map(function(c){return '<div onclick="studioColor(\''+c+'\')" title="'+c+'" style="width:24px;height:24px;border-radius:6px;background:'+c+';cursor:pointer;border:2px solid '+(c===stuColor?'#FFD166':'rgba(255,255,255,.15)')+'"></div>';}).join('');
-  var rail=[[1,'Upload','Add artwork'],[2,'Text','Brand message'],[3,'Product','Choose gift'],[4,'Proof','Review & save']].map(function(s){
-    return '<div onclick="stuStep='+s[0]+';studioRefreshRail()" id="stuStep'+s[0]+'" style="display:flex;gap:10px;align-items:center;padding:10px;border-radius:10px;cursor:pointer;margin-bottom:4px;background:'+(stuStep===s[0]?'rgba(255,209,102,.1)':'transparent')+'">'
-      +'<div style="width:24px;height:24px;border-radius:50%;background:#FFD166;color:#080D18;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0">'+s[0]+'</div>'
-      +'<div><div style="font-size:12px;font-weight:700">'+s[1]+'</div><div style="font-size:10px;color:rgba(240,244,255,.45)">'+s[2]+'</div></div></div>';
-  }).join('');
-  return '<div class="dh"><div><div class="dt">Brand Studio</div><div class="ds">Design how your logo and message print on each gift.</div></div></div>'
-  +'<div class="studio-grid">'
-    +'<div class="dc" style="padding:10px">'+rail
-      +'<div style="border-top:1px solid rgba(255,255,255,.07);margin-top:8px;padding-top:10px">'
-      +'<label class="btn btn-gold" style="display:block;text-align:center;font-size:12px;cursor:pointer">Upload logo<input type="file" accept="image/png,image/jpeg,image/svg+xml" style="display:none" onchange="studioUploadLogo(event)"/></label>'
-      +'<button class="btn btn-ghost" style="width:100%;margin-top:8px;font-size:12px" onclick="studioAddText()">+ Add text</button>'
-      +'<button class="btn btn-outline" style="width:100%;margin-top:8px;font-size:12px" onclick="studioRemoveSelected()">Remove selected</button>'
-      +'</div></div>'
-    +'<div class="dc" style="display:flex;flex-direction:column;align-items:center;padding:14px;overflow:auto">'
-      +'<canvas id="stuCanvasEl" width="640" height="520" style="border-radius:12px;max-width:100%"></canvas>'
-      +'<div style="font-size:11px;color:rgba(240,244,255,.4);margin-top:8px">Dashed box = print area ('+STU_PRINT_W+' × '+STU_PRINT_H+' px). Drag and resize your logo and text inside it.</div>'
-    +'</div>'
-    +'<div class="dc" style="padding:14px">'
-      +'<div class="fg"><label class="fl">Product</label><select class="fi-sel" id="stuProdSel" onchange="studioPickProduct(this.value)">'+opts+'</select></div>'
-      +'<div class="fg"><label class="fl">Brand font ('+STU_FONTS.length+')</label><select class="fi-sel" id="stuFontSel" onchange="studioFont(this.value)" style="font-family:\''+stuFont+'\'">'+fonts+'</select></div>'
-      +'<div class="fg"><label class="fl">Brand color</label><div id="stuSwatches" style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-bottom:8px">'+swatches+'</div>'
-      +'<div style="display:flex;align-items:center;gap:8px"><input type="color" id="stuColorPick" value="'+stuColor+'" oninput="studioColor(this.value)" style="width:38px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:#101828;padding:0"/><span style="font-size:11px;color:rgba(240,244,255,.45)">Custom color</span></div></div>'
-      +'<div id="stuQuality" style="font-size:11px;color:rgba(240,244,255,.5);margin-bottom:12px;line-height:1.5"></div>'
-      +'<button class="btn-full btn-gold" onclick="studioSaveProof()" style="margin-bottom:8px">Save & approve proof</button>'
-      +'<button class="btn-full btn-ghost" onclick="studioDownloadPrint()">Download print file</button>'
-      +'<div id="stuStatus" style="font-size:11px;margin-top:10px;color:#22C55E"></div>'
-    +'</div>'
-  +'</div>';
+  var cat=(typeof PRINTIFY_CATALOG!=="undefined"&&PRINTIFY_CATALOG.length)?PRINTIFY_CATALOG:[];
+  if(bsIdx>=cat.length)bsIdx=0;
+  var thumbs=cat.map(function(g,i){
+    return '<button type="button" onclick="bsPick('+i+')" id="bsThumb'+i+'" style="flex:0 0 auto;width:86px;border:2px solid '+(bsIdx===i?'#0F1115':'rgba(15,23,42,.1)')+';border-radius:12px;background:#fff;padding:6px;cursor:pointer;text-align:center">'
+      +'<div style="height:58px;display:flex;align-items:center;justify-content:center"><img src="'+g.image_url+'" alt="" loading="lazy" style="max-width:100%;max-height:100%;object-fit:contain"/></div>'
+      +'<div style="font-size:9.5px;font-weight:700;color:#0F1115;margin-top:5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+giftEsc(g.n.replace(/^Branded /,""))+'</div></button>';
+  }).join("");
+  return '<div class="dh"><div><div class="dt">Brand Studio</div><div class="ds">Put your logo on a product, then generate a clean proof of the real item.</div></div></div>'
+   +'<div class="fl" style="margin-bottom:8px">Choose a product</div>'
+   +'<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:18px">'+thumbs+'</div>'
+   +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px">'
+     +'<div class="dc" style="padding:16px"><div class="fl" style="margin-bottom:10px">Place your logo</div>'
+       +'<div id="bsStage" style="position:relative;width:100%;aspect-ratio:1/1;background:#F4F6FA;border-radius:14px;overflow:hidden;touch-action:none"></div>'
+       +'<div class="fg" style="margin:14px 0 10px"><label class="fl">Logo size</label><input type="range" min="10" max="100" value="'+Math.round(bsScale*100)+'" oninput="bsSize(this.value)" style="width:100%;accent-color:#0F1115"/></div>'
+       +'<label class="btn btn-ghost" style="display:block;text-align:center;font-size:12px;cursor:pointer">Change logo<input type="file" accept="image/png,image/jpeg,image/svg+xml" style="display:none" onchange="bsUploadLogo(event)"/></label>'
+     +'</div>'
+     +'<div class="dc" style="padding:16px"><div class="fl" style="margin-bottom:10px">Proof — the real product</div>'
+       +'<div id="bsProof" style="width:100%;aspect-ratio:1/1;background:#F4F6FA;border-radius:14px;display:flex;align-items:center;justify-content:center;text-align:center;color:#6B6F76;font-size:12px;padding:16px;overflow:hidden">Position your logo, then tap Generate proof to see it on the real product.</div>'
+       +'<div id="bsStatus" style="font-size:12px;margin:12px 0;color:#3A3E45;min-height:16px;line-height:1.5"></div>'
+       +'<button class="btn-full btn-gold" onclick="bsGenerateProof()">Generate proof</button>'
+     +'</div>'
+   +'</div>';
 }
-function studioInit(){
-  if(typeof fabric==="undefined"){var s=document.getElementById("stuStatus");if(s){s.style.color="#FF4D6D";s.textContent="Editor library failed to load — refresh the page.";}return;}
-  studioLoadFonts();
-  stuCanvas=new fabric.Canvas("stuCanvasEl",{backgroundColor:"#FFFFFF",preserveObjectStacking:true});
-  var w=420,h=Math.round(w*STU_PRINT_H/STU_PRINT_W);
-  stuPrintRect=new fabric.Rect({left:(640-w)/2,top:(520-h)/2,width:w,height:h,fill:"rgba(39,118,196,0.04)",stroke:"rgba(15,23,42,0.4)",strokeDashArray:[6,5],selectable:false,evented:false});
-  var sel=document.getElementById("stuProdSel");
-  studioPickProduct(sel?sel.value:0);
+function studioInit(){ bsLoadLogo(); }
+async function bsLoadLogo(){
+  if(!bsLogo){try{var biz=await loadBiz();bsLogo=(biz&&biz.logo_url)||"";}catch(e){}}
+  if(!bsLogo){try{bsLogo=(typeof brandLogoUrl!=="undefined"&&brandLogoUrl)||(typeof obLogoUrl!=="undefined"&&obLogoUrl)||"";}catch(e){}}
+  bsRenderStage();
+}
+function bsTargetKey(n){n=String(n||"").toLowerCase();
+  if(/mug/.test(n))return "mug";
+  if(/tumbler/.test(n))return "tumbler";
+  if(/water bottle|bottle/.test(n))return "bottle";
+  if(/tote|bag/.test(n))return "tote";
+  if(/candle/.test(n))return "candle";
+  if(/notebook/.test(n))return "notebook";
+  if(/sticker/.test(n))return "stickers";
+  if(/sock/.test(n))return "socks";
+  if(/magnet/.test(n))return "magnet";
+  return "";
+}
+function bsPick(i){
+  bsIdx=Number(i)||0;bsProofUrl="";
+  var pv=document.getElementById("bsProof");if(pv){pv.style.padding="16px";pv.innerHTML="Position your logo, then tap Generate proof to see it on the real product.";}
+  document.querySelectorAll("[id^=bsThumb]").forEach(function(b,ix){b.style.borderColor=(ix===bsIdx)?"#0F1115":"rgba(15,23,42,.1)";});
+  bsRenderStage();
+}
+function bsSize(v){bsScale=Math.max(0.1,Math.min(1,Number(v)/100));var l=document.getElementById("bsLogoEl");if(l)l.style.width=(bsScale*BS_BOX*100)+"%";}
+function bsRenderStage(){
+  var st=document.getElementById("bsStage");if(!st)return;
+  var box=BS_BOX,ox=(1-box)/2;
+  var logo=bsLogo
+    ? '<img id="bsLogoEl" src="'+bsLogo+'" draggable="false" style="position:absolute;left:'+((ox+bsX*box)*100)+'%;top:'+((ox+bsY*box)*100)+'%;width:'+(bsScale*box*100)+'%;transform:translate(-50%,-50%);cursor:grab;user-select:none;touch-action:none;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.18))"/>'
+    : '<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;color:#9AA3AF;font-size:12px;width:80%">Tap "Change logo" below to add your logo</div>';
+  st.innerHTML='<div style="position:absolute;left:'+(ox*100)+'%;top:'+(ox*100)+'%;width:'+(box*100)+'%;height:'+(box*100)+'%;border:1.5px dashed rgba(15,23,42,.22);border-radius:10px"></div>'+logo
+    +'<div style="position:absolute;left:0;bottom:6px;width:100%;text-align:center;font-size:10.5px;color:#9AA3AF">'+giftEsc(((typeof PRINTIFY_CATALOG!=="undefined"&&PRINTIFY_CATALOG[bsIdx])||{}).n||"")+' · print area</div>';
+  bsAttachDrag();
+}
+function bsAttachDrag(){
+  var st=document.getElementById("bsStage"),l=document.getElementById("bsLogoEl");if(!st||!l)return;
+  var box=BS_BOX,ox=(1-box)/2,dragging=false;
+  l.onpointerdown=function(e){dragging=true;try{l.setPointerCapture(e.pointerId);}catch(_){}l.style.cursor="grabbing";e.preventDefault();};
+  l.onpointermove=function(e){
+    if(!dragging)return;
+    var r=st.getBoundingClientRect();
+    var px=(e.clientX-r.left)/r.width,py=(e.clientY-r.top)/r.height;
+    bsX=Math.max(0,Math.min(1,(px-ox)/box));
+    bsY=Math.max(0,Math.min(1,(py-ox)/box));
+    l.style.left=((ox+bsX*box)*100)+"%";l.style.top=((ox+bsY*box)*100)+"%";
+  };
+  l.onpointerup=function(e){dragging=false;try{l.releasePointerCapture(e.pointerId);}catch(_){}l.style.cursor="grab";};
+}
+function bsUploadLogo(e){
+  var f=e.target.files&&e.target.files[0];if(!f)return;
+  var r=new FileReader();r.onload=function(){bsLogo=String(r.result);bsRenderStage();};r.readAsDataURL(f);
+}
+async function bsGenerateProof(){
+  var st=document.getElementById("bsStatus"),pv=document.getElementById("bsProof");
+  if(!S||!S.token){if(st){st.textContent="Log in first.";st.style.color="#FF6B6B";}return;}
+  if(!bsLogo){if(st){st.textContent="Add your logo first (Change logo).";st.style.color="#B8860B";}return;}
+  var p=(typeof PRINTIFY_CATALOG!=="undefined"&&PRINTIFY_CATALOG[bsIdx])||null,tk=p?bsTargetKey(p.n):"";
+  if(!tk){if(st){st.textContent="This product cannot be branded yet — pick a mug, tote, bottle, candle, notebook, tumbler, socks, stickers or magnet.";st.style.color="#B8860B";}return;}
+  if(st){st.textContent="Generating your proof from Printify — this can take a few seconds…";st.style.color="#3A3E45";}
+  if(pv){pv.style.padding="16px";pv.innerHTML='<div style="color:#6B6F76;font-size:12px">Rendering the real product…</div>';}
+  try{
+    var body={target_key:tk,x:bsX,y:bsY,scale:bsScale,angle:0};
+    if(/^data:/.test(bsLogo)){body.image_base64=bsLogo.split(",")[1];}else{body.logo_url=bsLogo;}
+    var rr=await fetch(FN+"/printify-design-proof",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+S.token,apikey:SK},body:JSON.stringify(body)});
+    var d=await rr.json().catch(function(){return null;});
+    if(d&&d.mockup_url){bsProofUrl=d.mockup_url;if(pv){pv.style.padding="0";pv.innerHTML='<img src="'+d.mockup_url+'" alt="proof" style="width:100%;height:100%;object-fit:contain"/>';}if(st){st.textContent="Saved to your designs ✓";st.style.color="#22C55E";}}
+    else if(d&&d.ok){if(st){st.textContent="Proof is still rendering at Printify — it will appear in My Designs shortly.";st.style.color="#B8860B";}}
+    else{if(st){st.textContent=(d&&d.error)||"Could not generate the proof — please try again.";st.style.color="#FF6B6B";}if(pv){pv.innerHTML="Could not generate the proof.";}}
+  }catch(ex){if(st){st.textContent="Error: "+ex.message;st.style.color="#FF6B6B";}}
 }
 function studioPickProduct(i){
   var gifts=giftOptions();stuProduct=gifts[Number(i)||0]||gifts[0];
