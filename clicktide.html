@@ -1745,7 +1745,24 @@ function legalConsent(id){
 }
 
 function go(s){if(scr==="onboard")saveOnboardingProgress();if(scr!==s)history.pushState({view:s},"","");scr=s;R();}
-window.addEventListener("popstate",function(e){scr=(e.state&&e.state.view)||"land";R();});
+window.addEventListener("popstate",function(e){
+  // Mid-onboarding (e.g. the Connect-platform step): the browser Back button
+  // should walk back through the steps you were doing, not drop you on the home
+  // screen. Step back one onboarding screen and keep onboarding in history.
+  if(scr==="onboard"&&typeof obS!=="undefined"&&obS>0){
+    try{history.pushState({view:"onboard"},"","");}catch(_){}
+    oBck();
+    return;
+  }
+  // On a dashboard sub-page, Back returns to the Overview before leaving the
+  // dashboard, instead of jumping straight out.
+  if(scr==="dash"&&S&&typeof dpg!=="undefined"&&dpg!=="overview"&&!(e.state&&e.state.view&&e.state.view!=="dash")){
+    try{history.pushState({view:"dash"},"","");}catch(_){}
+    dGo("overview");
+    return;
+  }
+  scr=(e.state&&e.state.view)||"land";R();
+});
 function LT(h){return h.split("rgba(240,244,255,").join("rgba(15,17,21,").split("#F0F4FF").join("#0F1115").split("color:#FFD166").join("color:#B8860B").split("color:#4DA6FF").join("color:#2776C4").split("background:#101828").join("background:#F4F6FA").split("background:#0C1220").join("background:#FFFFFF").split("background:#080D18").join("background:#FFFFFF").split("rgba(255,255,255,.07)").join("rgba(15,23,42,.1)").split("rgba(255,255,255,.08)").join("rgba(15,23,42,.1)").split("rgba(255,255,255,.1)").join("rgba(15,23,42,.12)").split("rgba(255,255,255,.15)").join("rgba(15,23,42,.18)");}
 function R(){if(scr==="onboard")saveOnboardingProgress();var lt=true;document.body.style.background="#FAFCFF";var h=LT(page());document.getElementById("app").innerHTML='<div class="lt">'+h+'</div>';bind();}
 
@@ -4398,7 +4415,18 @@ try{R();}catch(e){ctRecoveryUI();}
 </script>
 <script>
 // ---- Clicktide Brand Studio (Fabric.js) v2 ----
-var stuCanvas=null,stuProduct=null,stuLogoObj=null,stuFont="Inter",stuColor="#FFD166",stuPrintRect=null,stuStep=1;
+var stuCanvas=null,stuProduct=null,stuLogoObj=null,stuFont="Inter",stuColor="#FFD166",stuPrintRect=null,stuStep=1,stuMockup=null;
+// A plain, blank product silhouette to design on — never another brand's photo.
+function studioMockupPaths(id){
+  var name=String(id||"").toLowerCase();
+  var drink=/mug|bottle|tumbler|cup|drink|water/.test(name);
+  var tote=/tote|bag/.test(name);
+  var sock=/sock/.test(name);
+  if(drink)return {label:"Drinkware mockup",shapes:[{type:"rect",x:230,y:120,w:180,h:300,rx:26}]};
+  if(tote)return {label:"Tote mockup",shapes:[{type:"rect",x:225,y:150,w:190,h:230,rx:8},{type:"rect",x:255,y:108,w:18,h:52,rx:9},{type:"rect",x:367,y:108,w:18,h:52,rx:9}]};
+  if(sock)return {label:"Sock mockup",shapes:[{type:"rect",x:275,y:120,w:90,h:230,rx:30}]};
+  return {label:"Print mockup",shapes:[{type:"rect",x:200,y:150,w:240,h:240,rx:14}]};
+}
 var STU_PRINT_W=3000,STU_PRINT_H=2400;
 var STU_FONTS=["Inter","Roboto","Open Sans","Montserrat","Poppins","Lato","Oswald","Raleway","Bebas Neue","Anton","Archivo Black","Righteous","Alfa Slab One","Bangers","Playfair Display","Merriweather","Lora","Abril Fatface","Cormorant Garamond","Pacifico","Dancing Script","Great Vibes","Caveat","Satisfy","Lobster","Sacramento","Amatic SC","Permanent Marker","Shadows Into Light","Space Mono"];
 var STU_COLORS=["#FFFFFF","#000000","#FFD166","#4DA6FF","#22C55E","#FF4D6D","#A78BFA","#FF9F4D","#0B62D6","#111827","#E11D48","#0EA5E9","#84CC16","#F59E0B","#EC4899","#14B8A6"];
@@ -4450,26 +4478,28 @@ function studioPage(){
 function studioInit(){
   if(typeof fabric==="undefined"){var s=document.getElementById("stuStatus");if(s){s.style.color="#FF4D6D";s.textContent="Editor library failed to load — refresh the page.";}return;}
   studioLoadFonts();
-  stuCanvas=new fabric.Canvas("stuCanvasEl",{backgroundColor:"#101828",preserveObjectStacking:true});
+  stuCanvas=new fabric.Canvas("stuCanvasEl",{backgroundColor:"#FFFFFF",preserveObjectStacking:true});
   var w=420,h=Math.round(w*STU_PRINT_H/STU_PRINT_W);
-  stuPrintRect=new fabric.Rect({left:(640-w)/2,top:(520-h)/2,width:w,height:h,fill:"rgba(255,255,255,0.02)",stroke:"rgba(255,255,255,0.5)",strokeDashArray:[6,5],selectable:false,evented:false});
-  stuCanvas.add(stuPrintRect);
+  stuPrintRect=new fabric.Rect({left:(640-w)/2,top:(520-h)/2,width:w,height:h,fill:"rgba(39,118,196,0.04)",stroke:"rgba(15,23,42,0.4)",strokeDashArray:[6,5],selectable:false,evented:false});
   var sel=document.getElementById("stuProdSel");
   studioPickProduct(sel?sel.value:0);
 }
 function studioPickProduct(i){
   var gifts=giftOptions();stuProduct=gifts[Number(i)||0]||gifts[0];
   if(!stuCanvas)return;
-  if(stuProduct&&stuProduct.image_url){
-    fabric.Image.fromURL(giftImgSrc(stuProduct.image_url),function(img){
-      if(!img||!img.width)return;
-      var scale=Math.min(640/img.width,520/img.height);
-      stuCanvas.setBackgroundImage(img,stuCanvas.renderAll.bind(stuCanvas),{scaleX:scale,scaleY:scale,left:(640-img.width*scale)/2,top:(520-img.height*scale)/2,opacity:0.92});
-    },{crossOrigin:"anonymous"});
-  }else{
-    stuCanvas.setBackgroundImage(null,stuCanvas.renderAll.bind(stuCanvas));
-    stuCanvas.backgroundColor="#101828";stuCanvas.renderAll();
-  }
+  // Plain blank mockup — a clean light product silhouette, never another brand's
+  // product photo. The owner designs their own logo on this neutral surface.
+  stuCanvas.setBackgroundImage(null,stuCanvas.renderAll.bind(stuCanvas));
+  stuCanvas.backgroundColor="#FFFFFF";
+  if(stuMockup){try{stuCanvas.remove(stuMockup);}catch(_){}}
+  var spec=studioMockupPaths(stuProduct&&(stuProduct.printify_product_id||stuProduct.n));
+  var parts=spec.shapes.map(function(sh){return new fabric.Rect({left:sh.x,top:sh.y,width:sh.w,height:sh.h,rx:sh.rx||0,ry:sh.rx||0,fill:"#F1F3F7",stroke:"#DBE0E8",strokeWidth:1.5});});
+  stuMockup=new fabric.Group(parts,{selectable:false,evented:false});
+  stuCanvas.add(stuMockup);
+  if(stuPrintRect){stuCanvas.add(stuPrintRect);}
+  try{stuCanvas.sendToBack(stuMockup);}catch(_){}
+  if(stuLogoObj){try{stuCanvas.bringToFront(stuLogoObj);}catch(_){}}
+  stuCanvas.renderAll();
 }
 function studioUploadLogo(e){
   var f=e.target.files&&e.target.files[0];if(!f||!stuCanvas)return;
