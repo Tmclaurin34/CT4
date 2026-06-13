@@ -67,10 +67,11 @@ function addressComplete(address: Address) {
     /^[0-9]{5}(-[0-9]{4})?$/.test(String(address.zip || "").trim()));
 }
 
-async function validateShipmentAddress(address: Address) {
+async function validateShipmentAddress(address: Address, skipValidator = false) {
   if (!addressComplete(address)) {
     throw new AppError("A complete shipping address is required before sending a gift", 400);
   }
+  if (skipValidator) return address; // owner explicitly confirmed the address as typed
   const response = await fetch(`${supabaseUrl}/functions/v1/validate-address`, {
     method: "POST",
     headers: {
@@ -86,9 +87,13 @@ async function validateShipmentAddress(address: Address) {
     }),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok || data?.valid !== true) {
+  // Only a DEFINITE mismatch blocks shipping. A validator outage (valid:null,
+  // non-OK response) must never take gift fulfillment down with it — the
+  // address already passed the structural completeness check above.
+  if (response.ok && data?.valid === false) {
     throw new AppError(data?.error || "Shipping address could not be verified", 400);
   }
+  if (!response.ok || data?.valid !== true) return address; // validator unavailable — ship as typed
   const normalized = data?.normalized || {};
   return {
     ...address,
@@ -300,8 +305,37 @@ Deno.serve(async (req) => {
     const customerEmail = String(body.customer_email || "");
     const giftName = String(body.gift_name || "Gift");
     const campaignId = body.campaign_id ? String(body.campaign_id) : null;
-    const address = await validateShipmentAddress(normalizeAddress(body.address, customerName, customerEmail));
-    const giftCost = dollars(body.gift_cost);
+    const address = await validateShipmentAddress(
+      normalizeAddress(body.address, customerName, customerEmail),
+      !isInternal && body.address_override === true,
+    );
+
+    // The wallet debit is derived SERVER-SIDE from the gift catalog. The
+    // client-supplied gift_cost can only raise the charge, never undercut it —
+    // otherwise a tampered request ships a $24.50 gift while debiting pennies.
+    const productIdForCost = String(body.printify_product_id || "");
+    if (!productIdForCost) throw new AppError("Printify product is required", 400);
+    const catRows = await supabaseFetch(
+      `/rest/v1/gift_catalog?printify_product_id=eq.${encodeURIComponent(productIdForCost)}&select=estimated_cost,is_active&limit=1`,
+    );
+    const catalogRow = Array.isArray(catRows) ? catRows[0] : null;
+    if (!catalogRow) throw new AppError("Unknown gift product — choose a gift from the catalog", 400);
+    if (catalogRow.is_active === false && !isInternal) {
+      throw new AppError("This gift is no longer available — choose another from the catalog", 400);
+    }
+    const giftCost = Math.max(dollars(body.gift_cost), dollars(catalogRow.estimated_cost));
+
+    // Manual sends require an active or trialing subscription — the dashboard
+    // checks this too, but the server is the enforcement point.
+    if (!isInternal) {
+      const bizRows = await supabaseFetch(
+        `/rest/v1/clicktide?user_id=eq.${encodeURIComponent(userId)}&select=stripe_subscription_status&limit=1`,
+      );
+      const subStatus = String((Array.isArray(bizRows) ? bizRows[0] : null)?.stripe_subscription_status || "").toLowerCase();
+      if (subStatus !== "active" && subStatus !== "trialing") {
+        throw new AppError("An active Clicktide subscription is required before sending gifts", 402);
+      }
+    }
 
     // Business branding: request logo wins, then the saved profile logo.
     const logoUrl = String(body.logo_url || "") || await businessLogoUrl(userId);

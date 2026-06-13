@@ -2,11 +2,25 @@
 // then falls back to the Census Bureau geocoder (free, no API key).
 // POST {address, city, state, zip} -> {valid, matched, normalized, source}
 
+const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
+const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+// Internal calls (gift-address, printify-fulfill-gift) authenticate with the
+// service role; the dashboard sends the owner's JWT. Anonymous use is refused —
+// once a Google key is configured this would otherwise be a free public proxy.
+async function isAuthorized(req: Request) {
+  const auth = req.headers.get("authorization") || "";
+  if (!auth.toLowerCase().startsWith("bearer ")) return false;
+  if (serviceRoleKey && auth === `Bearer ${serviceRoleKey}`) return true;
+  const r = await fetch(`${supabaseUrl}/auth/v1/user`, { headers: { apikey: serviceRoleKey, Authorization: auth } });
+  return r.ok;
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -125,6 +139,7 @@ async function validateWithCensus(street: string, city: string, state: string, z
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  if (!await isAuthorized(req)) return json({ error: "Not authorized" }, 401);
 
   let body: Record<string, string>;
   try {

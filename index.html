@@ -2251,7 +2251,7 @@ async function analyzePrintUpload(file,opts){
   if(lightingScore<7)warnings.push("Lighting looks too dark, too bright, or heavily shadowed.");
   if(compressionScore<5)warnings.push("The file looks heavily compressed. Avoid Facebook, Instagram, Messenger, WhatsApp, or TikTok downloads.");
   const faceInfo=await detectFaces(img,metrics.canvas);
-  let faceScore=10,faceValue=faceInfo.available?"No face detected":"Browser face check unavailable";
+  let faceScore=10,faceValue=faceInfo.available?"No face detected":"Skipped";
   if(faceInfo.available&&faceInfo.faces.length){
     const largest=faceInfo.faces.reduce(function(a,b){return (b.boundingBox.width*b.boundingBox.height)>(a.boundingBox.width*a.boundingBox.height)?b:a;},faceInfo.faces[0]);
     const pct=(largest.boundingBox.width*largest.boundingBox.height)/(metrics.canvas.width*metrics.canvas.height);
@@ -3098,7 +3098,7 @@ async function dLoad(){
       var alertBanner="";
       if(_atRisk.length>0){alertBanner+='<div style="background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.25);border-radius:12px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:10px"><div style="font-size:20px">⛔</div><div><div style="font-size:13px;font-weight:700;color:#FF4D6D;margin-bottom:2px">'+_atRisk.length+' unhappy customer'+(_atRisk.length>1?"s":"")+' — gifts blocked</div><div style="font-size:12px;color:rgba(240,244,255,.5)">'+_atRisk.map(function(x){return x.c.name;}).join(", ")+'. Rated 1-2 stars. A gift would feel hollow — reach out personally instead.</div></div></div>';}
       if(_winback.length>0){alertBanner+='<div style="background:rgba(255,159,77,.1);border:1px solid rgba(255,159,77,.25);border-radius:12px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:10px"><div style="font-size:20px">🎯</div><div><div style="font-size:13px;font-weight:700;color:#FF9F4D;margin-bottom:2px">'+_winback.length+' valuable customer'+(_winback.length>1?"s":"")+' slipping away — win-back gift queued</div><div style="font-size:12px;color:rgba(240,244,255,.5)">'+_winback.map(function(x){return x.c.name;}).join(", ")+'. High spenders going quiet. Auto-sending a gift to bring them back.</div></div></div>';}
-      el.innerHTML=alertBanner+'<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="showCheckinQR()">📱 Check-in QR</button><button class="btn btn-ghost" onclick="oGiftCart()">🎁 Gift Cart</button><button class="btn btn-gold" onclick="oAC()">+ Add Customer</button></div>'+(cuArr.length===0?'<div class="empty"><div style="font-size:36px;margin-bottom:10px">👥</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No customers yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Add your first customer.</div><button class="btn btn-gold" onclick="oAC()">Add Customer</button></div>':'<div class="dc"><div style="display:grid;grid-template-columns:1.1fr 1.3fr 70px 110px 110px 80px 130px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.07);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.3)"><span>Name</span><span>Email</span><span>Score</span><span>Status</span><span>Action</span><span>Spent</span><span>Actions</span></div>'+_scored.map(function(x){var c=x.c,r=x.s;return '<div style="display:grid;grid-template-columns:1.1fr 1.3fr 70px 110px 110px 80px 130px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.07);align-items:center"><div style="font-size:13px;font-weight:600">'+c.name+'</div><div style="font-size:12px;color:rgba(240,244,255,.45);overflow:hidden;text-overflow:ellipsis">'+c.email+'</div><div style="font-size:14px;font-weight:800;color:'+tierColor(r.tier)+'">'+r.score+'</div><div style="font-size:11px;font-weight:600;color:'+tierColor(r.tier)+'">'+r.tier+'</div><div>'+giftLabel(r.gift)+'</div><div style="font-size:13px;font-weight:600;color:#22C55E">$'+(c.total_spent||0)+'</div><div style="display:flex;gap:5px;justify-content:flex-end"><button class="btn btn-ghost" style="padding:5px 8px;font-size:10px" onclick="logVisit('+c.id+','+(c.visits||0)+','+(c.total_spent||0)+')">+ Visit</button><button class="btn btn-gold" data-cid="'+giftEsc(c.id)+'" style="padding:5px 8px;font-size:10px" onclick="oGiftNow(this.dataset.cid)">Gift</button></div></div>';}).join('')+'</div>');
+      el.innerHTML=alertBanner+'<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="showCheckinQR()">📱 Check-in QR</button><button class="btn btn-ghost" onclick="oGiftCart()">🎁 Gift Cart</button><button class="btn btn-gold" onclick="oAC()">+ Add Customer</button></div>'+(cuArr.length===0?'<div class="empty"><div style="font-size:36px;margin-bottom:10px">👥</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No customers yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Add your first customer.</div><button class="btn btn-gold" onclick="oAC()">Add Customer</button></div>':'<div class="dc"><div style="display:grid;grid-template-columns:1.1fr 1.3fr 70px 110px 110px 80px 130px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.07);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.3)"><span>Name</span><span>Email</span><span>Score</span><span>Status</span><span>Action</span><span>Spent</span><span>Actions</span></div>'+_scored.map(function(x){var c=x.c,r=x.s;return '<div style="display:grid;grid-template-columns:1.1fr 1.3fr 70px 110px 110px 80px 130px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.07);align-items:center"><div style="font-size:13px;font-weight:600">'+giftEsc(c.name||"")+'</div><div style="font-size:12px;color:rgba(240,244,255,.45);overflow:hidden;text-overflow:ellipsis">'+giftEsc(c.email||"")+'</div><div style="font-size:14px;font-weight:800;color:'+tierColor(r.tier)+'">'+r.score+'</div><div style="font-size:11px;font-weight:600;color:'+tierColor(r.tier)+'">'+r.tier+'</div><div>'+giftLabel(r.gift)+'</div><div style="font-size:13px;font-weight:600;color:#22C55E">$'+(c.total_spent||0)+'</div><div style="display:flex;gap:5px;justify-content:flex-end"><button class="btn btn-ghost" style="padding:5px 8px;font-size:10px" onclick="logVisit('+c.id+','+(c.visits||0)+','+(c.total_spent||0)+')">+ Visit</button><button class="btn btn-gold" data-cid="'+giftEsc(c.id)+'" style="padding:5px 8px;font-size:10px" onclick="oGiftNow(this.dataset.cid)">Gift</button></div></div>';}).join('')+'</div>');
     }
     else if(dpg==="wallet"){
       const txR=await db.sel("wallet",scope("order=created_at.desc"),tok).catch(()=>[]);
@@ -3325,7 +3325,7 @@ async function disconnectPlatform(platform){
 }
 
 // -- Send a physical gift -----------------------------------------------------
-async function sendPhysicalGift({campaignId,customerId,customerName,customerEmail,address,giftIndex,gift:giftInput,logoUrl,businessName,giftCost}){
+async function sendPhysicalGift({campaignId,customerId,customerName,customerEmail,address,giftIndex,gift:giftInput,logoUrl,businessName,giftCost,addressOverride}){
   const gift=giftInput||giftOptions()[giftIndex]||PRINTIFY_CATALOG[giftIndex];
   if(!gift){console.error("Invalid gift option");return;}
   const cost=Number(giftCost||gift.cost||gift.p||gift.estimated_cost||0);
@@ -3335,6 +3335,7 @@ async function sendPhysicalGift({campaignId,customerId,customerName,customerEmai
     headers:{"Content-Type":"application/json",apikey:SK,Authorization:`Bearer ${S?.token||SK}`},
     body:JSON.stringify({
       campaign_id:campaignId,
+      address_override:addressOverride===true,
       user_id:myId(),
       merchant_id:myId(),
       gift_cost:cost,
@@ -3379,10 +3380,21 @@ async function verifyShippingAddress(a){
     const d=await r.json().catch(()=>({}));
     if(!r.ok)return {valid:false,error:d.error||"Address verification failed."};
     if(d.valid===true)return {valid:true,address:applyVerifiedAddress(a,d.normalized),matched:d.matched||shippingAddressText(a),source:d.source||"validator"};
-    return {valid:false,error:d.error||"We couldn't verify that shipping address. Double-check it before sending."};
+    if(d.valid===false)return {valid:false,error:d.error||"We couldn't verify that shipping address. Double-check it before sending."};
+    return {valid:false,unavailable:true,error:"Address verification is temporarily down — we couldn't check this address."};
   }catch(e){
-    return {valid:false,error:"Address verification is unavailable right now. Try again before sending."};
+    return {valid:false,unavailable:true,error:"Address verification is temporarily down — we couldn't check this address."};
   }
+}
+// Owner-facing fallback: when the validator rejects or is down, the owner can
+// explicitly confirm the address as typed ("money needs a yes" — a human yes
+// counts). Server still requires address_override for unverified shipping.
+async function verifyOrOverrideAddress(a){
+  const v=await verifyShippingAddress(a);
+  if(v.valid)return v;
+  if(confirm((v.error||"We couldn't verify that address.")+"\n\nUse it exactly as typed anyway? Double-check it first — a gift shipped to a wrong address can't be recovered."))
+    return {valid:true,address:applyVerifiedAddress(a,null),matched:shippingAddressText(a),source:"owner_override",override:true};
+  return v;
 }
 
 function manualGiftChanged(){
@@ -3403,6 +3415,8 @@ function manualGiftChanged(){
 }
 
 async function oGiftNow(customerId){
+  if(document.getElementById("mgAddr")||window.__mgOpening)return; // already open or opening
+  window.__mgOpening=true;setTimeout(function(){window.__mgOpening=false;},2500);
   if(!await requirePaidAction())return;
   await loadGiftCatalog();
   const tok=S?.token||SK;
@@ -3443,15 +3457,15 @@ async function sendManualGiftNow(btn){
   if(!shippingAddressComplete(address)){alert("Add a complete mailing address before shipping a gift.");return;}
   if(cost>balance){alert("Not enough gift wallet funds. Add funds before sending this gift.");return;}
   if(btn){btn.disabled=true;btn.textContent="Verifying address...";}
-  const verified=await verifyShippingAddress(address);
+  const verified=await verifyOrOverrideAddress(address);
   if(!verified.valid){alert(verified.error);if(btn){btn.disabled=false;btn.textContent="Send gift now";}return;}
   address=Object.assign({},verified.address,{email:email});
   if(!confirm("Send "+gift.n+" to "+name+" now? Your gift wallet will be charged $"+cost.toFixed(2)+".")){if(btn){btn.disabled=false;btn.textContent="Send gift now";}return;}
   if(btn){btn.disabled=true;btn.textContent="Sending...";}
   try{
     const biz=await loadBiz()||{};
-    await fetch(SU+"/rest/v1/customers?id=eq."+encodeURIComponent(customerId),{method:"PATCH",headers:Object.assign({},h(S?.token||SK),{Prefer:"return=minimal"}),body:JSON.stringify({address:address.address1,city:address.city,state:address.region,zip:address.zip,address_confirmed_at:new Date().toISOString()})});
-    await sendPhysicalGift({campaignId:"manual-gift-"+Date.now(),customerId:customerId,customerName:name,customerEmail:email,address:address,gift:gift,logoUrl:biz.logo_url||null,businessName:biz.business_name||"",giftCost:cost});
+    await fetch(SU+"/rest/v1/customers?id=eq."+encodeURIComponent(customerId),{method:"PATCH",headers:Object.assign({},h(S?.token||SK),{Prefer:"return=minimal"}),body:JSON.stringify({address:address.address1,city:address.city,state:address.region,zip:address.zip,address_confirmed_at:verified.override?null:new Date().toISOString()})});
+    await sendPhysicalGift({campaignId:"manual-gift-"+Date.now(),customerId:customerId,customerName:name,customerEmail:email,address:address,gift:gift,logoUrl:biz.logo_url||null,businessName:biz.business_name||"",giftCost:cost,addressOverride:verified.override===true});
     document.querySelector(".ov")?.remove();
     alert("Gift sent. You can track it in Shipments.");
     dpg="shipments";dLoad();
@@ -3461,7 +3475,7 @@ async function sendManualGiftNow(btn){
   }
 }
 
-var giftCartCustomers=[],giftCartItems=[],giftCartBalance=0,giftCartBiz={};
+var giftCartCustomers=[],giftCartItems=[],giftCartBalance=0,giftCartBiz={},giftCartSending=false;
 function giftCartAddressOk(c){
   return shippingAddressComplete(giftCartAddress(c));
 }
@@ -3481,10 +3495,15 @@ function giftCartTotal(){
   return giftCartItems.reduce(function(sum,item){const g=giftCartItemGift(item);return sum+Number(g?.p||0);},0);
 }
 function giftCartAddressBadge(item){
-  const source=item.verifiedSource==="google"?"Google verified":item.verifiedSource==="census"?"Verified":"Verified";
+  if(item.verifiedSource==="owner_override")return "<span style='font-size:10px;color:#FF9F4D;font-weight:800'>⚠ Owner confirmed (unverified)</span>";
+  if(item.verifiedSource==="on_file")return "<span style='font-size:10px;color:#22C55E;font-weight:800'>✓ On file</span>";
+  const source=item.verifiedSource==="google"?"Google verified":"Verified";
   return "<span style='font-size:10px;color:#22C55E;font-weight:800'>✓ "+source+"</span>";
 }
 async function oGiftCart(){
+  if(document.getElementById("giftCartSend"))return; // already open or opening
+  if(window.__gcOpening)return;window.__gcOpening=true;
+  try{
   if(!await requirePaidAction())return;
   await loadGiftCatalog();
   const tok=S?.token||SK;
@@ -3494,7 +3513,8 @@ async function oGiftCart(){
     loadBiz().catch(()=>({}))
   ]);
   giftCartCustomers=Array.isArray(out[0])?out[0]:[];
-  giftCartItems=[];
+  // keep any cart built earlier this session — an accidental close shouldn't destroy verified lines
+  giftCartItems=Array.isArray(giftCartItems)?giftCartItems:[];
   giftCartBalance=Number(Array.isArray(out[1])&&out[1][0]?out[1][0].balance:0);
   giftCartBiz=out[2]||{};
   document.body.insertAdjacentHTML("beforeend",modal("Gift cart",`
@@ -3515,6 +3535,7 @@ async function oGiftCart(){
   const box=ovs[ovs.length-1]?.querySelector(".mb");
   if(box)box.style.maxWidth="820px";
   giftCartRender();
+  }finally{window.__gcOpening=false;}
 }
 function giftCartRender(){
   const q=(document.getElementById("giftCartSearch")?.value||"").toLowerCase().trim();
@@ -3547,7 +3568,7 @@ function giftCartRender(){
     else if(total>giftCartBalance){note.textContent="Add wallet funds before this cart can ship.";note.style.color="#FF9F4D";}
     else {note.textContent="Ready for final confirmation. Every cart line has a verified shipping address.";note.style.color="rgba(240,244,255,.58)";}
   }
-  if(send){
+  if(send&&!giftCartSending){
     send.disabled=!giftCartItems.length||total>giftCartBalance;
     send.textContent=giftCartItems.length?"Send "+giftCartItems.length+" gift"+(giftCartItems.length===1?"":"s"):"Send selected gifts";
   }
@@ -3564,12 +3585,12 @@ async function giftCartAddCustomer(id,btn){
   let address=giftCartAddress(c),source=c.address_confirmed_at?"on_file":"";
   if(!c.address_confirmed_at){
     if(btn){btn.disabled=true;btn.textContent="Verifying...";}
-    const verified=await verifyShippingAddress(address);
+    const verified=await verifyOrOverrideAddress(address);
     if(btn){btn.disabled=false;btn.textContent="Verify + Add";}
     if(!verified.valid){alert(verified.error);return;}
     address=Object.assign({},verified.address,{email:c.email||""});
     source=verified.source||"validator";
-    await fetch(SU+"/rest/v1/customers?id=eq."+encodeURIComponent(c.id),{method:"PATCH",headers:Object.assign({},h(S?.token||SK),{Prefer:"return=minimal"}),body:JSON.stringify({address:address.address1,city:address.city,state:address.region,zip:address.zip,address_confirmed_at:new Date().toISOString()})});
+    await fetch(SU+"/rest/v1/customers?id=eq."+encodeURIComponent(c.id),{method:"PATCH",headers:Object.assign({},h(S?.token||SK),{Prefer:"return=minimal"}),body:JSON.stringify({address:address.address1,city:address.city,state:address.region,zip:address.zip,address_confirmed_at:verified.override?null:new Date().toISOString()})});
     c.address=address.address1;c.city=address.city;c.state=address.region;c.zip=address.zip;c.address_confirmed_at=new Date().toISOString();
   }
   const duplicate=giftCartItems.some(function(x){return String(x.customerId||"")===String(c.id)&&Number(x.giftIndex)===giftIndex;});
@@ -3587,7 +3608,7 @@ async function giftCartAddManual(btn){
   if(email&&!isEmail(email)){alert("That email doesn't look right. Leave it blank or enter a valid email.");return;}
   if(!shippingAddressComplete(address)){alert("Add street, city, state, and a valid ZIP before adding this recipient.");return;}
   if(btn){btn.disabled=true;btn.textContent="Verifying...";}
-  const verified=await verifyShippingAddress(address);
+  const verified=await verifyOrOverrideAddress(address);
   if(btn){btn.disabled=false;btn.textContent="Verify + Add manual recipient";}
   if(!verified.valid){alert(verified.error);return;}
   address=Object.assign({},verified.address,{email:email});
@@ -3607,6 +3628,7 @@ function giftCartRemove(id){
   giftCartRender();
 }
 async function sendGiftCart(btn){
+  if(giftCartSending)return; // a batch is already in flight — never double-ship
   const total=giftCartTotal();
   if(!giftCartItems.length){alert("Add gifts to the cart first.");return;}
   const bad=giftCartItems.find(function(item){return !item.verified||!shippingAddressComplete(item.address);});
@@ -3614,29 +3636,40 @@ async function sendGiftCart(btn){
   if(total>giftCartBalance){alert("Not enough gift wallet funds for this cart.");return;}
   if(!document.getElementById("giftCartConfirm")?.checked){alert("Confirm every recipient, gift, and verified address before sending.");return;}
   if(!confirm("Send "+giftCartItems.length+" gift"+(giftCartItems.length===1?"":"s")+" now? Your gift wallet will be charged about $"+total.toFixed(2)+"."))return;
+  giftCartSending=true;
   if(btn){btn.disabled=true;btn.textContent="Sending 0/"+giftCartItems.length+"...";}
   const batchId="manual-gift-bulk-"+Date.now();
-  let sent=0;const failed=[];
-  for(const item of giftCartItems){
-    try{
-      let customerId=item.customerId||null;
-      if(!customerId){
-        const created=await db.ins("customers",{name:item.name,email:item.email||null,address:item.address.address1,city:item.address.city,state:item.address.region,zip:item.address.zip,address_confirmed_at:new Date().toISOString(),business_id:"manual-gift-cart",total_spent:0,status:"active",user_id:myId()},S?.token||SK);
-        if(created&&created.message)throw new Error(String(created.message).replace("PLAN_CUSTOMER_LIMIT_REACHED:","Plan limit reached:"));
-        customerId=Array.isArray(created)&&created[0]?.id?String(created[0].id):null;
+  const items=giftCartItems.slice(); // snapshot — edits to the open cart can't change what was confirmed
+  let sent=0;const failed=[];const sentIds={};
+  try{
+    for(const item of items){
+      try{
+        let customerId=item.customerId||null;
+        if(!customerId){
+          const created=await db.ins("customers",{name:item.name,email:item.email||null,address:item.address.address1,city:item.address.city,state:item.address.region,zip:item.address.zip,address_confirmed_at:item.verifiedSource==="owner_override"?null:new Date().toISOString(),business_id:"manual-gift-cart",total_spent:0,status:"active",user_id:myId()},S?.token||SK);
+          if(created&&created.message)throw new Error(String(created.message).replace("PLAN_CUSTOMER_LIMIT_REACHED:","Plan limit reached:"));
+          customerId=Array.isArray(created)&&created[0]?.id?String(created[0].id):null;
+          item.customerId=customerId; // remember it — a retry must not create a duplicate customer
+        }
+        const gift=giftCartItemGift(item);
+        await sendPhysicalGift({campaignId:batchId+"-"+item.id,customerId:customerId,customerName:item.name||"Customer",customerEmail:item.email||"",address:item.address,gift:gift,logoUrl:giftCartBiz.logo_url||null,businessName:giftCartBiz.business_name||"",giftCost:Number(gift?.p||0),addressOverride:item.verifiedSource==="owner_override"});
+        sent++;sentIds[item.id]=true;
+        if(btn)btn.textContent="Sending "+sent+"/"+items.length+"...";
+      }catch(e){
+        failed.push((item.name||"Customer")+": "+(e.message||"failed"));
       }
-      const gift=giftCartItemGift(item);
-      await sendPhysicalGift({campaignId:batchId+"-"+item.id,customerId:customerId,customerName:item.name||"Customer",customerEmail:item.email||"",address:item.address,gift:gift,logoUrl:giftCartBiz.logo_url||null,businessName:giftCartBiz.business_name||"",giftCost:Number(gift?.p||0)});
-      sent++;
-      if(btn)btn.textContent="Sending "+sent+"/"+giftCartItems.length+"...";
-    }catch(e){
-      failed.push((item.name||"Customer")+": "+(e.message||"failed"));
     }
+  }finally{giftCartSending=false;}
+  giftCartItems=giftCartItems.filter(function(x){return !sentIds[x.id];}); // keep failed lines for retry
+  if(failed.length){
+    if(btn){btn.disabled=false;}
+    giftCartRender();
+    alert("Sent "+sent+" gift"+(sent===1?"":"s")+". Could not send "+failed.length+":\n"+failed.join("\n")+"\n\nThe failed lines are still in your cart — fix and retry, or remove them.");
+  }else{
+    btn?.closest(".ov")?.remove();
+    alert("Gift cart sent. You can track everything in Shipments.");
+    dpg="shipments";dLoad();
   }
-  btn?.closest(".ov")?.remove();
-  if(failed.length)alert("Sent "+sent+" gift"+(sent===1?"":"s")+". Could not send: "+failed.slice(0,3).join("; ")+(failed.length>3?" and "+(failed.length-3)+" more.":"."));
-  else alert("Gift cart sent. You can track everything in Shipments.");
-  dpg="shipments";dLoad();
 }
 
 function oWalletTopup(){
@@ -3839,10 +3872,10 @@ async function svCust(btn){
   if(hasAnyAddress){
     if(!shippingAddressComplete(address)){alert("If you enter an address, add street, city, state, and a valid ZIP.");return;}
     if(btn){btn.disabled=true;btn.textContent="Verifying address...";}
-    const verified=await verifyShippingAddress(address);
+    const verified=await verifyOrOverrideAddress(address);
     if(!verified.valid){alert(verified.error);if(btn){btn.disabled=false;btn.textContent="Save";}return;}
     address=Object.assign({},verified.address,{email:e});
-    addressFields={address:address.address1,city:address.city,state:address.region,zip:address.zip,address_confirmed_at:new Date().toISOString()};
+    addressFields={address:address.address1,city:address.city,state:address.region,zip:address.zip,address_confirmed_at:verified.override?null:new Date().toISOString()};
   }
   if(btn){btn.disabled=true;btn.textContent="Saving...";}
   try{

@@ -44,9 +44,13 @@ async function verifyAddress(address: string, city: string, state: string, zip: 
     body: JSON.stringify({ address, city, state, zip }),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok || data?.valid !== true) {
+  // Only a definite mismatch rejects the customer. A validator outage must not
+  // turn away a customer who is confirming their own address — save it as
+  // typed; fulfillment re-checks at ship time anyway.
+  if (response.ok && data?.valid === false) {
     throw new Error(data?.error || "We could not verify that shipping address. Please double-check it.");
   }
+  if (!response.ok || data?.valid !== true) return { address1: address, city, region: state, zip, country: "US" };
   return data?.normalized || { address1: address, city, region: state, zip, country: "US" };
 }
 
@@ -55,7 +59,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 async function customerByToken(token: string) {
   if (!UUID_RE.test(token)) return null;
   const rows = await rest(
-    `/rest/v1/customers?address_request_token=eq.${encodeURIComponent(token)}&select=id,name,user_id,address,city,state,zip&limit=1`,
+    `/rest/v1/customers?address_request_token=eq.${encodeURIComponent(token)}&select=id,name,user_id,address,city,state,zip,address_confirmed_at&limit=1`,
   );
   return Array.isArray(rows) && rows[0] ? rows[0] : null;
 }
@@ -75,7 +79,10 @@ Deno.serve(async (req) => {
         if (Array.isArray(biz) && biz[0]?.business_name) businessName = String(biz[0].business_name);
       } catch (_) { /* generic name */ }
       const first = String(c.name || "").trim().split(/\s+/)[0] || "there";
-      return json({ ok: true, first_name: first, business_name: businessName, has_address: !!(c.address && c.city && c.state && c.zip) });
+      // "All set" only when the customer themselves confirmed the address —
+      // a POS-imported address may be the one failing at ship time, and this
+      // form is the customer's only way to correct it.
+      return json({ ok: true, first_name: first, business_name: businessName, has_address: !!(c.address && c.city && c.state && c.zip && c.address_confirmed_at) });
     }
 
     if (req.method === "POST") {
