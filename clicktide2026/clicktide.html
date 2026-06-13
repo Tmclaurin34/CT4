@@ -1507,7 +1507,7 @@ function showMindbodyActivationResult(d){
 let ntIdx=0,scr="land";
 let obS=0,obCat=null,obB=null,obP=null,obC=false,obG=null,obT=[],obE="",obPw="",obN="",obNm="",obPh="",obBph="",obBem="",obAddr="",obAddr2="",obAddrOverride=false,obAwaitConfirm=false,obCity="",obState="",obZip="",obPl=storedPlan()||"Growth",obOther="",obImport=null,obGiftSearch="",obCustomGift=null,obLogoFile=null,obLogoUrl=null,obLogoName="",obLogoStorageUrl=null,obLogoQuality=null,obDy=null,obCampaignSkipped=false;
 let riS=0,riB=null,riCatSel=null,riOther="",riSize="small",riFreqDays=15,riRiskMode="miss2",riCu=100,riAv=60,riCh=.20,riDy=30,riGf=22,riPl=99,riVf=2,riLm=12;
-let dpg="overview",cmT="message_only",cmN="",cmTr="",cmGN="",cmGC="",cmG=null,cmPf="Square",cmCh="email",cmM="",cmTi=0,cmPcDesign="bold",cmAiOpts=[],showCM=false,cmProt={delay:7,cancelOnRefund:true,minSpend:0,cooldown:90,productName:"",minOrderVal:0};
+let dpg="overview",bizLock=null,cmT="message_only",cmN="",cmTr="",cmGN="",cmGC="",cmG=null,cmPf="Square",cmCh="email",cmM="",cmTi=0,cmPcDesign="bold",cmAiOpts=[],showCM=false,cmProt={delay:7,cancelOnRefund:true,minSpend:0,cooldown:90,productName:"",minOrderVal:0};
 
 const ONBOARD_PROGRESS_KEY="ct_onboard_progress";
 function safeOnboardStep(v){v=Number(v);return Number.isFinite(v)?Math.max(0,Math.min(6,Math.round(v))):0;}
@@ -2131,8 +2131,9 @@ function onboard(){
     var sq=obGiftSearch||"";
     // Use the fulfillment catalog as the real gift options
     var allG=PRINTIFY_CATALOG;
-    var filtG=sq.length>0?allG.filter(function(g){return g.n.toLowerCase().indexOf(sq.toLowerCase())>-1||g.s.toLowerCase().indexOf(sq.toLowerCase())>-1||g.cat.indexOf(sq.toLowerCase())>-1;}):allG;
-    var searchBar="<div style='position:relative;margin-bottom:14px'><input class='fi' id='gsearch' value='"+sq+"' placeholder='Search gifts (e.g. Mug, Candle, Tote...)' oninput='obGiftSearch=this.value;updateGiftGrid()' onkeydown='giftEnter(event)' style='padding-right:90px'/><button onclick='updateGiftGrid()' style='position:absolute;right:6px;top:50%;transform:translateY(-50%);background:#FFD166;color:#080D18;border:none;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif'>Search</button></div>";
+    var allGiftRows=allG.map(function(g,i){return {g:g,i:i};});
+    var filtG=sq.length>0?allGiftRows.filter(function(row){var g=row.g;return g.n.toLowerCase().indexOf(sq.toLowerCase())>-1||g.s.toLowerCase().indexOf(sq.toLowerCase())>-1||g.cat.indexOf(sq.toLowerCase())>-1;}):allGiftRows;
+    var searchBar="<div style='position:relative;margin-bottom:14px'><input class='fi' id='gsearch' value='"+sq+"' placeholder='Search gifts (e.g. Mug, Candle, Tote...)' oninput='obGiftSearch=this.value' onkeydown='giftEnter(event)' style='padding-right:90px'/><button onclick='obGiftSearch=document.getElementById(\"gsearch\").value;R()' style='position:absolute;right:6px;top:50%;transform:translateY(-50%);background:#FFD166;color:#080D18;border:none;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif'>Search</button></div>";
     var customRow="";
     if(sq.length>0&&filtG.length===0){
       customRow="<div style='background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.2);border-radius:12px;padding:16px;margin-bottom:14px;text-align:center'><div style='font-size:13px;font-weight:700;margin-bottom:6px'>No results for \""+sq+"\"</div><div style='font-size:12px;color:rgba(240,244,255,.45);margin-bottom:12px'>Add it as a custom gift -- we will source and ship it.</div><button class='btn btn-gold' data-q='"+sq+"' onclick='obCustomGift=this.dataset.q;obG=-1;obGiftSearch=String();R()' style='padding:8px 20px;font-size:12px'>+ Add \""+sq+"\" as my gift</button></div>";
@@ -2141,7 +2142,8 @@ function onboard(){
       customRow="<div style='background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px'><span style='display:flex'><svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#22C55E' stroke-width='2'><circle cx='12' cy='12' r='9.5'/><path d='M8 12.2l2.6 2.6L16.5 9' stroke-linecap='round' stroke-linejoin='round'/></svg></span><div style='flex:1'><div style='font-size:13px;font-weight:700'>Custom: "+obCustomGift+"</div><div style='font-size:11px;color:rgba(240,244,255,.45)'>We will source and ship this for you</div></div><button onclick='obG=null;obCustomGift=null;R()' style='background:transparent;border:none;color:rgba(240,244,255,.35);cursor:pointer;font-size:20px;padding:0'>×</button></div>";
     }
     var gCards="";
-    filtG.forEach(function(g,i){
+    filtG.forEach(function(row){
+      var g=row.g,i=row.i;
       var sel=obG===i;
       gCards+="<div class='gcard "+(sel?"on":"")+"' data-gi='"+i+"' onclick='obG=parseInt(this.dataset.gi);obCustomGift=null;R()'>";
       gCards+=(g.pop?"<div style='position:absolute;top:4px;right:4px;font-size:9px;font-weight:700;color:#FFD166;background:rgba(255,209,102,.15);border-radius:100px;padding:2px 5px'>★ Popular</div>":"");
@@ -2235,7 +2237,8 @@ function onboard(){
 
 
 function updateGiftGrid(){
-  obGiftSearch=document.getElementById('gsearch').value;
+  obGiftSearch=document.getElementById('gsearch')?.value||obGiftSearch||"";
+  if(scr==="onboard"&&obS===3){R();return;}
   var GS2=GF[obB]||GF[obCat]||GF.other||[];
   var allG=GF.other.concat(GS2.filter(function(x){return!GF.other.find(function(o){return o.n===x.n;});}));
   var sq=obGiftSearch;
@@ -2319,7 +2322,7 @@ async function uploadLogoToStorage(file){
   }catch(e){console.warn('Logo storage upload failed:',e);}
 }
 
-function giftEnter(e){if(e.key==='Enter'){updateGiftGrid();}}
+function giftEnter(e){if(e.key==='Enter'){e.preventDefault();obGiftSearch=document.getElementById('gsearch')?.value||"";R();}}
 
 // -- Print quality validation -------------------------------------------------
 function qualityTier(score){
@@ -3178,7 +3181,7 @@ async function dLoad(){
   const justOnboarded=sessionStorage.getItem("ct_justonboarded");
   if(justOnboarded)sessionStorage.removeItem("ct_justonboarded");
   try{
-    const bizLock=await loadBiz()||{};
+    bizLock=await loadBiz()||{};
     const paid=hasPaidAccess(bizLock);
     if(paid){clearOnboardingProgress();if(justOnboarded||bizLock.onboarding_complete!==true)setBizFields({onboarding_complete:true});}
     const paidBanner=paid?"":billingLockBanner(bizLock);
