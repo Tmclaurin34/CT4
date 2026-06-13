@@ -3411,8 +3411,9 @@ async function dLoad(){
       if(paid)setTimeout(studioInit,0);
     }
     else if(dpg==="emails"){
-      el.innerHTML=paid?emailStudioPage():paidBanner+'<div class="empty"><div style="margin-bottom:10px">'+gI("mail",34,"rgba(16,18,21,.22)")+'</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">Email Studio unlocks with an active plan</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Choose a plan to design your customer emails.</div></div>';
-      if(paid){await emLoad();emRedraw();}
+      if(!paid){el.innerHTML=paidBanner+'<div class="empty"><div style="margin-bottom:10px">'+gI("mail",34,"rgba(16,18,21,.22)")+'</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">Email Studio unlocks with an active plan</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Choose a plan to design your customer emails.</div></div>';}
+      else if(document.getElementById("unlayer-editor")&&_emMounted){/* editor already mounted — keep it */}
+      else{await emLoad();el.innerHTML=emailStudioPage();emInitUnlayer();}
     }
     else if(dpg==="settings"){
       // Load platform connections from Supabase
@@ -4567,6 +4568,9 @@ function studioRefreshRail(){for(var i=1;i<=4;i++){var el=document.getElementByI
 // ---- Clicktide Email Studio ----
 var emBlocks=[],emBrand={color:"#0B62D6",btn:"#0B62D6",font:"Arial",logo:""},emSubject="A little something from {{business_name}}",emSelIdx=-1,emW=600,emRowId=null;
 var EM_FONTS=["Arial","Helvetica","Georgia","Times New Roman","Verdana","Trebuchet MS","Courier New"];
+var emDesign=null,_emMounted=false,_emInitTs=0;
+const EM_PROJECT_ID=287583;
+var EM_MERGE={first_name:{name:"First name",value:"{{first_name}}"},business_name:{name:"Business name",value:"{{business_name}}"},message:{name:"Campaign message",value:"{{message}}"}};
 
 function emDefaults(){
   emBlocks=[
@@ -4578,30 +4582,50 @@ function emDefaults(){
   ];
 }
 async function emLoad(){
-  emDefaults();emRowId=null;emSelIdx=-1;
+  emDefaults();emRowId=null;emSelIdx=-1;emDesign=null;
   try{
     var r=await fetch(SU+"/rest/v1/email_templates?name=eq.Default&select=*&limit=1",{headers:h(S&&S.token)});
     var rows=await r.json();
     if(Array.isArray(rows)&&rows[0]){
       emRowId=rows[0].id;
+      if(rows[0].design&&typeof rows[0].design==="object")emDesign=rows[0].design;
       if(Array.isArray(rows[0].blocks)&&rows[0].blocks.length)emBlocks=rows[0].blocks;
       if(rows[0].brand&&typeof rows[0].brand==="object")emBrand=Object.assign(emBrand,rows[0].brand);
       if(rows[0].subject)emSubject=rows[0].subject;
     }
   }catch(e){}
 }
+// Mount the Unlayer drag-and-drop editor into #unlayer-editor. Idempotent +
+// debounced so the dashboard's double-render never spawns two editors.
+function emInitUnlayer(){
+  if(!document.getElementById("unlayer-editor"))return;
+  var now=+new Date();
+  if(now-_emInitTs<700)return;
+  _emInitTs=now;
+  var go=function(){
+    var c=document.getElementById("unlayer-editor");
+    if(!c||!window.unlayer||!window.unlayer.init)return;
+    try{
+      window.unlayer.init({id:"unlayer-editor",projectId:EM_PROJECT_ID,displayMode:"email",mergeTags:EM_MERGE});
+      _emMounted=true;
+      if(emDesign){try{window.unlayer.loadDesign(emDesign);}catch(e){}}
+    }catch(e){}
+  };
+  if(window.unlayer&&window.unlayer.init){go();}
+  else if(!document.getElementById("unlayerEmbed")){
+    var s=document.createElement("script");s.id="unlayerEmbed";s.src="https://editor.unlayer.com/embed.js";s.onload=go;
+    s.onerror=function(){var st=document.getElementById("emStatus");if(st){st.textContent="Couldn't load the email editor — check your connection and reopen this tab.";st.style.color="#FF6B6B";}};
+    document.head.appendChild(s);
+  }else{
+    var n=0,iv=setInterval(function(){if(window.unlayer&&window.unlayer.init){clearInterval(iv);go();}else if(++n>60){clearInterval(iv);}},100);
+  }
+}
 function emailStudioPage(){
-  var palette=[["text","<i class=ig-edit></i> Text"],["button","<i class=ig-dot></i> Button"],["image","<i class=ig-image></i> Image"],["divider","— Divider"]].map(function(x){
-    return '<button class="btn btn-ghost" style="width:100%;margin-bottom:6px;font-size:12px;text-align:left" onclick="emAdd(\''+x[0]+'\')">'+x[1]+'</button>';
-  }).join("");
-  return '<div class="dh"><div><div class="dt">Email Studio</div><div class="ds">Design the email your customers receive. {{first_name}} and {{business_name}} fill in automatically.</div></div>'
-  +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn btn-ghost" style="padding:7px 12px;font-size:11px" onclick="emToggleW(600)"><i class=ig-monitor></i> Desktop</button><button class="btn btn-ghost" style="padding:7px 12px;font-size:11px" onclick="emToggleW(360)"><i class=ig-phone></i> Mobile</button><button class="btn btn-gold" onclick="emSave()">Save template</button></div></div>'
-  +'<div id="emStatus" style="font-size:11px;margin-bottom:10px"></div>'
-  +'<div class="email-grid">'
-    +'<div class="dc" style="padding:10px"><div style="font-size:10px;font-weight:800;letter-spacing:1px;color:rgba(240,244,255,.4);margin-bottom:8px">ADD BLOCKS</div>'+palette+'</div>'
-    +'<div id="emCanvasWrap"></div>'
-    +'<div class="dc" style="padding:14px" id="emProps"></div>'
-  +'</div>';
+  return '<div class="dh"><div><div class="dt">Email Studio</div><div class="ds">Drag blocks to design the email your customers receive, then Save. Use the merge tags <b>{{first_name}}</b>, <b>{{business_name}}</b> and <b>{{message}}</b> — they fill in per customer when a campaign sends.</div></div>'
+  +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn btn-gold" onclick="emSave()">Save design</button></div></div>'
+  +'<div class="fg" style="max-width:560px"><label class="fl">Subject line</label><input class="fi" value="'+giftEsc(emSubject)+'" oninput="emSubject=this.value" placeholder="A little something from {{business_name}}"/></div>'
+  +'<div id="emStatus" style="font-size:12px;margin:0 0 10px;color:#3A3E45"></div>'
+  +'<div id="unlayer-editor" style="height:680px;border:1px solid rgba(15,23,42,.12);border-radius:14px;overflow:hidden;background:#FFFFFF"></div>';
 }
 function emBlockHtml(b,i){
   var sel=(i===emSelIdx);
@@ -4654,18 +4678,24 @@ function emProps(){var p=document.getElementById("emProps");if(p)p.innerHTML=emP
 function emRedraw(){var c=document.getElementById("emCanvasWrap");if(c)c.innerHTML=emCanvasHtml();emProps();}
 async function emSave(){
   var st=document.getElementById("emStatus");
-  if(!S||!S.token){if(st){st.textContent="Log in to save your template.";st.style.color="#FF6B6B";}return;}
-  if(st){st.textContent="Saving...";st.style.color="rgba(15,17,21,.5)";}
-  var payload={user_id:myId(),name:"Default",subject:emSubject,blocks:emBlocks,brand:emBrand,updated_at:new Date().toISOString()};
-  try{
-    var r;
-    var hdrs=Object.assign({},h(S.token),{Prefer:"return=representation"});
-    if(emRowId)r=await fetch(SU+"/rest/v1/email_templates?id=eq."+emRowId,{method:"PATCH",headers:hdrs,body:JSON.stringify(payload)});
-    else r=await fetch(SU+"/rest/v1/email_templates",{method:"POST",headers:hdrs,body:JSON.stringify(payload)});
-    var rows=await r.json().catch(function(){return null;});
-    if(r.ok&&Array.isArray(rows)&&rows[0])emRowId=rows[0].id;
-    if(st){st.textContent=r.ok?"Template saved ✓ — campaign emails will use this design.":"Couldn't save — please try again.";st.style.color=r.ok?"#22C55E":"#FF6B6B";}
-  }catch(e){if(st){st.textContent="Couldn't save: "+e.message;st.style.color="#FF6B6B";}}
+  if(!S||!S.token){if(st){st.textContent="Log in to save your design.";st.style.color="#FF6B6B";}return;}
+  if(!window.unlayer||!window.unlayer.exportHtml){if(st){st.textContent="Editor is still loading — give it a second and try again.";st.style.color="#B8860B";}return;}
+  if(st){st.textContent="Saving...";st.style.color="#3A3E45";}
+  window.unlayer.exportHtml(async function(data){
+    var design=(data&&data.design)||null,html=(data&&data.html)||"";
+    if(!html){if(st){st.textContent="Couldn't read the design — try again.";st.style.color="#FF6B6B";}return;}
+    emDesign=design;
+    var payload={user_id:myId(),name:"Default",subject:emSubject,design:design,html:html,updated_at:new Date().toISOString()};
+    try{
+      var hdrs=Object.assign({},h(S.token),{Prefer:"return=representation"});
+      var r;
+      if(emRowId)r=await fetch(SU+"/rest/v1/email_templates?id=eq."+emRowId,{method:"PATCH",headers:hdrs,body:JSON.stringify(payload)});
+      else r=await fetch(SU+"/rest/v1/email_templates",{method:"POST",headers:hdrs,body:JSON.stringify(payload)});
+      var rows=await r.json().catch(function(){return null;});
+      if(r.ok&&Array.isArray(rows)&&rows[0])emRowId=rows[0].id;
+      if(st){st.textContent=r.ok?"Saved ✓ — campaigns will use this design.":"Couldn't save — please try again.";st.style.color=r.ok?"#22C55E":"#FF6B6B";}
+    }catch(e){if(st){st.textContent="Couldn't save: "+e.message;st.style.color="#FF6B6B";}}
+  });
 }
 </script>
 <script>

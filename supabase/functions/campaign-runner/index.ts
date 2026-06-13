@@ -274,6 +274,7 @@ type EmailTemplate = {
   subject?: string;
   blocks?: Array<{ t: string; v?: string; s?: string; url?: string }>;
   brand?: { color?: string; btn?: string; font?: string; logo?: string };
+  html?: string;
 };
 
 function renderTemplate(tpl: EmailTemplate, message: string, businessName: string, firstName: string, whiteLabel = false) {
@@ -293,6 +294,14 @@ function renderTemplate(tpl: EmailTemplate, message: string, businessName: strin
   }).join("");
   return `<div style="max-width:600px;margin:0 auto;background:#FFFFFF;padding:28px 26px">${header}${body}
     ${whiteLabel ? "" : `<div style="border-top:1px solid #F3F4F6;margin-top:18px;padding-top:12px;font-family:Arial;font-size:11px;color:#9CA3AF;text-align:center">Sent by Clicktide on behalf of ${escapeHtml(businessName)}.</div>`}</div>`;
+}
+
+// Unlayer-designed template: fill the merge tags in the exported HTML per customer.
+function renderUnlayer(html: string, message: string, businessName: string, firstName: string) {
+  return html
+    .replaceAll("{{first_name}}", escapeHtml(firstName))
+    .replaceAll("{{business_name}}", escapeHtml(businessName))
+    .replaceAll("{{message}}", escapeHtml(message).replaceAll("\n", "<br>"));
 }
 
 async function sendEmail(to: string, subject: string, message: string, businessName: string, customerName: string, htmlOverride?: string, whiteLabel = false, logoUrl = "", brandColor = "#0B62D6", lastVisitText = "") {
@@ -754,7 +763,9 @@ Deno.serve(async (req) => {
               const subject = emailTpl?.subject
                 ? emailTpl.subject.replaceAll("{{first_name}}", firstName).replaceAll("{{business_name}}", businessName)
                 : `A message from ${businessName}`;
-              const override = emailTpl?.blocks?.length
+              const override = (emailTpl?.html && emailTpl.html.trim())
+                ? renderUnlayer(emailTpl.html, message, businessName, firstName)
+                : emailTpl?.blocks?.length
                 ? renderTemplate(emailTpl, message, businessName, firstName, whiteLabel)
                 : undefined;
               const result = await sendEmail(
