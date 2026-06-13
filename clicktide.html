@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Clicktide — Customer Loyalty &amp; Win-Back Gifts for Local Businesses</title>
 <meta name="description" content="Your customers aren't leaving — they're forgetting. Clicktide wins them back automatically with branded gifts, mailed postcards, emails, and texts. Built for gyms, salons, cafés, and local businesses. Plans from $49/mo."/>
-<link rel="canonical" href="https://goclicktide.com/clicktide"/>
+<link rel="canonical" href="https://goclicktide.com/"/>
 <meta name="color-scheme" content="only light"/>
 <meta name="theme-color" content="#080D18"/>
 <meta property="og:type" content="website"/>
 <meta property="og:site_name" content="Clicktide"/>
-<meta property="og:url" content="https://goclicktide.com/clicktide"/>
+<meta property="og:url" content="https://goclicktide.com/"/>
 <meta property="og:title" content="Clicktide — Customer Loyalty &amp; Win-Back Gifts for Local Businesses"/>
 <meta property="og:description" content="Your customers aren't leaving — they're forgetting. Automatic retention for local businesses: branded gifts, mailed postcards, emails, and texts triggered by real customer behavior."/>
 <meta property="og:image" content="https://goclicktide.com/og-image.png"/>
@@ -4252,8 +4252,29 @@ async function getAIHint(step, context){
   R();
 }
 
+// -- Resilience boundary: a single render/JS error must never leave the customer
+// on a frozen page they can't click out of (the cause of the bizLock dead-end).
+function ctRecoveryUI(){
+  try{
+    var app=document.getElementById("app");if(!app)return;
+    app.innerHTML='<div style="max-width:420px;margin:70px auto;padding:28px;text-align:center;font-family:Inter,Arial,sans-serif;color:#0F1115">'
+      +'<div style="font-size:40px;margin-bottom:12px">🌊</div>'
+      +'<div style="font-size:19px;font-weight:800;margin-bottom:8px">Let’s refresh that</div>'
+      +'<div style="font-size:13px;color:#5A5E66;line-height:1.6;margin-bottom:20px">The page hit a snag loading. A quick reload fixes it — your account and data are safe.</div>'
+      +'<button onclick="try{location.reload(true)}catch(e){location.reload()}" style="background:#0B0F19;color:#fff;border:0;border-radius:100px;padding:13px 30px;font-size:14px;font-weight:700;cursor:pointer">Reload Clicktide</button>'
+      +'<div style="font-size:11px;color:#9CA3AF;margin-top:14px">Still stuck? Email support@goclicktide.com</div></div>';
+  }catch(e){}
+}
+// iOS Safari's back-forward cache can serve a stale build (what stranded the
+// customer on the old bizLock version). Force a fresh load when restored from it.
+window.addEventListener("pageshow",function(ev){if(ev&&ev.persisted){location.reload();}});
+window.addEventListener("error",function(ev){var a=document.getElementById("app");if(a&&a.innerHTML.replace(/\s/g,"").length<40)ctRecoveryUI();});
+window.addEventListener("unhandledrejection",function(){var a=document.getElementById("app");if(a&&a.innerHTML.replace(/\s/g,"").length<40)ctRecoveryUI();});
+// Wrap the renderer so a boot-time throw shows recovery instead of a blank page.
+(function(){var _R=R;R=function(){try{return _R.apply(this,arguments);}catch(e){ctRecoveryUI();throw e;}};})();
+
 history.replaceState({view:scr},"","");
-R();
+try{R();}catch(e){ctRecoveryUI();}
 
 </script>
 <script>
