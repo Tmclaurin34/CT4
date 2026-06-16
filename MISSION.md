@@ -21,7 +21,7 @@ Clicktide exists because **the cheapest, warmest, most profitable customer any b
 ## What Clicktide actually does (plain words)
 
 1. **Connects to the business's register** — read-only, through the platform's official connection. We can see visits and sales history; we cannot move money or modify their account. One click to disconnect.
-2. **Learns every customer's rhythm.** Every customer has a pace — weekly gym visits, a haircut every five weeks. Clicktide learns each one's normal.
+2. **Learns every customer's rhythm — and judges drift against *that*, not a stopwatch.** Every customer has a pace — weekly gym visits, a haircut every five weeks. Clicktide learns each one's normal from the register history and only calls someone "drifting" once they pass *their own* usual gap — so a once-a-quarter regular isn't chased like a weekly one. This matters: an owner's flat guess ("they come monthly") is often wrong, and a wrong guess makes win-backs fire too early (spammy) or too late (gone), which makes Clicktide *look* broken when it isn't. Brand-new customers without enough history fall back to the owner's drift setting until their own pattern is clear.
 3. **Notices when a regular breaks their rhythm** — and starts the Win-Back Playbook:
    - **Day 14:** a friendly check-in under the business's name — by text if that customer has texting consent on file, otherwise by email. No links, no pressure. *"Hey Sarah, it's June's Beauty Bar — been a couple weeks since we saw you! Everything okay?"*
    - **Day 30:** a real printed postcard in their mailbox (about $1.50, addressed and mailed automatically, paid from the owner's wallet).
@@ -30,6 +30,11 @@ Clicktide exists because **the cheapest, warmest, most profitable customer any b
 4. **Every Monday: the Drift Report** — an email telling the owner who started drifting last week, how long they've been gone, and an estimate of what they're worth.
 5. **After visits, customers can be asked how it went** — feedback reaches the owner, and leaving a Google review is made easy. (See internal notes before answering detailed review-policy questions.)
 6. **Owners can also send gifts by hand.** Not every gesture needs a campaign: a business can pick one customer, or build a gift cart from a searchable customer list, choose different gifts per recipient, confirm each verified shipping address and wallet cost, and send immediately as a thank-you, apology, save, VIP moment, or relationship touch.
+7. **The customer list stays usable at any size — even 10,000+.** Owners can search by name, email, or phone, filter by segment (Drifting, VIP, Unhappy, New) with live counts, narrow to a last-visit date range, and set how many days without a visit counts as "drifting" (30/45/60/90). Changing the drift window updates the whole dashboard's win-back numbers too, so everything tells one consistent story. The list only loads the page being viewed, so it never bogs down.
+8. **Digital reward codes — the cheapest win-back.** A Digital Gift campaign can carry a discount code the owner sets ("20% off", code "THANKS20"), with an optional expiry and online link, sent automatically by text or email. The customer shows the code in person (the cashier rings it, since Clicktide stays read-only on the register) or taps the link to use it online, where it applies itself. No shipping, no wallet cost — just the discount, and only if they actually return.
+9. **Reachability is the floor — a customer you can't reach can't be saved.** Every customer's contact status is shown plainly: a message channel needs an email or a consented phone; postcards and gifts need a verified mailing address. The list flags "Can't reach" (no email or phone at all) and "No address," and a one-click form completes the missing piece. Adding a customer by hand now requires at least an email or a phone — Clicktide doesn't keep contactless ghost records, because the whole product is the ability to reach the people who matter.
+10. **Welcomes brand-new customers and turns them into regulars.** The first weeks decide whether a first-timer ever comes back, so a one-click **Welcome Journey** sends a warm thank-you about day 2, a friendly nudge about day 12, and a final "we saved your seat" about day 30 — and the last two only go if they *haven't* returned yet, so the journey stops itself the moment they come in. It only ever greets customers who are new *after* it's installed, never the existing regulars. The Win-Back Playbook catches people on the way out; the Welcome Journey catches them on the way in — and gives the owner visible activity from day one instead of waiting for someone to lapse.
+11. **Shows the owner it's working — in real customers and real dollars.** The dashboard counts the customers who actually came back *after* a Clicktide message and the money they brought ("3 customers came back — about $X recovered"), and a money scoreboard frames the whole base as **Protected / At risk / Recovered**. Before the first returns land, an honest "engine running — give it time" panel explains that a win-back usually takes 2–6 weeks (text → postcard → gift), so an empty "recovered" number early on doesn't mean it's broken. The point: the owner can *see* the work happening before a customer physically walks back in.
 
 The name is the idea: ads are waves — loud, expensive, they crash and disappear. **Loyalty is the tide. It brings people back.**
 
@@ -103,8 +108,17 @@ A texting-only buyer fits **Local at $49** — if they never fund the wallet, th
 **"How is this different from Mailchimp or email blasts?"**
 > "Email tools broadcast to everybody and hope. Clicktide watches your register and acts on one person at the right moment — the day *Sarah* breaks her rhythm, Sarah gets a personal check-in citing her real last visit. And it doesn't stop at email: real texts, real postcards, real gifts in the mail — then it goes quiet the moment she returns. It's a win-back engine, not a newsletter."
 
+**"Do I have to replace my Mindbody / PushPress / Square? I already pay for software that sends texts and emails."**
+> "No — and that's the whole point. Clicktide sits *on top* of the software you already run; it doesn't replace it. Your gym or salon system already handles the re-engagement texts and emails, so we don't compete with that — we connect read-only (no new hardware, about ten minutes) and add the one thing none of those tools do well: a real mailed postcard in your colors and a small branded gift on the customer's doorstep, fired off who's *actually* drifting in your register. An email gets swiped away; a gift sitting on the porch doesn't. Keep everything you already have — we're the layer on top, not a rip-and-replace."
+
 **"What if the customer comes back on their own?"**
 > "Then the clock resets and all future sends stop automatically — we don't message active customers. The one physical exception: if a postcard was already printed and in the mail before their visit, it may still arrive, because paper can't be recalled. Everything after the visit stops."
+
+**"How do you actually know when one of my customers is drifting? I'm not sure I even know their schedule."**
+> "That's exactly why Clicktide doesn't ask you to guess. It reads each customer's own history and learns *their* normal — some come weekly, some once a quarter — and only flags someone once they've gone quiet past their own usual gap. So you don't have to set one number for everybody, and a customer who was always a once-a-season visitor won't get chased like a weekly regular. New customers without much history yet use the drift window you set, until their own pattern shows up. It's the difference between a stopwatch and actually knowing the person."
+
+**"I turned it on but nobody's come back yet — is it broken?"**
+> "Almost certainly not — it's working in the background right now. A win-back is deliberately spaced (a text first, then a postcard, then a small gift), and most people come back two to six weeks *after* those land — the postcard and gift may still be in the mail. Your dashboard shows this honestly: until the first returns come in, you'll see an 'engine running — give it time' panel, and the moment someone walks back in, a green 'Win-back results' card names them and counts the dollars they brought. An empty 'recovered' number in week one isn't failure — it's the touches still doing their job. The Monday Drift Report is your proof the system's watching the right people the whole time."
 
 **"Where do you get my customers' mailing addresses for postcards and gifts?"**
 > "Three ways, in order: if your register has the address on file, we import it. If not, the customer gets a friendly note — 'June's Beauty Bar has a little something they want to mail you, tell us where to send it' — with a secure form. And anything still missing, you can fill in yourself when you approve the send. We never buy addresses from data brokers."
@@ -153,8 +167,13 @@ A texting-only buyer fits **Local at $49** — if they never fund the wallet, th
 - "Nobody throws away a free mug."
 - "Money needs a yes."
 - "We don't message active customers."
+- "We watch each customer against their own rhythm — not a stopwatch."
+- "It's working before they walk back in."
+- "Catch them on the way in, catch them on the way out."
 - "Protect what you already paid to earn."
 - "The thank-you after their biggest yes is the cheapest insurance in business."
+- "We're the layer on top, not the rip-and-replace."
+- "Your software already sends the text. We send the thing they can hold."
 
 ## Account & login basics
 
