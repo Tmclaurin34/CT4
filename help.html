@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Help center — Clicktide</title>
+<meta name="description" content="Answers to common questions about Clicktide: getting started, connecting your register, campaigns, gifts, texting, billing and canceling."/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+<style>
+:root{--ink:#0B0F19;--muted:#5B6474;--line:#E6E8EE;--bg:#F7F8FB;--accent:#0B62D6}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.65}
+header{background:#fff;border-bottom:1px solid var(--line)}
+.wrap{max-width:760px;margin:0 auto;padding:0 20px}
+.top{display:flex;align-items:center;justify-content:space-between;height:64px}
+.logo{font-weight:800;letter-spacing:1.5px;text-decoration:none;color:var(--ink)}
+.logo span{color:#4DA6FF}
+.top a.btn{font-size:14px;text-decoration:none;color:#fff;background:var(--ink);padding:9px 16px;border-radius:10px}
+h1{font-size:32px;margin:40px 0 6px}
+.sub{color:var(--muted);margin:0 0 22px}
+.search{width:100%;padding:13px 16px;border:1px solid var(--line);border-radius:12px;font-size:15px;background:#fff}
+nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 8px}
+nav.toc a{font-size:13px;text-decoration:none;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:100px;padding:6px 12px}
+h2{font-size:20px;margin:38px 0 10px}
+details{background:#fff;border:1px solid var(--line);border-radius:12px;margin:0 0 10px;padding:0 18px}
+summary{cursor:pointer;font-weight:600;padding:15px 0;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary:after{content:"+";float:right;color:var(--muted)}
+details[open] summary:after{content:"–"}
+details p,details ul{margin:0 0 15px;color:#273041;font-size:15px}
+details ul{padding-left:20px}
+.contact{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;margin:40px 0}
+.contact a{color:var(--accent)}
+footer{color:var(--muted);font-size:13px;padding:10px 0 40px}
+footer a{color:var(--muted)}
+.hide{display:none}
+</style>
+</head>
+<body>
+<header><div class="wrap top"><a class="logo" href="/">CLICK<span>TIDE</span></a><a class="btn" href="/">Back to Clicktide</a></div></header>
+<main class="wrap">
+<h1>Help center</h1>
+<p class="sub">Quick answers for business owners using Clicktide. Can't find it? Email <a href="mailto:support@goclicktide.com">support@goclicktide.com</a>.</p>
+<input class="search" id="q" type="search" placeholder="Search help (e.g. cancel, Square, texts, wallet)" oninput="filterHelp(this.value)" aria-label="Search help"/>
+<nav class="toc"><a href="#start">Getting started</a><a href="#connect">Connecting your register</a><a href="#campaigns">Campaigns</a><a href="#gifts">Gifts &amp; wallet</a><a href="#texts">Texting</a><a href="#billing">Billing &amp; canceling</a><a href="#privacy">Your data</a></nav>
+
+<section id="start"><h2>Getting started</h2>
+<details><summary>What does Clicktide do?</summary><p>Clicktide watches your customer activity and, when a regular starts slipping away, sends them something from you: an email, a text, a mailed postcard, or a small branded gift. It runs on its own once your campaigns are on.</p></details>
+<details><summary>How long does setup take?</summary><p>About 10 minutes: pick your business type, create your account, connect your register, choose a gift and your triggers, then go live.</p></details>
+<details><summary>Why didn't anything send right after I connected?</summary><p>For the first 48 hours after your register connects, Clicktide doesn't send anything. That gives your customer history time to import so nobody gets a message based on incomplete data. After that, campaigns check for matches every hour.</p></details>
+<details><summary>Will my existing customers get blasted on day one?</summary><p>No. Welcome and milestone campaigns only react to visits that happen after you turn the campaign on. Win-back campaigns look at how long it's been since each customer's last visit, and each campaign has a cooldown so the same person isn't contacted again too soon.</p></details>
+</section>
+
+<section id="connect"><h2>Connecting your register</h2>
+<details><summary>Which systems can I connect?</summary><p>Square, Clover and Shopify connect directly. You can also add customers by importing a spreadsheet. More integrations are on the way; email us if you need one.</p></details>
+<details><summary>Can Clicktide change anything in my register?</summary><p>No. Access is read-only. Clicktide reads customers and visits so it knows who's drifting. It never charges cards, edits orders or changes your settings.</p></details>
+<details><summary>My customers aren't showing up.</summary><p>Give the first import a few minutes, then refresh. If the list is still empty, disconnect and reconnect from your dashboard, or email support with your business name and we'll check it.</p></details>
+</section>
+
+<section id="campaigns"><h2>Campaigns</h2>
+<details><summary>What triggers can I use?</summary><ul><li>Win-back: a customer hasn't been back in a while (Clicktide learns each customer's normal rhythm)</li><li>Welcome and second-visit nudges for new customers</li><li>Visit milestones, big spenders and VIPs</li><li>Anniversaries</li></ul></details>
+<details><summary>Who gets skipped?</summary><p>Customers who rated their experience poorly are skipped for reward campaigns, people who unsubscribed aren't emailed, and texts only go to people who opted in. Each business also has an hourly send cap as a safety limit.</p></details>
+<details><summary>Can I pause a campaign?</summary><p>Yes. Open Campaigns in your dashboard and switch it off. Nothing else sends from it until you turn it back on.</p></details>
+</section>
+
+<section id="gifts"><h2>Gifts &amp; wallet</h2>
+<details><summary>How are gifts paid for?</summary><p>Physical gifts are paid from your gift wallet, which you add funds to from the Wallet page. The cost is taken out when an item is sent, and every charge shows in your wallet history.</p></details>
+<details><summary>What if a customer's mailing address is missing?</summary><p>Clicktide asks the customer directly with a secure link (by text if they opted in, otherwise email). It only asks for a mailing address, never payment details. Once they fill it in, the address appears on their profile.</p></details>
+<details><summary>Do gifts send automatically?</summary><p>Only if you turn on gift auto-send. Otherwise each matched gift waits in your dashboard for you to review and send.</p></details>
+<details><summary>Can I get unused wallet funds back?</summary><p>Yes. Email support and we'll refund your unused balance.</p></details>
+<details><summary>How do I track a gift?</summary><p>Open Shipments in your dashboard to follow each gift from branded to boxed, shipped and delivered.</p></details>
+</section>
+
+<section id="texts"><h2>Texting</h2>
+<details><summary>Who can receive texts?</summary><p>Only customers who have opted in to texts from your business. Clicktide checks consent before every text.</p></details>
+<details><summary>How do customers stop texts?</summary><p>They can reply STOP at any time and won't get more texts. Replying HELP returns contact info.</p></details>
+</section>
+
+<section id="billing"><h2>Billing &amp; canceling</h2>
+<details><summary>Is there a free trial?</summary><p>Yes, 30 days. If you cancel during the trial, you aren't charged.</p></details>
+<details><summary>How do I cancel or change my plan?</summary><p>In your dashboard, tap <b>Manage subscription</b>. From there you can switch plans, update your card, or cancel.</p></details>
+<details><summary>Where are my invoices?</summary><p>Tap <b>Manage subscription</b> in your dashboard to view and download past invoices.</p></details>
+</section>
+
+<section id="privacy"><h2>Your data</h2>
+<details><summary>Who can see my customer list?</summary><p>Only you and, when you ask for help, Clicktide support. We never sell your customer data. See our <a href="/privacy">privacy policy</a>.</p></details>
+<details><summary>How do I delete my account?</summary><p>Cancel your subscription, then email <a href="mailto:support@goclicktide.com">support@goclicktide.com</a> from your account email and we'll delete your account and customer data.</p></details>
+</section>
+
+<div class="contact"><b>Still stuck?</b><br/>Email <a href="mailto:support@goclicktide.com">support@goclicktide.com</a> or use the chat button in your dashboard.</div>
+<p id="none" class="sub hide">No answers match that search. Try another word, or email support.</p>
+</main>
+<footer class="wrap"><a href="/">Clicktide</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/sms-policy">SMS policy</a> · <a href="/billing-policy">Billing policy</a></footer>
+<script>
+function filterHelp(q){q=q.trim().toLowerCase();var any=false;document.querySelectorAll("details").forEach(function(d){var hit=!q||d.textContent.toLowerCase().indexOf(q)>-1;d.classList.toggle("hide",!hit);if(hit)any=true;if(q&&hit)d.open=true;});document.querySelectorAll("section").forEach(function(s){s.classList.toggle("hide",!s.querySelector("details:not(.hide)"));});document.getElementById("none").classList.toggle("hide",any);}
+</script>
+</body>
+</html>
