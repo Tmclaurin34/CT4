@@ -13,6 +13,8 @@ const resendFrom = Deno.env.get("RESEND_FROM_EMAIL") || "Clicktide <support@gocl
 const twilioSid = Deno.env.get("TWILIO_ACCOUNT_SID") || "";
 const twilioToken = Deno.env.get("TWILIO_AUTH_TOKEN") || "";
 const twilioFrom = Deno.env.get("TWILIO_FROM_NUMBER") || "";
+// A2P 10DLC approved Messaging Service — preferred sender.
+const twilioMessagingService = Deno.env.get("TWILIO_MESSAGING_SERVICE_SID") || "MG4c1badf5712739590510f936bbd0bc1a";
 const lobKey = Deno.env.get("LOB_API_KEY") || "";
 const POSTCARD_PRICE = 1.5; // debited from the gift wallet per mailed postcard
 const ADDRESS_FORM_URL = "https://goclicktide.com/gift-address";
@@ -322,13 +324,15 @@ async function sendEmail(to: string, subject: string, message: string, businessN
 }
 
 async function sendSms(campaign: Campaign, customer: Customer, body: string) {
-  if (!twilioSid || !twilioToken || !twilioFrom) {
+  if (!twilioSid || !twilioToken || (!twilioMessagingService && !twilioFrom)) {
     return { ok: false, detail: "Twilio is not configured" };
   }
   const toPhone = normalizePhone(customer.phone);
   if (!toPhone) return { ok: false, detail: "Invalid phone" };
 
-  const form = new URLSearchParams({ To: toPhone, From: twilioFrom, Body: body.slice(0, 1500) });
+  const form = new URLSearchParams({ To: toPhone, Body: body.slice(0, 1500) });
+  if (twilioMessagingService) form.set("MessagingServiceSid", twilioMessagingService);
+  else form.set("From", twilioFrom);
   const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`, {
     method: "POST",
     headers: {

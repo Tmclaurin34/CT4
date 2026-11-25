@@ -113,7 +113,9 @@ Deno.serve(async (req) => {
     const serviceRoleKey = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
     const accountSid = requiredEnv("TWILIO_ACCOUNT_SID");
     const authToken = requiredEnv("TWILIO_AUTH_TOKEN");
-    const fromNumber = requiredEnv("TWILIO_FROM_NUMBER");
+    // A2P 10DLC: send through the approved Messaging Service; fall back to a raw From number.
+    const messagingServiceSid = Deno.env.get("TWILIO_MESSAGING_SERVICE_SID") || "MG4c1badf5712739590510f936bbd0bc1a";
+    const fromNumber = Deno.env.get("TWILIO_FROM_NUMBER") || "";
 
     const authHeader = req.headers.get("Authorization") || "";
     if (!authHeader.startsWith("Bearer ")) return json({ error: "Missing authorization" }, 401);
@@ -132,11 +134,10 @@ Deno.serve(async (req) => {
     if (!toPhone) return json({ error: "Customer phone number is missing or invalid" }, 400);
 
     const message = body.message.trim().slice(0, 1500);
-    const form = new URLSearchParams({
-      To: toPhone,
-      From: fromNumber,
-      Body: message,
-    });
+    const form = new URLSearchParams({ To: toPhone, Body: message });
+    if (messagingServiceSid) form.set("MessagingServiceSid", messagingServiceSid);
+    else if (fromNumber) form.set("From", fromNumber);
+    else return json({ error: "Twilio sender is not configured" }, 500);
 
     const twilioResponse = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
       method: "POST",

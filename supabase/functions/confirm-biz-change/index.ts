@@ -192,8 +192,10 @@ Deno.serve(async (req) => {
           const sid = Deno.env.get("TWILIO_ACCOUNT_SID") ?? "";
           const tok = Deno.env.get("TWILIO_AUTH_TOKEN") ?? "";
           const from = Deno.env.get("TWILIO_FROM_NUMBER") ?? "";
-          if (!sid || !tok || !from) return json({ error: "Texting isn't available right now — use email instead." }, 503);
-          const form = new URLSearchParams({ From: from, To: e164(destPhone), Body: `Clicktide: ${code} is your confirmation code for updating your business info. Expires in ${CODE_TTL_MIN} minutes.` });
+          const mgs = Deno.env.get("TWILIO_MESSAGING_SERVICE_SID") || "MG4c1badf5712739590510f936bbd0bc1a";
+          if (!sid || !tok || (!mgs && !from)) return json({ error: "Texting isn't available right now — use email instead." }, 503);
+          const form = new URLSearchParams({ To: e164(destPhone), Body: `Clicktide: ${code} is your confirmation code for updating your business info. Expires in ${CODE_TTL_MIN} minutes.` });
+          if (mgs) form.set("MessagingServiceSid", mgs); else form.set("From", from);
           const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
             method: "POST",
             headers: { Authorization: `Basic ${btoa(`${sid}:${tok}`)}`, "Content-Type": "application/x-www-form-urlencoded" },
