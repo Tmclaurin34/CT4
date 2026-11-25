@@ -6,12 +6,16 @@
 2. Onboarding answers survive Back / refresh before the account is activated:
    progress (incl. the check-your-email state) is restored when the visitor
    returns to onboarding without a session. Passwords are never stored.
+3. Signing up with an email that already has an account now says so (Supabase
+   returns a look-alike success with no email sent, which left people waiting
+   on a "Check your email" screen forever).
 Idempotent: re-running on a patched file changes nothing."""
 import sys
 
 path = sys.argv[1] if len(sys.argv) > 1 else "index.html"
 s = open(path, encoding="utf-8").read()
-if "function obChangeEmail" in s:
+already = "function obChangeEmail" in s and "_ids.length===0" in s
+if already:
     print("already patched"); sys.exit(0)
 
 def rep(old, new):
@@ -20,6 +24,14 @@ def rep(old, new):
     if n != 1:
         sys.exit(f"patch anchor found {n} times (expected 1): {old[:70]!r}")
     s = s.replace(old, new)
+
+# 0) existing account -> clear message instead of a silent no-email "success"
+if "_ids.length===0" not in s:
+    rep('''throw new Error(d.msg||d.error_description||(d.error&&d.error.message)||"Sign-up failed — please try again");}return d;},''',
+        '''throw new Error(d.msg||d.error_description||(d.error&&d.error.message)||"Sign-up failed — please try again");}var _ids=(d&&d.user&&d.user.identities)||(d&&d.identities);if(!d.access_token&&Array.isArray(_ids)&&_ids.length===0)throw new Error("An account with this email already exists — log in instead, or use Forgot password.");return d;},''')
+
+if "function obChangeEmail" in s:
+    open(path, "w", encoding="utf-8").write(s); print("patched (existing-account check)", path); sys.exit(0)
 
 # 1) button under "Resend email"
 rep('''onclick="resendConfirm(this)">Didn't get it? Resend email</button>''',
