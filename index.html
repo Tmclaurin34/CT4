@@ -825,7 +825,7 @@ function buildDemoData(){
 }
 function demoSel(t,f){
   if(!DEMO_DATA)buildDemoData();
-  if(t==="clicktide")return [Object.assign({},DEMO_BIZ)];
+  if(t==="clicktide")return [Object.assign({},DEMO_BIZ,{plan:(bizLock&&bizLock.plan)||DEMO_BIZ.plan})];
   if(DEMO_DATA[t])return DEMO_DATA[t].slice();
   return [];
 }
@@ -883,15 +883,17 @@ function demoCustomersResponse(q){
 function demoRibbon(){
   return '<div style="background:#0B62D6;color:#FFFFFF;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;padding:9px 14px;font-size:12.5px;font-weight:600;text-align:center;line-height:1.4">You’re exploring a live demo — sample data, nothing is ever sent. <button onclick="exitDemo()" style="background:rgba(255,255,255,.18);color:#FFFFFF;border:1px solid rgba(255,255,255,.55);border-radius:7px;padding:5px 13px;font-size:12px;font-weight:700;cursor:pointer">Exit demo</button></div>';
 }
-function startDemo(){
+function startDemo(plan){
   DEMO=true;buildDemoData();
   S={token:"DEMO",user:{id:"demo-user",email:"demo@goclicktide.com"}};
-  bizLock=DEMO_BIZ;
+  // ?demo=scale shows the Scale ($349) experience: white-label sidebar, AI suggestions, custom dashboard colors.
+  var demoPlan=(plan==="scale"||plan==="local")?plan:"growth";
+  bizLock=Object.assign({},DEMO_BIZ,{plan:demoPlan});
   brandColor="#C2185B";brandLogoUrl=""; // demo brand (salon rose) so branded previews aren't the placeholder navy — in-memory only, doesn't touch the real Brand Studio
   try{localStorage.setItem("ct_churn","45");}catch(e){}
   window._cuFilter="all";
   scr="dash";dpg="overview";
-  try{history.replaceState({},"","?demo=1");}catch(e){}
+  try{history.replaceState({},"","?demo="+(demoPlan==="growth"?"1":demoPlan));}catch(e){}
   R();
 }
 function exitDemo(){
@@ -5305,7 +5307,7 @@ window.addEventListener("unhandledrejection",function(){var a=document.getElemen
 (function(){var _R=R;R=function(){try{return _R.apply(this,arguments);}catch(e){ctRecoveryUI();throw e;}};})();
 
 __navReady=true;__navKey=navKey();history.replaceState(navState(),"","");
-try{if(new URLSearchParams(location.search).get("demo")==="1"){startDemo();}else{R();}}catch(e){ctRecoveryUI();}
+try{var _dq=new URLSearchParams(location.search).get("demo");if(_dq==="1"||_dq==="growth"||_dq==="scale"||_dq==="local"){startDemo(_dq);}else{R();}}catch(e){ctRecoveryUI();}
 
 </script>
 <script>
