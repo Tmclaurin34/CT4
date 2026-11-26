@@ -19,9 +19,9 @@ type CheckoutBody = {
 // Prices are HARDCODED on purpose: stale GROWTH_PRICE_ID/SCALE_PRICE_ID env vars
 // on the project would silently override fallbacks — never reintroduce env reads here.
 const planPrices: Record<string, string> = {
-  Local: "price_1ThaasGWBWEX8wHssSYEbwEl",   // $49/mo
-  Growth: "price_1ThbjeGWBWEX8wHsElMt4z3Z",  // $149/mo
-  Scale: "price_1ThbjeGWBWEX8wHsNrw2mjPF",   // $349/mo
+  Local: "price_1TjhtKGWBWEX8wHsjfvhyPBa",   // $79/mo
+  Growth: "price_1Tjhv8GWBWEX8wHsQ3nBFXDm",  // $199/mo
+  Scale: "price_1TjhwWGWBWEX8wHsAtmldOt9",   // $449/mo
 };
 const canonicalPlans = Object.keys(planPrices);
 
@@ -79,6 +79,33 @@ async function authedUserId(req: Request) {
   if (!response.ok) return "";
   const user = await response.json();
   return String(user?.id || "");
+}
+
+// The plan a business is checking out with is recorded here, server-side, as
+// clicktide.selected_plan. It is only a preference (shown in the back office and
+// used to resume onboarding on another device). The real `plan` is written by
+// stripe-webhook from the Stripe price once checkout completes — the database
+// ignores `plan` and every billing column when they come from the browser
+// (migration 20261126030000_protect_billing_columns).
+async function recordSelectedPlan(userId: string, plan: string) {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://hmihfncvahsdlmefyxyg.supabase.co";
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  if (!serviceRoleKey || !userId || !plan) return;
+  try {
+    await fetch(`${supabaseUrl}/rest/v1/clicktide?user_id=eq.${encodeURIComponent(userId)}`, {
+      method: "PATCH",
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({ selected_plan: plan }),
+      signal: AbortSignal.timeout(4000),
+    });
+  } catch {
+    // Bookkeeping only — never block or fail a checkout because of it.
+  }
 }
 
 Deno.serve(async (req) => {
@@ -187,6 +214,10 @@ Deno.serve(async (req) => {
   if (!stripeResponse.ok) {
     return json({ error: data?.error?.message || "Stripe checkout failed" }, stripeResponse.status);
   }
+
+  // body.user_id was matched to the caller's login above, so this only ever
+  // touches the signed-in business's own row.
+  if (isSubscription && body.user_id) await recordSelectedPlan(body.user_id, subscriptionPlan);
 
   return json({ url: data.url, id: data.id, plan: isSubscription ? subscriptionPlan : undefined, price_id: isSubscription ? planPrices[subscriptionPlan] : undefined });
 });

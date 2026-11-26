@@ -1034,7 +1034,9 @@ async function ensureBizProfile(tok,user,extra){
       city:(extra&&extra.city)||m.city||"",
       state:(extra&&extra.state)||m.state||"",
       zip:(extra&&extra.zip)||m.zip||"",
-      plan:(extra&&extra.plan)||m.plan||"Growth",
+      // The plan they PICKED — a preference only. The paid `plan` column is written by the
+      // Stripe webhook after checkout; the database ignores `plan` sent from the browser.
+      selected_plan:normalizePlan((extra&&extra.plan)||m.plan)||"Growth",
       legal_terms_accepted_at:(extra&&extra.legal_terms_accepted_at)||m.legal_terms_accepted_at||null,
       legal_terms_version:(extra&&extra.legal_terms_version)||m.legal_terms_version||null,
       legal_authorized_services:(extra&&extra.legal_authorized_services)||m.legal_authorized_services||false,
@@ -1820,7 +1822,11 @@ function hydrateOnboardingFromBiz(biz){
   obE=obE||biz.email||S?.user?.email||"";obN=obN||biz.business_name||"";obNm=obNm||biz.contact_name||"";obPh=obPh||biz.phone||"";
   obBph=obBph||biz.business_phone||"";obBem=obBem||biz.business_email||biz.email||"";obAddr=obAddr||biz.address||"";
   obCity=obCity||biz.city||"";obState=obState||biz.state||"";obZip=obZip||biz.zip||"";
+  // biz.plan = the paid plan (set by Stripe); biz.selected_plan = what they picked before paying.
+  // A paid plan always wins; a saved pick only fills in when this browser has no pick of its own
+  // (e.g. finishing sign-up on another device), so it never overrides a plan just chosen here.
   if(biz.plan)saveSelectedPlan(biz.plan);
+  else if(biz.selected_plan&&!storedPlan())saveSelectedPlan(biz.selected_plan);
   if(biz.business_type&&!obB){obB=biz.business_type;obCat=obCat||"other";}
   if(biz.churn_days&&!obDy)obDy=Number(biz.churn_days)||obDy;
 }
@@ -1912,7 +1918,8 @@ function openDashboardNow(){
     obCampaignSkipped=params.get("campaign")==="skip";
     obN=biz;obS=6;scr="onboard";
     saveOnboardingProgress();
-    if(S?.token)setBizFields({plan,onboarding_complete:true});
+    // The plan itself is set server-side by the Stripe webhook — never from the browser.
+    if(S?.token)setBizFields({onboarding_complete:true});
     history.replaceState({},"",window.location.pathname);
     return;
   }
@@ -3117,7 +3124,7 @@ async function oSignup(){
     const v0=validSignup({name:nm,email:S.user.email||e,phone:ph,pw:"unchanged",biz:n,bphone:bph,bemail:bem,address:addr,city:city,state:state,zip:zip});
     if(v0){err.textContent=v0;err.style.display="block";return;}
     btn.textContent="Saving...";btn.disabled=true;err.style.display="none";
-    const ok=await setBizFields({business_name:n,contact_name:nm,phone:ph,business_phone:bph,business_email:bem,address:addr2?addr+", "+addr2:addr,city:city,state:state,zip:zip,business_type:obB||obCat||"other",plan:chosenPlan});
+    const ok=await setBizFields({business_name:n,contact_name:nm,phone:ph,business_phone:bph,business_email:bem,address:addr2?addr+", "+addr2:addr,city:city,state:state,zip:zip,business_type:obB||obCat||"other",selected_plan:chosenPlan});
     btn.disabled=false;btn.textContent="Save changes →";
     if(ok){localStorage.setItem("ct_biztype",obB||obCat||"other");obS=2;saveOnboardingProgress();R();}
     else{err.textContent="Couldn't save your changes — please try again.";err.style.display="block";}

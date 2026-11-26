@@ -3,6 +3,10 @@
 ## Database
 - [ ] Run `supabase/migrations/20260611000000_full_schema_snapshot.sql` (fresh installs)
 - [ ] Run `supabase/migrations/20260611000001_upgrade_and_lockdown.sql` (always — columns, backfill, RPC revokes)
+- [ ] Run `supabase/migrations/20261126030000_protect_billing_columns.sql` (always — SECURITY: without it any signed-in
+      owner can give themselves a paid plan / "active" billing / wallet money from the browser. Makes `plan`, the
+      `stripe_*` columns, `email` and `user_id` on `clicktide` server-only and the `wallet` ledger read-only for owners.
+      Verify after running: as a normal owner, `PATCH /rest/v1/clicktide {"plan":"Scale"}` returns 200 but `plan` does not change)
 - [ ] Create Vault secret `CAMPAIGN_RUNNER_KEY` (Dashboard → Vault) — campaign engine auth depends on it
 - [ ] Enable pg_cron jobs: campaign-runner hourly (`0 * * * *`), platform-sync daily (`0 6 * * *`),
       weekly-drift-report Mon (`0 12 * * 1`), ai-suggest-campaigns Mon (`0 13 * * 1`) — commands use
