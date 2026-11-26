@@ -353,6 +353,25 @@ Deno.serve(async (req) => {
       throw error;
     }
 
+    // Auto-submit the order to production so a funded order flows without a manual
+    // "Submit" click in the Printify dashboard. Best-effort by design: this is the step
+    // Printify charges the card on file, so if the account has no payment method (or any
+    // other submit error), we DON'T fail the send or lose the shipment — the order stays
+    // a draft in Printify (submittable once billing is fixed) and we flag it in the
+    // response + on the shipment so the owner knows to add a Printify payment method.
+    const orderId = order?.id ? String(order.id) : "";
+    let production = false;
+    let productionNote = "";
+    if (orderId) {
+      try {
+        await printify(`/shops/${printifyShopId}/orders/${orderId}/send_to_production.json`, { method: "POST" });
+        production = true;
+      } catch (error) {
+        productionNote = error instanceof Error ? error.message : "Could not submit to production";
+        console.error("send_to_production failed:", productionNote);
+      }
+    }
+
     const shipment = await recordShipment({
       user_id: userId,
       merchant_id: userId,
@@ -362,19 +381,22 @@ Deno.serve(async (req) => {
       address,
       gift: giftName,
       campaign: campaignId,
-      status: "processing",
+      status: production ? "in_production" : "processing",
       platform: "printify",
-      printify_order_id: order.id ? String(order.id) : null,
+      printify_order_id: orderId || null,
       gift_type: "physical_gift",
+      reason: productionNote || null,
     });
 
     return json({
       ok: true,
       shipment,
-      printify_order_id: order.id || null,
+      printify_order_id: orderId || null,
       wallet_balance: newBalance,
       branded_with: logoUrl ? "business_logo" : "catalog_design",
-      status: "processing",
+      production,
+      production_note: productionNote || null,
+      status: production ? "in_production" : "processing",
     });
   } catch (error) {
     console.error("fulfill-gift error:", error);

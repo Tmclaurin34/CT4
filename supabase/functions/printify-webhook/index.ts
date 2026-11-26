@@ -1,13 +1,19 @@
 // Printify webhook: keeps shipments in sync AND turns tracking events into
 // touchpoints — "shipped" emails the customer a branded gift-on-the-way note
 // with the tracking link; "delivered" alerts the owner to follow up personally.
-// Deployed v7 2026-06-11; mirrors live source.
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const webhookSecret = Deno.env.get("PRINTIFY_WEBHOOK_SECRET") || "";
 const resendApiKey = Deno.env.get("RESEND_API_KEY") || "";
 const resendFrom = Deno.env.get("RESEND_FROM_EMAIL") || "Clicktide <support@goclicktide.com>";
+const EMAIL_FROM_DOMAIN = "support@goclicktide.com"; // verified Resend sender; display name is the business
+const EMAIL_FOOTER_ADDR = "Glen Cove, NY 11542"; // interim — replace with the PO Box / business address (CAN-SPAM physical address)
+// Customer-facing "From" shows the BUSINESS name (recipients recognize their shop, not "Clicktide").
+function bizFrom(name: string): string {
+  const clean = (name || "Clicktide").replace(/[<>"\r\n,;]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60) || "Clicktide";
+  return `${clean} <${EMAIL_FROM_DOMAIN}>`;
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -85,7 +91,7 @@ function brandedShell(businessName: string, inner: string, whiteLabel: boolean, 
     <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#FFFFFF;border-radius:14px;border:1px solid #E9EBEF">
       <tr><td align="center" style="padding:26px 30px 20px;border-bottom:1px solid #F0F1F4">${header}</td></tr>
       <tr><td style="padding:26px 30px;color:#1F2937;font-size:15px;line-height:1.7">${inner}</td></tr>
-      <tr><td align="center" style="padding:16px 30px 22px;border-top:1px solid #F0F1F4;font-size:11px;color:#9CA3AF">${whiteLabel ? escapeHtml(businessName) : `Sent by Clicktide on behalf of ${escapeHtml(businessName)} · goclicktide.com`}</td></tr>
+      <tr><td align="center" style="padding:16px 30px 22px;border-top:1px solid #F0F1F4;font-size:11px;color:#9CA3AF;line-height:1.7">${whiteLabel ? "" : "Sent via Clicktide &middot; "}${escapeHtml(businessName)}, ${EMAIL_FOOTER_ADDR}</td></tr>
     </table></td></tr></table></div>`;
 }
 
@@ -127,7 +133,7 @@ async function sendGiftOnTheWay(ship: ShipRow, carrier: string, num: string) {
     method: "POST",
     headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: resendFrom,
+      from: bizFrom(businessName),
       to: [ship.customer_email],
       subject: `Your gift from ${businessName} is on the way \u{1F381}`,
       html: brandedShell(businessName, inner, whiteLabel, String(biz?.logo_url || "")),

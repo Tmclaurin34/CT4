@@ -27,7 +27,6 @@
 </head>
 <body>
 <div class="card" id="card">
-  <div class="gift">🎁</div>
   <h1 id="hd">One moment…</h1>
   <p id="sub"></p>
   <form id="f" class="hide" onsubmit="return false">
@@ -71,7 +70,7 @@ async function send(){
     var d=await r.json();
     if(!r.ok||!d.ok){err.textContent=(d&&d.error)||"Something went wrong — please try again.";err.style.display="block";b.disabled=false;b.textContent="Send my gift here →";return;}
     f.classList.add("hide");
-    hd.textContent="Perfect — it's on its way! 🎉";
+    hd.textContent="Perfect — it's on its way!";
     sub.textContent="Keep an eye on your mailbox. (You can close this page.)";
   }catch(e){err.textContent="Network hiccup — please try again.";err.style.display="block";b.disabled=false;b.textContent="Send my gift here →";}
 }

@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clicktide — win-back hero band</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Inter:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* =====================================================================
+   CLICKTIDE — animated win-back hero band  (drop-in, self-contained)
+   Palette: light blue #38BDF8 + gold #FFD166 + white on dark.
+   The 3D machine is 100% CSS. Terminal uses CSS animation + tiny JS loop.
+   ===================================================================== */
+
+.cc-band{
+  --cc-blue:#38BDF8;
+  --cc-sky:#7DD3FC;
+  --cc-blue-deep:#0EA5E9;
+  --cc-gold:#FFD166;
+  --cc-bg:#080D18;
+  --cc-term:#12121e;
+  --cc-panel:#0b0e18;
+  --cc-ink:#F0F4FF;
+  background:var(--cc-bg);
+  color:var(--cc-ink);
+  padding:74px 24px 84px;
+  font-family:'DM Sans','Inter',sans-serif;
+  position:relative;
+  overflow:hidden;
+}
+/* soft blue aura behind the whole band */
+.cc-band::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 0%, rgba(56,189,248,.10), transparent 65%),
+    radial-gradient(ellipse 40% 40% at 82% 90%, rgba(255,209,102,.05), transparent 70%);
+}
+
+/* ---------- heading (optional — delete this block if not wanted) ---------- */
+.cc-head{max-width:760px;margin:0 auto 40px;text-align:center;position:relative;z-index:1}
+.cc-kick{display:block;font-size:11.5px;font-weight:800;letter-spacing:.24em;text-transform:uppercase;color:var(--cc-sky);margin-bottom:14px}
+.cc-title{font-family:'Space Grotesk',sans-serif;font-size:clamp(28px,4vw,44px);font-weight:800;letter-spacing:-.03em;line-height:1.08;margin:0 0 14px}
+.cc-title .g{background:linear-gradient(96deg,#BAE6FD,#38BDF8 55%,#0EA5E9);-webkit-background-clip:text;background-clip:text;color:transparent}
+.cc-sub{color:rgba(240,244,255,.55);font-size:16px;line-height:1.7;margin:0 auto;max-width:560px}
+
+/* ========================= STAGE ========================= */
+.cc-stage{position:relative;max-width:1040px;margin:0 auto;z-index:1}
+.cc-stage::before{
+  content:"";position:absolute;inset:-26px;border-radius:28px;z-index:-1;
+  background:radial-gradient(at center top, rgba(56,189,248,.12), transparent 60%);
+  filter:blur(46px);opacity:.8;pointer-events:none;
+}
+
+/* two columns */
+.cc-duo{display:flex;gap:16px;width:100%;align-items:stretch;text-align:left}
+
+/* ===================== LEFT: TERMINAL ===================== */
+.cc-terminal{
+  flex:1 1 0%;min-width:0;
+  background:linear-gradient(180deg,#15151f,#101019);
+  border:1px solid rgba(56,189,248,.16);
+  border-radius:14px;overflow:hidden;
+  box-shadow:0 18px 60px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04);
+  font-family:ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,'Courier New',monospace;
+  display:flex;flex-direction:column;
+}
+.cc-tbar{display:flex;align-items:center;padding:11px 15px;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.06)}
+.cc-tdots{display:flex;gap:7px;margin-right:14px}
+.cc-tdot{width:11px;height:11px;border-radius:50%}
+.cc-tdot.r{background:#FF5F57}.cc-tdot.y{background:#FEBC2E}.cc-tdot.g{background:#28C840}
+.cc-ttitle{font-size:12px;color:rgba(255,255,255,.78);font-weight:600;letter-spacing:.02em}
+.cc-tpath{font-size:10.5px;color:rgba(255,255,255,.42);margin-left:auto}
+
+.cc-content{padding:15px 17px;font-size:12px;line-height:1.72;flex:1;max-height:500px;overflow:hidden;position:relative}
+.cc-line{opacity:0;display:block;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.cc-content.playing .cc-line{animation:ccShow .3s ease forwards var(--d)}
+
+/* line colors — all greens are now Clicktide blue */
+.cc-phase {color:var(--cc-sky);font-weight:700}          /* section headers */
+.cc-ok    {color:var(--cc-blue)}                          /* checkmarks (was green) */
+.cc-pin   {color:var(--cc-gold)}                          /* reading / bullets */
+.cc-prompt{color:var(--cc-blue)}                          /* prompt arrow (was purple) */
+.cc-mute  {color:rgba(240,244,255,.74)}                   /* body text */
+.cc-dim   {color:rgba(240,244,255,.4)}
+
+.cc-cursor{display:inline-block;width:8px;height:14px;background:var(--cc-blue);
+  animation:ccBlink 1s step-end infinite;vertical-align:middle;margin-left:3px;border-radius:1px;
+  box-shadow:0 0 8px rgba(56,189,248,.8)}
+
+/* ============ RIGHT: PURE-CSS 3D ISOMETRIC MACHINE ============ */
+.cc-machine{
+  flex:1 1 0%;min-width:0;
+  background:radial-gradient(120% 95% at 50% 6%, #16263f 0%, #0a0f1a 56%, #05070f 100%);
+  border:1px solid rgba(56,189,248,.28);
+  border-radius:14px;overflow:hidden;position:relative;
+  box-shadow:0 25px 80px rgba(0,0,0,.6), 0 0 130px rgba(56,189,248,.16), inset 0 0 60px rgba(56,189,248,.05);
+  min-height:460px;
+  animation:machineBreath 3.6s ease-in-out infinite;
+}
+/* faint floor grid */
+.cc-machine::before{
+  content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background:
+    repeating-linear-gradient(0deg,  rgba(56,189,248,.05) 0 1px, transparent 1px 34px),
+    repeating-linear-gradient(90deg, rgba(56,189,248,.05) 0 1px, transparent 1px 34px);
+  -webkit-mask-image:radial-gradient(ellipse 70% 70% at 50% 55%, #000 30%, transparent 80%);
+          mask-image:radial-gradient(ellipse 70% 70% at 50% 55%, #000 30%, transparent 80%);
+}
+
+.iso-scene{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;perspective:940px}
+.iso-float{animation:floatY 6s ease-in-out infinite;transform-style:preserve-3d}
+.iso{position:relative;transform-style:preserve-3d;transform:rotateX(-24deg) rotateY(-38deg) scale(1.06)}
+
+/* ground shadow + glow */
+.m-shadow{position:absolute;left:50%;bottom:58px;width:310px;height:72px;transform:translateX(-50%);
+  background:radial-gradient(ellipse at center, rgba(56,189,248,.36), rgba(0,0,0,.4) 46%, transparent 72%);
+  filter:blur(14px);border-radius:50%;z-index:0;animation:shadowBreath 3.6s ease-in-out infinite}
+
+/* the cuboid: reference box 200(w) x 150(h); all faces share center (100,75) */
+.cube{position:relative;width:200px;height:150px;transform-style:preserve-3d;z-index:2}
+.cube__face{position:absolute;box-sizing:border-box}
+
+.f-front{top:0;left:0;width:200px;height:150px;transform:translateZ(100px);
+  background:linear-gradient(165deg,#1c2c4a,#0a1120 70%);
+  border:1px solid rgba(56,189,248,.4);border-radius:7px;
+  box-shadow:inset 0 2px 0 rgba(125,211,252,.55), inset 0 0 46px rgba(56,189,248,.26), inset 0 -26px 38px rgba(0,0,0,.62);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;overflow:hidden}
+/* pulsing interior glow behind the wordmark */
+.f-front::before{content:"";position:absolute;left:25px;top:27px;width:150px;height:96px;
+  background:radial-gradient(ellipse at center, rgba(56,189,248,.6), rgba(56,189,248,.12) 55%, transparent 72%);
+  filter:blur(8px);z-index:0;animation:corePulse 3.6s ease-in-out infinite;pointer-events:none}
+.m-brand{position:relative;z-index:1;font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:22px;letter-spacing:.16em;
+  color:#fff;animation:brandPulse 3.6s ease-in-out infinite}
+.m-vent{position:relative;z-index:1;width:126px;height:10px;border-radius:6px;background:#060a12;overflow:hidden;
+  box-shadow:inset 0 0 8px rgba(0,0,0,.8),0 0 28px rgba(56,189,248,.75)}
+.m-vent::after{content:"";position:absolute;top:0;left:-40%;width:40%;height:100%;
+  background:linear-gradient(90deg,transparent,#7DD3FC,#38BDF8,transparent);
+  filter:blur(1px);animation:ventSweep 2.4s ease-in-out infinite}
+.m-leds{position:relative;z-index:1;display:flex;gap:7px}
+.m-leds i{width:6px;height:6px;border-radius:50%;background:var(--cc-blue);box-shadow:0 0 8px var(--cc-blue);
+  animation:ledFlick 1.6s ease-in-out infinite}
+.m-leds i:nth-child(2){animation-delay:.5s;background:var(--cc-gold);box-shadow:0 0 8px var(--cc-gold)}
+.m-leds i:nth-child(3){animation-delay:1s}
+
+.f-right{top:0;left:0;width:200px;height:150px;transform:rotateY(90deg) translateZ(100px);
+  background:linear-gradient(165deg,#0a1019,#04060b);border:1px solid rgba(56,189,248,.1);
+  box-shadow:inset 3px 0 0 rgba(56,189,248,.28), inset 0 0 60px rgba(0,0,0,.78);border-radius:7px}
+.f-right::before{content:"";position:absolute;inset:14px;border-radius:5px;opacity:.7;
+  background:repeating-linear-gradient(0deg, rgba(56,189,248,.08) 0 1px, transparent 1px 13px)}
+
+.f-left{top:0;left:0;width:200px;height:150px;transform:rotateY(-90deg) translateZ(100px);
+  background:linear-gradient(165deg,#0a1019,#04060b);border:1px solid rgba(56,189,248,.1);border-radius:7px}
+.f-left::before{content:"";position:absolute;top:50px;left:18px;width:10px;height:54px;border-radius:4px;
+  background:linear-gradient(180deg,#38BDF8,#0EA5E9);box-shadow:0 0 18px rgba(56,189,248,.85)}
+
+.f-top{top:-25px;left:0;width:200px;height:200px;transform:rotateX(90deg) translateZ(75px);
+  border:1px solid rgba(56,189,248,.34);border-radius:5px;overflow:hidden;
+  background:
+    repeating-linear-gradient(0deg,  rgba(56,189,248,.22) 0 1px, transparent 1px 20px),
+    repeating-linear-gradient(90deg, rgba(56,189,248,.22) 0 1px, transparent 1px 20px),
+    linear-gradient(160deg,#0c1626,#070b14);
+  box-shadow:inset 0 0 70px rgba(56,189,248,.4);
+  display:flex;align-items:center;justify-content:center}
+/* glowing core shining up through the grid */
+.f-top::before{content:"";position:absolute;inset:0;
+  background:radial-gradient(ellipse 60% 60% at 50% 50%, rgba(56,189,248,.8), rgba(56,189,248,.2) 52%, transparent 72%);
+  animation:corePulse 3.6s ease-in-out infinite}
+/* cycling status readout (pure CSS) */
+.m-status{position:relative;width:170px;height:22px;text-align:center}
+.m-status span{position:absolute;inset:0;opacity:0;font-family:ui-monospace,Menlo,monospace;
+  font-size:11px;font-weight:700;letter-spacing:.06em;color:#E0F4FF;text-shadow:0 0 9px rgba(56,189,248,.9);
+  display:flex;align-items:center;justify-content:center;animation:statusCycle 10s linear infinite}
+.m-status span:nth-child(1){animation-delay:0s}
+.m-status span:nth-child(2){animation-delay:2s}
+.m-status span:nth-child(3){animation-delay:4s}
+.m-status span:nth-child(4){animation-delay:6s}
+.m-status span:nth-child(5){animation-delay:8s}
+
+.f-bottom{top:-25px;left:0;width:200px;height:200px;transform:rotateX(-90deg) translateZ(75px);
+  background:#04060c;border-radius:5px}
+
+/* data sources feeding in from the left */
+.m-feed{position:absolute;left:12px;top:45%;transform:translateY(-50%);
+  display:flex;flex-direction:column;gap:13px;z-index:4}
+.m-chip{display:flex;align-items:center;gap:8px;padding:7px 12px 7px 9px;border-radius:11px;
+  background:rgba(17,25,42,.92);border:1px solid rgba(56,189,248,.28);
+  box-shadow:0 6px 22px rgba(0,0,0,.45);font-size:11px;font-weight:700;color:#dbeafe;white-space:nowrap;
+  animation:feedIn 3.9s ease-in-out infinite}
+.m-chip:nth-child(2){animation-delay:1.3s}
+.m-chip:nth-child(3){animation-delay:2.6s}
+.m-chip svg{width:16px;height:16px;flex-shrink:0;display:block}
+
+/* ============ GLOW STRIP under the duo ============ */
+.cc-emanation{position:relative;width:100%;max-width:1040px;margin:-1px auto 0;height:34px;overflow:hidden}
+.cc-emanation::before{content:"";position:absolute;top:0;left:25%;width:50%;height:100%;
+  background:linear-gradient(rgba(56,189,248,.16) 0%, rgba(56,189,248,.04) 60%, transparent 100%);
+  -webkit-mask-image:linear-gradient(to right, transparent, #000 18%, #000 82%, transparent);
+          mask-image:linear-gradient(to right, transparent, #000 18%, #000 82%, transparent)}
+
+/* ============ BOTTOM PIPELINE ============ */
+.cc-pipe-wrap{margin:18px auto 0;max-width:1040px;overflow:hidden;padding:6px 0;position:relative;z-index:1}
+.cc-pipe{display:flex;align-items:flex-start;justify-content:center;width:100%}
+.cc-pnode{display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;flex:1 1 0;min-width:0}
+.cc-pcircle{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.03);border:1.5px solid rgba(255,255,255,.12);position:relative;z-index:2;
+  animation:nodePulse 12s ease-in-out infinite}
+.cc-pcircle svg{width:22px;height:22px;stroke:rgba(255,255,255,.55);fill:none;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round;animation:iconPulse 12s ease-in-out infinite}
+.cc-plabel{font-size:10.5px;color:rgba(255,255,255,.5);font-weight:600;text-align:center;line-height:1.3;
+  animation:labelPulse 12s ease-in-out infinite}
+.cc-pline{position:absolute;top:23px;left:50%;width:100%;height:2px;background:rgba(56,189,248,.14);z-index:0;overflow:hidden}
+.cc-pnode:last-child .cc-pline{display:none}
+.cc-pnode:nth-child(1) .cc-pcircle,.cc-pnode:nth-child(1) .cc-plabel,.cc-pnode:nth-child(1) .cc-pcircle svg{animation-delay:0s}
+.cc-pnode:nth-child(2) .cc-pcircle,.cc-pnode:nth-child(2) .cc-plabel,.cc-pnode:nth-child(2) .cc-pcircle svg{animation-delay:2s}
+.cc-pnode:nth-child(3) .cc-pcircle,.cc-pnode:nth-child(3) .cc-plabel,.cc-pnode:nth-child(3) .cc-pcircle svg{animation-delay:4s}
+.cc-pnode:nth-child(4) .cc-pcircle,.cc-pnode:nth-child(4) .cc-plabel,.cc-pnode:nth-child(4) .cc-pcircle svg{animation-delay:6s}
+.cc-pnode:nth-child(5) .cc-pcircle,.cc-pnode:nth-child(5) .cc-plabel,.cc-pnode:nth-child(5) .cc-pcircle svg{animation-delay:8s}
+.cc-pnode:nth-child(6) .cc-pcircle,.cc-pnode:nth-child(6) .cc-plabel,.cc-pnode:nth-child(6) .cc-pcircle svg{animation-delay:10s}
+/* a packet of light traveling the whole pipeline */
+.cc-packet{position:absolute;top:19px;left:0;width:10px;height:10px;border-radius:50%;
+  background:var(--cc-blue);box-shadow:0 0 14px 3px rgba(56,189,248,.8);z-index:3;
+  animation:packetRun 12s linear infinite}
+
+/* ===================== KEYFRAMES ===================== */
+@keyframes ccShow{0%{opacity:0;transform:translateY(4px)}100%{opacity:1;transform:translateY(0)}}
+@keyframes ccBlink{50%{opacity:0}}
+@keyframes floatY{0%,100%{transform:translateY(-6px)}50%{transform:translateY(8px)}}
+/* interior glow breathing — used by the top panel core and the front wordmark glow */
+@keyframes corePulse{0%,100%{opacity:.5;transform:scale(.9)}50%{opacity:1;transform:scale(1.12)}}
+/* whole-machine halo breathing */
+@keyframes machineBreath{0%,100%{box-shadow:0 25px 80px rgba(0,0,0,.6),0 0 105px rgba(56,189,248,.12),inset 0 0 50px rgba(56,189,248,.04)}50%{box-shadow:0 25px 92px rgba(0,0,0,.6),0 0 165px rgba(56,189,248,.28),inset 0 0 85px rgba(56,189,248,.1)}}
+@keyframes shadowBreath{0%,100%{opacity:.7}50%{opacity:1}}
+@keyframes brandPulse{0%,100%{text-shadow:0 0 12px rgba(56,189,248,.85),0 0 4px rgba(56,189,248,.7)}50%{text-shadow:0 0 26px rgba(56,189,248,1),0 0 12px rgba(56,189,248,.95)}}
+@keyframes ventSweep{0%{left:-40%}60%,100%{left:120%}}
+@keyframes ledFlick{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes statusCycle{0%{opacity:0;transform:translateY(3px)}3%{opacity:1;transform:translateY(0)}18%{opacity:1;transform:translateY(0)}21%{opacity:0;transform:translateY(-3px)}100%{opacity:0}}
+@keyframes feedIn{0%{opacity:0;transform:translateX(-12px) scale(.96)}14%{opacity:1;transform:translateX(0) scale(1)}58%{opacity:1;transform:translateX(22px) scale(.99)}80%,100%{opacity:0;transform:translateX(48px) scale(.92)}}
+@keyframes nodePulse{0%,100%{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.12);box-shadow:none}
+  8%,15%{background:rgba(56,189,248,.16);border-color:#38BDF8;box-shadow:0 0 20px rgba(56,189,248,.5)}}
+@keyframes iconPulse{0%,100%{stroke:rgba(255,255,255,.55)}8%,15%{stroke:#7DD3FC}}
+@keyframes labelPulse{0%,100%{color:rgba(255,255,255,.5)}8%,15%{color:#7DD3FC}}
+@keyframes packetRun{0%{left:-1%;opacity:0}4%{opacity:1}96%{opacity:1}100%{left:101%;opacity:0}}
+
+/* ===================== RESPONSIVE ===================== */
+/* stack: terminal on top, machine below */
+@media (max-width:780px){
+  .cc-duo{flex-direction:column;align-items:stretch}
+  .cc-terminal{order:1}
+  .cc-machine{order:2;min-height:360px}
+  .cc-content{max-height:340px}
+  .cc-pipe{flex-wrap:wrap;gap:14px}
+  .cc-pnode{flex:0 0 28%}
+  .cc-pline{display:none}
+  .cc-packet{display:none}
+  .cc-band{padding:54px 16px 64px}
+}
+@media (max-width:560px){
+  .m-feed{display:none}
+  .cc-machine{min-height:320px}
+  .iso{transform:rotateX(-24deg) rotateY(-38deg) scale(.82)}
+}
+
+/* ===================== REDUCED MOTION ===================== */
+@media (prefers-reduced-motion:reduce){
+  .cc-content .cc-line{opacity:1!important;animation:none!important}
+  .cc-cursor{animation:none}
+  .iso-float,.f-top::before,.f-front::before,.m-brand,.m-shadow,.cc-machine,
+  .m-vent::after,.m-leds i,.m-chip,.cc-packet,
+  .cc-pcircle,.cc-plabel,.cc-pcircle svg,.m-status span{animation:none}
+  .m-status span:nth-child(1){opacity:1}
+  .cc-pcircle{background:rgba(56,189,248,.14);border-color:#38BDF8}
+  .cc-plabel{color:#7DD3FC}
+}
+</style>
+</head>
+<body style="margin:0;background:#080D18">
+
+<!-- ====================== DROP-IN BAND START ====================== -->
+<section class="cc-band">
+
+  <!-- optional heading — delete .cc-head if you only want the visual -->
+  <div class="cc-head">
+    <span class="cc-kick">The win-back engine</span>
+    <h2 class="cc-title">Your register, watched <span class="g">in real time.</span></h2>
+    <p class="cc-sub">Clicktide reads every sale, spots the customers quietly slipping away, and runs the win-back on its own — text, postcard, gift, done.</p>
+  </div>
+
+  <div class="cc-stage">
+    <div class="cc-duo">
+
+      <!-- LEFT: animated terminal -->
+      <div class="cc-terminal">
+        <div class="cc-tbar">
+          <div class="cc-tdots"><span class="cc-tdot r"></span><span class="cc-tdot y"></span><span class="cc-tdot g"></span></div>
+          <span class="cc-ttitle">Clicktide</span>
+          <span class="cc-tpath">~/win-back</span>
+        </div>
+        <div class="cc-content playing" id="ccContent">
+          <span class="cc-line" style="--d:0.15s"><span class="cc-prompt">&#10095;</span> <span class="cc-mute">monitor June&#39;s Beauty Bar</span></span>
+          <span class="cc-line" style="--d:0.34s"><span class="cc-phase">&#10095;&#10095; connect Square register</span></span>
+          <span class="cc-line" style="--d:0.53s"><span class="cc-pin">&#9679;</span> <span class="cc-mute">reading register data&#8230;</span></span>
+          <span class="cc-line" style="--d:0.72s"><span class="cc-mute">1,284 customers &#183; </span><span class="cc-pin">23 drifting</span></span>
+          <span class="cc-line" style="--d:0.91s"><span class="cc-phase">&#10095;&#10095; detecting drift</span></span>
+          <span class="cc-line" style="--d:1.10s"><span class="cc-ok">&#10003;</span> <span class="cc-mute">Sarah M. &#8212; last visit 14d &#183; $840 LTV</span></span>
+          <span class="cc-line" style="--d:1.29s"><span class="cc-ok">&#10003;</span> <span class="cc-mute">Derek R. &#8212; last visit 21d &#183; $620 LTV</span></span>
+          <span class="cc-line" style="--d:1.48s"><span class="cc-ok">&#10003;</span> <span class="cc-mute">Aisha K. &#8212; last visit 33d &#183; $430 LTV</span></span>
+          <span class="cc-line" style="--d:1.67s"><span class="cc-phase">&#10095;&#10095; day-14 &#183; text</span></span>
+          <span class="cc-line" style="--d:1.86s"><span class="cc-ok">&#10003;</span> <span class="cc-mute">text &#8594; Sarah M. &#183; refs her real last visit</span></span>
+          <span class="cc-line" style="--d:2.05s"><span class="cc-ok">&#10003;</span> <span class="cc-mute">text &#8594; Derek R.</span></span>
+          <span class="cc-line" style="--d:2.24s"><span class="cc-phase">&#10095;&#10095; day-30 &#183; postcard</span></span>
+          <span class="cc-line" style="--d:2.43s"><span class="cc-ok">&#10003;</span> <span class="cc-mute">postcard mailed &#8594; Sarah M. &#183; 482 Maple Ave</span></span>
+          <span class="cc-line" style="--d:2.62s"><span class="cc-ok">&#10003;</span> <span class="cc-mute">printed + sent &#183; $1.50/send</span></span>
+          <span class="cc-line" style="--d:2.81s"><span class="cc-phase">&#10095;&#10095; day-45 &#183; branded gift</span></span>
+          <span class="cc-line" style="--d:3.00s"><span class="cc-ok">&#10003;</span> <span class="cc-mute">mug shipped &#8594; Aisha K. &#183; logo + note</span></span>
+          <span class="cc-line" style="--d:3.19s"><span class="cc-ok">&#10003;</span> <span class="cc-mute">out for delivery &#183; ~2 days</span></span>
+          <span class="cc-line" style="--d:3.38s"><span class="cc-phase">&#10095;&#10095; customer returns</span></span>
+          <span class="cc-line" style="--d:3.57s"><span class="cc-ok">&#10003;</span> <span class="cc-mute">Sarah M. walked back in &#183; sends paused</span></span>
+          <span class="cc-line" style="--d:3.76s"><span class="cc-ok">&#10003;</span> <span class="cc-mute">recovered </span><span class="cc-pin">$6,120</span><span class="cc-mute"> this month</span></span>
+          <span class="cc-line" style="--d:3.95s"><span class="cc-dim">47 won back &#183; 0 complaints &#183; 0 spam flags</span></span>
+          <span class="cc-line" style="--d:4.15s"><span class="cc-prompt">&#10095;</span> <span class="cc-cursor"></span></span>
+        </div>
+      </div>
+
+      <!-- RIGHT: pure-CSS 3D isometric machine -->
+      <div class="cc-machine">
+        <div class="iso-scene">
+          <div class="iso-float">
+            <div class="iso">
+              <div class="m-shadow"></div>
+              <div class="cube">
+                <div class="cube__face f-top">
+                  <div class="m-status">
+                    <span>DETECTING DRIFT</span>
+                    <span>SENDING DAY-14 TEXT</span>
+                    <span>MAILING POSTCARD</span>
+                    <span>SHIPPING GIFT</span>
+                    <span>CUSTOMER RECOVERED</span>
+                  </div>
+                </div>
+                <div class="cube__face f-front">
+                  <div class="m-brand">CLICKTIDE</div>
+                  <div class="m-vent"></div>
+                  <div class="m-leds"><i></i><i></i><i></i></div>
+                </div>
+                <div class="cube__face f-right"></div>
+                <div class="cube__face f-left"></div>
+                <div class="cube__face f-bottom"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- data sources feeding in from the left -->
+          <div class="m-feed">
+            <div class="m-chip">
+              <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4" fill="#fff"/><rect x="9" y="9" width="6" height="6" rx="1.6" fill="#16203a"/></svg>
+              Square
+            </div>
+            <div class="m-chip">
+              <svg viewBox="0 0 24 24"><path d="M7 8h10l-1 11H8L7 8z" fill="#7DD3FC"/><path d="M9.2 8a2.8 2.8 0 0 1 5.6 0" fill="none" stroke="#cfe8ff" stroke-width="1.7"/></svg>
+              Shopify
+            </div>
+            <div class="m-chip">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="#cfe8ff" stroke-width="1.8"/><path d="M7.5 14c1.6-5 7.4-5 9 0" fill="none" stroke="#7DD3FC" stroke-width="1.8"/></svg>
+              Mindbody
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- glow strip -->
+    <div class="cc-emanation"></div>
+
+    <!-- bottom pipeline -->
+    <div class="cc-pipe-wrap">
+      <div class="cc-pipe">
+        <div class="cc-pnode">
+          <div class="cc-pcircle"><svg viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg></div>
+          <span class="cc-plabel">Watch Register</span><div class="cc-pline"></div>
+        </div>
+        <div class="cc-pnode">
+          <div class="cc-pcircle"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></div>
+          <span class="cc-plabel">Detect Drift</span><div class="cc-pline"></div>
+        </div>
+        <div class="cc-pnode">
+          <div class="cc-pcircle"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4L3 21l1.1-3.3A8.4 8.4 0 1 1 21 11.5z"/></svg></div>
+          <span class="cc-plabel">Day 14 Text</span><div class="cc-pline"></div>
+        </div>
+        <div class="cc-pnode">
+          <div class="cc-pcircle"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 7l10 6 10-6"/></svg></div>
+          <span class="cc-plabel">Day 30 Postcard</span><div class="cc-pline"></div>
+        </div>
+        <div class="cc-pnode">
+          <div class="cc-pcircle"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="13" rx="1.5"/><path d="M3 8h18M12 8v13M12 8s-1-5-4.5-5S4 8 4 8M12 8s1-5 4.5-5S20 8 20 8"/></svg></div>
+          <span class="cc-plabel">Day 45 Gift</span><div class="cc-pline"></div>
+        </div>
+        <div class="cc-pnode">
+          <div class="cc-pcircle"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div>
+          <span class="cc-plabel">Customer Returns</span><div class="cc-pline"></div>
+        </div>
+        <div class="cc-packet"></div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- ====================== DROP-IN BAND END ====================== -->
+
+<script>
+/* Loops the terminal type-out. Pure-CSS machine + pipeline need no JS. */
+(function(){
+  var content = document.getElementById('ccContent');
+  if(!content) return;
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  function restart(){ content.classList.remove('playing'); void content.offsetWidth; content.classList.add('playing'); }
+  setInterval(restart, 9000);
+})();
+</script>
+</body>
+</html>

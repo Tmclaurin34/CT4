@@ -1,3 +1,10 @@
+// Clicktide Stripe webhook. v15 — observability + robustness:
+// (1) a bad/missing signature now returns 401 (clearly junk or a secret mismatch) instead
+//     of 400, so it's distinguishable in the logs from a real processing error;
+// (2) a processing error returns 500 so Stripe RETRIES until it succeeds (transient DB /
+//     Stripe-API hiccups self-heal — a real subscription event is never silently dropped);
+// (3) also handles customer.subscription.created (belt-and-suspenders billing capture).
+// Unhandled event types still return 200 (acknowledged, no retry storm).
 type StripeEvent = {
   id: string;
   type: string;
@@ -9,6 +16,11 @@ const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") || "";
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const pricePlans: Record<string, string> = {
+  // current ($79 / $199 / $449) — what checkout + the billing portal use now
+  price_1TjhtKGWBWEX8wHsjfvhyPBa: "Local",
+  price_1Tjhv8GWBWEX8wHsQ3nBFXDm: "Growth",
+  price_1TjhwWGWBWEX8wHsAtmldOt9: "Scale",
+  // legacy ($49 / $149 / $349) — keep mapping any pre-existing subscriptions
   price_1ThaasGWBWEX8wHssSYEbwEl: "Local",
   price_1ThbjeGWBWEX8wHsElMt4z3Z: "Growth",
   price_1ThbjeGWBWEX8wHsNrw2mjPF: "Scale",
@@ -197,7 +209,9 @@ function subscriptionFields(subscription: Record<string, unknown>, fallback: Rec
   const periodEnd = subscription.current_period_end as number | undefined;
   const priceId = items?.data?.[0]?.price?.id || fallback.price_id || null;
   return {
-    plan: normalizePlan(metadata.plan) || normalizePlan(fallback.plan) || planFromPrice(priceId) || "Growth",
+    // Price is the source of truth: after a Customer-Portal plan switch the Stripe
+    // subscription's metadata.plan is stale, but the price ID always reflects the new plan.
+    plan: planFromPrice(priceId) || normalizePlan(metadata.plan) || normalizePlan(fallback.plan) || "Growth",
     stripe_customer_id: subscription.customer || fallback.customer || null,
     stripe_subscription_id: subscription.id || fallback.subscription || null,
     stripe_subscription_status: subscription.status || fallback.payment_status || null,
@@ -243,8 +257,18 @@ Deno.serve(async (req) => {
   if (!stripeSecretKey || !serviceRoleKey) return json({ error: "Server secrets are not configured" }, 500);
 
   const rawBody = await req.text();
+
+  // 1) Authenticate. A bad/missing signature is junk or a secret mismatch — return 401 so
+  // it is clearly distinguishable from a real processing failure when scanning the logs.
   try {
     await verifyStripeSignature(rawBody, req.headers.get("stripe-signature") || "");
+  } catch (error) {
+    return json({ error: error instanceof Error ? error.message : "Signature verification failed" }, 401);
+  }
+
+  // 2) Process. On a processing error return 500 so Stripe RETRIES until it succeeds —
+  // a real subscription event is never silently dropped on a transient hiccup.
+  try {
     const event = JSON.parse(rawBody) as StripeEvent;
     if (await eventAlreadyProcessed(event)) return json({ received: true, duplicate: true });
 
@@ -252,13 +276,17 @@ Deno.serve(async (req) => {
       await handleCheckoutCompleted(event.data.object);
     }
 
-    if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
+    if (
+      event.type === "customer.subscription.created" ||
+      event.type === "customer.subscription.updated" ||
+      event.type === "customer.subscription.deleted"
+    ) {
       await handleSubscriptionChange(event.data.object);
     }
 
     await recordEventProcessed(event);
     return json({ received: true });
   } catch (error) {
-    return json({ error: error instanceof Error ? error.message : "Webhook failed" }, 400);
+    return json({ error: error instanceof Error ? error.message : "Webhook failed" }, 500);
   }
 });

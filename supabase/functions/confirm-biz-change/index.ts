@@ -23,6 +23,7 @@ const ALLOWED_FIELDS = [
 ];
 const CODE_TTL_MIN = 15;
 const MAX_ATTEMPTS = 5;
+const MAX_REQUESTS_PER_HOUR = 5;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -75,11 +76,12 @@ function maskPhone(p: string) {
   return `(***) ***-${digits.slice(-4)}`;
 }
 
-function e164(p: string) {
+// US mobile numbers only: keeps codes domestic and closes international
+// toll-fraud routes.
+function usPhone(p: string) {
   const digits = String(p).replace(/\D/g, "");
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
-  return p.startsWith("+") ? p : `+${digits}`;
+  const ten = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  return /^[2-9]\d{2}[2-9]\d{6}$/.test(ten) ? `+1${ten}` : "";
 }
 
 const FIELD_LABELS: Record<string, string> = {
@@ -138,7 +140,7 @@ Deno.serve(async (req) => {
       const channel = body.channel === "sms" ? "sms" : "email";
       const requested = body.fields && typeof body.fields === "object" ? body.fields : {};
 
-      const rows = await rest(`/rest/v1/clicktide?user_id=eq.${encodeURIComponent(userId)}&select=email,phone,business_name,${ALLOWED_FIELDS.join(",")}&limit=1`);
+      const rows = await rest(`/rest/v1/clicktide?user_id=eq.${encodeURIComponent(userId)}&select=email,phone,business_name,owner_mobile,owner_sms_consent,${ALLOWED_FIELDS.join(",")}&limit=1`);
       const biz = Array.isArray(rows) ? rows[0] : null;
       if (!biz) return json({ error: "Business profile not found" }, 404);
 
@@ -153,10 +155,28 @@ Deno.serve(async (req) => {
       if (changes.business_name && !changes.business_name.to) return json({ error: "Business name can't be empty." }, 400);
 
       // Codes go to the contact info already on file, never the new values.
+      // Text codes go only to the mobile the owner opted in with under Settings >
+      // Owner text alerts: Clicktide's carrier registration covers texts to
+      // opted-in owners, nobody else.
       const destEmail = String(biz.email || "");
-      const destPhone = String(biz.phone || "");
+      const destPhone = biz.owner_sms_consent ? usPhone(String(biz.owner_mobile || "")) : "";
       if (channel === "email" && !destEmail) return json({ error: "No email on file to send the code to." }, 400);
-      if (channel === "sms" && !destPhone) return json({ error: "No phone on file — use email instead." }, 400);
+      if (channel === "sms" && !destPhone) {
+        return json({ error: "Text codes go to the mobile number you turned on under Settings > Owner text alerts. Turn that on first, or use email instead." }, 400);
+      }
+
+      // Cap code requests so this endpoint can't be used to flood an inbox or a
+      // phone. (Advisory pre-check; the SMS path is also atomically capped by the
+      // clicktide_owner_sms_claim reservation below.)
+      if (!isCron) {
+        const hourAgo = new Date(Date.now() - 3600000).toISOString();
+        const recent = await rest(
+          `/rest/v1/business_profile_changes?user_id=eq.${encodeURIComponent(userId)}&created_at=gte.${encodeURIComponent(hourAgo)}&select=id&limit=${MAX_REQUESTS_PER_HOUR + 1}`,
+        );
+        if (Array.isArray(recent) && recent.length >= MAX_REQUESTS_PER_HOUR) {
+          return json({ error: "Too many code requests. Try again in a little while." }, 429);
+        }
+      }
 
       const code = genCode();
       const codeHash = await sha256Hex(`${userId}:${code}`);
@@ -191,18 +211,49 @@ Deno.serve(async (req) => {
         } else {
           const sid = Deno.env.get("TWILIO_ACCOUNT_SID") ?? "";
           const tok = Deno.env.get("TWILIO_AUTH_TOKEN") ?? "";
-          const from = Deno.env.get("TWILIO_FROM_NUMBER") ?? "";
-          const mgs = Deno.env.get("TWILIO_MESSAGING_SERVICE_SID") || "MG4c1badf5712739590510f936bbd0bc1a";
-          if (!sid || !tok || (!mgs && !from)) return json({ error: "Texting isn't available right now — use email instead." }, 503);
-          const form = new URLSearchParams({ To: e164(destPhone), Body: `Clicktide: ${code} is your confirmation code for updating your business info. Expires in ${CODE_TTL_MIN} minutes.` });
-          if (mgs) form.set("MessagingServiceSid", mgs); else form.set("From", from);
+          // Clicktide's own Messaging Service, from the platform registration row
+          // (the same kill switch owner-alerts uses). No raw-number fallback.
+          const svc = await rest(
+            "/rest/v1/a2p_registrations?reg_type=eq.platform&sms_status=eq.active&messaging_service_sid=not.is.null&select=messaging_service_sid&limit=1",
+          ).catch(() => null);
+          const mgs = Array.isArray(svc) && svc[0]?.messaging_service_sid ? String(svc[0].messaging_service_sid) : "";
+          if (!sid || !tok || !mgs) return json({ error: "Texting isn't available right now — use email instead." }, 503);
+          const smsBody = `Clicktide: ${code} is your confirmation code for updating your business info. Expires in ${CODE_TTL_MIN} minutes.`;
+          // Atomically reserve the send in owner_sms_log: dedupes per change row and
+          // enforces per-account / per-number / platform-wide daily ceilings even
+          // under parallel requests (same guard as every other owner text).
+          let claim: { claimed?: boolean; reason?: string; id?: number } | null = null;
+          try {
+            claim = await rest("/rest/v1/rpc/clicktide_owner_sms_claim", {
+              method: "POST",
+              body: JSON.stringify({
+                p_user_id: userId, p_kind: "bizchange_code", p_dedupe_key: `chg-${changeId}`,
+                p_to_hash: await sha256Hex(destPhone), p_to_last4: destPhone.slice(-4), p_body: smsBody,
+                p_user_daily_cap: 10, p_dest_daily_cap: 10, p_kind_daily_cap: 200,
+              }),
+            });
+          } catch { /* treated as not claimed */ }
+          if (!claim?.claimed || !claim.id) {
+            return json({ error: "Too many code texts right now — use the emailed code instead." }, 429);
+          }
+          const form = new URLSearchParams({ To: destPhone, MessagingServiceSid: mgs, Body: smsBody });
           const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
             method: "POST",
             headers: { Authorization: `Basic ${btoa(`${sid}:${tok}`)}`, "Content-Type": "application/x-www-form-urlencoded" },
             body: form,
           });
+          const d = await r.json().catch(() => ({}));
+          await rest(`/rest/v1/owner_sms_log?id=eq.${claim.id}`, {
+            method: "PATCH",
+            headers: { Prefer: "return=minimal" },
+            body: JSON.stringify({
+              status: r.ok ? "accepted" : "failed",
+              provider_message_id: d?.sid || null,
+              error_code: r.ok ? null : (Number(d?.code) || null),
+              error: r.ok ? null : String(d?.message || `Twilio ${r.status}`),
+            }),
+          }).catch(() => {});
           if (!r.ok) {
-            const d = await r.json().catch(() => ({}));
             return json({ error: d?.message || "Could not text the code — use email instead." }, 502);
           }
         }
