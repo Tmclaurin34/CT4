@@ -1,4 +1,9 @@
 // Clicktide campaign engine. v26 — reliability: every external call (Resend/Twilio/Lob/Printify/Supabase) now has a hard timeout (fetchT), and the run stops cleanly at a 110s deadline (timed_out flag) so it can never hit the ~150s gateway 504; unreached businesses are picked up next hour (cooldown prevents double-sends). v25 — adds the New-Customer Welcome Journey: "welcome" / "second-visit nudge (day N)" / "win the second visit (day N)" triggers, keyed on first-visit recency + visit count, staged so a brand-new customer is walked through their first weeks (and the journey self-pauses the moment they return). v24 — win-back trigger is cadence-aware: "inactive/win-back" fires on each customer's OWN learned visit rhythm (effChurn), not a flat owner-set timer. Mirrors effChurn() in index.html so dashboard drift flags and actual sends agree. (v20 — backfill-safe: event triggers gated by campaign.created_at; 48h warm-up after first POS connection)
+// SMS quiet hours (2026-11): customer texts leave only inside the business's local send
+// window — 9:00–20:00, Sundays 12:00–20:00 (see smsWindowOpen). A customer who is due a
+// text while the window is closed has the WHOLE touch held, so the email and the text go
+// out together on the first hourly run inside the window instead of the email's
+// cooldown swallowing the text.
 // Hourly via pg_cron (or staff admin). Customer-facing emails ship in a branded
 // shell and cite the customer's real last visit. Physical gifts respect the
 // business's gift_auto_send toggle: ON = order placed automatically through
@@ -15,10 +20,6 @@ const EMAIL_UNSUB_SECRET = Deno.env.get("EMAIL_UNSUB_SECRET") || serviceRoleKey;
 const EMAIL_FOOTER_ADDR = "Glen Cove, NY 11542"; // interim — replace with the PO Box / business address (CAN-SPAM physical address)
 const twilioSid = Deno.env.get("TWILIO_ACCOUNT_SID") || "";
 const twilioToken = Deno.env.get("TWILIO_AUTH_TOKEN") || "";
-const twilioFrom = Deno.env.get("TWILIO_FROM_NUMBER") || "";
-// Clicktide's own approved A2P 10DLC Messaging Service (approved 2026-11-25) — shared
-// sender for businesses without their own registration; raw From number is last resort.
-const twilioPlatformMsid = Deno.env.get("TWILIO_MESSAGING_SERVICE_SID") || "MG4c1badf5712739590510f936bbd0bc1a";
 const lobKey = Deno.env.get("LOB_API_KEY") || "";
 const POSTCARD_PRICE = 1.5; // debited from the gift wallet per mailed postcard
 const ADDRESS_FORM_URL = "https://goclicktide.com/gift-address";
@@ -301,14 +302,12 @@ function fillTemplate(template: string, customer: Customer, businessName: string
     .replaceAll("{{business_name}}", businessName || "us");
 }
 
+// US numbers only — a business's carrier registration covers domestic texting, so a
+// "+<country>" number stored via the public check-in form is unreachable, not a target.
 function normalizePhone(value?: string | null) {
-  if (!value) return "";
-  const trimmed = value.trim();
-  if (trimmed.startsWith("+")) return trimmed;
-  const digits = trimmed.replace(/\D/g, "");
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
-  return "";
+  const digits = String(value || "").replace(/\D/g, "");
+  const ten = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  return /^[2-9]\d{2}[2-9]\d{6}$/.test(ten) ? `+1${ten}` : "";
 }
 
 function escapeHtml(value: string) {
@@ -460,30 +459,173 @@ async function sendEmail(to: string, subject: string, message: string, businessN
   return { ok: response.ok, detail: response.ok ? String(data.id || "") : String(data?.message || "Resend failed") };
 }
 
-// Per-business A2P routing (ISV model): a business with its own approved Twilio
-// registration sends through its own Messaging Service; everyone else falls back
-// to the shared number. Populated once per run from a2p_registrations.
+// ── SMS send window (quiet hours) ───────────────────────────────────────────
+// Customer texts go out only 9:00–20:00 in the business's local time, and only
+// 12:00–20:00 on Sundays. That sits inside the federal TCPA window (8am–9pm
+// recipient-local) and the stricter state windows (e.g. FL/OK 8am–8pm; TX 9am–9pm
+// Mon–Sat, noon–9pm Sunday). The cron fires every hour around the clock, so this
+// gate — not the schedule — is what keeps texts out of quiet hours.
+const SMS_WINDOW_START_HOUR = 9; // Monday–Saturday
+const SMS_WINDOW_SUNDAY_START_HOUR = 12;
+const SMS_WINDOW_END_HOUR = 20; // exclusive: the last text can leave at 19:59
+
+const TZ_EASTERN = "America/New_York";
+const TZ_CENTRAL = "America/Chicago";
+const TZ_MOUNTAIN = "America/Denver";
+const TZ_PACIFIC = "America/Los_Angeles";
+const TZ_ALASKA = "America/Anchorage";
+const TZ_HAWAII = "Pacific/Honolulu";
+
+// Every time zone a state's territory touches. A text needs the window open in ALL
+// of them, so a state split by a time-zone line (FL panhandle, El Paso TX, east TN…)
+// is never texted early or late on its far side — it just gets a slightly shorter day.
+// (tzForState() above is display-only: it guesses Eastern for anything it doesn't
+// list — AK, HI, a blank state… — fine for a "last visit" line, unsafe for this.)
+const SMS_ZONE_GROUPS: Array<[string, string[]]> = [
+  ["CT DE DC GA ME MD MA NH NJ NY NC OH PA RI SC VT VA WV", [TZ_EASTERN]],
+  ["FL IN KY MI TN", [TZ_EASTERN, TZ_CENTRAL]],
+  ["AL AR IL IA LA MN MS MO OK WI", [TZ_CENTRAL]],
+  ["KS NE ND SD TX", [TZ_CENTRAL, TZ_MOUNTAIN]],
+  ["CO MT NM UT WY", [TZ_MOUNTAIN]],
+  ["ID NV OR", [TZ_MOUNTAIN, TZ_PACIFIC]],
+  ["CA WA", [TZ_PACIFIC]],
+  ["AZ", ["America/Phoenix", TZ_MOUNTAIN]],
+  ["AK", [TZ_ALASKA, "America/Adak"]],
+  ["HI", [TZ_HAWAII]],
+  ["PR VI", ["America/Puerto_Rico"]],
+  ["GU MP", ["Pacific/Guam"]],
+  ["AS", ["Pacific/Pago_Pago"]],
+];
+const SMS_STATE_ZONES: Record<string, string[]> = {};
+for (const [codes, zones] of SMS_ZONE_GROUPS) {
+  for (const code of codes.split(" ")) SMS_STATE_ZONES[code] = zones;
+}
+
+// The signup form takes the state as free text, so "ny", "N.Y." and "New York" all count.
+const SMS_STATE_NAMES: Record<string, string> = {
+  "ALABAMA": "AL", "ALASKA": "AK", "ARIZONA": "AZ", "ARKANSAS": "AR", "CALIFORNIA": "CA", "COLORADO": "CO",
+  "CONNECTICUT": "CT", "DELAWARE": "DE", "DISTRICT OF COLUMBIA": "DC", "WASHINGTON DC": "DC", "FLORIDA": "FL",
+  "GEORGIA": "GA", "HAWAII": "HI", "IDAHO": "ID", "ILLINOIS": "IL", "INDIANA": "IN", "IOWA": "IA", "KANSAS": "KS",
+  "KENTUCKY": "KY", "LOUISIANA": "LA", "MAINE": "ME", "MARYLAND": "MD", "MASSACHUSETTS": "MA", "MICHIGAN": "MI",
+  "MINNESOTA": "MN", "MISSISSIPPI": "MS", "MISSOURI": "MO", "MONTANA": "MT", "NEBRASKA": "NE", "NEVADA": "NV",
+  "NEW HAMPSHIRE": "NH", "NEW JERSEY": "NJ", "NEW MEXICO": "NM", "NEW YORK": "NY", "NORTH CAROLINA": "NC",
+  "NORTH DAKOTA": "ND", "OHIO": "OH", "OKLAHOMA": "OK", "OREGON": "OR", "PENNSYLVANIA": "PA", "PUERTO RICO": "PR",
+  "RHODE ISLAND": "RI", "SOUTH CAROLINA": "SC", "SOUTH DAKOTA": "SD", "TENNESSEE": "TN", "TEXAS": "TX", "UTAH": "UT",
+  "VERMONT": "VT", "VIRGINIA": "VA", "WASHINGTON": "WA", "WEST VIRGINIA": "WV", "WISCONSIN": "WI", "WYOMING": "WY",
+};
+
+// No usable state on file: text only while the window is open everywhere from the
+// East Coast to Hawaii (roughly 2–8pm Eastern) until the business's state is filled in.
+const SMS_ZONES_UNKNOWN = [TZ_EASTERN, TZ_CENTRAL, TZ_MOUNTAIN, TZ_PACIFIC, TZ_ALASKA, TZ_HAWAII];
+
+function smsZonesForState(state?: string): string[] {
+  const raw = String(state || "").toUpperCase().replace(/\./g, "").replace(/[^A-Z]+/g, " ").trim();
+  const code = SMS_STATE_NAMES[raw] || raw.replace(/ /g, "");
+  return SMS_STATE_ZONES[code] || SMS_ZONES_UNKNOWN;
+}
+
+const SMS_WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const smsHourFmt = new Map<string, Intl.DateTimeFormat>();
+
+function smsWindowOpenIn(tz: string, at: Date): boolean {
+  let fmt = smsHourFmt.get(tz);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short", hour: "numeric", hourCycle: "h23" });
+    smsHourFmt.set(tz, fmt);
+  }
+  const parts = fmt.formatToParts(at);
+  // An AM/PM part would mean the runtime ignored the 24-hour cycle (9pm reads as "9").
+  if (parts.some((p) => p.type === "dayPeriod")) return false;
+  const weekday = parts.find((p) => p.type === "weekday")?.value || "";
+  const hour = Number(parts.find((p) => p.type === "hour")?.value);
+  if (!SMS_WEEKDAYS.includes(weekday) || !Number.isInteger(hour) || hour < 0 || hour > 23) return false;
+  const start = weekday === "Sun" ? SMS_WINDOW_SUNDAY_START_HOUR : SMS_WINDOW_START_HOUR;
+  return hour >= start && hour < SMS_WINDOW_END_HOUR;
+}
+
+// May a customer text go out right now for a business in this state? Fails closed:
+// if the local time can't be worked out, the window counts as shut.
+function smsWindowOpen(state?: string, at: Date = new Date()): boolean {
+  try {
+    return smsZonesForState(state).every((tz) => smsWindowOpenIn(tz, at));
+  } catch {
+    return false;
+  }
+}
+
+// Known-answer check of the window maths in THIS runtime, reported in every run
+// summary. If a runtime ever formatted dates differently the window would read as
+// permanently shut (it fails closed) and quietly hold every text-eligible touch; this
+// turns that into a visible "failed". 2026-06-15 is a Monday and 2026-06-14 a Sunday
+// (Eastern = UTC-4); 2026-01-15 17:00Z is 9am Pacific but only 7am in Hawaii.
+function smsWindowSelfCheck(): boolean {
+  const ny = (iso: string) => smsWindowOpen("NY", new Date(iso));
+  return !ny("2026-06-15T12:59:59Z") && ny("2026-06-15T13:00:00Z") && // Mon 08:59:59 / 09:00
+    ny("2026-06-15T23:59:59Z") && !ny("2026-06-16T00:00:00Z") && // Mon 19:59:59 / 20:00
+    !ny("2026-06-14T15:59:59Z") && ny("2026-06-14T16:00:00Z") && // Sun 11:59:59 / 12:00
+    smsWindowOpen("CA", new Date("2026-01-15T17:00:00Z")) && !smsWindowOpen("", new Date("2026-01-15T17:00:00Z"));
+}
+
+// Per-business A2P routing (ISV model): customer texts go out ONLY through the
+// sending business's own approved Twilio registration. There is no shared
+// fallback: Clicktide's own campaign is registered as first-party (texts to
+// business owners) and carriers suspend campaigns that carry another brand's
+// customer messages. Populated once per run from a2p_registrations.
 const msidByUser = new Map<string, string>();
 
-async function sendSms(campaign: Campaign, customer: Customer, body: string) {
-  const msid = msidByUser.get(String(customer.user_id || "")) || twilioPlatformMsid;
-  if (!twilioSid || !twilioToken || (!msid && !twilioFrom)) {
+// Clicktide's own Messaging Services may NEVER carry a customer text, even if a
+// mislabeled business row holds one of their SIDs. The deny list is the known
+// platform SID, the env override, and every SID on a reg_type='platform' row.
+const platformMsids = new Set(
+  ["MG4c1badf5712739590510f936bbd0bc1a", Deno.env.get("TWILIO_MESSAGING_SERVICE_SID") || ""].filter(Boolean),
+);
+
+// Can this customer be texted at all — their business has its own registration, they
+// opted in (and haven't opted out), and the number is usable? Plan limits and the
+// send window are checked separately by the callers.
+function canText(customer: Customer): boolean {
+  return msidByUser.has(String(customer.user_id || "")) && !!customer.sms_consent &&
+    !customer.sms_unsubscribed_at && !!normalizePhone(customer.phone);
+}
+
+async function sendSms(campaign: Campaign, customer: Customer, body: string, bizState = "") {
+  const msid = msidByUser.get(String(customer.user_id || "")) || "";
+  if (!msid || platformMsids.has(msid)) return { ok: false, detail: "sms_not_registered" };
+  // Last line of defence: whatever the caller checked, no text leaves outside the
+  // send window (an omitted state gets the narrowest window, never an open one).
+  if (!smsWindowOpen(bizState)) return { ok: false, detail: "sms_quiet_hours" };
+  if (!twilioSid || !twilioToken) {
     return { ok: false, detail: "Twilio is not configured" };
   }
   const toPhone = normalizePhone(customer.phone);
   if (!toPhone) return { ok: false, detail: "Invalid phone" };
 
-  const form = new URLSearchParams({ To: toPhone, Body: body.slice(0, 1500) });
-  if (msid) form.set("MessagingServiceSid", msid);
-  else form.set("From", twilioFrom);
-  const response = await fetchT(`https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${btoa(`${twilioSid}:${twilioToken}`)}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: form,
-  });
+  const form = new URLSearchParams({ To: toPhone, Body: body.slice(0, 1500), MessagingServiceSid: msid });
+  let response;
+  try {
+    response = await fetchT(`https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${btoa(`${twilioSid}:${twilioToken}`)}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: form,
+    });
+  } catch (e) {
+    // A Twilio timeout or network error fails THIS text (recorded, so the cooldown
+    // stops an hourly re-send) instead of aborting the whole run.
+    const why = e instanceof Error && e.name === "AbortError" ? "timeout" : "network error";
+    await rest("/rest/v1/sms_messages", {
+      method: "POST",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        user_id: customer.user_id, campaign_id: campaign.id, customer_id: customer.id,
+        to_phone: toPhone, body: body.slice(0, 1500), status: "failed", provider: "twilio",
+        error: `Twilio request failed: ${why}`,
+      }),
+    }).catch(() => {});
+    return { ok: false, detail: `Twilio request failed: ${why}` };
+  }
   const data = await response.json().catch(() => ({}));
 
   await rest("/rest/v1/sms_messages", {
@@ -573,10 +715,12 @@ async function recordSend(campaign: Campaign, customer: Customer, channel: strin
   }).catch(() => {});
 }
 
-async function queuePhysicalGiftAlert(campaign: Campaign, customer: Customer, hasAddress: boolean) {
+async function queuePhysicalGiftAlert(campaign: Campaign, customer: Customer, hasAddress: boolean, asked = true) {
   const addressNote = hasAddress
     ? "Their mailing address is on file — review and send from the dashboard."
-    : "No mailing address yet — Clicktide has asked them for it directly; it will appear on their profile once they reply.";
+    : asked
+    ? "No mailing address yet — Clicktide has asked them for it directly; it will appear on their profile once they reply."
+    : "No mailing address on file, and Clicktide couldn't reach them to ask for one. Add their address on their profile to send the gift.";
   await rest("/rest/v1/alerts", {
     method: "POST",
     headers: { Prefer: "return=minimal" },
@@ -633,22 +777,42 @@ async function autoSendGift(campaign: Campaign, customer: Customer, internalKey:
   }
 }
 
-async function maybeRequestAddress(campaign: Campaign, customer: Customer, businessName: string, whiteLabel: boolean, logoUrl = "", brandColor = "#0B62D6", lastVisitText = "") {
+// Why an address request can't go to this customer right now ("" = it can): they were
+// asked within the last ADDRESS_ASK_COOLDOWN_DAYS, or there is no link token on file.
+function addressAskBlocked(customer: Customer): string {
   const lastAsk = customer.address_requested_at ? Date.parse(customer.address_requested_at) : 0;
-  if (lastAsk && Date.now() - lastAsk < ADDRESS_ASK_COOLDOWN_DAYS * 86400000) return { asked: false, reason: "recently_asked" };
+  if (lastAsk && Date.now() - lastAsk < ADDRESS_ASK_COOLDOWN_DAYS * 86400000) return "recently_asked";
+  if (!customer.address_request_token) return "no_token";
+  return "";
+}
+
+// An address request is due and would go out as a text, but the business's send
+// window is closed. Callers hold the whole touch until the window opens. Pure (no
+// I/O), so a dry run reports exactly the decision a live run makes.
+function addressAskHeld(customer: Customer, bizState: string): boolean {
+  return !addressAskBlocked(customer) && canText(customer) && !smsWindowOpen(bizState);
+}
+
+async function maybeRequestAddress(campaign: Campaign, customer: Customer, businessName: string, whiteLabel: boolean, logoUrl = "", brandColor = "#0B62D6", lastVisitText = "", bizState = "") {
+  const blocked = addressAskBlocked(customer);
+  if (blocked) return { asked: false, reason: blocked };
   const token = String(customer.address_request_token || "");
-  if (!token) return { asked: false, reason: "no_token" };
   const link = `${ADDRESS_FORM_URL}?t=${token}`;
   const first = (customer.name || "there").trim().split(/\s+/)[0];
   let sent = false;
   let channel = "";
 
-  if (customer.sms_consent && !customer.sms_unsubscribed_at && normalizePhone(customer.phone)) {
+  if (canText(customer)) {
+    // Quiet hours: hold the ask — it goes out as a text on the first run inside the
+    // window — rather than downgrade it to an email now.
+    if (!smsWindowOpen(bizState)) return { asked: false, reason: "sms_quiet_hours" };
     const smsBody = `Hey ${first}! ${businessName} has a little something they want to MAIL you \u{1F381} Tell us where to send it: ${link}`;
-    const r = await sendSms(campaign, customer, smsBody);
+    const r = await sendSms(campaign, customer, smsBody, bizState);
     if (r.ok) { sent = true; channel = "sms"; }
   }
-  if (!sent && customer.email) {
+  // A customer who unsubscribed from email gets no address-request email either (the ask
+  // is on behalf of a marketing postcard/gift, so the opt-out covers it).
+  if (!sent && customer.email && !customer.email_unsubscribed_at) {
     const visitLine = lastVisitText
       ? `<p style="margin:0 0 18px;font-size:12px;color:#9CA3AF">\u{1F4CD} Your last visit: ${escapeHtml(lastVisitText)}</p>`
       : "";
@@ -703,6 +867,15 @@ Deno.serve(async (req) => {
     gifts_auto_sent: 0,
     address_requests: 0,
     failed: 0,
+    // Businesses with active campaigns, by whether customer texts may go out right now.
+    // state_unknown = no usable state on file, so the narrowest (all-US) window applies.
+    // self_check = the window maths verified against known answers in this runtime.
+    sms_window: { open: 0, closed: 0, state_unknown: 0, self_check: smsWindowSelfCheck() ? "ok" : "failed" },
+    // How many businesses can text (active registration linked to their account);
+    // the error flag means the registry read failed and the last snapshot was kept.
+    sms_registered_businesses: 0,
+    sms_unlinked_registrations: 0,
+    sms_registry_error: false,
     skipped: {
       billing_inactive: 0,
       cooldown: 0,
@@ -713,6 +886,8 @@ Deno.serve(async (req) => {
       email_unsubscribed: 0,
       no_sms_consent: 0,
       sms_not_in_plan: 0,
+      sms_not_registered: 0,
+      sms_quiet_hours: 0, // touch held: a text is due but the send window is closed
       sms_budget: 0,
       postcard_no_address: 0,
       postcard_wallet: 0,
@@ -734,22 +909,61 @@ Deno.serve(async (req) => {
     ) as Business[];
     const bizByUser = new Map(businesses.map((b) => [b.user_id, b]));
     summary.businesses = userIds.length;
+    for (const b of businesses) {
+      if (smsWindowOpen(b.state)) summary.sms_window.open++;
+      else summary.sms_window.closed++;
+      if (smsZonesForState(b.state) === SMS_ZONES_UNKNOWN) summary.sms_window.state_unknown++;
+    }
 
     // Per-business A2P routing: load approved registrations once per run.
-    // Rows are matched to a business by user_id, or by intake email as fallback.
-    msidByUser.clear();
+    // A registration belongs to a business only through user_id, which staff set
+    // at activation. Never match on email: owners can edit their own email, so an
+    // email match would let one account send through another business's number.
     try {
+      // The platform rows' SIDs join the deny list (any status — Clicktide's own
+      // services never carry customer texts, active or not). Best-effort: the
+      // static deny list above covers the known service even if this read fails.
+      try {
+        const platRows = await rest(
+          "/rest/v1/a2p_registrations?reg_type=eq.platform&messaging_service_sid=not.is.null&select=messaging_service_sid",
+        ) as Array<{ messaging_service_sid?: string }>;
+        for (const p of (Array.isArray(platRows) ? platRows : [])) {
+          if (p.messaging_service_sid) platformMsids.add(String(p.messaging_service_sid));
+        }
+      } catch { /* static deny list still applies */ }
+      // An active business row with no user_id is a staff mistake: it looks live
+      // in the table while every text is skipped. Make it loud.
+      try {
+        const unlinkedRows = await rest(
+          "/rest/v1/a2p_registrations?sms_status=eq.active&reg_type=neq.platform&user_id=is.null&select=id&limit=100",
+        );
+        const unlinked = Array.isArray(unlinkedRows) ? unlinkedRows.length : 0;
+        if (unlinked) {
+          summary.sms_unlinked_registrations = unlinked;
+          globalThis.console?.warn(`${unlinked} active a2p registration(s) have no user_id — their businesses cannot text until it is set`);
+        }
+      } catch { /* informational only */ }
       const regs = await rest(
-        "/rest/v1/a2p_registrations?sms_status=eq.active&messaging_service_sid=not.is.null&select=user_id,business_email,messaging_service_sid",
-      ) as Array<{ user_id?: string; business_email?: string; messaging_service_sid?: string }>;
-      const userByEmail = new Map(
-        businesses.filter((b) => b.email).map((b) => [String(b.email).toLowerCase(), b.user_id]),
-      );
+        "/rest/v1/a2p_registrations?sms_status=eq.active&messaging_service_sid=not.is.null&reg_type=neq.platform&user_id=not.is.null&select=user_id,messaging_service_sid",
+      ) as Array<{ user_id?: string; messaging_service_sid?: string }>;
+      const fresh = new Map<string, string>();
       for (const reg of (Array.isArray(regs) ? regs : [])) {
-        const uid = reg.user_id || userByEmail.get(String(reg.business_email || "").toLowerCase());
-        if (uid && reg.messaging_service_sid) msidByUser.set(String(uid), String(reg.messaging_service_sid));
+        const sid = String(reg.messaging_service_sid || "");
+        if (!reg.user_id || !sid) continue;
+        if (platformMsids.has(sid)) { globalThis.console?.error(`a2p row for ${reg.user_id} holds a platform service SID — skipped`); continue; }
+        fresh.set(String(reg.user_id), sid);
       }
-    } catch { /* lookup failed → every business falls back to the shared Messaging Service */ }
+      // Swap contents with no await in between, so a concurrent run never sees a
+      // half-empty map; a failed read keeps the previous run's snapshot instead.
+      msidByUser.clear();
+      for (const [k, v] of fresh) msidByUser.set(k, v);
+      summary.sms_registered_businesses = fresh.size;
+    } catch {
+      // Lookup failed: keep the last good snapshot (empty on a cold start, which
+      // fails closed to sms_not_registered) and say so in the summary.
+      summary.sms_registry_error = true;
+      summary.sms_registered_businesses = msidByUser.size;
+    }
 
     for (const userId of userIds) {
       if (Date.now() > RUN_DEADLINE) { summary.timed_out = true; break; }
@@ -790,10 +1004,15 @@ Deno.serve(async (req) => {
 
       const yearAgo = new Date(Date.now() - 365 * 86400000).toISOString();
       const sends = await rest(
-        `/rest/v1/campaign_sends?user_id=eq.${encodeURIComponent(userId)}&sent_at=gte.${yearAgo}&select=campaign_id,customer_id,sent_at`,
-      ) as Array<{ campaign_id: number; customer_id: number; sent_at: string }>;
+        `/rest/v1/campaign_sends?user_id=eq.${encodeURIComponent(userId)}&sent_at=gte.${yearAgo}&select=campaign_id,customer_id,sent_at,channel`,
+      ) as Array<{ campaign_id: number; customer_id: number; sent_at: string; channel?: string }>;
       const lastSend = new Map<string, number>();
       for (const s of sends) {
+        // Asking a customer for their mailing address is not the touch itself: it must
+        // not start the campaign's cooldown, or a postcard would still wait out the full
+        // cooldown after the address arrives. Re-asking is already limited by the
+        // customer's own 14-day address_requested_at timer.
+        if (s.channel === "address_request") continue;
         const key = `${s.campaign_id}:${s.customer_id}`;
         const t = Date.parse(s.sent_at);
         if (!lastSend.has(key) || t > (lastSend.get(key) || 0)) lastSend.set(key, t);
@@ -862,6 +1081,14 @@ Deno.serve(async (req) => {
           const lastVisitText = fmtLastVisit(customer.last_visit_at || customer.last_order_at, bizState);
 
           if (campaign.campaign_type === "physical_gift") {
+            // Quiet hours: no address yet, and the request for it would go out as a text
+            // while the send window is closed — hold the whole gift touch. Queuing the
+            // owner alert now would start this campaign's cooldown and the customer
+            // would never be asked.
+            if (!hasAddress && addressAskHeld(customer, bizState)) {
+              summary.skipped.sms_quiet_hours++;
+              continue;
+            }
             const canAuto = giftAutoSend && hasAddress && !!campaign.printify_product_id && !!campaign.printify_variant_id && (Number(campaign.gift_cost) || 0) > 0;
             if (!dryRun) {
               if (canAuto && await autoSendGift(campaign, customer, internalKey)) {
@@ -871,11 +1098,19 @@ Deno.serve(async (req) => {
                 bizSends++;
                 continue;
               }
+              let asked = true;
               if (!hasAddress) {
-                const ask = await maybeRequestAddress(campaign, customer, businessName, whiteLabel, logoUrl, brandColor, lastVisitText);
+                const ask = await maybeRequestAddress(campaign, customer, businessName, whiteLabel, logoUrl, brandColor, lastVisitText, bizState);
                 if (ask.asked) summary.address_requests++;
+                else if (ask.reason === "sms_quiet_hours") {
+                  // The window shut between the check above and the ask — still hold.
+                  summary.skipped.sms_quiet_hours++;
+                  continue;
+                } else if (ask.reason !== "recently_asked") {
+                  asked = false; // the owner alert must not claim the customer was asked
+                }
               }
-              await queuePhysicalGiftAlert(campaign, customer, hasAddress);
+              await queuePhysicalGiftAlert(campaign, customer, hasAddress, asked);
               await recordSend(campaign, customer, "alert", "queued_review", "Physical gift queued for manual review");
             }
             lastSend.set(key, Date.now());
@@ -887,8 +1122,12 @@ Deno.serve(async (req) => {
           if (campaign.campaign_type === "postcard") {
             if (!hasAddress) {
               summary.skipped.postcard_no_address++;
-              if (!dryRun) {
-                const ask = await maybeRequestAddress(campaign, customer, businessName, whiteLabel, logoUrl, brandColor, lastVisitText);
+              if (addressAskHeld(customer, bizState)) {
+                // Quiet hours: the address request waits and goes out as a text once the
+                // send window opens (nothing is recorded, so the next run retries it).
+                summary.skipped.sms_quiet_hours++;
+              } else if (!dryRun) {
+                const ask = await maybeRequestAddress(campaign, customer, businessName, whiteLabel, logoUrl, brandColor, lastVisitText, bizState);
                 if (ask.asked) summary.address_requests++;
               }
               continue;
@@ -931,6 +1170,16 @@ Deno.serve(async (req) => {
           }
 
           const channel = campaign.delivery_channel || "email";
+          // Quiet hours: this customer is due a text but the business's send window is
+          // closed, so hold the WHOLE touch. Sending the email now would record the send
+          // and the per-campaign cooldown would then swallow the text for good; held, the
+          // email and the text go out together on the first run inside the window.
+          // Customers who can't be texted anyway (plan, registration, consent, phone)
+          // fall through and get their email right away. Applies to dry runs too.
+          if (channel.includes("sms") && smsLimit > 0 && canText(customer) && !smsWindowOpen(bizState)) {
+            summary.skipped.sms_quiet_hours++;
+            continue;
+          }
           const template = campaign.message || "Thanks for being a customer of {{business_name}}!";
           const message = fillTemplate(template, customer, businessName);
           const reward = rewardBlocks(campaign);
@@ -976,16 +1225,22 @@ Deno.serve(async (req) => {
           if (channel.includes("sms")) {
             if (smsLimit <= 0) {
               summary.skipped.sms_not_in_plan++;
+            } else if (!msidByUser.has(String(userId))) {
+              summary.skipped.sms_not_registered++;
             } else if (!customer.sms_consent || customer.sms_unsubscribed_at) {
               summary.skipped.no_sms_consent++;
             } else if (!normalizePhone(customer.phone)) {
               summary.skipped.missing_contact++;
+            } else if (!smsWindowOpen(bizState)) {
+              // Only reachable when the window shut mid-touch (the hold above covers the
+              // normal case): the email already went, the text still never leaves late.
+              summary.skipped.sms_quiet_hours++;
             } else if (smsUsed >= smsLimit && (await walletBalance(userId)) < SMS_OVERAGE_PRICE) {
               summary.skipped.sms_budget++;
             } else if (!dryRun) {
               const smsOverage = smsUsed >= smsLimit;
               const smsBody = fillTemplate(campaign.sms_message || template, customer, businessName) + reward.sms;
-              const result = await sendSms(campaign, customer, smsBody);
+              const result = await sendSms(campaign, customer, smsBody, bizState);
               if (result.ok) {
                 sentSomething = true;
                 smsUsed++;
