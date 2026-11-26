@@ -331,7 +331,29 @@ input.fi{width:100%;padding:13px 14px;border-radius:12px;border:1px solid rgba(1
       <div class="fg"><label class="fl" for="lPw">Password</label><input class="fi" id="lPw" type="password" autocomplete="current-password" required/></div>
       <button class="btn btn-dark" style="width:100%" type="submit" id="lBtn">Log in &rarr;</button>
     </form>
-    <p class="note" style="text-align:center">New here? <a href="#" id="toSignup">Create a free account</a> · <a href="/">Forgot password?</a></p>
+    <p class="note" style="text-align:center">New here? <a href="#" id="toSignup">Create a free account</a> · <a href="#" id="toForgot">Forgot password?</a></p>
+  </div>
+
+  <div id="pForgot" class="card panel hide" role="region" aria-labelledby="hForgot">
+    <h2 id="hForgot">Reset your password</h2>
+    <p class="lead">Enter your account email and we'll send a reset link from support@goclicktide.com. It brings you back here to finish your free audit.</p>
+    <div class="err" id="fpErr" role="alert"></div>
+    <form id="fForgot" novalidate>
+      <div class="fg"><label class="fl" for="fpEmail">Account email</label><input class="fi" id="fpEmail" type="email" autocomplete="email" required/></div>
+      <button class="btn btn-dark" style="width:100%" type="submit" id="fpBtn">Send reset link &rarr;</button>
+    </form>
+    <p class="note" id="fpMsg" role="status" style="color:var(--green)"></p>
+    <p class="note" style="text-align:center"><a href="#" id="backLogin">Back to log in</a></p>
+  </div>
+
+  <div id="pReset" class="card panel hide" role="region" aria-labelledby="hReset">
+    <h2 id="hReset">Choose a new password</h2>
+    <p class="lead">Then we'll take you straight back to your free audit.</p>
+    <div class="err" id="rsErr" role="alert"></div>
+    <form id="fReset" novalidate>
+      <div class="fg"><label class="fl" for="rsPw">New password (8+ characters)</label><input class="fi" id="rsPw" type="password" autocomplete="new-password" required minlength="8"/></div>
+      <button class="btn btn-dark" style="width:100%" type="submit" id="rsBtn">Save new password &rarr;</button>
+    </form>
   </div>
 
   <div id="pConfirm" class="card panel hide" role="region" aria-labelledby="hConf">
@@ -496,7 +518,7 @@ async function ensureBiz(extra){
 }
 
 // ---------------- views ----------------
-var PANELS=["pAccount","pLogin","pConfirm","pConnect","pProgress"];
+var PANELS=["pAccount","pLogin","pForgot","pReset","pConfirm","pConnect","pProgress"];
 function show(view,panel){
   $("vLanding").classList.toggle("hide",view!=="landing");
   $("vFlow").classList.toggle("hide",view!=="flow");
@@ -525,6 +547,31 @@ async function startFlow(src){
 document.querySelectorAll("[data-cta]").forEach(function(b){b.addEventListener("click",function(){startFlow(b.dataset.cta);});});
 $("toLogin").onclick=function(e){e.preventDefault();show("flow","pLogin");};
 $("toSignup").onclick=function(e){e.preventDefault();show("flow","pAccount");};
+$("toForgot").onclick=function(e){e.preventDefault();markAuditFlow();$("fpEmail").value=$("lEmail").value||"";$("fpMsg").textContent="";err("fpErr");show("flow","pForgot");};
+$("backLogin").onclick=function(e){e.preventDefault();show("flow","pLogin");};
+$("fForgot").addEventListener("submit",async function(e){
+  e.preventDefault();err("fpErr");$("fpMsg").textContent="";
+  var em=$("fpEmail").value.trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em))return err("fpErr","Please enter a valid email address.");
+  var b=$("fpBtn");b.disabled=true;b.textContent="Sending…";
+  // Same reset service the main app uses; the link returns to this page.
+  try{await fetch(FN+"/password-reset",{method:"POST",headers:{"Content-Type":"application/json",apikey:SK},body:JSON.stringify({email:em,redirect_to:"https://goclicktide.com/free-pos-audit"})});}catch(x){}
+  $("fpMsg").textContent="Sent. If an account exists for "+em+", a reset link is on its way — check your inbox and spam.";
+  b.disabled=false;b.innerHTML="Send again &rarr;";
+});
+var RECOVERY_TOKEN="";
+$("fReset").addEventListener("submit",async function(e){
+  e.preventDefault();err("rsErr");
+  var pw=$("rsPw").value;if(pw.length<8)return err("rsErr","Password must be at least 8 characters.");
+  var b=$("rsBtn");b.disabled=true;b.textContent="Saving…";
+  try{
+    var r=await fetch(SU+"/auth/v1/user",{method:"PUT",headers:{apikey:SK,Authorization:"Bearer "+RECOVERY_TOKEN,"Content-Type":"application/json"},body:JSON.stringify({password:pw})});
+    var d=await r.json().catch(function(){return{};});
+    if(!r.ok)throw new Error(d.msg||d.message||d.error_description||"Couldn't update your password — the link may have expired. Request a new one.");
+    setNav();try{await ensureBiz({});}catch(x){}
+    await afterLogin();
+  }catch(ex){err("rsErr",ex.message);b.disabled=false;b.innerHTML="Save new password &rarr;";}
+});
 
 $("fSignup").addEventListener("submit",async function(e){
   e.preventDefault();err("accErr");
@@ -857,6 +904,19 @@ async function deleteData(platform){
   }
   // Email-confirmation link that returned straight here (#access_token=…).
   var ht=hashP.get("access_token");
+  if(ht&&hashP.get("type")==="recovery"){
+    try{
+      var ru=await (await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+ht}})).json();
+      if(ru&&ru.id){RECOVERY_TOKEN=ht;saveSession({access_token:ht,refresh_token:hashP.get("refresh_token")||"",expires_in:hashP.get("expires_in")||"",expires_at:hashP.get("expires_at")||"",user:ru});}
+    }catch(e){}
+    history.replaceState({},"",location.pathname);
+    if(RECOVERY_TOKEN){show("flow","pReset");return;}
+    show("flow","pForgot");err("fpErr","That reset link has expired or was already used. Request a new one.");return;
+  }
+  if(hashP.get("error_description")||hashP.get("error_code")){
+    history.replaceState({},"",location.pathname);
+    show("flow","pForgot");err("fpErr","That link has expired or was already used. Request a new one below.");return;
+  }
   if(ht){
     try{
       var u=await (await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+ht}})).json();

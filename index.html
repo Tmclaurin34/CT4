@@ -5322,6 +5322,7 @@ async function doPwReset(btn){
     if(!r.ok)throw new Error(d.message||d.error_description||"Could not update password");
     document.querySelector(".ov")?.remove();
     alert("Password updated! Log in with your new password.");
+    if(ctAuditFlow()){window.location.replace("/free-pos-audit?step=connect");return;}
     go("login");
   }catch(ex){if(er){er.textContent=ex.message;er.style.display="block";}if(btn){btn.disabled=false;btn.textContent="Update password →";}}
 }
