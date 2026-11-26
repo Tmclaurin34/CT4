@@ -19,9 +19,9 @@ type CheckoutBody = {
 // Prices are HARDCODED on purpose: stale GROWTH_PRICE_ID/SCALE_PRICE_ID env vars
 // on the project would silently override fallbacks — never reintroduce env reads here.
 const planPrices: Record<string, string> = {
-  Local: "price_1ThaasGWBWEX8wHssSYEbwEl",   // $49/mo
-  Growth: "price_1ThbjeGWBWEX8wHsElMt4z3Z",  // $149/mo
-  Scale: "price_1ThbjeGWBWEX8wHsNrw2mjPF",   // $349/mo
+  Local: "price_1TjhtKGWBWEX8wHsjfvhyPBa",   // $79/mo
+  Growth: "price_1Tjhv8GWBWEX8wHsQ3nBFXDm",  // $199/mo
+  Scale: "price_1TjhwWGWBWEX8wHsAtmldOt9",   // $449/mo
 };
 const canonicalPlans = Object.keys(planPrices);
 

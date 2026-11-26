@@ -66,11 +66,13 @@ All plans include the core loop: rhythm watching, the full 8-campaign library, t
 
 | Plan | Price | Built for |
 |---|---|---|
-| **Local** | $49/mo | Single shop, up to ~200 customers/mo — texts & emails included, Square & Clover, basic analytics |
-| **Growth** | $149/mo | Busier shop, up to ~1,000 customers/mo — all integrations, retention analytics, branded packaging, priority support |
-| **Scale** | $349/mo | Multi-location or high volume — unlimited customers, white-label (their branding only), custom dashboard, dedicated success manager |
+| **Local** | $79/mo | Single shop, up to 200 customers — email + 10 mailed postcards/mo included, all campaigns, Win-Back Playbook, Drift Report. **No texting on Local.** |
+| **Growth** | $199/mo | Busier shop, up to 1,000 customers — everything in Local + 1,500 texts/mo + 30 postcards/mo, all integrations, retention analytics, Email & Brand Studio |
+| **Scale** | $449/mo | Multi-location or high volume — unlimited customers, everything in Growth + 5,000 texts/mo + 75 postcards/mo, AI campaign suggestions, white-label |
 
-A texting-only buyer fits **Local at $49** — if they never fund the wallet, they never pay for anything physical.
+Texting (SMS) is Growth/Scale only. Extra texts are 5¢ and extra postcards $1.50 from the wallet. A buyer who never funds the wallet never pays for anything beyond the plan.
+
+**AI campaign suggestions (Scale):** once a week the AI proposes up to 3 campaigns from the business's own numbers; the owner approves, it never sends by itself. It learns from each campaign's real results (reached, came back after, return-visit dollars, gift/postcard cost), won't judge campaigns that are too new or too small, and only suggests a physical gift costing at most about half of one best-customer visit. Results are "came back after," never "caused."
 
 ## How we speak
 
@@ -97,7 +99,7 @@ A texting-only buyer fits **Local at $49** — if they never fund the wallet, th
 > "Read-only access through the platform's official connection. We can see visit and sales history so we can spot drifting; we can't move money or change your account, and you can disconnect with one click. Your data is never sold and deleted on request."
 
 **"What does it cost? Any hidden fees?"**
-> "Three plans — $49, $149, $349 a month — and texts, emails, and promo-code delivery are included. Physical things cost what they cost, from a pay-per-send wallet you control: about $1.50 a postcard, gifts from a few dollars depending on what you pick (a logo mug runs around $8–20 with shipping). You only pay when something physically sends, and nothing physical sends without your standing permission. No contracts, no setup fees, cancel anytime."
+> "Three plans — $79, $199, $449 a month. Email and promo-code delivery are included on every plan, plus a monthly bundle of mailed postcards; texting is included on Growth and Scale. Physical things cost what they cost, from a pay-per-send wallet you control: about $1.50 a postcard, gifts from a few dollars depending on what you pick (a logo mug runs around $8–20 with shipping). You only pay when something physically sends, and nothing physical sends without your standing permission. No contracts, no setup fees, cancel anytime."
 
 **"What happens after the 30-day free trial?"**
 > "Nothing is charged for 30 days, and if you cancel during the trial there's no charge at all. If you stay, your plan starts. Either way the customer data is yours — we delete it on request."
@@ -190,7 +192,7 @@ Answer the way a trusted neighbor would: honest, plain, no pressure. If it invol
 ## INTERNAL NOTES — never read these to a customer, but know them
 
 - **Live today vs. marketing list:** Square, Shopify, and Stripe connections plus manual/no-POS mode are live; the other integrations shown on the site (Clover, Toast, Mindbody, etc.) are rolling out. Don't promise a go-live date for any specific integration — Charles only.
-- **Texting status:** outbound texting runs through carrier verification (A2P registration). Until carriers approve it, day-14 touches go by email. Never name a date for SMS going live; say "it's in final carrier review."
+- **Texting status:** Clicktide's own first-party campaign is carrier-approved (2026-11-25) and carries ONLY owner text alerts — Clicktide texting its own business owners who opted in under Settings → Owner text alerts. It must never carry a business's customer texts; that is the exact pattern carriers rejected before. Customer texting is activated **per business**: each business registers its own brand with the carriers (Settings → Customer texting; we file it), typically a few days to ~2 weeks. Until a business's registration is approved, its text touches wait and its email, postcard and gift touches send as normal. Never name an approval date for a specific business; say "it's in carrier review."
 - **Text replies:** STOP is processed automatically. Other replies are not yet forwarded to the owner — if asked "what happens when my customer texts back?", the honest answer is "STOP is automatic; reply-forwarding is being finished — let me have Charles give you the current state."
 - **Review invitations:** the current setting invites customers who rated their visit highly; Charles is actively finalizing how this works against Google's review policies (which prohibit selectively gating reviews). If a buyer asks compliance-level questions about reviews, do not improvise — route to Charles.
 - **Refunds and wallet balances:** there is no published refund policy yet. Trial cancellations are never charged. For anything else (unused wallet refunds, mid-month cancels, a misfired send), apologize, take details, and send to Charles — he makes it right case by case.

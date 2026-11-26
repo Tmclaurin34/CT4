@@ -19,6 +19,7 @@ type CustomerRow = {
   user_id: string;
   email?: string | null;
   name?: string | null;
+  email_unsubscribed_at?: string | null;
 };
 
 function json(body: unknown, status = 200) {
@@ -37,21 +38,47 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#039;");
 }
 
-function wrapMessage(body: EmailBody) {
-  if (body.html) return body.html;
+const EMAIL_FROM_DOMAIN = "support@goclicktide.com"; // verified Resend sender; display name is the business
+const EMAIL_UNSUB_SECRET = Deno.env.get("EMAIL_UNSUB_SECRET") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const EMAIL_FOOTER_ADDR = "Glen Cove, NY 11542"; // interim — replace with the PO Box / business address (CAN-SPAM physical address)
 
-  const customer = escapeHtml(body.customer_name || "there");
+// Customer-facing "From" shows the BUSINESS name, sent from the one verified domain.
+function bizFrom(name: string): string {
+  const clean = (name || "Clicktide").replace(/[<>"\r\n,;]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60) || "Clicktide";
+  return `${clean} <${EMAIL_FROM_DOMAIN}>`;
+}
+// Signed one-click unsubscribe link — same algorithm + secret as campaign-runner.
+async function unsubUrlFor(email: string): Promise<string> {
+  const addr = (email || "").trim().toLowerCase();
+  if (!addr) return "";
+  try {
+    const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(EMAIL_UNSUB_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(addr));
+    const tok = [...new Uint8Array(sig)].slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("");
+    return `${Deno.env.get("SUPABASE_URL") || "https://hmihfncvahsdlmefyxyg.supabase.co"}/functions/v1/email-unsubscribe?e=${encodeURIComponent(addr)}&t=${tok}`;
+  } catch {
+    return "";
+  }
+}
+
+function wrapMessage(body: EmailBody, unsubUrl = "") {
   const business = escapeHtml(body.business_name || "Clicktide");
+  const unsub = unsubUrl ? `<a href="${escapeHtml(unsubUrl)}" style="color:#9CA3AF;text-decoration:underline">Unsubscribe</a> &middot; ` : "";
+  const footerInner = `You're receiving this because you're a customer of ${business}.<br>${unsub}Sent via <a href="https://goclicktide.com" style="color:#9CA3AF;text-decoration:underline">Clicktide</a> &middot; ${business}, ${EMAIL_FOOTER_ADDR}`;
+  if (body.html) {
+    return body.html.includes("email-unsubscribe")
+      ? body.html
+      : body.html + `<div style="text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#9CA3AF;padding:14px 12px;line-height:1.7">${footerInner}</div>`;
+  }
+  const customer = escapeHtml(body.customer_name || "there");
   const message = escapeHtml(body.message || "Thanks for being a customer.").replaceAll("\n", "<br>");
-
-  return `
-    <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:28px;color:#111827;line-height:1.6">
-      <h1 style="font-size:22px;margin:0 0 14px;color:#111827">${business}</h1>
-      <p style="margin:0 0 18px">Hi ${customer},</p>
-      <p style="margin:0 0 22px">${message}</p>
-      <p style="font-size:12px;color:#6B7280;margin:28px 0 0">Sent by Clicktide on behalf of ${business}.</p>
-    </div>
-  `;
+  return `<div style="background:#F4F5F7;padding:26px 12px;font-family:Arial,Helvetica,sans-serif">
+    <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+    <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#FFFFFF;border-radius:14px;border:1px solid #E9EBEF">
+      <tr><td align="center" style="padding:26px 30px 18px;border-bottom:1px solid #F0F1F4"><div style="font-size:21px;font-weight:bold;color:#111827">${business}</div></td></tr>
+      <tr><td style="padding:24px 30px;color:#1F2937;font-size:15px;line-height:1.7"><p style="margin:0 0 14px">Hi ${customer},</p><p style="margin:0">${message}</p></td></tr>
+      <tr><td align="center" style="padding:16px 30px 22px;border-top:1px solid #F0F1F4;font-size:11px;color:#9CA3AF;line-height:1.7">${footerInner}</td></tr>
+    </table></td></tr></table></div>`;
 }
 
 async function getUser(supabaseUrl: string, serviceRoleKey: string, authHeader: string) {
@@ -84,7 +111,7 @@ async function getCustomer(supabaseUrl: string, serviceRoleKey: string, id: stri
   const rows = await supabaseRest(
     supabaseUrl,
     serviceRoleKey,
-    `/rest/v1/customers?id=eq.${encodeURIComponent(id)}&select=id,user_id,email,name&limit=1`,
+    `/rest/v1/customers?id=eq.${encodeURIComponent(id)}&select=id,user_id,email,name,email_unsubscribed_at&limit=1`,
   ) as CustomerRow[];
   return Array.isArray(rows) ? rows[0] : null;
 }
@@ -97,7 +124,6 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "Clicktide <support@goclicktide.com>";
 
     if (!supabaseUrl || !serviceRoleKey) return json({ error: "Supabase is not configured" }, 500);
     if (!resendApiKey) return json({ error: "RESEND_API_KEY is not configured" }, 500);
@@ -128,7 +154,11 @@ Deno.serve(async (req) => {
 
     const toEmail = String(customer.email || "").trim();
     if (!toEmail) return json({ error: "Customer email is missing" }, 400);
+    if (customer.email_unsubscribed_at) {
+      return json({ error: "This customer has unsubscribed from emails and can't be emailed." }, 409);
+    }
     body.customer_name = body.customer_name || customer.name || "";
+    const unsubUrl = await unsubUrlFor(toEmail);
 
     const resendResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -137,10 +167,11 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: fromEmail,
+        from: bizFrom(body.business_name || ""),
         to: [toEmail],
         subject: body.subject,
-        html: wrapMessage(body),
+        html: wrapMessage(body, unsubUrl),
+        ...(unsubUrl ? { headers: { "List-Unsubscribe": `<${unsubUrl}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } } : {}),
       }),
     });
 
