@@ -10,7 +10,7 @@
 
 ## Edge function secrets (Project Settings → Edge Functions)
 - [ ] `RESEND_API_KEY` + `RESEND_FROM_EMAIL` (domain verified in Resend; open/click tracking on)
-- [ ] `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM_NUMBER` (A2P campaign approved)
+- [ ] `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` (A2P campaign approved 2026-11-25; SMS sends via Messaging Service `MG4c1badf5712739590510f936bbd0bc1a` — override with `TWILIO_MESSAGING_SERVICE_SID`; `TWILIO_FROM_NUMBER` is now only a fallback)
 - [ ] `LOB_API_KEY` (live key once payment method added in Lob)
 - [ ] `PRINTIFY_API_TOKEN` + `PRINTIFY_SHOP_ID` + `PRINTIFY_WEBHOOK_SECRET`
 - [ ] `STRIPE_SECRET_KEY` + plan price ids (`LOCAL_PRICE_ID` / `GROWTH_PRICE_ID` / `SCALE_PRICE_ID`)

@@ -825,7 +825,7 @@ function buildDemoData(){
 }
 function demoSel(t,f){
   if(!DEMO_DATA)buildDemoData();
-  if(t==="clicktide")return [Object.assign({},DEMO_BIZ)];
+  if(t==="clicktide")return [Object.assign({},DEMO_BIZ,{plan:(bizLock&&bizLock.plan)||DEMO_BIZ.plan})];
   if(DEMO_DATA[t])return DEMO_DATA[t].slice();
   return [];
 }
@@ -883,15 +883,17 @@ function demoCustomersResponse(q){
 function demoRibbon(){
   return '<div style="background:#0B62D6;color:#FFFFFF;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;padding:9px 14px;font-size:12.5px;font-weight:600;text-align:center;line-height:1.4">You’re exploring a live demo — sample data, nothing is ever sent. <button onclick="exitDemo()" style="background:rgba(255,255,255,.18);color:#FFFFFF;border:1px solid rgba(255,255,255,.55);border-radius:7px;padding:5px 13px;font-size:12px;font-weight:700;cursor:pointer">Exit demo</button></div>';
 }
-function startDemo(){
+function startDemo(plan){
   DEMO=true;buildDemoData();
   S={token:"DEMO",user:{id:"demo-user",email:"demo@goclicktide.com"}};
-  bizLock=DEMO_BIZ;
+  // ?demo=scale shows the Scale ($349) experience: white-label sidebar, AI suggestions, custom dashboard colors.
+  var demoPlan=(plan==="scale"||plan==="local")?plan:"growth";
+  bizLock=Object.assign({},DEMO_BIZ,{plan:demoPlan});
   brandColor="#C2185B";brandLogoUrl=""; // demo brand (salon rose) so branded previews aren't the placeholder navy — in-memory only, doesn't touch the real Brand Studio
   try{localStorage.setItem("ct_churn","45");}catch(e){}
   window._cuFilter="all";
   scr="dash";dpg="overview";
-  try{history.replaceState({},"","?demo=1");}catch(e){}
+  try{history.replaceState({},"","?demo="+(demoPlan==="growth"?"1":demoPlan));}catch(e){}
   R();
 }
 function exitDemo(){
@@ -902,7 +904,7 @@ function exitDemo(){
 }
 function authRedirectTo(){return window.location.origin+window.location.pathname;}
 const au={
-  async up(e,p,m){const r=await fetch(`${SU}/auth/v1/signup?redirect_to=${encodeURIComponent(authRedirectTo())}`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e,password:p,data:m})});const d=await r.json();if(!r.ok){const c=d.error_code||d.error;if(c==="user_already_exists"||/already.*regist/i.test(d.msg||""))throw new Error("An account with this email already exists — log in instead, or use Forgot password.");throw new Error(d.msg||d.error_description||(d.error&&d.error.message)||"Sign-up failed — please try again");}return d;},
+  async up(e,p,m){const r=await fetch(`${SU}/auth/v1/signup?redirect_to=${encodeURIComponent(authRedirectTo())}`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e,password:p,data:m})});const d=await r.json();if(!r.ok){const c=d.error_code||d.error;if(c==="user_already_exists"||/already.*regist/i.test(d.msg||""))throw new Error("An account with this email already exists — log in instead, or use Forgot password.");throw new Error(d.msg||d.error_description||(d.error&&d.error.message)||"Sign-up failed — please try again");}var _ids=(d&&d.user&&d.user.identities)||(d&&d.identities);if(!d.access_token&&Array.isArray(_ids)&&_ids.length===0)throw new Error("An account with this email already exists — log in instead, or use Forgot password.");return d;},
   async in(e,p){const r=await fetch(`${SU}/auth/v1/token?grant_type=password`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e,password:p})});const d=await r.json();if(!r.ok){const c=d.error_code||d.error;if(c==="email_not_confirmed")throw new Error("Your account exists but the email isn't confirmed yet. Check your inbox and spam for the activation link, or click Resend email below.");throw new Error(d.msg||d.error_description||(d.error&&d.error.message)||"Wrong email or password");}return d;},
   async out(t){await fetch(`${SU}/auth/v1/logout`,{method:"POST",headers:{apikey:SK,Authorization:`Bearer ${t}`}});}
 };
@@ -1797,7 +1799,7 @@ function safeOnboardStep(v){v=Number(v);return Number.isFinite(v)?Math.max(0,Mat
 function saveOnboardingProgress(){
   try{
     localStorage.setItem(ONBOARD_PROGRESS_KEY,JSON.stringify({
-      v:1,step:safeOnboardStep(obS),accountEmail:(S?.user?.email||obE||"").toLowerCase(),
+      v:1,step:safeOnboardStep(obS),awaitConfirm:!!obAwaitConfirm&&!S,accountEmail:(S?.user?.email||obE||"").toLowerCase(),
       category:obCat,business:obB,businessOther:obOther,platform:obP,connected:!!obC,plan:selectedPlan(),
       email:obE,businessName:obN,contactName:obNm,phone:obPh,businessPhone:obBph,businessEmail:obBem,
       address:obAddr,address2:obAddr2,city:obCity,state:obState,zip:obZip,churnDays:obDy,
@@ -1814,6 +1816,7 @@ function restoreOnboardingProgress(){
     const active=(S?.user?.email||obE||"").toLowerCase();
     if(p.accountEmail&&active&&p.accountEmail!==active)return false;
     obS=safeOnboardStep(p.step);
+    obAwaitConfirm=!S&&!!p.awaitConfirm&&obS===1;
     obCat=p.category||obCat;obB=p.business||obB;obOther=p.businessOther||obOther;obP=p.platform||obP;obC=!!p.connected;
     if(p.plan)saveSelectedPlan(p.plan);
     obE=p.email||obE;obN=p.businessName||obN;obNm=p.contactName||obNm;obPh=p.phone||obPh;obBph=p.businessPhone||obBph;obBem=p.businessEmail||obBem;
@@ -2011,7 +2014,8 @@ function inquire(){
   ov.querySelector("#ctIqB").onclick=send;
   ov.querySelector("#ctIqE").addEventListener("keydown",function(ev){if(ev.key==="Enter")send();});
 }
-function go(s){if(plOn()&&(s==="onboard"||s==="login"))return inquire();if(scr==="onboard")saveOnboardingProgress();scr=s;R();}
+function go(s){if(plOn()&&(s==="onboard"||s==="login"))return inquire();if(scr==="onboard")saveOnboardingProgress();if(s==="onboard"&&!S&&!obB&&!obCat)restoreOnboardingProgress();scr=s;R();}
+function obChangeEmail(){obAwaitConfirm=false;obS=1;saveOnboardingProgress();R();setTimeout(function(){var el=document.getElementById("oE");if(el){el.focus();try{el.select();}catch(e){}}},60);}
 function ctOverlayOpen(){return (typeof showCM!=="undefined"&&showCM)||!!document.querySelector(".ov");}
 function ctCloseOverlay(){
   if(typeof showCM!=="undefined"&&showCM){try{xCM();}catch(e){showCM=false;}return true;}
@@ -2896,7 +2900,7 @@ function onboard(){
     "</div><button class='btn-full btn-gold' "+(obImport?"":"disabled style='opacity:.4;cursor:not-allowed'")+" onclick='oNxt()'>"+( obImport==="csv"?"Continue →":obImport==="platform"?"Sync & Continue →":"Skip & Go Live →")+"</button>";
     if(selectedPlan()!=="Local")c+="<div style='margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.07)'><div onclick='smsSetup()' style='display:flex;align-items:center;gap:12px;padding:14px;border:1px solid rgba(77,166,255,.3);border-radius:12px;background:rgba(77,166,255,.06);cursor:pointer'><span style='display:flex'><svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#4DA6FF' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5z'/></svg></span><div style='flex:1'><div style='font-size:13px;font-weight:700'>Turn on text messaging <span style='font-size:10px;color:rgba(240,244,255,.4);font-weight:600'>(optional)</span></div><div style='font-size:11px;color:rgba(240,244,255,.45);margin-top:1px'>Register your business to text customers. Carrier approval takes ~1-2 weeks.</div></div><span style='color:#4DA6FF;font-size:18px'>&rarr;</span></div></div>";
   }
-  else if(obS===1&&obAwaitConfirm)c=`<div style="text-align:center"><div style="margin-bottom:12px;display:flex;justify-content:center"><span class="ic-chip" style="width:52px;height:52px;margin:0 auto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v7H3v-7z"/><path d="M3 18h18"/><path d="M15 7v4M9 21v-3"/></svg></span></div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">Check your email!</h2><p style="color:rgba(240,244,255,.5);font-size:14px;line-height:1.8;margin-bottom:20px">We sent a link to <strong style="color:#F0F4FF">${obE}</strong>.<br/>Click it to activate your account and pick up right where you left off.</p><button class="btn btn-ghost" style="padding:10px 18px" onclick="resendConfirm(this)">Didn't get it? Resend email</button><div style="font-size:11px;color:rgba(240,244,255,.35);margin-top:14px">Check spam too — it comes from support@goclicktide.com</div></div>`;
+  else if(obS===1&&obAwaitConfirm)c=`<div style="text-align:center"><div style="margin-bottom:12px;display:flex;justify-content:center"><span class="ic-chip" style="width:52px;height:52px;margin:0 auto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v7H3v-7z"/><path d="M3 18h18"/><path d="M15 7v4M9 21v-3"/></svg></span></div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">Check your email!</h2><p style="color:rgba(240,244,255,.5);font-size:14px;line-height:1.8;margin-bottom:20px">We sent a link to <strong style="color:#F0F4FF">${obE}</strong>.<br/>Click it to activate your account and pick up right where you left off.</p><button class="btn btn-ghost" style="padding:10px 18px" onclick="resendConfirm(this)">Didn't get it? Resend email</button><div style="margin-top:12px"><a href="javascript:void(0)" onclick="obChangeEmail()" style="font-size:13px;font-weight:600;text-decoration:underline">Wrong email? Change it</a></div><div style="font-size:11px;color:rgba(240,244,255,.35);margin-top:14px">Check spam too — it comes from support@goclicktide.com</div></div>`;
   else if(obS===1)c=`<div style="margin-bottom:10px;display:flex;justify-content:center"><span class="ic-chip" style="width:52px;height:52px;margin:0 auto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/></svg></span></div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">${S?"Edit your details":"Create your account"}</h2><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:16px">${S?"Update anything that changed — your edits save straight to your account.":"Create your login — then connect your platform."} Fields marked <span style="color:#FF4D6D">*</span> are required.</p><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin-bottom:8px">Your details</div><div class="fg"><label class="fl">First Name <span style="color:#FF4D6D">*</span></label><input class="fi" id="oFirst" value="${(obNm||'').split(' ')[0]||''}" placeholder="Jane" oninput="obNm=(this.value+' '+(document.getElementById('oLast')?.value||'')).trim()"/></div><div class="fg"><label class="fl">Last Name <span style="color:#FF4D6D">*</span></label><input class="fi" id="oLast" value="${(obNm||'').split(' ').slice(1).join(' ')}" placeholder="Smith" oninput="obNm=((document.getElementById('oFirst')?.value||'')+' '+this.value).trim()"/></div><div class="fg"><label class="fl">Personal Email (your login) <span style="color:#FF4D6D">*</span></label><input class="fi" id="oE" value="${S?(S.user?.email||obE):obE}" type="email" placeholder="you@email.com" oninput="obE=this.value"${S?' disabled style="opacity:.6;cursor:not-allowed"':''}/></div>${S?"":`<div class="fg"><label class="fl">Password <span style="color:#FF4D6D">*</span></label><div style="position:relative"><input class="fi" id="oPw" value="${obPw}" type="password" placeholder="••••••••" autocomplete="new-password" style="padding-right:52px" oninput="obPw=this.value"/>${pwToggleBtn("oPw")}</div></div>`}<div class="fg"><label class="fl">Personal Phone <span style="color:#FF4D6D">*</span></label><input class="fi" id="oPh" value="${obPh}" type="tel" placeholder="(555) 555-5555" oninput="obPh=this.value"/></div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin:14px 0 8px">Business details</div><div class="fg"><label class="fl">Business Name <span style="color:#FF4D6D">*</span></label><input class="fi" id="oN" value="${obN}" placeholder="${B?.l||"Your Business"}" oninput="obN=this.value"/></div><div class="fg"><label class="fl">Business Phone <span style="color:#FF4D6D">*</span></label><input class="fi" id="oBph" value="${obBph}" type="tel" placeholder="(555) 555-5555" oninput="obBph=this.value"/></div><div class="fg"><label class="fl">Business Email <span style="color:#FF4D6D">*</span></label><input class="fi" id="oBem" value="${obBem}" type="email" placeholder="hello@business.com" oninput="obBem=this.value"/></div><div class="fg"><label class="fl">Street Address <span style="color:#FF4D6D">*</span></label><input class="fi" id="oAddr" value="${obAddr}" placeholder="123 Main St" oninput="obAddr=this.value"/></div><div class="fg"><label class="fl">Apt / Suite / Unit <span style="opacity:.5;text-transform:none">(optional)</span></label><input class="fi" id="oAddr2" value="${obAddr2}" placeholder="Apt 4B" oninput="obAddr2=this.value"/></div><div class="fg" style="display:flex;gap:8px"><div style="flex:2"><label class="fl">City <span style="color:#FF4D6D">*</span></label><input class="fi" id="oCity" value="${obCity}" placeholder="City" oninput="obCity=this.value"/></div><div style="flex:1"><label class="fl">State <span style="color:#FF4D6D">*</span></label><input class="fi" id="oState" value="${obState}" placeholder="NY" oninput="obState=this.value"/></div><div style="flex:1"><label class="fl">ZIP <span style="color:#FF4D6D">*</span></label><input class="fi" id="oZip" value="${obZip}" placeholder="11542" oninput="obZip=this.value"/></div></div><div class="fg"><label class="fl">Choose Your Plan</label>
 <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:4px">
   ${[{v:"Local",p:"$79/mo",d:"200 customers/mo",f:["Email + postcards included","Welcome Journey + win-back","Promo codes included","Physical gifts from wallet","Square, Clover, Shopify + CSV"]},{v:"Growth",p:"$199/mo",d:"1,000 customers/mo",pop:true,f:["Texting + email included","Promo codes included","Physical gifts from wallet","Retention analytics","Email & Brand Studio"]},{v:"Scale",p:"$449/mo",d:"Unlimited customers",f:["Texting + email included","AI suggestions","White-label (full brand)","Promo codes included","Multi-location (coming)"]}].map(pl=>`
@@ -5735,7 +5739,7 @@ window.addEventListener("unhandledrejection",function(){var a=document.getElemen
 (function(){var _R=R;R=function(){try{return _R.apply(this,arguments);}catch(e){ctRecoveryUI();throw e;}};})();
 
 __navReady=true;__navKey=navKey();history.replaceState(navState(),"","");
-try{if(new URLSearchParams(location.search).get("demo")==="1"){startDemo();}else{R();}}catch(e){ctRecoveryUI();}
+try{var _dq=new URLSearchParams(location.search).get("demo");if(_dq==="1"||_dq==="growth"||_dq==="scale"||_dq==="local"){startDemo(_dq);}else{R();}}catch(e){ctRecoveryUI();}
 
 </script>
 <script>
