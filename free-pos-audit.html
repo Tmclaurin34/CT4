@@ -808,9 +808,13 @@ async function renderReport(a){
   var r=a.report||{};var dr=r.drifting||{};var hp=r.high_priority||{};var vip=r.vip||{};var imp=r.import||{};
   var biz="";try{var b=await ensureBiz({});biz=b&&b.business_name||"";var paid=["active","trialing"].indexOf(String(b&&b.stripe_subscription_status||"").toLowerCase())>=0;}catch(e){}
   var insufficient=a.status==="insufficient_data";
-  // Illustrative estimate, clearly labelled: 1 in 5 high-priority drifting customers returning for ONE visit at their own average order value.
+  // Illustrative estimate, clearly labelled: 1 in 5 high-priority drifting customers come back
+  // and keep their OWN old routine for 3 months (engine: high_priority.avg_90d_value).
+  // Reports built before that field existed fall back to a single visit each.
   var estCustomers=Math.round((hp.count||0)*0.2);
-  var est=estCustomers*(hp.avg_order_value||0);
+  var has90=hp.avg_90d_value!=null;
+  var perCust=has90?Number(hp.avg_90d_value):Number(hp.avg_order_value||0);
+  var est=estCustomers*perCust;
   var recommend=(r.customers_analyzed||0)>1000?"Scale":"Growth";
   var html='';
   html+='<div class="rephead"><div><div class="eyebrow">Free POS audit · '+esc(POS_NAME[a.platform]||a.platform||"")+' · '+fmtDate(a.completed_at||a.updated_at)+'</div><h2 style="font-size:clamp(26px,4vw,38px)">Your Customer Retention Report</h2>'+(biz?'<p class="muted" style="margin-top:4px">'+esc(biz)+'</p>':'')+'</div>'
@@ -826,7 +830,7 @@ async function renderReport(a){
     +'</div>';
   html+='<section class="blk" style="padding:34px 0 0"><h2 style="font-size:24px">Your retention opportunity — three separate numbers</h2><p class="muted small" style="margin-top:4px">We never blend these together. Only the third is money actually recovered.</p><div class="grid3" style="margin-top:14px">'
     +'<div class="card measure"><div class="k">1 · Historical spend</div><div class="n">'+money(dr.historical_spend)+'</div><p>What your '+num(dr.count)+' drifting customers spent with you in the period analyzed. A fact about the past — <b>not</b> guaranteed recoverable revenue.</p></div>'
-    +'<div class="card measure"><div class="k">2 · Illustrative estimate</div><div class="n">'+money(est)+'</div><p>If 1 in 5 of your '+num(hp.count)+' high-priority customers came back for just one visit at their average order ('+money(hp.avg_order_value)+'). An assumption to size the opportunity — not a prediction.</p></div>'
+    +'<div class="card measure"><div class="k">2 · Illustrative estimate</div><div class="n">'+money(est)+'</div><p>'+(has90?'If 1 in 5 of your '+num(hp.count)+' high-priority customers ('+num(estCustomers)+' people) came back and kept their old routine for 3 months — about '+money(perCust)+' each, based on their own order size and visit rhythm.':'If 1 in 5 of your '+num(hp.count)+' high-priority customers came back for just one visit at their average order ('+money(hp.avg_order_value)+').')+' An assumption to size the opportunity — not a prediction or a guarantee.</p></div>'
     +'<div class="card measure recovered"><div class="k">3 · Actually recovered</div><div class="n">$0 so far</div><p>Counted only when a customer Clicktide contacted really comes back and buys. Starts once you turn on win-back campaigns.</p></div>'
     +'</div></section>';
   html+='<section class="blk" style="padding:34px 0 0"><div class="grid2">'

@@ -7,21 +7,22 @@
   "available": false
  },
  "drifting": {
-  "count": 303,
+  "count": 304,
   "buckets": {
-   "just_past": 36,
+   "just_past": 37,
    "long_gone": 197,
    "well_past": 70
   },
-  "repeat_count": 145,
-  "avg_order_value": 16.13,
-  "historical_spend": 63954.98
+  "repeat_count": 146,
+  "avg_order_value": 16.15,
+  "historical_spend": 64197.82
  },
- "new_count": 118,
- "active_count": 290,
- "generated_at": "2026-11-26T17:42:21.689339+00:00",
+ "new_count": 117,
+ "active_count": 289,
+ "generated_at": "2026-11-26T18:39:57.9486+00:00",
  "high_priority": {
   "count": 81,
+  "avg_90d_value": 164.55,
   "avg_order_value": 16.07,
   "historical_spend": 48449.98
  },
