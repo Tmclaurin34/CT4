@@ -549,6 +549,23 @@ async function handleAudit(req: Request, body: Record<string, unknown>, fetchers
   return json({ error: "Unknown audit mode" }, 400);
 }
 
+// Users who came in through the free POS audit and have no live subscription.
+async function freeAuditOnlyUsers(userIds: string[]): Promise<Set<string>> {
+  const ids = [...new Set(userIds.filter(Boolean))];
+  const out = new Set<string>();
+  if (!ids.length) return out;
+  for (let i = 0; i < ids.length; i += 100) {
+    const chunk = ids.slice(i, i + 100).map(encodeURIComponent).join(",");
+    const audits = await rest(`/rest/v1/pos_audits?user_id=in.(${chunk})&select=user_id`) as { user_id: string }[];
+    const withAudit = new Set((audits || []).map((a) => a.user_id));
+    if (!withAudit.size) continue;
+    const bizs = await rest(`/rest/v1/clicktide?user_id=in.(${[...withAudit].map(encodeURIComponent).join(",")})&select=user_id,stripe_subscription_status`) as { user_id: string; stripe_subscription_status?: string }[];
+    const live = new Set((bizs || []).filter((b) => ["active", "trialing", "past_due"].includes(String(b.stripe_subscription_status || "").toLowerCase())).map((b) => b.user_id));
+    for (const u of withAudit) if (!live.has(u)) out.add(u);
+  }
+  return out;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -579,7 +596,14 @@ Deno.serve(async (req) => {
 
   const results: Record<string, unknown>[] = [];
   const ownNumbersCache: Record<string, Set<string>> = {};
+  let auditOnly = new Set<string>();
+  try { auditOnly = await freeAuditOnlyUsers(conns.map((c) => c.user_id)); }
+  catch (e) { console.error("free-audit check failed; syncing as before", e); }
   for (const c of conns) {
+    // Free POS audit accounts that haven't started a plan: the audit already gave them
+    // their report from PII-free facts, so don't copy their customers' names/emails/
+    // phones into Clicktide. The full import runs once their subscription starts.
+    if (auditOnly.has(c.user_id)) { results.push({ platform: c.platform, skipped: "free audit account, no plan yet" }); continue; }
     const fetcher = fetchers[c.platform];
     if (!fetcher || !c.access_token) { results.push({ platform: c.platform, skipped: "no fetcher or token" }); continue; }
     const since = c.last_synced_at || new Date(Date.now() - FIRST_SYNC_DAYS * 86400000).toISOString();

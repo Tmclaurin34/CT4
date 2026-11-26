@@ -157,6 +157,64 @@ select.fi{appearance:none;-webkit-appearance:none;padding-right:40px;background:
 @media(max-width:640px){.sticky-cta.on{display:block}}
 h2[tabindex="-1"]:focus,h2[tabindex="-1"]:focus-visible{outline:none}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* hero v2 */
+.hero{text-align:left}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:40px;align-items:center}
+.hero-copy{display:grid;gap:18px;justify-items:start}
+.hero-copy h1{margin:0}
+.hero .sub{margin:0;max-width:560px}
+.btn-lg{font-size:16px;padding:17px 30px}
+.cta-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px}
+.cta-note{font-size:13.5px;color:var(--mut);font-weight:500}
+.hero .reassure{justify-content:flex-start;margin:0}
+.works{font-size:13.5px;color:var(--mut)}
+.works b{color:var(--ink2);font-weight:600}
+.ex{padding:20px;display:grid;gap:10px;text-align:left}
+.ex-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.ex-k{font-family:'Inter Tight',Inter,sans-serif;font-weight:600;font-size:17px}
+.ex-biz{font-size:12.5px;color:var(--mut)}
+.ex-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ex-kpis div{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid}
+.ex-kpis b{font:700 24px 'Inter Tight',Inter,sans-serif;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.ex-kpis span{font-size:12px;color:var(--mut);line-height:1.3}
+.ex-kpis .red b{color:var(--red)}
+.ex-sub{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin-top:4px}
+.ex .bar{margin:0}
+.ex-three{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ex-three div{background:#F4F7FB;border-radius:10px;padding:9px 10px;display:grid;gap:2px;align-content:start}
+.ex-three span{font-size:11.5px;color:var(--mut);line-height:1.3}
+.ex-three b{font:700 17px 'Inter Tight',Inter,sans-serif;font-variant-numeric:tabular-nums}
+.ex-three .g b{color:var(--green)}
+.ex .note{margin:0}
+@media(max-width:900px){.hero-grid{grid-template-columns:1fr;gap:28px}}
+@media(max-width:480px){.ex-kpis b{font-size:20px}.ex-three{grid-template-columns:1fr}.ex-three div{grid-template-columns:1fr auto;align-items:center}}
+
+/* flow v2 */
+.stepper{list-style:none;margin:0 auto 18px;padding:0;max-width:560px;display:flex;gap:8px;justify-content:space-between}
+.stepper li{flex:1;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--mut2);border-top:3px solid #DCE3EC;padding-top:8px;min-width:0}
+.stepper li span{width:22px;height:22px;flex:0 0 22px;border-radius:50%;display:grid;place-items:center;font-size:12px;background:#E6EBF2;color:var(--mut)}
+.stepper li.now{color:var(--ink);border-top-color:var(--ink)}
+.stepper li.now span{background:var(--ink);color:#fff}
+.stepper li.done{color:var(--green);border-top-color:var(--green)}
+.stepper li.done span{background:var(--green);color:#fff}
+@media(max-width:420px){.stepper li{font-size:11.5px;gap:6px}}
+.pw{position:relative}
+.pw .fi{padding-right:64px}
+.pwt{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:none;font:600 13px 'DM Sans',Inter,sans-serif;color:var(--blue);cursor:pointer;padding:8px}
+.shopbox{background:#F6F9FD;border:1px solid var(--line);border-radius:14px;padding:14px;margin:0 0 14px}
+.shoprow{display:flex;gap:8px}
+.shoprow .fi{flex:1;min-width:0}
+.pos[disabled]{opacity:.6;cursor:wait}
+
+/* report v2 */
+.next3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 22px}
+.next3>div{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.next3 b{flex:0 0 26px;height:26px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-size:13px}
+.next3 span{font-size:13.5px;color:var(--mut);line-height:1.45}
+.next3 strong{display:block;color:var(--ink);font-size:14.5px;margin-bottom:2px}
+@media(max-width:760px){.next3{grid-template-columns:1fr}}
+.plan .trial{font-size:13px;font-weight:600;color:var(--green);margin-top:2px}
 </style>
 </head>
 <body>
@@ -174,38 +232,48 @@ h2[tabindex="-1"]:focus,h2[tabindex="-1"]:focus-visible{outline:none}
 <!-- ============================== LANDING ============================== -->
 <div id="vLanding">
   <header class="wrap hero">
-    <span class="pill"><span class="dot"></span>Free POS audit · Read-only · No credit card</span>
-    <h1 id="heroH" style="margin-top:18px">How much revenue are you losing from customers who never come back?</h1>
-    <p class="sub" id="heroS">Connect your POS and get a free customer retention report. See who's drifting away based on their own visit habits, what they've historically spent, and how automated win-back campaigns can bring them back.</p>
-    <button class="btn btn-dark" data-cta="hero" style="font-size:16px;padding:17px 30px">Get my free report &rarr;</button>
-    <div class="reassure">
-      <span><span class="ck">&#10003;</span>Read-only POS connection</span>
-      <span><span class="ck">&#10003;</span>No credit card required</span>
-      <span><span class="ck">&#10003;</span>Nothing is sent to your customers</span>
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <span class="pill"><span class="dot"></span>Free POS audit · No credit card</span>
+        <h1 id="heroH">How much revenue are you losing from customers who never come back?</h1>
+        <p class="sub" id="heroS">Connect your POS and get a free customer retention report. See who's drifting away based on their own visit habits, what they've historically spent, and how automated win-back campaigns can bring them back.</p>
+        <div class="cta-row"><button class="btn btn-dark btn-lg" data-cta="hero" id="heroCta">Get my free report &rarr;</button><span class="cta-note">About 5 minutes · free</span></div>
+        <div class="reassure">
+          <span><span class="ck">&#10003;</span>Clicktide only reads your sales data</span>
+          <span><span class="ck">&#10003;</span>No credit card for the report</span>
+          <span><span class="ck">&#10003;</span>Nothing is sent to your customers</span>
+        </div>
+        <div class="works">Works with <b>Square</b> · <b>Shopify</b> · <b>Clover</b> · <b>Stripe</b> · or a <b>CSV export</b> from any system</div>
+      </div>
+      <div class="card ex" aria-label="Example report from a sample café">
+        <div class="ex-head"><div><div class="ex-k">Customer Retention Report</div><div class="ex-biz">Sample café · 12,558 orders</div></div><span class="tag ill">Example</span></div>
+        <div class="ex-kpis">
+          <div><b>593</b><span>customers analyzed</span></div>
+          <div class="red"><b>304</b><span>drifting away</span></div>
+          <div><b>81</b><span>high-priority win-backs</span></div>
+        </div>
+        <div class="ex-sub">How far they've drifted</div>
+        <div class="bar" role="img" aria-label="37 just past their rhythm, 70 well past, 197 long gone"><i style="width:12.2%;background:#F2B84B"></i><i style="width:23%;background:#E07A3F"></i><i style="width:64.8%;background:#C8323C"></i></div>
+        <div class="legend"><span><b style="background:#F2B84B"></b>Just past · 37</span><span><b style="background:#E07A3F"></b>Well past · 70</span><span><b style="background:#C8323C"></b>Long gone · 197</span></div>
+        <div class="ex-sub">Three numbers, never blended</div>
+        <div class="ex-three">
+          <div><span>Past spending of drifting customers</span><b>$64,198</b></div>
+          <div><span>Estimate if 1 in 5 return for 3 months</span><b>$2,633</b></div>
+          <div class="g"><span>Actually recovered</span><b>$0 so far</b></div>
+        </div>
+        <p class="note">Built by Clicktide's real analysis from a fictional café's sample data. Your report uses your own orders.</p>
+      </div>
     </div>
   </header>
 
-  <section class="blk" aria-labelledby="hProblem" style="padding-top:20px">
-    <div class="wrap grid2" style="align-items:center;gap:28px">
-      <div>
-        <div class="eyebrow">The problem</div>
-        <h2 id="hProblem">Your customers may be disappearing without you noticing.</h2>
-        <ul style="padding-left:20px;margin:18px 0 0;color:var(--ink2);font-size:16px">
-          <li style="margin-bottom:10px">Customers who used to visit regularly quietly stop coming.</li>
-          <li style="margin-bottom:10px">Your team doesn't know who needs attention — or when.</li>
-          <li>You lose repeat business without ever seeing it leave.</li>
-        </ul>
-        <p class="muted" style="margin-top:18px">Your POS already has the answer. Every order records who bought, when, and how much. Clicktide reads that history and shows you the regulars who've gone quiet.</p>
-      </div>
-      <div class="card mock" aria-label="Example report preview">
-        <div style="display:flex;justify-content:space-between;align-items:center"><h3>Your Customer Retention Report</h3><span class="tag ill">Example</span></div>
-        <div class="kpis">
-          <div class="kpi"><div class="n">2,450</div><div class="l">Customers analyzed</div></div>
-          <div class="kpi"><div class="n" style="color:var(--red)">318</div><div class="l">Drifting from their usual rhythm</div></div>
-          <div class="kpi"><div class="n">$42,600</div><div class="l">Historical spend of drifting customers</div></div>
-          <div class="kpi"><div class="n">86</div><div class="l">High-priority win-backs</div></div>
-        </div>
-        <p class="note">Illustrative numbers only. Historical spend is what those customers spent before — not guaranteed recoverable revenue.</p>
+  <section class="blk" aria-labelledby="hProblem" style="padding-top:28px">
+    <div class="wrap">
+      <div class="eyebrow">The problem</div>
+      <h2 id="hProblem" style="max-width:680px">Your customers may be disappearing without you noticing.</h2>
+      <div class="grid3" style="margin-top:22px">
+        <div class="card feat"><h3>Regulars quietly stop coming</h3><p>No complaint, no goodbye. A weekly customer just doesn't show up, and nobody notices for months.</p></div>
+        <div class="card feat"><h3>Nobody knows who needs attention</h3><p>Your team sees today's line, not the regular who hasn't been in for five weeks.</p></div>
+        <div class="card feat"><h3>Repeat business leaks away</h3><p>Your POS already records who bought, when and how much. Clicktide turns that history into a list of who's gone quiet.</p></div>
       </div>
     </div>
   </section>
@@ -254,61 +322,51 @@ h2[tabindex="-1"]:focus,h2[tabindex="-1"]:focus-visible{outline:none}
   </section>
 
   <section class="blk" aria-labelledby="hTrust">
-    <div class="wrap grid2" style="gap:28px;align-items:start">
-      <div>
-        <div class="eyebrow">Security &amp; privacy</div>
-        <h2 id="hTrust">Your POS connection is read-only.</h2>
-        <p class="muted" style="margin-top:12px">Clicktide cannot move money or process payments through this connection.</p>
-        <div class="card trust" style="margin-top:20px">
-          <h3>What Clicktide reads</h3>
-          <ul>
-            <li>Completed orders: date and total</li>
-            <li>The customer attached to each order: name, email and phone (used to recognize repeat visits)</li>
-            <li>Your merchant name and location list</li>
-          </ul>
-        </div>
-      </div>
-      <div class="card trust">
-        <h3>What Clicktide can never do</h3>
-        <ul>
+    <div class="wrap">
+      <div class="eyebrow">Security &amp; privacy</div>
+      <h2 id="hTrust" style="max-width:700px">Clicktide only reads your sales data. It can't move money.</h2>
+      <p class="muted" style="margin-top:10px;max-width:680px">You connect through your POS company's own login page, so Clicktide never sees your password. Square, Shopify and Stripe connections ask only for read permissions. With every POS, Clicktide only ever reads orders and customers.</p>
+      <div class="grid3" style="margin-top:22px">
+        <div class="card trust"><h3>What Clicktide reads</h3><ul>
+          <li>Completed orders: date and total</li>
+          <li>The customer on each order (name, email, phone), only to recognize repeat visits</li>
+          <li>Your business name and locations</li></ul></div>
+        <div class="card trust"><h3>What Clicktide never does</h3><ul>
           <li>Take payments, issue refunds or move money</li>
-          <li>Change prices, products, inventory or settings in your POS</li>
+          <li>Change prices, products, inventory or settings</li>
           <li>Message your customers during the free audit</li>
-          <li>Sell or share your customer data — ever</li>
-        </ul>
-        <h3 style="margin-top:18px">How it's protected</h3>
-        <ul>
-          <li>Official OAuth login on your POS's own site — no passwords shared</li>
-          <li>Encrypted in transit; access-controlled so only your account can see your report</li>
-          <li>Your report shows totals only — never customer names, emails or phone numbers</li>
-          <li>The audit's working data is deleted as soon as your report is built</li>
-        </ul>
-        <h3 style="margin-top:18px">How to disconnect</h3>
-        <ul>
-          <li>One click: <em>Disconnect and delete my data</em> on your report page</li>
-          <li>Or revoke Clicktide from your POS's app settings — access ends immediately</li>
-        </ul>
+          <li>Sell or share your customer data</li></ul></div>
+        <div class="card trust"><h3>What happens to the data</h3><ul>
+          <li>Your report shows totals only — no customer names, emails or phone numbers</li>
+          <li>Only you can open your report, while signed in</li>
+          <li>The audit keeps no customer contact details: it works from visit counts, totals and dates, then deletes those once your report is built</li>
+          <li>Sent over encrypted connections</li></ul></div>
       </div>
+      <div class="card trust" style="margin-top:16px"><h3>Disconnecting takes one click</h3>
+        <p class="muted small" style="margin-top:6px">On your report, <em>Disconnect and delete my data</em> deletes Clicktide's stored access key for your POS, your report, and any customer records in your free account. To remove the app from your POS too, uninstall Clicktide in your POS's app settings — the steps are shown on your report.</p></div>
     </div>
   </section>
 
   <section class="blk" aria-labelledby="hFaq" style="padding-top:10px">
     <div class="wrap narrow">
       <h2 id="hFaq">Questions</h2>
-      <details><summary>Is it really free?</summary><p>Yes. The audit and the report are free, with no credit card. You only pay if you pick a Clicktide plan afterwards ($79, $199 or $449 a month).</p></details>
+      <details><summary>Is it really free?</summary><p>Yes. The audit and the report are free, with no credit card. If you then want Clicktide to win customers back, every plan starts with a 30-day free trial.</p></details>
+      <details><summary>What happens after the report?</summary><p>Nothing, unless you choose a plan. Plans are $79, $199 or $449 a month, each with a 30-day free trial. Checkout asks for a card, and if you cancel before day 30 you aren't charged. Your POS stays connected, so you don't have to set anything up again.</p></details>
       <details><summary>Which POS systems work?</summary><p>Square, Shopify, Clover and Stripe connect directly. Using something else — Toast, Mindbody, Lightspeed, a spreadsheet? Upload a CSV export of your orders instead; names and contact details never leave your browser.</p></details>
       <details><summary>How does Clicktide decide a customer is "drifting"?</summary><p>For anyone who has visited more than once, Clicktide learns their own average gap between visits and flags them once they're about 1.5× past it (between 14 and 120 days). One-time customers use a 60-day default. It's the same rule the Clicktide dashboard uses every day.</p></details>
       <details><summary>Is the "historical spend" number money I'll get back?</summary><p>No. It's what those customers spent with you before they drifted — a measure of what's at stake, not a promise. The report keeps historical spend, an illustrative estimate, and actual recovered revenue as three separate numbers.</p></details>
       <details><summary>Will you contact my customers?</summary><p>Not during the audit — nothing is sent. After subscribing, campaigns only run once you turn them on; texts only go to customers who've opted in, and every email has a working unsubscribe.</p></details>
       <details><summary>What if I don't have much history?</summary><p>The report tells you plainly when there isn't enough data — for example, too few repeat customers to learn visit rhythms — rather than guessing.</p></details>
       <details><summary>How long does it take?</summary><p>Usually two to five minutes, depending on how many orders your POS holds. You'll see real progress as it runs.</p></details>
-      <div style="text-align:center;margin-top:36px"><button class="btn btn-dark" data-cta="faq">See your free retention report &rarr;</button><p class="note">Read-only POS connection. No credit card required.</p></div>
+      <details><summary>Can I delete my data?</summary><p>Yes. Your report has a <em>Disconnect and delete my data</em> button that deletes Clicktide's stored access to your POS, your report, and any customer records in your free account.</p></details>
+      <div style="text-align:center;margin-top:36px"><button class="btn btn-dark btn-lg" data-cta="faq">See your free retention report &rarr;</button><p class="note">Free · no credit card · nothing sent to your customers</p></div>
     </div>
   </section>
 </div>
 
 <!-- ============================== FLOW ============================== -->
 <div id="vFlow" class="wrap flow hide">
+  <ol class="stepper" id="stepper" aria-label="Free audit progress"><li data-s="1"><span>1</span>Create account</li><li data-s="2"><span>2</span>Connect your POS</li><li data-s="3"><span>3</span>Get your report</li></ol>
   <!-- account -->
   <div id="pAccount" class="card panel hide" role="region" aria-labelledby="hAcc">
     <h2 id="hAcc">Create your free account</h2>
@@ -318,7 +376,7 @@ h2[tabindex="-1"]:focus,h2[tabindex="-1"]:focus-visible{outline:none}
       <div class="fg"><label class="fl" for="sBiz">Business name</label><input class="fi" id="sBiz" autocomplete="organization" required maxlength="120"/></div>
       <div class="fg"><label class="fl" for="sName">Your name</label><input class="fi" id="sName" autocomplete="name" required maxlength="120"/></div>
       <div class="fg"><label class="fl" for="sEmail">Work email</label><input class="fi" id="sEmail" type="email" autocomplete="email" required maxlength="200"/></div>
-      <div class="fg"><label class="fl" for="sPw">Password (8+ characters)</label><input class="fi" id="sPw" type="password" autocomplete="new-password" required minlength="8"/></div>
+      <div class="fg"><label class="fl" for="sPw">Password (8+ characters)</label><div class="pw"><input class="fi" id="sPw" type="password" autocomplete="new-password" required minlength="8"/><button type="button" class="pwt" data-pw="sPw" aria-label="Show password">Show</button></div></div>
       <label class="consent"><input type="checkbox" id="sTerms"/><span>I agree to Clicktide's <a href="/terms" target="_blank" rel="noopener">Terms</a> and <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>, and authorize Clicktide to connect to my POS read-only to prepare this report.</span></label>
       <button class="btn btn-dark" style="width:100%" type="submit" id="sBtn">Create free account &rarr;</button>
     </form>
@@ -331,7 +389,7 @@ h2[tabindex="-1"]:focus,h2[tabindex="-1"]:focus-visible{outline:none}
     <div class="err" id="logErr" role="alert"></div>
     <form id="fLogin" novalidate>
       <div class="fg"><label class="fl" for="lEmail">Email</label><input class="fi" id="lEmail" type="email" autocomplete="email" required/></div>
-      <div class="fg"><label class="fl" for="lPw">Password</label><input class="fi" id="lPw" type="password" autocomplete="current-password" required/></div>
+      <div class="fg"><label class="fl" for="lPw">Password</label><div class="pw"><input class="fi" id="lPw" type="password" autocomplete="current-password" required/><button type="button" class="pwt" data-pw="lPw" aria-label="Show password">Show</button></div></div>
       <button class="btn btn-dark" style="width:100%" type="submit" id="lBtn">Log in &rarr;</button>
     </form>
     <p class="note" style="text-align:center">New here? <a href="#" id="toSignup">Create a free account</a> · <a href="#" id="toForgot">Forgot password?</a></p>
@@ -354,7 +412,7 @@ h2[tabindex="-1"]:focus,h2[tabindex="-1"]:focus-visible{outline:none}
     <p class="lead">Then we'll take you straight back to your free audit.</p>
     <div class="err" id="rsErr" role="alert"></div>
     <form id="fReset" novalidate>
-      <div class="fg"><label class="fl" for="rsPw">New password (8+ characters)</label><input class="fi" id="rsPw" type="password" autocomplete="new-password" required minlength="8"/></div>
+      <div class="fg"><label class="fl" for="rsPw">New password (8+ characters)</label><div class="pw"><input class="fi" id="rsPw" type="password" autocomplete="new-password" required minlength="8"/><button type="button" class="pwt" data-pw="rsPw" aria-label="Show password">Show</button></div></div>
       <button class="btn btn-dark" style="width:100%" type="submit" id="rsBtn">Save new password &rarr;</button>
     </form>
   </div>
@@ -370,16 +428,22 @@ h2[tabindex="-1"]:focus,h2[tabindex="-1"]:focus-visible{outline:none}
   <!-- connect -->
   <div id="pConnect" class="card panel hide" role="region" aria-labelledby="hConn">
     <h2 id="hConn">Select your POS</h2>
-    <p class="lead">You'll log in on your POS's own site and approve read-only access.</p>
+    <p class="lead">You'll log in on your POS company's own site, approve access, and come straight back here. Clicktide never sees your password.</p>
     <div class="err" id="conErr" role="alert"></div>
     <div class="posgrid" id="posGrid"></div>
+    <div id="shopBox" class="shopbox hide">
+      <label class="fl" for="shopDomain">Your Shopify store address</label>
+      <div class="shoprow"><input class="fi" id="shopDomain" placeholder="mystore.myshopify.com" autocomplete="off" inputmode="url" spellcheck="false"/><button class="btn btn-dark btn-sm" type="button" id="shopGo">Continue &rarr;</button></div>
+      <p class="note" style="margin-top:6px">Find it in Shopify admin under Settings → Domains. It ends in .myshopify.com.</p>
+    </div>
     <div class="perm">
       <b>What you're approving</b>
       <ul>
-        <li><b>Read-only access</b> to completed orders and the customer on each order (name, email, phone)</li>
-        <li><b>No ability to move money</b>, refund, change prices or edit anything</li>
+        <li>Clicktide reads completed orders and the customer on each order (name, email, phone)</li>
+        <li>Square, Shopify and Stripe connect with read-only permissions</li>
+        <li>Clicktide never moves money, issues refunds or changes anything in your POS</li>
         <li>Nothing is sent to your customers</li>
-        <li>Revoke any time — from your report page or your POS's app settings</li>
+        <li>Disconnect anytime from your report page</li>
       </ul>
     </div>
     <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:16px">
@@ -432,6 +496,7 @@ var POS=[
   {id:"clover",name:"Clover",bg:"#1F8A3B",lt:"C"},
   {id:"stripe",name:"Stripe",bg:"#635BFF",lt:"St"}
 ];
+var DEMO=false,DEMO_LAST_URL="";
 var POS_NAME={square:"Square",shopify:"Shopify",clover:"Clover",stripe:"Stripe",csv:"CSV upload"};
 var POS_REVOKE={square:"Square Dashboard → Apps → Clicktide → Revoke",shopify:"Shopify admin → Settings → Apps → Clicktide → Uninstall",clover:"Clover Dashboard → Apps → Clicktide → Uninstall",stripe:"Stripe Dashboard → Settings → Connected accounts/apps → Clicktide → Disconnect"};
 
@@ -526,8 +591,11 @@ function show(view,panel){
   $("vLanding").classList.toggle("hide",view!=="landing");
   $("vFlow").classList.toggle("hide",view!=="flow");
   $("vReport").classList.toggle("hide",view!=="report");
-  $("sticky").classList.toggle("on",view==="landing");
+  if(typeof syncSticky==="function")syncSticky();
   PANELS.forEach(function(p){$(p).classList.toggle("hide",p!==panel);});
+  var stepOf={pAccount:1,pLogin:1,pForgot:1,pReset:1,pConfirm:1,pConnect:2,pProgress:3};
+  var cur=stepOf[panel]||0;
+  document.querySelectorAll("#stepper li").forEach(function(li){var n=Number(li.dataset.s);li.className=n<cur?"done":n===cur?"now":"";if(n===cur)li.setAttribute("aria-current","step");else li.removeAttribute("aria-current");});
   window.scrollTo({top:0,behavior:"instant"in window?"instant":"auto"});
   var f=panel&&$(panel)&&$(panel).querySelector("h2");if(f){f.setAttribute("tabindex","-1");f.focus({preventScroll:true});}
 }
@@ -547,8 +615,20 @@ async function startFlow(src){
   if(S&&await refreshIfNeeded()){await goConnect();return;}
   show("flow","pAccount");track("signup_started");
 }
-document.querySelectorAll("[data-cta]").forEach(function(b){b.addEventListener("click",function(){startFlow(b.dataset.cta);});});
+document.querySelectorAll("[data-cta]").forEach(function(b){b.addEventListener("click",function(){
+  if(b.dataset.cta==="sticky"&&!$("vReport").classList.contains("hide")){var pl=$("plans");if(pl)pl.scrollIntoView({behavior:"smooth"});return;}
+  startFlow(b.dataset.cta);});});
+var stickyPast=false,plansSeen=false;
+function syncSticky(){
+  var land=!$("vLanding").classList.contains("hide"),rep=!$("vReport").classList.contains("hide")&&!!$("plans");
+  $("sticky").classList.toggle("on",(land&&stickyPast)||(rep&&!plansSeen));
+  $("sticky").querySelector("button").innerHTML=rep?"Start my 30-day free trial &rarr;":"Get my free report &rarr;";
+}
+if("IntersectionObserver"in window){new IntersectionObserver(function(es){stickyPast=!es[0].isIntersecting&&es[0].boundingClientRect.top<0;syncSticky();}).observe($("heroCta"));}else stickyPast=true;
+document.querySelectorAll("[data-pw]").forEach(function(b){b.onclick=function(){var i=$(b.dataset.pw),show=i.type==="password";i.type=show?"text":"password";b.textContent=show?"Hide":"Show";b.setAttribute("aria-label",show?"Hide password":"Show password");};});
 $("toLogin").onclick=function(e){e.preventDefault();show("flow","pLogin");};
+$("shopGo").onclick=function(){choosePos("shopify",false);};
+$("shopDomain").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();choosePos("shopify",false);}});
 $("toSignup").onclick=function(e){e.preventDefault();show("flow","pAccount");};
 $("toForgot").onclick=function(e){e.preventDefault();markAuditFlow();$("fpEmail").value=$("lEmail").value||"";$("fpMsg").textContent="";err("fpErr");show("flow","pForgot");};
 $("backLogin").onclick=function(e){e.preventDefault();show("flow","pLogin");};
@@ -595,7 +675,10 @@ $("fSignup").addEventListener("submit",async function(e){
     if(d.access_token){saveSession(d);await ensureBiz({business_name:biz,contact_name:name});await goConnect();return;}
     try{localStorage.setItem("ct_fa_email",email);}catch(x){}
     $("confEmail").textContent=email;show("flow","pConfirm");
-  }catch(ex){err("accErr",ex.message);}
+  }catch(ex){
+    if(/already exists/.test(ex.message)){$("lEmail").value=email;show("flow","pLogin");err("logErr","You already have a Clicktide account with "+email+". Log in to continue, or use Forgot password.");return;}
+    err("accErr",ex.message);
+  }
   finally{b.disabled=false;b.innerHTML="Create free account &rarr;";}
 });
 $("resendBtn").onclick=async function(){
@@ -633,7 +716,7 @@ async function goConnect(){
   var connected={};(conns||[]).forEach(function(c){connected[c.platform]=c.merchant_name||true;});
   $("posGrid").innerHTML=POS.map(function(p){
     var on=connected[p.id];
-    return '<button type="button" class="pos" data-pos="'+p.id+'"><span class="lg" style="background:'+p.bg+'" aria-hidden="true">'+p.lt+'</span><span>'+p.name+(on?'<small>Connected — run the audit</small>':'<small>Read-only connection</small>')+'</span></button>';
+    return '<button type="button" class="pos" data-pos="'+p.id+'"><span class="lg" style="background:'+p.bg+'" aria-hidden="true">'+p.lt+'</span><span>'+p.name+(on?'<small>Connected — run the audit</small>':'<small>'+(p.id==="clover"?"Reads orders and customers":"Read-only permissions")+'</small>')+'</span></button>';
   }).join("");
   $("posGrid").querySelectorAll("[data-pos]").forEach(function(b){b.onclick=function(){choosePos(b.dataset.pos,!!connected[b.dataset.pos]);};});
 }
@@ -655,8 +738,11 @@ async function choosePos(id,already){
       var st=await oauthState("square");
       u="https://connect.squareup.com/oauth2/authorize?"+new URLSearchParams({client_id:SQ_APP_ID,scope:"MERCHANT_PROFILE_READ ORDERS_READ PAYMENTS_READ CUSTOMERS_READ",redirect_uri:FN+"/square-oauth-callback",state:st,session:"false"});
     }else if(id==="shopify"){
-      var dom=(prompt("Your Shopify store domain (e.g. mystore.myshopify.com)")||"").trim().toLowerCase().replace(/https?:\/\//,"").replace(/\/+$/,"");
-      if(!dom)return;
+      var box=$("shopBox");
+      if(box.classList.contains("hide")){box.classList.remove("hide");$("shopDomain").focus();return;}
+      var dom=($("shopDomain").value||"").trim().toLowerCase().replace(/https?:\/\//,"").replace(/\/.*$/,"");
+      if(dom&&dom.indexOf(".")<0)dom+=".myshopify.com";
+      if(!dom){$("shopDomain").focus();return;}
       if(!/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(dom)){err("conErr","Please enter your .myshopify.com domain.");return;}
       var st2=await oauthState("shopify",{shop_domain:dom});
       u="https://"+dom+"/admin/oauth/authorize?"+new URLSearchParams({client_id:SH_CLIENT_ID,scope:"read_orders,read_customers",redirect_uri:FN+"/shopify-oauth-callback",state:st2});
@@ -668,6 +754,9 @@ async function choosePos(id,already){
       u="https://connect.stripe.com/oauth/authorize?"+new URLSearchParams({response_type:"code",client_id:ST_CLIENT_ID,scope:"read_only",redirect_uri:FN+"/stripe-oauth-callback",state:st4});
     }else return;
     track("connect_started",{platform:id});
+    document.querySelectorAll("#posGrid .pos").forEach(function(x){x.disabled=true;});
+    var tile=document.querySelector('#posGrid [data-pos="'+id+'"] small');if(tile)tile.textContent="Opening "+(POS_NAME[id]||id)+"…";
+    if(DEMO){DEMO_LAST_URL=u;window.__ctDemoAuthUrl=u;setTimeout(function(){startAudit(id);},700);return;} // demo: stop before leaving for the POS login
     location.href=u;
   }catch(e){err("conErr","Couldn't start the connection: "+e.message);}
 }
@@ -821,7 +910,7 @@ async function renderReport(a){
   var recommend=(r.customers_analyzed||0)>1000?"Scale":"Growth";
   var html='';
   html+='<div class="rephead"><div><div class="eyebrow">Free POS audit · '+esc(POS_NAME[a.platform]||a.platform||"")+' · '+fmtDate(a.completed_at||a.updated_at)+'</div><h2 style="font-size:clamp(26px,4vw,38px)">Your Customer Retention Report</h2>'+(biz?'<p class="muted" style="margin-top:4px">'+esc(biz)+'</p>':'')+'</div>'
-    +'<button class="btn btn-dark btn-sm" data-goplans>Start recovering customers &rarr;</button></div>';
+    +(paid?'<a class="btn btn-dark btn-sm" href="/">Open your dashboard &rarr;</a></div>':'<button class="btn btn-dark btn-sm" data-goplans>Start my 30-day free trial &rarr;</button></div>');
   if(insufficient){
     html+='<div class="card" style="padding:20px;border-color:#F2B84B;background:#FFFBF1;margin-bottom:16px"><h3>Not enough history for a reliable drift report yet</h3><ul style="margin:10px 0 0;padding-left:18px;color:var(--ink2)">'+(r.insufficient_reasons||[]).map(function(x){return '<li>'+esc(x)+'</li>';}).join("")+'</ul><p class="small muted" style="margin-top:10px">What we could measure is below. You can try a CSV export with more history, or Clicktide will keep learning rhythms automatically once connected.</p><div style="margin-top:12px"><button class="btn btn-ghost btn-sm" id="tryCsv">Try a CSV export instead</button></div></div>';
   }
@@ -856,7 +945,9 @@ async function renderReport(a){
     +'<div class="card" style="padding:22px"><h3>How Clicktide brings them back</h3><ol style="padding-left:18px;margin:12px 0 0;font-size:14.5px;color:var(--ink2)"><li style="margin-bottom:8px">Learns each customer\'s rhythm from your POS, every day.</li><li style="margin-bottom:8px">When someone drifts, sends a personal message in your business\'s name — email, or text if they\'ve opted in.</li><li style="margin-bottom:8px">Adds a reward code, postcard or gift for the customers worth it, within the budget you set.</li><li>Counts recovered revenue only when they actually return.</li></ol><p class="small muted" style="margin-top:12px">Nothing is sent until you subscribe and turn campaigns on. Texts only go to customers who opted in; every email has a working unsubscribe; gifts only spend wallet funds you add.</p></div></div></section>';
   html+='<section class="blk" style="padding:34px 0 0"><details class="card" style="padding:4px 22px"><summary>About this report — data and limits</summary><ul style="padding-left:18px;color:var(--mut);font-size:13.5px">'+(r.limitations||[]).map(function(x){return '<li style="margin-bottom:6px">'+esc(x)+'</li>';}).join("")+'<li>This page shows totals only — no customer names, emails or phone numbers. Only you can open it while signed in.</li></ul></details></section>';
   if(!paid){
-    html+='<section class="blk" id="plans" style="padding:44px 0 0"><div style="text-align:center;max-width:640px;margin:0 auto 22px"><h2>You\'ve found the customers drifting away. Now let Clicktide bring them back automatically.</h2><p class="muted" style="margin-top:8px">Your POS connection carries over — no re-importing. Cancel anytime.</p></div><div class="plans">'
+    html+='<section class="blk" id="plans" style="padding:44px 0 0"><div style="text-align:center;max-width:640px;margin:0 auto 22px"><h2>You\'ve found the customers drifting away. Now let Clicktide bring them back automatically.</h2><p class="muted" style="margin-top:8px">Every plan starts with a <b>30-day free trial</b>. Checkout asks for a card; cancel before day 30 and you pay nothing. Your POS stays connected, so there\'s nothing to set up again.</p></div>'
+      +'<div class="next3"><div><b>1</b><span><strong>Pick a win-back campaign</strong>Start from Clicktide\'s ready-made win-back and welcome campaigns, or write your own.</span></div><div><b>2</b><span><strong>You decide what goes out</strong>Nothing sends until you turn a campaign on. Texts only go to customers who opted in.</span></div><div><b>3</b><span><strong>See who actually comes back</strong>Recovered revenue counts only real return visits from customers Clicktide contacted.</span></div></div>'
+      +'<div class="plans">'
       +plan("Local",79,"Small businesses",["Up to 200 customers","Email + 10 mailed postcards/mo included","Win-Back Playbook + library campaigns","Digital reward codes","Recovered-revenue tracking","Monday Drift Report"],recommend)
       +plan("Growth",199,"Growing businesses",["Up to 1,000 customers","Everything in Local","1,500 texts/mo + 30 postcards/mo included","Retention analytics","Email & Brand Studio","Gift auto-send"],recommend)
       +plan("Scale",449,"Larger businesses",["Unlimited customers","Everything in Growth","5,000 texts/mo + 75 postcards/mo included","AI campaign suggestions","White-label branding"],recommend)
@@ -864,7 +955,7 @@ async function renderReport(a){
   }else{
     html+='<section class="blk" style="padding:34px 0 0;text-align:center"><a class="btn btn-dark" href="/">Open your dashboard &rarr;</a></section>';
   }
-  html+='<section class="blk" style="padding:40px 0 0"><div class="card" style="padding:20px"><h3>Your data, your call</h3><p class="small muted" style="margin-top:6px">'+(POS_REVOKE[a.platform]?'Disconnecting ends Clicktide\'s access immediately and deletes this report and any customer records imported to your free account. You can also revoke access directly in '+esc(POS_NAME[a.platform])+': '+esc(POS_REVOKE[a.platform])+'.':'This report came from a file you uploaded — no POS is connected. Deleting removes this report and any customer records imported to your free account.')+'</p><button class="btn btn-ghost btn-sm" id="delBtn" style="margin-top:12px;color:var(--red)">'+(POS_REVOKE[a.platform]?'Disconnect and delete my data':'Delete my data')+'</button> <span class="small" id="delMsg" role="status"></span></div></section>';
+  html+='<section class="blk" style="padding:40px 0 0"><div class="card" style="padding:20px"><h3>Your data, your call</h3><p class="small muted" style="margin-top:6px">'+(POS_REVOKE[a.platform]?'This deletes Clicktide\'s stored access key for your POS, this report, and any customer records in your free account. To remove the app from '+esc(POS_NAME[a.platform])+' too: '+esc(POS_REVOKE[a.platform])+'.':'This report came from a file you uploaded — no POS is connected. Deleting removes this report and any customer records imported to your free account.')+'</p><button class="btn btn-ghost btn-sm" id="delBtn" style="margin-top:12px;color:var(--red)">'+(POS_REVOKE[a.platform]?'Disconnect and delete my data':'Delete my data')+'</button> <span class="small" id="delMsg" role="status"></span></div></section>';
   $("vReport").innerHTML=html;
   show("report",null);
   document.querySelectorAll("[data-goplans]").forEach(function(b){b.onclick=function(){var p=$("plans");if(p)p.scrollIntoView({behavior:"smooth"});else location.href="/";};});
@@ -874,13 +965,14 @@ async function renderReport(a){
   if(!a.report_viewed_at)fnCall("platform-sync",{mode:"audit_viewed",audit_id:a.id}).catch(function(){});
   track("report_viewed",{audit_id:a.id,platform:a.platform});
   var pl=$("plans");
-  if(pl&&"IntersectionObserver"in window){var io=new IntersectionObserver(function(es){if(es.some(function(e){return e.isIntersecting;})){track("pricing_viewed",{audit_id:a.id});io.disconnect();}},{threshold:.3});io.observe(pl);}
+  plansSeen=false;syncSticky();
+  if(pl&&"IntersectionObserver"in window){var tracked=false;new IntersectionObserver(function(es){var vis=es.some(function(e){return e.isIntersecting;});if(vis&&!tracked){tracked=true;track("pricing_viewed",{audit_id:a.id});}plansSeen=vis;syncSticky();},{threshold:.15}).observe(pl);}
   clearAuditFlow();
   try{history.replaceState({},"",location.pathname+"?report="+a.id);}catch(e){}
 }
 function plan(name,price,best,feats,rec){
   var isRec=name===rec;
-  return '<div class="card plan'+(isRec?" rec":"")+'">'+(isRec?'<span class="badge">Recommended</span>':'')+'<h3>'+name+'</h3><div class="small muted">Best for '+best.toLowerCase()+'</div><div class="pr">$'+price+'<small>/month</small></div><ul>'+feats.map(function(f){return '<li>'+esc(f)+'</li>';}).join("")+'</ul><button class="btn '+(isRec?"btn-dark":"btn-ghost")+'" data-plan="'+name+'" style="width:100%">Choose '+name+'</button></div>';
+  return '<div class="card plan'+(isRec?" rec":"")+'">'+(isRec?'<span class="badge">Recommended</span>':'')+'<h3>'+name+'</h3><div class="small muted">Best for '+best.toLowerCase()+'</div><div class="pr">$'+price+'<small>/month</small></div><div class="trial">30 days free, then $'+price+'/month</div><ul>'+feats.map(function(f){return '<li>'+esc(f)+'</li>';}).join("")+'</ul><button class="btn '+(isRec?"btn-dark":"btn-ghost")+'" data-plan="'+name+'" style="width:100%">Start free trial</button></div>';
 }
 async function checkout(planName,auditId,biz){
   err("payErr");
@@ -912,7 +1004,7 @@ async function deleteData(platform){
   // real page code end to end; the server calls are answered with the report that
   // Clicktide's real engine produced from the demo café file (demo/demo-report.json).
   if((params.get("demo")==="1"||params.get("sample_report")==="1")&&/(\.pages\.dev|localhost|127\.0\.0\.1)$/.test(location.hostname)){
-    var DEMO_REPORT=null,demoStart=0,demoCustomers=0;
+    var DEMO_REPORT=null,demoStart=0,demoCustomers=0,demoPlatform="csv";
     try{DEMO_REPORT=await (await fetch("/demo/demo-report.json",{cache:"no-store"})).json();}catch(e){}
     S={token:SK,user:{id:"00000000-0000-0000-0000-000000000000",email:"owner@harborstreetcafe.example"}};
     track=function(){};
@@ -920,23 +1012,23 @@ async function deleteData(platform){
     ensureBiz=async function(){return{business_name:"Harbor Street Café (demo)"};};
     latestAudit=async function(){return null;};
     fnCall=async function(name,body){
-      if(body&&body.mode==="audit_csv"){demoStart=Date.now();demoCustomers=(body.facts||[]).length;return{ok:true,status:200,data:{audit_id:"demo"}};}
-      if(body&&body.mode==="audit_start"){demoStart=Date.now();demoCustomers=DEMO_REPORT?DEMO_REPORT.customers_analyzed:0;return{ok:true,status:200,data:{audit_id:"demo"}};}
+      if(body&&body.mode==="audit_csv"){demoPlatform="csv";demoStart=Date.now();demoCustomers=(body.facts||[]).length;return{ok:true,status:200,data:{audit_id:"demo"}};}
+      if(body&&body.mode==="audit_start"){demoPlatform=body.platform||"square";demoStart=Date.now();demoCustomers=DEMO_REPORT?DEMO_REPORT.customers_analyzed:0;return{ok:true,status:200,data:{audit_id:"demo"}};}
       return{ok:true,status:200,data:{ok:true}};
     };
     rest=async function(path){
       if(path.indexOf("platform_connections")>=0)return [];
       if(path.indexOf("pos_audits")>=0){
         var t=Date.now()-demoStart,now=new Date().toISOString();
-        var base={id:"demo",platform:"csv",source:"csv",updated_at:now,report_viewed_at:"demo"};
+        var base={id:"demo",platform:demoPlatform,source:demoPlatform==="csv"?"csv":"pos",updated_at:now,report_viewed_at:"demo"};
         if(t<1800)return [Object.assign(base,{status:"running",stage:"importing",progress:{customers:demoCustomers}})];
         if(t<4200)return [Object.assign(base,{status:"running",stage:"analyzing",progress:{customers:demoCustomers}})];
         return [Object.assign(base,{status:"complete",stage:"done",completed_at:now,report:DEMO_REPORT})];
       }
       return [];
     };
-    choosePos=function(id){startAudit(id);};
-    checkout=async function(planName){err("payErr","Demo mode: this button opens secure Stripe checkout for the "+planName+" plan. Your POS connection carries over after payment.");};
+    DEMO=true;
+    checkout=async function(planName){err("payErr","Demo mode: this opens secure Stripe checkout for the "+planName+" plan with a 30-day free trial. The POS stays connected.");};
     deleteData=async function(){$("delMsg").textContent=" Demo mode: this disconnects the POS and deletes the report and imported data.";};
     var bar=document.createElement("div");
     bar.setAttribute("role","note");
@@ -948,7 +1040,7 @@ async function deleteData(platform){
     tryBtn.onclick=async function(){tryBtn.disabled=true;tryBtn.textContent="Reading 12,558 orders…";handleCsvText(await (await fetch("/demo/demo-cafe-orders.csv")).text());tryBtn.remove();};
     $("csvMap").parentNode.insertBefore(tryBtn,$("csvMap"));
     if(params.get("sample_report")==="1"&&DEMO_REPORT){renderReport({id:"demo",platform:"csv",status:"complete",completed_at:new Date().toISOString(),report_viewed_at:"demo",report:DEMO_REPORT});return;}
-    setNav();show("landing",null);return;
+    setNav();if(!$("vLanding").classList.contains("hide"))show("landing",null);return;
   }
   // Email-confirmation link that returned straight here (#access_token=…).
   var ht=hashP.get("access_token");
@@ -997,7 +1089,8 @@ async function deleteData(platform){
     return;
   }
   if(rep&&!S){markAuditFlow();show("flow","pLogin");return;}
-  show("landing",null);
+  // A visitor who already clicked a button while the page was starting up keeps their place.
+  if(!$("vLanding").classList.contains("hide"))show("landing",null);
   track("landing_view");
 })();
 })();
