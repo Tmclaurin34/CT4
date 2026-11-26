@@ -302,14 +302,12 @@ function fillTemplate(template: string, customer: Customer, businessName: string
     .replaceAll("{{business_name}}", businessName || "us");
 }
 
+// US numbers only — a business's carrier registration covers domestic texting, so a
+// "+<country>" number stored via the public check-in form is unreachable, not a target.
 function normalizePhone(value?: string | null) {
-  if (!value) return "";
-  const trimmed = value.trim();
-  if (trimmed.startsWith("+")) return trimmed;
-  const digits = trimmed.replace(/\D/g, "");
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
-  return "";
+  const digits = String(value || "").replace(/\D/g, "");
+  const ten = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  return /^[2-9]\d{2}[2-9]\d{6}$/.test(ten) ? `+1${ten}` : "";
 }
 
 function escapeHtml(value: string) {
@@ -575,6 +573,13 @@ function smsWindowSelfCheck(): boolean {
 // customer messages. Populated once per run from a2p_registrations.
 const msidByUser = new Map<string, string>();
 
+// Clicktide's own Messaging Services may NEVER carry a customer text, even if a
+// mislabeled business row holds one of their SIDs. The deny list is the known
+// platform SID, the env override, and every SID on a reg_type='platform' row.
+const platformMsids = new Set(
+  ["MG4c1badf5712739590510f936bbd0bc1a", Deno.env.get("TWILIO_MESSAGING_SERVICE_SID") || ""].filter(Boolean),
+);
+
 // Can this customer be texted at all — their business has its own registration, they
 // opted in (and haven't opted out), and the number is usable? Plan limits and the
 // send window are checked separately by the callers.
@@ -585,7 +590,7 @@ function canText(customer: Customer): boolean {
 
 async function sendSms(campaign: Campaign, customer: Customer, body: string, bizState = "") {
   const msid = msidByUser.get(String(customer.user_id || "")) || "";
-  if (!msid) return { ok: false, detail: "sms_not_registered" };
+  if (!msid || platformMsids.has(msid)) return { ok: false, detail: "sms_not_registered" };
   // Last line of defence: whatever the caller checked, no text leaves outside the
   // send window (an omitted state gets the narrowest window, never an open one).
   if (!smsWindowOpen(bizState)) return { ok: false, detail: "sms_quiet_hours" };
@@ -596,14 +601,31 @@ async function sendSms(campaign: Campaign, customer: Customer, body: string, biz
   if (!toPhone) return { ok: false, detail: "Invalid phone" };
 
   const form = new URLSearchParams({ To: toPhone, Body: body.slice(0, 1500), MessagingServiceSid: msid });
-  const response = await fetchT(`https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${btoa(`${twilioSid}:${twilioToken}`)}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: form,
-  });
+  let response;
+  try {
+    response = await fetchT(`https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${btoa(`${twilioSid}:${twilioToken}`)}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: form,
+    });
+  } catch (e) {
+    // A Twilio timeout or network error fails THIS text (recorded, so the cooldown
+    // stops an hourly re-send) instead of aborting the whole run.
+    const why = e instanceof Error && e.name === "AbortError" ? "timeout" : "network error";
+    await rest("/rest/v1/sms_messages", {
+      method: "POST",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        user_id: customer.user_id, campaign_id: campaign.id, customer_id: customer.id,
+        to_phone: toPhone, body: body.slice(0, 1500), status: "failed", provider: "twilio",
+        error: `Twilio request failed: ${why}`,
+      }),
+    }).catch(() => {});
+    return { ok: false, detail: `Twilio request failed: ${why}` };
+  }
   const data = await response.json().catch(() => ({}));
 
   await rest("/rest/v1/sms_messages", {
@@ -693,10 +715,12 @@ async function recordSend(campaign: Campaign, customer: Customer, channel: strin
   }).catch(() => {});
 }
 
-async function queuePhysicalGiftAlert(campaign: Campaign, customer: Customer, hasAddress: boolean) {
+async function queuePhysicalGiftAlert(campaign: Campaign, customer: Customer, hasAddress: boolean, asked = true) {
   const addressNote = hasAddress
     ? "Their mailing address is on file — review and send from the dashboard."
-    : "No mailing address yet — Clicktide has asked them for it directly; it will appear on their profile once they reply.";
+    : asked
+    ? "No mailing address yet — Clicktide has asked them for it directly; it will appear on their profile once they reply."
+    : "No mailing address on file, and Clicktide couldn't reach them to ask for one. Add their address on their profile to send the gift.";
   await rest("/rest/v1/alerts", {
     method: "POST",
     headers: { Prefer: "return=minimal" },
@@ -847,6 +871,11 @@ Deno.serve(async (req) => {
     // state_unknown = no usable state on file, so the narrowest (all-US) window applies.
     // self_check = the window maths verified against known answers in this runtime.
     sms_window: { open: 0, closed: 0, state_unknown: 0, self_check: smsWindowSelfCheck() ? "ok" : "failed" },
+    // How many businesses can text (active registration linked to their account);
+    // the error flag means the registry read failed and the last snapshot was kept.
+    sms_registered_businesses: 0,
+    sms_unlinked_registrations: 0,
+    sms_registry_error: false,
     skipped: {
       billing_inactive: 0,
       cooldown: 0,
@@ -890,15 +919,51 @@ Deno.serve(async (req) => {
     // A registration belongs to a business only through user_id, which staff set
     // at activation. Never match on email: owners can edit their own email, so an
     // email match would let one account send through another business's number.
-    msidByUser.clear();
     try {
+      // The platform rows' SIDs join the deny list (any status — Clicktide's own
+      // services never carry customer texts, active or not). Best-effort: the
+      // static deny list above covers the known service even if this read fails.
+      try {
+        const platRows = await rest(
+          "/rest/v1/a2p_registrations?reg_type=eq.platform&messaging_service_sid=not.is.null&select=messaging_service_sid",
+        ) as Array<{ messaging_service_sid?: string }>;
+        for (const p of (Array.isArray(platRows) ? platRows : [])) {
+          if (p.messaging_service_sid) platformMsids.add(String(p.messaging_service_sid));
+        }
+      } catch { /* static deny list still applies */ }
+      // An active business row with no user_id is a staff mistake: it looks live
+      // in the table while every text is skipped. Make it loud.
+      try {
+        const unlinkedRows = await rest(
+          "/rest/v1/a2p_registrations?sms_status=eq.active&reg_type=neq.platform&user_id=is.null&select=id&limit=100",
+        );
+        const unlinked = Array.isArray(unlinkedRows) ? unlinkedRows.length : 0;
+        if (unlinked) {
+          summary.sms_unlinked_registrations = unlinked;
+          globalThis.console?.warn(`${unlinked} active a2p registration(s) have no user_id — their businesses cannot text until it is set`);
+        }
+      } catch { /* informational only */ }
       const regs = await rest(
         "/rest/v1/a2p_registrations?sms_status=eq.active&messaging_service_sid=not.is.null&reg_type=neq.platform&user_id=not.is.null&select=user_id,messaging_service_sid",
       ) as Array<{ user_id?: string; messaging_service_sid?: string }>;
+      const fresh = new Map<string, string>();
       for (const reg of (Array.isArray(regs) ? regs : [])) {
-        if (reg.user_id && reg.messaging_service_sid) msidByUser.set(String(reg.user_id), String(reg.messaging_service_sid));
+        const sid = String(reg.messaging_service_sid || "");
+        if (!reg.user_id || !sid) continue;
+        if (platformMsids.has(sid)) { globalThis.console?.error(`a2p row for ${reg.user_id} holds a platform service SID — skipped`); continue; }
+        fresh.set(String(reg.user_id), sid);
       }
-    } catch { /* lookup failed → no business texts this run (fails closed) */ }
+      // Swap contents with no await in between, so a concurrent run never sees a
+      // half-empty map; a failed read keeps the previous run's snapshot instead.
+      msidByUser.clear();
+      for (const [k, v] of fresh) msidByUser.set(k, v);
+      summary.sms_registered_businesses = fresh.size;
+    } catch {
+      // Lookup failed: keep the last good snapshot (empty on a cold start, which
+      // fails closed to sms_not_registered) and say so in the summary.
+      summary.sms_registry_error = true;
+      summary.sms_registered_businesses = msidByUser.size;
+    }
 
     for (const userId of userIds) {
       if (Date.now() > RUN_DEADLINE) { summary.timed_out = true; break; }
@@ -1033,6 +1098,7 @@ Deno.serve(async (req) => {
                 bizSends++;
                 continue;
               }
+              let asked = true;
               if (!hasAddress) {
                 const ask = await maybeRequestAddress(campaign, customer, businessName, whiteLabel, logoUrl, brandColor, lastVisitText, bizState);
                 if (ask.asked) summary.address_requests++;
@@ -1040,9 +1106,11 @@ Deno.serve(async (req) => {
                   // The window shut between the check above and the ask — still hold.
                   summary.skipped.sms_quiet_hours++;
                   continue;
+                } else if (ask.reason !== "recently_asked") {
+                  asked = false; // the owner alert must not claim the customer was asked
                 }
               }
-              await queuePhysicalGiftAlert(campaign, customer, hasAddress);
+              await queuePhysicalGiftAlert(campaign, customer, hasAddress, asked);
               await recordSend(campaign, customer, "alert", "queued_review", "Physical gift queued for manual review");
             }
             lastSend.set(key, Date.now());
