@@ -1011,6 +1011,7 @@ async function finishAuthReturn(token,user,type,sessionData){
   restoreOnboardingProgress();
   if(typeof finishPendingMindbodyActivation==="function")await finishPendingMindbodyActivation().catch(function(){});
   fetch(FN+"/send-welcome-email",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:"{}"}).catch(function(){});
+  if(ctAuditFlow()){window.location.replace("/free-pos-audit?step=connect");return;}
   obE=u.email||obE;obAwaitConfirm=false;scr="onboard";if(obS<2)obS=2;saveOnboardingProgress();history.replaceState({view:"onboard"},"","");R();
 }
 
@@ -1871,7 +1872,11 @@ function openDashboardNow(){
 // -- Handle OAuth callback redirect back to this page ------------------------
 // Edge functions redirect to: goclicktide.com?ct_platform=square&ct_merchant=xxx&ct_name=Yyy
 // or on error: goclicktide.com?ct_error=...
+// Free POS audit (/free-pos-audit): POS logins and email-confirm links that started
+// there come back to the app root — hand them back to the audit page.
+function ctAuditFlow(){try{var v=JSON.parse(localStorage.getItem("ct_audit")||"null");return !!(v&&Date.now()-Number(v.at)<86400000);}catch(e){return false;}}
 (async function handleOAuthReturn(){
+  try{var _ap=new URLSearchParams(window.location.search);if(ctAuditFlow()&&(_ap.get("ct_platform")||_ap.get("ct_error"))){window.location.replace("/free-pos-audit"+window.location.search);return;}}catch(e){}
   try{obPl=storedPlan()||obPl;}catch(e){}
   const params=new URLSearchParams(window.location.search);
   const hashParams=new URLSearchParams((window.location.hash||"").replace(/^#/,""));
