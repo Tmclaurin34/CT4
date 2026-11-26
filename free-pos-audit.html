@@ -670,6 +670,7 @@ async function choosePos(id,already){
 }
 
 // ---------------- CSV (aggregated in the browser) ----------------
+// CSV-PARSE-START
 function parseCSV(text){
   var rows=[],row=[],f="",q=false;
   for(var i=0;i<text.length;i++){var c=text[i];
@@ -680,6 +681,7 @@ function parseCSV(text){
   if(f!==""||row.length){row.push(f);rows.push(row);}
   return rows;
 }
+// CSV-PARSE-END
 function guess(headers,re){for(var i=0;i<headers.length;i++)if(re.test(headers[i]))return i;return -1;}
 $("csvFile").addEventListener("change",function(){
   var file=this.files&&this.files[0];if(!file)return;
@@ -687,8 +689,12 @@ $("csvFile").addEventListener("change",function(){
   if(file.size>40*1024*1024){err("conErr","That file is over 40 MB — export a shorter date range (the last 12 months is plenty).");return;}
   track("csv_started");
   var rd=new FileReader();
-  rd.onload=function(){
-    var rows=parseCSV(String(rd.result||""));
+  rd.onload=function(){handleCsvText(String(rd.result||""));};
+  rd.readAsText(file);
+});
+function handleCsvText(text){
+    err("conErr");
+    var rows=parseCSV(text);
     if(rows.length<2){err("conErr","That file looks empty.");return;}
     var h=rows[0].map(function(x){return String(x).trim().toLowerCase();});
     var gi={date:guess(h,/date|time|created|closed/),amount:guess(h,/total|amount|net sales|gross|price|paid/),email:guess(h,/e-?mail/),phone:guess(h,/phone|mobile/),cust:guess(h,/customer( id| name)?$|customer|client|member|name/)};
@@ -698,30 +704,37 @@ $("csvFile").addEventListener("change",function(){
       +[["date","Order date"],["amount","Order total"],["email","Customer email"],["phone","Customer phone"],["cust","Customer ID or name"]].map(function(x){return '<div class="fg"><label class="fl" for="m_'+x[0]+'">'+x[1]+'</label><select class="fi" id="m_'+x[0]+'">'+opt(gi[x[0]])+'</select></div>';}).join("")
       +'<button class="btn btn-dark btn-sm" id="csvGo" type="button">Analyze '+num(rows.length-1)+' rows &rarr;</button>';
     $("csvGo").onclick=function(){runCsv(rows);};
-  };
-  rd.readAsText(file);
-});
+}
+// CSV-AGG-START (pure; unit-tested by demo/run_demo_tests.sh)
 function normPhone(v){var d=String(v||"").replace(/\D/g,"");if(d.length===11&&d[0]==="1")d=d.slice(1);return d.length===10&&!/^(\d)\1{9}$/.test(d)&&!/^555/.test(d)?d:"";}
-async function runCsv(rows){
-  var c={};["date","amount","email","phone","cust"].forEach(function(k){c[k]=Number($("m_"+k).value);});
-  if(c.date<0||c.amount<0){err("conErr","Please pick the date and amount columns.");return;}
-  if(c.email<0&&c.phone<0&&c.cust<0){err("conErr","Pick at least one customer column (email, phone, or customer ID/name).");return;}
+// rows: parsed CSV incl. header row; c: column indexes {date,amount,email,phone,cust} (-1 = none).
+// Email/phone identify a person; the ID/name column is only a fallback for rows with
+// neither, so two different people who share a name are never merged.
+function aggregateCsv(rows,c){
   var byKey=new Map(),people=[],anon=0,bad=0;
   for(var i=1;i<rows.length;i++){var r=rows[i];
-    var t=Date.parse(r[c.date]);var amt=Number(String(r[c.amount]||"").replace(/[^0-9.\-]/g,""));
-    if(!isFinite(t)||!isFinite(amt)){bad++;continue;}
+    var t=Date.parse(String(r[c.date]||"").trim().replace(/^(\d{4}-\d{2}-\d{2}) (\d)/,"$1T$2"));var amtS=String(r[c.amount]||"").replace(/[^0-9.\-]/g,""),amt=Number(amtS);
+    if(!isFinite(t)||!/\d/.test(amtS)||!isFinite(amt)){bad++;continue;}
     var keys=[];var em=c.email>=0?String(r[c.email]||"").trim().toLowerCase():"";if(em&&em.indexOf("@")>0)keys.push("e:"+em);
     var ph=c.phone>=0?normPhone(r[c.phone]):"";if(ph)keys.push("p:"+ph);
-    var cu=c.cust>=0?String(r[c.cust]||"").trim().toLowerCase():"";if(cu&&!/^(guest|walk-?in|cash|n\/a|none|unknown|-)$/.test(cu))keys.push("c:"+cu);
+    if(!keys.length){var cu=c.cust>=0?String(r[c.cust]||"").trim().toLowerCase():"";if(cu&&!/^(guest|walk-?in|cash|cash customer|n\/a|none|unknown|-)$/.test(cu))keys.push("c:"+cu);}
     if(!keys.length){anon++;continue;}
     var p=null;for(var k=0;k<keys.length&&!p;k++)p=byKey.get(keys[k]);
     if(!p){p={visits:0,spend:0,first:t,last:t};people.push(p);}
     keys.forEach(function(k){if(!byKey.has(k))byKey.set(k,p);});
     p.visits++;p.spend+=amt>0?amt:0;if(t<p.first)p.first=t;if(t>p.last)p.last=t;
   }
-  if(!people.length){err("conErr","We couldn't recognize any customers in that file. Check the column choices.");return;}
   // Only these numbers leave the browser — no names, emails or phones.
   var facts=people.map(function(p){return{visits:p.visits,spend:Math.round(p.spend*100)/100,first_at:new Date(p.first).toISOString(),last_at:new Date(p.last).toISOString()};});
+  return {facts:facts,anon:anon,bad:bad};
+}
+// CSV-AGG-END
+async function runCsv(rows){
+  var c={};["date","amount","email","phone","cust"].forEach(function(k){c[k]=Number($("m_"+k).value);});
+  if(c.date<0||c.amount<0){err("conErr","Please pick the date and amount columns.");return;}
+  if(c.email<0&&c.phone<0&&c.cust<0){err("conErr","Pick at least one customer column (email, phone, or customer ID/name).");return;}
+  var agg=aggregateCsv(rows,c),facts=agg.facts,anon=agg.anon,bad=agg.bad;
+  if(!facts.length){err("conErr","We couldn't recognize any customers in that file. Check the column choices.");return;}
   show("flow","pProgress");renderStages({stage:"importing",progress:{customers:facts.length}},"csv");
   var res=await fnCall("platform-sync",{mode:"audit_csv",facts:facts,meta:{rows:rows.length-1,anonymous:anon,bad:bad},attribution:ATTR});
   if(!res.ok||!res.data.audit_id){failProgress(res.data.error||"We couldn't analyze that file.");return;}
@@ -888,19 +901,47 @@ async function deleteData(platform){
 // ---------------- boot ----------------
 (async function boot(){
   loadSession();
-  // Design review only: sample report on preview hosts (never on goclicktide.com, never real data).
-  if(params.get("sample_report")==="1"&&/(\.pages\.dev|localhost|127\.0\.0\.1)$/.test(location.hostname)){
-    S=S||{token:SK,user:{id:"00000000-0000-0000-0000-000000000000",email:"sample@example.com"}};
-    var sample={id:"sample",platform:"square",status:params.get("insufficient")?"insufficient_data":"complete",completed_at:new Date().toISOString(),report_viewed_at:"x",
-      report:{customers_analyzed:2450,repeat_customers:1320,one_time_customers:1130,avg_order_value:38.4,median_visit_gap_days:19,active_count:2132,new_count:240,
-        history_first_order:new Date(Date.now()-364*864e5).toISOString(),history_last_order:new Date(Date.now()-864e5).toISOString(),
-        drifting:{count:318,repeat_count:201,historical_spend:42600,avg_order_value:41.2,buckets:{just_past:96,well_past:131,long_gone:91}},
-        high_priority:{count:86,historical_spend:31900,avg_order_value:47.5},vip:{count:410,drifting:52},
-        insufficient_reasons:["Only 3 customers visited more than once, so individual visit rhythms can't be learned yet."],
-        limitations:["SAMPLE DATA — illustrative only, not a real business.","Built from up to the last 365 days of completed orders in your Square account.","412 orders had no customer email or phone attached (walk-ins, cash, guest checkouts), so they can't be tied to a person and aren't counted."]}};
-    ensureBiz=async function(){return{business_name:"Sample Café (illustrative)"};};
-    fnCall=async function(){return{ok:true,status:200,data:{}};};track=function(){};
-    renderReport(sample);return;
+  // DEMO MODE — preview hosts only (never goclicktide.com, never real data). Runs the
+  // real page code end to end; the server calls are answered with the report that
+  // Clicktide's real engine produced from the demo café file (demo/demo-report.json).
+  if((params.get("demo")==="1"||params.get("sample_report")==="1")&&/(\.pages\.dev|localhost|127\.0\.0\.1)$/.test(location.hostname)){
+    var DEMO_REPORT=null,demoStart=0,demoCustomers=0;
+    try{DEMO_REPORT=await (await fetch("/demo/demo-report.json",{cache:"no-store"})).json();}catch(e){}
+    S={token:SK,user:{id:"00000000-0000-0000-0000-000000000000",email:"owner@harborstreetcafe.example"}};
+    track=function(){};
+    refreshIfNeeded=async function(){return true;};
+    ensureBiz=async function(){return{business_name:"Harbor Street Café (demo)"};};
+    latestAudit=async function(){return null;};
+    fnCall=async function(name,body){
+      if(body&&body.mode==="audit_csv"){demoStart=Date.now();demoCustomers=(body.facts||[]).length;return{ok:true,status:200,data:{audit_id:"demo"}};}
+      if(body&&body.mode==="audit_start"){demoStart=Date.now();demoCustomers=DEMO_REPORT?DEMO_REPORT.customers_analyzed:0;return{ok:true,status:200,data:{audit_id:"demo"}};}
+      return{ok:true,status:200,data:{ok:true}};
+    };
+    rest=async function(path){
+      if(path.indexOf("platform_connections")>=0)return [];
+      if(path.indexOf("pos_audits")>=0){
+        var t=Date.now()-demoStart,now=new Date().toISOString();
+        var base={id:"demo",platform:"csv",source:"csv",updated_at:now,report_viewed_at:"demo"};
+        if(t<1800)return [Object.assign(base,{status:"running",stage:"importing",progress:{customers:demoCustomers}})];
+        if(t<4200)return [Object.assign(base,{status:"running",stage:"analyzing",progress:{customers:demoCustomers}})];
+        return [Object.assign(base,{status:"complete",stage:"done",completed_at:now,report:DEMO_REPORT})];
+      }
+      return [];
+    };
+    choosePos=function(id){startAudit(id);};
+    checkout=async function(planName){err("payErr","Demo mode: this button opens secure Stripe checkout for the "+planName+" plan. Your POS connection carries over after payment.");};
+    deleteData=async function(){$("delMsg").textContent=" Demo mode: this disconnects the POS and deletes the report and imported data.";};
+    var bar=document.createElement("div");
+    bar.setAttribute("role","note");
+    bar.style.cssText="position:sticky;top:0;z-index:30;background:#101215;color:#fff;font-size:13px;text-align:center;padding:8px 12px";
+    bar.innerHTML="Demo mode — fictional café, nothing is saved or sent. The report is what Clicktide's real engine produced from this sample file.";
+    document.body.insertBefore(bar,document.body.firstChild);
+    var tryBtn=document.createElement("button");
+    tryBtn.type="button";tryBtn.className="btn btn-dark btn-sm";tryBtn.style.marginTop="10px";tryBtn.textContent="Use the demo café's POS export";
+    tryBtn.onclick=async function(){tryBtn.disabled=true;tryBtn.textContent="Reading 12,558 orders…";handleCsvText(await (await fetch("/demo/demo-cafe-orders.csv")).text());tryBtn.remove();};
+    $("csvMap").parentNode.insertBefore(tryBtn,$("csvMap"));
+    if(params.get("sample_report")==="1"&&DEMO_REPORT){renderReport({id:"demo",platform:"csv",status:"complete",completed_at:new Date().toISOString(),report_viewed_at:"demo",report:DEMO_REPORT});return;}
+    setNav();show("landing",null);return;
   }
   // Email-confirmation link that returned straight here (#access_token=…).
   var ht=hashP.get("access_token");

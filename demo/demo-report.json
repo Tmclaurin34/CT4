@@ -1,0 +1,58 @@
+{
+ "vip": {
+  "count": 255,
+  "drifting": 81
+ },
+ "unhappy": {
+  "available": false
+ },
+ "drifting": {
+  "count": 303,
+  "buckets": {
+   "just_past": 36,
+   "long_gone": 197,
+   "well_past": 70
+  },
+  "repeat_count": 145,
+  "avg_order_value": 16.13,
+  "historical_spend": 63954.98
+ },
+ "new_count": 118,
+ "active_count": 290,
+ "generated_at": "2026-11-26T17:42:21.689339+00:00",
+ "high_priority": {
+  "count": 81,
+  "avg_order_value": 16.07,
+  "historical_spend": 48449.98
+ },
+ "avg_order_value": 12.95,
+ "repeat_customers": 375,
+ "churn_days_default": 60,
+ "customers_analyzed": 593,
+ "history_last_order": "2026-11-24T20:02:00+00:00",
+ "one_time_customers": 218,
+ "history_first_order": "2025-11-26T14:44:00+00:00",
+ "median_visit_gap_days": 13,
+ "avg_spend_per_customer": 254.52,
+ "total_historical_spend": 150929.44,
+ "import": {
+  "source": "csv",
+  "platform": "csv",
+  "orders_read": 12558,
+  "orders_used": 11658,
+  "anonymous_orders": 900,
+  "customers": 593,
+  "truncated": false,
+  "recent_history_missing": false,
+  "window_days": 0,
+  "rejected_rows": 0
+ },
+ "limitations": [
+  "Built from the CSV you uploaded. Names, emails and phone numbers stayed in your browser \u2014 only per-customer visit counts, spend and dates were sent.",
+  "900 orders had no customer email or phone attached (walk-ins, cash, guest checkouts), so they can't be tied to a person and aren't counted.",
+  "Customer satisfaction isn't in POS data, so unhappy customers can't be identified until Clicktide's post-visit surveys run.",
+  "Drift is judged against each customer's own visit rhythm (or a 60-day default for one-time customers) \u2014 the same rule Clicktide's dashboard uses."
+ ],
+ "sufficient": true,
+ "insufficient_reasons": []
+}
