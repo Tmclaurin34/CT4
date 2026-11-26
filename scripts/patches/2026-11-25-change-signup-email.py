@@ -43,7 +43,13 @@ rep('''v:1,step:safeOnboardStep(obS),''',
 rep('''    obS=safeOnboardStep(p.step);\n''',
     '''    obS=safeOnboardStep(p.step);\n    obAwaitConfirm=!S&&!!p.awaitConfirm&&obS===1;\n''')
 
-# 3) restore saved answers when returning to onboarding before activation
+# 3) restore saved answers when returning to onboarding before activation.
+# The live page may carry the pre-launch gate in go(); patch whichever form is there.
+PL_GO = '''function go(s){if(plOn()&&(s==="onboard"||s==="login"))return inquire();if(scr==="onboard")saveOnboardingProgress();scr=s;R();}'''
+if PL_GO in s:
+    rep(PL_GO, '''function go(s){if(plOn()&&(s==="onboard"||s==="login"))return inquire();if(scr==="onboard")saveOnboardingProgress();if(s==="onboard"&&!S&&!obB&&!obCat)restoreOnboardingProgress();scr=s;R();}
+function obChangeEmail(){obAwaitConfirm=false;obS=1;saveOnboardingProgress();R();setTimeout(function(){var el=document.getElementById("oE");if(el){el.focus();try{el.select();}catch(e){}}},60);}''')
+    open(path, "w", encoding="utf-8").write(s); print("patched (pre-launch go)", path); sys.exit(0)
 rep('''function go(s){if(scr==="onboard")saveOnboardingProgress();scr=s;R();}''',
     '''function go(s){if(scr==="onboard")saveOnboardingProgress();if(s==="onboard"&&!S&&!obB&&!obCat)restoreOnboardingProgress();scr=s;R();}
 function obChangeEmail(){obAwaitConfirm=false;obS=1;saveOnboardingProgress();R();setTimeout(function(){var el=document.getElementById("oE");if(el){el.focus();try{el.select();}catch(e){}}},60);}''')
