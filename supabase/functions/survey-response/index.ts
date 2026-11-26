@@ -1,10 +1,7 @@
 // Clicktide inbound SMS handler (Twilio webhook).
 // Point the Twilio phone number's "A message comes in" webhook here.
 // Records survey ratings (1-5), updates customer satisfaction scores,
-// alerts the business about unhappy replies, honors STOP requests — and when a
-// happy customer (4-5) rates a business that saved its Google review link, the
-// thank-you reply invites them to share it on Google while the goodwill is hot.
-// Deployed v7 2026-06-11; mirrors live source.
+// alerts the business about unhappy replies, and honors STOP requests.
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -106,18 +103,6 @@ async function findContext(phone: string): Promise<{ customer: Customer | null; 
   return { customer: rows[0] || null, campaignId: null };
 }
 
-async function reviewAsk(userId: string) {
-  try {
-    const rows = await rest(
-      `/rest/v1/clicktide?user_id=eq.${encodeURIComponent(userId)}&select=google_review_url&limit=1`,
-    );
-    const url = Array.isArray(rows) && rows[0]?.google_review_url ? String(rows[0].google_review_url).trim() : "";
-    return /^https?:\/\//i.test(url) ? url : "";
-  } catch {
-    return "";
-  }
-}
-
 Deno.serve(async (req) => {
   if (req.method !== "POST") return twiml("", 405);
   if (!serviceRoleKey) return twiml("", 500);
@@ -140,6 +125,23 @@ Deno.serve(async (req) => {
   const fromPhone = normalizePhone(params.From || "");
   const body = (params.Body || "").trim();
   if (!fromPhone || !body) return twiml();
+
+  // Replies on Clicktide's OWN line (the first-party owner-alerts campaign) are
+  // not customer survey replies: a business owner answering "5" must never be
+  // scored as some business's customer or texted a survey reply from this line.
+  // STOP/HELP/START are handled by Twilio's opt-out management; stay silent here.
+  try {
+    const plat = await rest(
+      "/rest/v1/a2p_registrations?reg_type=eq.platform&select=messaging_service_sid,phone_number&limit=5",
+    ) as Array<{ messaging_service_sid?: string; phone_number?: string }>;
+    const toPhone = normalizePhone(params.To || "");
+    const inMsid = String(params.MessagingServiceSid || "");
+    const isPlatformLine = (Array.isArray(plat) ? plat : []).some((p) =>
+      (p.messaging_service_sid && p.messaging_service_sid === inMsid) ||
+      (p.phone_number && normalizePhone(p.phone_number) === toPhone)
+    );
+    if (isPlatformLine) return twiml();
+  } catch { /* if the lookup fails, fall through — signature already verified */ }
 
   try {
     const { customer, campaignId } = await findContext(fromPhone);
@@ -231,23 +233,7 @@ Deno.serve(async (req) => {
 
     if (rating === 3) return twiml("Thanks for the honest feedback — we'll keep improving!");
 
-    // Happy customer (4-5): thank them, and invite a Google review when the
-    // business has saved its review link.
-    const url = await reviewAsk(customer.user_id);
-    if (url) {
-      await rest("/rest/v1/alerts", {
-        method: "POST",
-        headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({
-          user_id: customer.user_id,
-          customer_id: customer.id,
-          type: "review_invited",
-          message: `\u{2B50} ${customer.name || "A customer"} rated ${rating}/5 and was invited to leave a Google review.`,
-          resolved: true,
-        }),
-      }).catch(() => {});
-      return twiml(`Thank you! We really appreciate it \u{1F64F} If you have 30 seconds, a Google review would mean the world to us: ${url}`);
-    }
+    // Happy customer (4-5): thank them.
     return twiml("Thank you! We really appreciate you taking the time. \u{1F64F}");
   } catch (error) {
     console.error("survey-response error:", error);
