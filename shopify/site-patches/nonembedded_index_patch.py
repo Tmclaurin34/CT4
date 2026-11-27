@@ -123,6 +123,22 @@ function isShopifyBilling(){"""),
   if(u&&u.id&&ctIsShopDomain(u.app_metadata&&u.app_metadata.shopify_shop)&&!(await shopifyLinkOk(u))){scr=S?"dash":"login";R();return;}
   if(!u||!u.id)throw new Error("Email confirmed, but Clicktide could not load the account. Please log in.");"""),
 
+    ("ssoArrival",
+     """    const hashToken=hashParams.get("access_token");""",
+     """    // Opened from the Shopify admin: one-time code in the fragment (#ct_sso=…). Clear it from the
+    // address bar at once, then swap it for the store account's session at shopify-sso. The usual
+    // confirmation (shopifyLinkOk) and two-step check still run in finishAuthReturn.
+    const ssoCode=hashParams.get("ct_sso");
+    if(ssoCode){
+      cleanAuthUrl();
+      const sr=await fetch(FN+"/shopify-sso",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:ssoCode})});
+      const sd=await sr.json().catch(function(){return {};});
+      if(!sr.ok||!sd.access_token)throw new Error(sd.error||"This sign-in link expired. Open Clicktide from your Shopify admin again.");
+      await finishAuthReturn(sd.access_token,sd.user||null,"magiclink",{refresh_token:sd.refresh_token||"",expires_in:sd.expires_in||"",expires_at:sd.expires_at||""});
+      return;
+    }
+    const hashToken=hashParams.get("access_token");"""),
+
     ("dLoad",
      """    bizLock=await loadBiz()||{};
     const paid=hasPaidAccess(bizLock);""",

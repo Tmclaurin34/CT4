@@ -5,7 +5,7 @@
 //    user yet, so the connection is saved unclaimed with a one-time claim token; the
 //    merchant signs in / signs up and shopify-claim attaches it to their business.
 import { freshTimestamp, SHOPIFY_API_VERSION, tokenFields } from "../_shared/shopify.js";
-import { BILLING_ENABLED, provisionForClaim, reconcileBilling, signInUrlFor } from "../_shared/shopify_server.ts";
+import { BILLING_ENABLED, provisionForClaim, reconcileBilling, ssoUrlFor } from "../_shared/shopify_server.ts";
 
 const APP_BASE_URL = Deno.env.get("APP_BASE_URL") ?? "https://goclicktide.com";
 // Secret SHOPIFY_AUTO_ACCOUNTS=true turns on account-per-store sign-in (needs the matching
@@ -178,7 +178,7 @@ async function saveUnclaimed(fields: Record<string, unknown>, shop: string, shop
       const p = await provisionForClaim(claim);
       if (p.ok) {
         if (BILLING_ENABLED) { try { await reconcileBilling(shop); } catch (e) { console.error("billing after install", shop, e); } }
-        const signIn = await signInUrlFor(p.userId, shop);
+        const signIn = await ssoUrlFor(p.userId, shop);
         if (signIn) return Response.redirect(signIn, 302);
       } else if (p.reason !== "website_account") console.error("shopify auto account failed", shop, p.reason);
     } catch (e) { console.error("shopify auto account error", shop, e); }

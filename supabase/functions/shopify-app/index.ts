@@ -6,7 +6,7 @@
 // approval they land in the app UI (2.3.3, see shopify-oauth-callback).
 // Deploy with verify_jwt = false.
 import { freshTimestamp, isShopDomain, planSelectionUrl, SHOPIFY_SCOPES, verifyQueryHmac } from "../_shared/shopify.js";
-import { APP_HANDLE, BILLING_ENABLED, reconcileBilling, rest, rpc, signInUrlFor, SUPA } from "../_shared/shopify_server.ts";
+import { APP_HANDLE, BILLING_ENABLED, reconcileBilling, rest, rpc, ssoUrlFor, SUPA } from "../_shared/shopify_server.ts";
 
 const APP_BASE_URL = Deno.env.get("APP_BASE_URL") ?? "https://goclicktide.com";
 const SECRET = Deno.env.get("SHOPIFY_CLIENT_SECRET") ?? "";
@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
       const fresh = Number.isFinite(ts) && Math.abs(Date.now() / 1000 - ts) < LAUNCH_MAX_AGE_S;
       try {
         if (fresh && await rpc("clicktide_shopify_launch_once", { p_hmac: String(url.searchParams.get("hmac") || ""), p_shop: shop }) === true) {
-          const signIn = await signInUrlFor(String(conns[0].user_id), shop);
+          const signIn = await ssoUrlFor(String(conns[0].user_id), shop);
           if (signIn) return go(signIn);
         }
       } catch (e) { console.error("shopify launch sign-in failed", shop, e); }
