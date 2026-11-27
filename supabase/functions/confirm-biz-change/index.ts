@@ -9,25 +9,32 @@
 // POST {action:"confirm", id, code}
 //   -> verifies (15 min expiry, 5 attempts), applies the change, returns {ok, applied}
 //
-// Auth: user JWT (normal path), or x-clicktide-cron-key + body.user_id for
-// admin testing (echo_code:true returns the code, skip_send:true skips delivery).
+// Auth: the owner's user JWT only. The code always goes to the contact info on file;
+// nothing returns it or skips sending it.
+//
+// The owner can read their own business_profile_changes rows, so the stored code hash
+// is keyed with a server secret (BIZ_CHANGE_CODE_SECRET, falling back to the
+// service-role key): a 6-digit code can't be brute-forced from it offline.
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
 const resendFrom = Deno.env.get("RESEND_FROM_EMAIL") ?? "Clicktide <support@goclicktide.com>";
+const CODE_SECRET = Deno.env.get("BIZ_CHANGE_CODE_SECRET") || serviceRoleKey;
+const HASH_PREFIX = "h1:";
 
 const ALLOWED_FIELDS = [
   "business_name", "contact_name", "phone", "business_type", "business_phone",
   "business_email", "website", "address", "city", "state", "zip",
 ];
+const FIELD_MAX: Record<string, number> = { state: 40, zip: 20, business_type: 80 };
 const CODE_TTL_MIN = 15;
 const MAX_ATTEMPTS = 5;
 const MAX_REQUESTS_PER_HOUR = 5;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-clicktide-cron-key",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -46,17 +53,44 @@ async function rest(path: string, init: RequestInit = {}) {
   return data;
 }
 
-async function expectedCronKey() {
+// Fails closed: a pass sends a code by email or text.
+async function underLimit(bucket: string, windowSeconds: number, max: number) {
   try {
-    return String(await rest("/rest/v1/rpc/clicktide_internal_key", { method: "POST", body: "{}" }) || "");
+    const r = await fetch(`${supabaseUrl}/rest/v1/rpc/clicktide_rate_limit_hit`, {
+      method: "POST",
+      headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_bucket: bucket, p_window_seconds: windowSeconds, p_max: max }),
+    });
+    if (!r.ok) return false;
+    return (await r.json()) === true;
   } catch {
-    return "";
+    return false;
   }
 }
 
 async function sha256Hex(s: string) {
   const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
   return Array.from(new Uint8Array(d)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function codeHash(userId: string, code: string) {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(CODE_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${userId}:${code}`));
+  return HASH_PREFIX + Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Rows created before keyed hashes (plain sha256, no prefix) expire within 15 minutes
+// of this deploy; until then they still verify.
+async function codeMatches(stored: string, userId: string, code: string) {
+  const expected = stored.startsWith(HASH_PREFIX) ? await codeHash(userId, code) : await sha256Hex(`${userId}:${code}`);
+  if (expected.length !== stored.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ stored.charCodeAt(i);
+  return diff === 0;
+}
+
+function escHtml(v: string) {
+  return String(v ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 }
 
 function genCode() {
@@ -102,7 +136,7 @@ function codeEmailHtml(businessName: string, code: string, changes: Record<strin
   <div style="max-width:560px;margin:0 auto;background:#FFFFFF;border-radius:16px;padding:34px 38px">
     <div style="font-size:17px;font-weight:bold;color:#080D18;letter-spacing:1px;margin-bottom:24px">CLICK<span style="color:#2D7FF9">TIDE</span></div>
     <div style="font-size:24px;font-weight:bold;color:#0B0F19;margin-bottom:12px">Confirm your business info change</div>
-    <p style="font-size:14px;color:#374151;line-height:1.65;margin:0 0 18px">Someone (hopefully you) asked to update the profile for <strong>${businessName}</strong>:</p>
+    <p style="font-size:14px;color:#374151;line-height:1.65;margin:0 0 18px">Someone (hopefully you) asked to update the profile for <strong>${escHtml(businessName)}</strong>:</p>
     <table style="border-collapse:collapse;margin-bottom:22px">${changesSummaryHtml(changes)}</table>
     <div style="background:#F4F6FA;border-radius:12px;padding:18px;text-align:center;margin-bottom:22px">
       <div style="font-size:11px;font-weight:bold;letter-spacing:2px;color:#6B7280;margin-bottom:6px">YOUR CONFIRMATION CODE</div>
@@ -118,18 +152,11 @@ Deno.serve(async (req) => {
 
   const body = await req.json().catch(() => ({}));
   let userId = "";
-  let isCron = false;
 
-  const cronKey = req.headers.get("x-clicktide-cron-key") || "";
-  if (cronKey && cronKey === await expectedCronKey()) {
-    isCron = true;
-    userId = String(body.user_id || "");
-  } else {
-    const auth = req.headers.get("authorization") || "";
-    if (auth.toLowerCase().startsWith("bearer ")) {
-      const r = await fetch(`${supabaseUrl}/auth/v1/user`, { headers: { apikey: serviceRoleKey, Authorization: auth } });
-      if (r.ok) userId = String((await r.json())?.id || "");
-    }
+  const auth = req.headers.get("authorization") || "";
+  if (auth.toLowerCase().startsWith("bearer ")) {
+    const r = await fetch(`${supabaseUrl}/auth/v1/user`, { headers: { apikey: serviceRoleKey, Authorization: auth } });
+    if (r.ok) userId = String((await r.json())?.id || "");
   }
   if (!userId) return json({ error: "Not authorized" }, 401);
 
@@ -147,7 +174,7 @@ Deno.serve(async (req) => {
       const changes: Record<string, { from: string; to: string }> = {};
       for (const k of ALLOWED_FIELDS) {
         if (!(k in requested)) continue;
-        const to = String(requested[k] ?? "").trim();
+        const to = String(requested[k] ?? "").replace(/[\r\n\t]+/g, " ").trim().slice(0, FIELD_MAX[k] ?? 200);
         const from = String(biz[k] ?? "").trim();
         if (to !== from) changes[k] = { from, to };
       }
@@ -166,20 +193,19 @@ Deno.serve(async (req) => {
       }
 
       // Cap code requests so this endpoint can't be used to flood an inbox or a
-      // phone. (Advisory pre-check; the SMS path is also atomically capped by the
-      // clicktide_owner_sms_claim reservation below.)
-      if (!isCron) {
-        const hourAgo = new Date(Date.now() - 3600000).toISOString();
-        const recent = await rest(
-          `/rest/v1/business_profile_changes?user_id=eq.${encodeURIComponent(userId)}&created_at=gte.${encodeURIComponent(hourAgo)}&select=id&limit=${MAX_REQUESTS_PER_HOUR + 1}`,
-        );
-        if (Array.isArray(recent) && recent.length >= MAX_REQUESTS_PER_HOUR) {
-          return json({ error: "Too many code requests. Try again in a little while." }, 429);
-        }
+      // phone: a rolling count of recent requests plus an atomic counter (parallel
+      // requests can't all slip past the count). The SMS path is also capped by the
+      // clicktide_owner_sms_claim reservation below.
+      const hourAgo = new Date(Date.now() - 3600000).toISOString();
+      const recent = await rest(
+        `/rest/v1/business_profile_changes?user_id=eq.${encodeURIComponent(userId)}&created_at=gte.${encodeURIComponent(hourAgo)}&select=id&limit=${MAX_REQUESTS_PER_HOUR + 1}`,
+      );
+      if ((Array.isArray(recent) && recent.length >= MAX_REQUESTS_PER_HOUR) || !(await underLimit(`bizchange:${userId}`, 3600, MAX_REQUESTS_PER_HOUR))) {
+        return json({ error: "Too many code requests. Try again in a little while." }, 429);
       }
 
       const code = genCode();
-      const codeHash = await sha256Hex(`${userId}:${code}`);
+      const storedHash = await codeHash(userId, code);
       const sentTo = channel === "sms" ? maskPhone(destPhone) : maskEmail(destEmail);
 
       // One pending change at a time — supersede older ones.
@@ -188,80 +214,76 @@ Deno.serve(async (req) => {
       });
       const ins = await rest("/rest/v1/business_profile_changes", {
         method: "POST",
-        body: JSON.stringify({ user_id: userId, changes, channel, sent_to: sentTo, code_hash: codeHash }),
+        body: JSON.stringify({ user_id: userId, changes, channel, sent_to: sentTo, code_hash: storedHash }),
       });
       const changeId = Array.isArray(ins) ? ins[0]?.id : ins?.id;
 
-      if (!(isCron && body.skip_send === true)) {
-        if (channel === "email") {
-          const r = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
-            body: JSON.stringify({
-              from: resendFrom,
-              to: [destEmail],
-              subject: `${code} is your Clicktide confirmation code`,
-              html: codeEmailHtml(String(biz.business_name || "your business"), code, changes),
-            }),
-          });
-          if (!r.ok) {
-            const d = await r.json().catch(() => ({}));
-            throw new Error(d?.message || "Could not send the confirmation email");
-          }
-        } else {
-          const sid = Deno.env.get("TWILIO_ACCOUNT_SID") ?? "";
-          const tok = Deno.env.get("TWILIO_AUTH_TOKEN") ?? "";
-          // Clicktide's own Messaging Service, from the platform registration row
-          // (the same kill switch owner-alerts uses). No raw-number fallback.
-          const svc = await rest(
-            "/rest/v1/a2p_registrations?reg_type=eq.platform&sms_status=eq.active&messaging_service_sid=not.is.null&select=messaging_service_sid&limit=1",
-          ).catch(() => null);
-          const mgs = Array.isArray(svc) && svc[0]?.messaging_service_sid ? String(svc[0].messaging_service_sid) : "";
-          if (!sid || !tok || !mgs) return json({ error: "Texting isn't available right now — use email instead." }, 503);
-          const smsBody = `Clicktide: ${code} is your confirmation code for updating your business info. Expires in ${CODE_TTL_MIN} minutes.`;
-          // Atomically reserve the send in owner_sms_log: dedupes per change row and
-          // enforces per-account / per-number / platform-wide daily ceilings even
-          // under parallel requests (same guard as every other owner text).
-          let claim: { claimed?: boolean; reason?: string; id?: number } | null = null;
-          try {
-            claim = await rest("/rest/v1/rpc/clicktide_owner_sms_claim", {
-              method: "POST",
-              body: JSON.stringify({
-                p_user_id: userId, p_kind: "bizchange_code", p_dedupe_key: `chg-${changeId}`,
-                p_to_hash: await sha256Hex(destPhone), p_to_last4: destPhone.slice(-4), p_body: smsBody,
-                p_user_daily_cap: 10, p_dest_daily_cap: 10, p_kind_daily_cap: 200,
-              }),
-            });
-          } catch { /* treated as not claimed */ }
-          if (!claim?.claimed || !claim.id) {
-            return json({ error: "Too many code texts right now — use the emailed code instead." }, 429);
-          }
-          const form = new URLSearchParams({ To: destPhone, MessagingServiceSid: mgs, Body: smsBody });
-          const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
-            method: "POST",
-            headers: { Authorization: `Basic ${btoa(`${sid}:${tok}`)}`, "Content-Type": "application/x-www-form-urlencoded" },
-            body: form,
-          });
+      if (channel === "email") {
+        const r = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            from: resendFrom,
+            to: [destEmail],
+            subject: `${code} is your Clicktide confirmation code`,
+            html: codeEmailHtml(String(biz.business_name || "your business"), code, changes),
+          }),
+        });
+        if (!r.ok) {
           const d = await r.json().catch(() => ({}));
-          await rest(`/rest/v1/owner_sms_log?id=eq.${claim.id}`, {
-            method: "PATCH",
-            headers: { Prefer: "return=minimal" },
+          throw new Error(d?.message || "Could not send the confirmation email");
+        }
+      } else {
+        const sid = Deno.env.get("TWILIO_ACCOUNT_SID") ?? "";
+        const tok = Deno.env.get("TWILIO_AUTH_TOKEN") ?? "";
+        // Clicktide's own Messaging Service, from the platform registration row
+        // (the same kill switch owner-alerts uses). No raw-number fallback.
+        const svc = await rest(
+          "/rest/v1/a2p_registrations?reg_type=eq.platform&sms_status=eq.active&messaging_service_sid=not.is.null&select=messaging_service_sid&limit=1",
+        ).catch(() => null);
+        const mgs = Array.isArray(svc) && svc[0]?.messaging_service_sid ? String(svc[0].messaging_service_sid) : "";
+        if (!sid || !tok || !mgs) return json({ error: "Texting isn't available right now — use email instead." }, 503);
+        const smsBody = `Clicktide: ${code} is your confirmation code for updating your business info. Expires in ${CODE_TTL_MIN} minutes.`;
+        // Atomically reserve the send in owner_sms_log: dedupes per change row and
+        // enforces per-account / per-number / platform-wide daily ceilings even
+        // under parallel requests (same guard as every other owner text).
+        let claim: { claimed?: boolean; reason?: string; id?: number } | null = null;
+        try {
+          claim = await rest("/rest/v1/rpc/clicktide_owner_sms_claim", {
+            method: "POST",
             body: JSON.stringify({
-              status: r.ok ? "accepted" : "failed",
-              provider_message_id: d?.sid || null,
-              error_code: r.ok ? null : (Number(d?.code) || null),
-              error: r.ok ? null : String(d?.message || `Twilio ${r.status}`),
+              p_user_id: userId, p_kind: "bizchange_code", p_dedupe_key: `chg-${changeId}`,
+              p_to_hash: await sha256Hex(destPhone), p_to_last4: destPhone.slice(-4), p_body: smsBody,
+              p_user_daily_cap: 10, p_dest_daily_cap: 10, p_kind_daily_cap: 200,
             }),
-          }).catch(() => {});
-          if (!r.ok) {
-            return json({ error: d?.message || "Could not text the code — use email instead." }, 502);
-          }
+          });
+        } catch { /* treated as not claimed */ }
+        if (!claim?.claimed || !claim.id) {
+          return json({ error: "Too many code texts right now — use the emailed code instead." }, 429);
+        }
+        const form = new URLSearchParams({ To: destPhone, MessagingServiceSid: mgs, Body: smsBody });
+        const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+          method: "POST",
+          headers: { Authorization: `Basic ${btoa(`${sid}:${tok}`)}`, "Content-Type": "application/x-www-form-urlencoded" },
+          body: form,
+        });
+        const d = await r.json().catch(() => ({}));
+        await rest(`/rest/v1/owner_sms_log?id=eq.${claim.id}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({
+            status: r.ok ? "accepted" : "failed",
+            provider_message_id: d?.sid || null,
+            error_code: r.ok ? null : (Number(d?.code) || null),
+            error: r.ok ? null : String(d?.message || `Twilio ${r.status}`),
+          }),
+        }).catch(() => {});
+        if (!r.ok) {
+          return json({ error: d?.message || "Could not text the code — use email instead." }, 502);
         }
       }
 
-      const resp: Record<string, unknown> = { ok: true, id: changeId, channel, sent_to: sentTo };
-      if (isCron && body.echo_code === true) resp.code = code;
-      return json(resp);
+      return json({ ok: true, id: changeId, channel, sent_to: sentTo });
     }
 
     if (action === "confirm") {
@@ -279,8 +301,7 @@ Deno.serve(async (req) => {
         return json({ error: "That code expired — request the change again." }, 400);
       }
 
-      const hash = await sha256Hex(`${userId}:${code}`);
-      if (hash !== row.code_hash) {
+      if (!(await codeMatches(String(row.code_hash || ""), userId, code))) {
         const attempts = Number(row.attempts || 0) + 1;
         const dead = attempts >= MAX_ATTEMPTS;
         await rest(`/rest/v1/business_profile_changes?id=eq.${id}`, {

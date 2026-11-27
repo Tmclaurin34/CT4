@@ -60,12 +60,29 @@ type Owner = {
 };
 type LogRow = { id: number; status: string; error_code?: number | null; created_at: string; provider_message_id?: string | null; user_id?: string };
 
+// A tick must end well inside pg_cron's 60s call timeout. Owners not reached are picked
+// up by later ticks: each tick starts at a different place in the list.
+const TICK_BUDGET_MS = 45000;
+const RECONCILE_BUDGET_MS = 15000;
+const PAGE_SIZE = 1000; // PostgREST max-rows here: a bigger page silently comes back cut to this
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
-async function rest(path: string, init: RequestInit = {}) {
-  const r = await fetch(`${supabaseUrl}${path}`, {
+function fetchT(url: string, init: RequestInit = {}, ms = 10000): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...init, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
+
+// Writes that reserve or settle a text (the owner_sms_log claim and its outcome) get
+// WRITE_MS: a claim that commits but answers late would otherwise be left in 'sending'
+// and hold its dedupe slot until reconcile frees it.
+const WRITE_MS = 25000;
+
+async function rest(path: string, init: RequestInit = {}, ms = 10000) {
+  const r = await fetchT(`${supabaseUrl}${path}`, {
     ...init,
     headers: {
       apikey: serviceRoleKey,
@@ -73,11 +90,32 @@ async function rest(path: string, init: RequestInit = {}) {
       "Content-Type": "application/json",
       ...(init.headers || {}),
     },
-  });
+  }, ms);
   const text = await r.text();
   const data = text ? JSON.parse(text) : null;
   if (!r.ok) throw new Error(data?.message || data?.error || r.statusText);
   return data;
+}
+
+// Every row a read matches (a single response stops at 1,000 rows without saying so).
+// `path` must carry an order= so the pages are stable.
+async function restAll(path: string): Promise<any[]> {
+  const all: any[] = [];
+  const sep = path.includes("?") ? "&" : "?";
+  for (let offset = 0, pages = 0; pages < 200; pages++) {
+    const r = await fetchT(`${supabaseUrl}${path}${sep}limit=${PAGE_SIZE}&offset=${offset}`, {
+      headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, Prefer: "count=exact" },
+    });
+    const text = await r.text();
+    const data = text ? JSON.parse(text) : null;
+    if (!r.ok) throw new Error(data?.message || data?.error || r.statusText);
+    const rows = Array.isArray(data) ? data : [];
+    const m = /\/(\d+)\s*$/.exec(r.headers.get("content-range") || "");
+    all.push(...rows);
+    offset += rows.length;
+    if (!rows.length || (m ? offset >= Number(m[1]) : rows.length < PAGE_SIZE)) break;
+  }
+  return all;
 }
 
 const enc = encodeURIComponent;
@@ -208,7 +246,7 @@ async function patchLog(id: number, fields: Record<string, unknown>) {
     method: "PATCH",
     headers: { Prefer: "return=minimal" },
     body: JSON.stringify(fields),
-  });
+  }, WRITE_MS);
   try {
     await doPatch();
     return true;
@@ -232,12 +270,17 @@ async function reconcile(dryRun: boolean) {
   const pending = await rest(
     `/rest/v1/owner_sms_log?status=eq.accepted&provider_message_id=not.is.null&created_at=gte.${enc(since)}&select=id,user_id,status,provider_message_id,created_at&order=created_at.asc&limit=200`,
   ) as LogRow[];
+  const stopAt = Date.now() + RECONCILE_BUDGET_MS;
   for (const row of (Array.isArray(pending) ? pending : [])) {
+    if (Date.now() > stopAt) break; // the rest are checked next tick
     out.checked++;
-    const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages/${row.provider_message_id}.json`, {
-      headers: { Authorization: twilioAuth() },
-    });
-    const m = await r.json().catch(() => null);
+    let m = null;
+    try {
+      const r = await fetchT(`https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages/${row.provider_message_id}.json`, {
+        headers: { Authorization: twilioAuth() },
+      });
+      m = await r.json().catch(() => null);
+    } catch { /* still pending; asked again next tick */ }
     const status = String(m?.status || "");
     let next = "";
     if (status === "delivered" || status === "sent") next = "delivered";
@@ -299,7 +342,7 @@ async function deliver(
         p_to_hash: await sha256Hex(to), p_to_last4: to.slice(-4), p_body: body,
         p_user_daily_cap: caps.user, p_dest_daily_cap: DEST_PER_DAY, p_kind_daily_cap: caps.global,
       }),
-    });
+    }, WRITE_MS);
   } catch (e) {
     return { user_id: owner.user_id, kind, skipped: "claim_error", error: e instanceof Error ? e.message : "claim failed" };
   }
@@ -425,12 +468,19 @@ Deno.serve(async (req) => {
     }
 
     if (action === "tick") {
+      const tickEnd = Date.now() + TICK_BUDGET_MS;
       const reconciled = await reconcile(dryRun).catch((e) => ({ error: e instanceof Error ? e.message : "reconcile failed" }));
-      const owners = await rest(
-        `/rest/v1/clicktide?owner_sms_consent=is.true&owner_mobile=not.is.null&user_id=not.is.null&select=${OWNER_COLS}&limit=5000`,
+      const owners = await restAll(
+        `/rest/v1/clicktide?owner_sms_consent=is.true&owner_mobile=not.is.null&user_id=not.is.null&select=${OWNER_COLS}&order=user_id.asc`,
       ) as Owner[];
+      // A different starting owner each tick, so a list too long for one tick is still
+      // covered over a few ticks instead of the same tail always waiting.
+      const start = owners.length ? Math.floor(Math.random() * owners.length) : 0;
+      const rotated = [...owners.slice(start), ...owners.slice(0, start)];
       const results = [];
-      for (const owner of (Array.isArray(owners) ? owners : [])) {
+      let deferred = 0;
+      for (const owner of rotated) {
+        if (Date.now() > tickEnd) { deferred = rotated.length - results.length; break; }
         try {
           const confirm = await optinConfirm(msid, owner, dryRun, true);
           // The confirmation is always the first text an owner gets.
@@ -440,7 +490,7 @@ Deno.serve(async (req) => {
           results.push({ user_id: owner.user_id, error: e instanceof Error ? e.message : "failed" });
         }
       }
-      return json({ ok: true, dry_run: dryRun, reconciled, owners: results.length, results });
+      return json({ ok: true, dry_run: dryRun, reconciled, owners: results.length, deferred_owners: deferred, results });
     }
 
     return json({ error: "Unknown action" }, 400);

@@ -37,12 +37,13 @@ h1{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin:
     <div id="nameWrap">
       <input class="fi" id="name" placeholder="Your name"/>
       <label class="consent"><input type="checkbox" id="consent_m"/>
-        <span>By checking this box you agree to receive <b>marketing texts</b> (offers, rewards, and win-back messages) from this business via Clicktide. Message frequency varies. Msg &amp; data rates may apply. Reply HELP for help, STOP to opt out.</span></label>
+        <span>By checking this box you agree to receive <b>marketing texts</b> (offers, rewards, and win-back messages) from this business via Clicktide. Message frequency varies. Msg &amp; data rates may apply. Reply HELP for help, STOP to opt out. We&rsquo;ll text you once to confirm &mdash; reply <b>YES</b> to start.</span></label>
       <label class="consent"><input type="checkbox" id="consent_t"/>
         <span>By checking this box you agree to receive <b>account &amp; service texts</b> (visit reminders and gift or order updates) from this business via Clicktide. Message frequency varies. Msg &amp; data rates may apply. Reply HELP for help, STOP to opt out.</span></label>
       <div class="links"><a href="privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp; <a href="sms-policy.html">SMS Policy</a> &nbsp;&middot;&nbsp; <a href="terms.html">Terms of Service</a></div>
       <div style="font-size:10px;color:rgba(240,244,255,.4);text-align:left;margin:0 0 14px">Both are optional &mdash; you can check in without agreeing to texts.</div>
     </div>
+    <div class="ct-ts" id="tsCheckin" data-ts-action="checkin" style="margin:0 0 10px"></div>
     <button class="btn" id="btn" type="submit">Check in →</button>
   </form>
   <div class="power">Powered by <b>CLICKTIDE</b> · goclicktide.com</div>
@@ -51,6 +52,88 @@ h1{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin:
 var FN="https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1/checkin";
 var b=new URLSearchParams(location.search).get("b")||"";
 var WL=false;
+// -- Cloudflare Turnstile bot check (package "turnstile", 2026-11-27) ----------------------
+// Forms that reach Supabase Auth (sign-up, log in, resend) or Clicktide's public
+// password-reset / launch-inquiry / check-in functions carry a Turnstile token. The token is
+// ignored until the owner turns the check on (Supabase Auth CAPTCHA + TURNSTILE_SECRET_KEY).
+// The script loads only once a form with a check slot is on screen. If it can't load, the
+// form is still sent (without a token) and the server's answer is shown.
+var CT_TS_KEY="0x4AAAAAAGVfstoxEkbfB9VK";
+var CT_TS_SRC="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=ctTsOnload";
+var ctTs={state:"idle",slots:[],timer:0,lastErr:""};
+function ctTsOff(){return !!window.CT_TS_OFF||(typeof DEMO!=="undefined"&&!!DEMO);}
+function ctTsSlot(id,action){return '<div class="ct-ts" id="'+id+'" data-ts-action="'+action+'" style="margin:0 0 12px"></div>';}
+function ctTsBody(o,t){if(t)o.gotrue_meta_security={captcha_token:t};return o;}
+function ctTsLoad(){
+  if(ctTs.state!=="idle")return;
+  ctTs.state="loading";
+  window.ctTsOnload=function(){clearTimeout(ctTs.timer);ctTs.state=window.turnstile&&window.turnstile.render?"ready":"failed";ctTsScan();};
+  var fail=function(){if(ctTs.state==="loading")ctTs.state="failed";};
+  ctTs.timer=setTimeout(fail,10000);
+  try{var s=document.createElement("script");s.src=CT_TS_SRC;s.async=true;s.onerror=fail;(document.head||document.body).appendChild(s);}catch(e){fail();}
+}
+function ctTsScan(){
+  if(ctTsOff())return;
+  ctTs.slots=ctTs.slots.filter(function(r){if(r.el.isConnected)return true;try{window.turnstile.remove(r.wid);}catch(e){}return false;});
+  var els=document.querySelectorAll(".ct-ts:not([data-ts-on])");
+  for(var i=0;i<els.length;i++){
+    var el=els[i];
+    if(!(el.offsetWidth||el.offsetHeight||el.getClientRects().length))continue; // hidden panel: rendered once shown
+    if(ctTs.state==="idle"){ctTsLoad();return;}
+    if(ctTs.state==="ready")ctTsMount(el);
+  }
+}
+function ctTsMount(el){
+  el.setAttribute("data-ts-on","1");
+  var r={el:el,wid:null,tok:"",busy:false,err:false};
+  try{
+    r.wid=window.turnstile.render(el,{sitekey:CT_TS_KEY,action:el.getAttribute("data-ts-action")||undefined,size:el.offsetWidth<300?"compact":"flexible","refresh-expired":"auto",
+      callback:function(t){r.tok=String(t||"");r.err=false;r.busy=false;},
+      "expired-callback":function(){r.tok="";},
+      "error-callback":function(){r.tok="";r.err=true;r.busy=false;},
+      "before-interactive-callback":function(){r.busy=true;},
+      "after-interactive-callback":function(){r.busy=false;}});
+  }catch(e){r.err=true;}
+  ctTs.slots.push(r);
+}
+function ctTsRec(id){var el=document.getElementById(id);if(!el)return null;for(var i=0;i<ctTs.slots.length;i++)if(ctTs.slots[i].el===el)return ctTs.slots[i];return null;}
+// The slot's token, or "" when there is none to wait for (script didn't load, widget error,
+// demo mode, no slot). Waits up to 15s for a running check, 2 minutes while it asks the visitor.
+function ctTsToken(id){
+  return new Promise(function(res){
+    if(ctTsOff())return res("");
+    var t0=Date.now();
+    (function poll(){
+      var el=document.getElementById(id),r=ctTsRec(id),w=Date.now()-t0;
+      if(!el||ctTs.state==="failed")return res("");
+      if(r&&r.tok)return res(r.tok);
+      if(r&&r.err&&(r.wid==null||w>3000))return res("");
+      if(!r&&ctTs.state!=="loading")ctTsScan();
+      if(w>(r&&r.busy?120000:15000))return res("");
+      setTimeout(poll,150);
+    })();
+  });
+}
+// Tokens are single-use: every submit is followed by a reset (a fresh check starts at once).
+function ctTsReset(id){var r=ctTsRec(id);if(!r)return;r.tok="";r.err=false;try{window.turnstile.reset(r.wid);}catch(e){}}
+// A refusal from the check (Supabase Auth: captcha_failed; Clicktide functions:
+// turnstile_failed / turnstile_unavailable) as a message for the visitor, else "".
+function ctTsErr(d){
+  d=d||{};var c=String(d.error_code||d.code||""),m=String(d.msg||d.message||d.error||"");
+  if(c==="turnstile_unavailable")return m||"The security check is unavailable right now. Please try again in a minute.";
+  if(c!=="captcha_failed"&&c!=="turnstile_failed"&&!/captcha protection/i.test(m))return "";
+  return ctTs.state==="failed"?"The security check couldn't load. Reload the page (allow challenges.cloudflare.com if you use a blocker), then try again.":"Please complete the security check, then try again.";
+}
+// fetch(...).then(ctTsCheck): records a refusal from the check in ctTs.lastErr ("" otherwise);
+// reads a copy of the body, so the caller can still read the response itself.
+function ctTsCheck(r){ctTs.lastErr="";if(!r||r.ok||!r.clone)return r;return r.clone().json().then(function(d){ctTs.lastErr=ctTsErr(d);return r;},function(){return r;});}
+function ctTsWatch(attrs){
+  var q=false,kick=function(){if(q)return;q=true;setTimeout(function(){q=false;ctTsScan();},0);};
+  try{new MutationObserver(kick).observe(document.documentElement,attrs?{childList:true,subtree:true,attributes:true,attributeFilter:["class"]}:{childList:true,subtree:true});}catch(e){}
+  kick();
+}
+var CT_TS_OFF=!b;
+ctTsWatch(false);
 
 (function init(){
   if(!b){
@@ -71,6 +154,7 @@ var WL=false;
 })();
 
 function fail(msg){var e=document.getElementById("err");e.textContent=msg;e.style.display="block";}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];});}
 
 function go(ev){
   ev.preventDefault();
@@ -79,20 +163,23 @@ function go(ev){
   err.style.display="none";btn.disabled=true;btn.textContent="Checking in...";
   var cm=document.getElementById("consent_m"),ct=document.getElementById("consent_t");
   var mk=!!cm&&cm.checked,tx=!!ct&&ct.checked;
-  fetch(FN,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+  ctTsToken("tsCheckin").then(function(tk){return fetch(FN,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+    turnstile_token:tk||undefined,
     b:b,
     phone:document.getElementById("phone").value,
     name:document.getElementById("name").value,
     consent:mk||tx,
     consent_marketing:mk,
-    consent_transactional:tx
-  })}).then(function(r){return r.json().then(function(d){return{s:r.status,d:d};});}).then(function(x){
+    consent_transactional:tx,
+    form_version:"checkin-2026-11-27-doi"
+  })});}).then(function(r){ctTsReset("tsCheckin");return r.json().then(function(d){return{s:r.status,d:d};});}).then(function(x){
     if(x.d&&x.d.ok){
-      var who=x.d.first_name||"there";
+      var who=esc(x.d.first_name||"there");
       document.getElementById("card").innerHTML=
         '<div class="done"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.5 2.5 5-5.5"/></svg></div>'+
         '<h1>'+(x.d.already?"Already checked in!":"You\'re checked in, "+who+"!")+'</h1>'+
-        '<div class="sub">'+(x.d.already?"We counted your visit earlier today.":"Thanks for coming back to "+(x.d.business_name||"us")+". See you next time!")+'</div>'+
+        '<div class="sub">'+(x.d.already?"We counted your visit earlier today.":"Thanks for coming back to "+esc(x.d.business_name||"us")+". See you next time!")+'</div>'+
+        (x.d.sms_confirmation==="sent"?'<div class="sub" style="margin-top:-8px">Check your texts: reply <b>YES</b> to confirm you want texts from '+esc(x.d.business_name||"us")+'.</div>':'')+
         (WL?'':'<div class="power">Powered by <b>CLICKTIDE</b> · goclicktide.com</div>');
       return;
     }
@@ -102,10 +189,11 @@ function go(ev){
       document.getElementById("name").focus();
       fail("First time here? Add your name so they know who you are.");
     }else{
-      fail((x.d&&x.d.error)||"Something went wrong — try again.");
+      fail(ctTsErr(x.d)||(x.d&&x.d.error)||"Something went wrong — try again.");
     }
     btn.disabled=false;btn.textContent="Check in →";
   }).catch(function(){
+    ctTsReset("tsCheckin");
     fail("Network hiccup — try again.");
     btn.disabled=false;btn.textContent="Check in →";
   });

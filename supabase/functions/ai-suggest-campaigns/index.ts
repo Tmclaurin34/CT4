@@ -6,10 +6,19 @@
 // campaigns the owner can approve with one click. Runs weekly via pg_cron
 // (cron key) or on demand by the business itself (their JWT).
 // The AI proposes; the owner approves — it never sends anything by itself.
+// Only Scale businesses with an active or trialing subscription. The weekly run logs to
+// engine_runs, stops starting new businesses before the edge-function time limit, and
+// the next run starts with the business it didn't reach.
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+
+const JOB = "ai-suggest-campaigns";
+const RUN_BUDGET_MS = 90000; // no new business after this; one AI call can still take AI_TIMEOUT_MS
+const AI_TIMEOUT_MS = 60000;
+const ON_DEMAND_PER_DAY = 6; // owner-triggered refreshes per business per day; each is a paid AI call
+const PAGE_SIZE = 1000; // PostgREST max-rows here: a bigger page silently comes back cut to this
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -21,8 +30,14 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 }
 
+function fetchT(url: string, init: RequestInit = {}, ms = 15000): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...init, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
+
 async function rest(path: string, init: RequestInit = {}) {
-  const r = await fetch(`${supabaseUrl}${path}`, {
+  const r = await fetchT(`${supabaseUrl}${path}`, {
     ...init,
     headers: {
       apikey: serviceRoleKey,
@@ -37,6 +52,69 @@ async function rest(path: string, init: RequestInit = {}) {
   return data;
 }
 
+// Every row a read matches (a single response stops at 1,000 rows without saying so).
+// `path` must carry an order= so the pages are stable.
+async function restAll(path: string): Promise<any[]> {
+  const all: any[] = [];
+  const sep = path.includes("?") ? "&" : "?";
+  for (let offset = 0, pages = 0; pages < 200; pages++) {
+    const r = await fetchT(`${supabaseUrl}${path}${sep}limit=${PAGE_SIZE}&offset=${offset}`, {
+      headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, Prefer: "count=exact" },
+    });
+    const text = await r.text();
+    const data = text ? JSON.parse(text) : null;
+    if (!r.ok) throw new Error(data?.message || data?.error || r.statusText);
+    const rows = Array.isArray(data) ? data : [];
+    const m = /\/(\d+)\s*$/.exec(r.headers.get("content-range") || "");
+    all.push(...rows);
+    offset += rows.length;
+    if (!rows.length || (m ? offset >= Number(m[1]) : rows.length < PAGE_SIZE)) break;
+  }
+  return all;
+}
+
+// The shared limiter (as in checkin), but failing CLOSED: each call here costs money.
+async function underLimit(bucket: string, windowSeconds: number, max: number) {
+  try {
+    const ok = await rest("/rest/v1/rpc/clicktide_rate_limit_hit", {
+      method: "POST",
+      body: JSON.stringify({ p_bucket: bucket, p_window_seconds: windowSeconds, p_max: max }),
+    });
+    return ok === true;
+  } catch {
+    return false;
+  }
+}
+
+// Run log for the weekly cron run (contract C5); ops-alerts watches it.
+async function runStart() {
+  try {
+    const rows = await rest("/rest/v1/engine_runs", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ job: JOB }) });
+    return Array.isArray(rows) && rows[0]?.id ? Number(rows[0].id) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function runFinish(id: number, ok: boolean, summary: unknown) {
+  if (!id) return;
+  await rest(`/rest/v1/engine_runs?id=eq.${id}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ finished_at: new Date().toISOString(), ok, summary }),
+  }).catch(() => {});
+}
+
+async function resumePoint() {
+  try {
+    const rows = await rest(`/rest/v1/engine_runs?job=eq.${JOB}&finished_at=not.is.null&order=started_at.desc&limit=1&select=summary`);
+    const s = Array.isArray(rows) && rows[0] ? rows[0].summary : null;
+    return s && s.timed_out && typeof s.resume_from === "string" ? s.resume_from : "";
+  } catch {
+    return "";
+  }
+}
+
 async function expectedCronKey() {
   try {
     const data = await rest("/rest/v1/rpc/clicktide_internal_key", { method: "POST", body: "{}" });
@@ -49,7 +127,7 @@ async function expectedCronKey() {
 async function authedUserId(req: Request) {
   const authorization = req.headers.get("authorization") || "";
   if (!authorization.toLowerCase().startsWith("bearer ")) return "";
-  const r = await fetch(`${supabaseUrl}/auth/v1/user`, {
+  const r = await fetchT(`${supabaseUrl}/auth/v1/user`, {
     headers: { apikey: serviceRoleKey, Authorization: authorization },
   });
   if (!r.ok) return "";
@@ -84,9 +162,9 @@ type CampResult = { name: string; trigger: string; type: string; status: string;
 // v11: what each campaign actually did - reached, returned after, $ back, approx cost.
 async function campaignResults(uid: string, customers: Cust[]): Promise<CampResult[]> {
   const since = new Date(Date.now() - LOOKBACK_DAYS * 86400000).toISOString();
-  const camps = await rest(`/rest/v1/campaigns?user_id=eq.${encodeURIComponent(uid)}&select=id,name,trigger,campaign_type,gift_cost,status&limit=100`) as
+  const camps = await restAll(`/rest/v1/campaigns?user_id=eq.${encodeURIComponent(uid)}&select=id,name,trigger,campaign_type,gift_cost,status&order=id.asc`) as
     Array<{ id: number; name: string; trigger: string; campaign_type?: string; gift_cost?: number; status?: string }>;
-  const sends = await rest(`/rest/v1/campaign_sends?user_id=eq.${encodeURIComponent(uid)}&status=eq.sent&customer_id=not.is.null&sent_at=gte.${encodeURIComponent(since)}&select=campaign_id,customer_id,channel,sent_at&order=sent_at.desc&limit=10000`) as
+  const sends = await restAll(`/rest/v1/campaign_sends?user_id=eq.${encodeURIComponent(uid)}&status=eq.sent&customer_id=not.is.null&sent_at=gte.${encodeURIComponent(since)}&select=campaign_id,customer_id,channel,sent_at&order=sent_at.desc,id.asc`) as
     Array<{ campaign_id: number; customer_id: number; channel?: string; sent_at: string }>;
   const byId = new Map(customers.map((c) => [c.id, c]));
   const out: CampResult[] = [];
@@ -125,8 +203,8 @@ async function campaignResults(uid: string, customers: Cust[]): Promise<CampResu
 
 async function statsFor(biz: Biz) {
   const churnDays = Number(biz.churn_days) || 60;
-  const customers = await rest(
-    `/rest/v1/customers?user_id=eq.${encodeURIComponent(biz.user_id)}&select=id,visits,order_count,total_spent,last_visit_at,last_order_at,last_order_amount,satisfaction_score&limit=5000`,
+  const customers = await restAll(
+    `/rest/v1/customers?user_id=eq.${encodeURIComponent(biz.user_id)}&select=id,visits,order_count,total_spent,last_visit_at,last_order_at,last_order_amount,satisfaction_score&order=id.asc`,
   ) as Cust[];
   if (!customers.length) return null;
 
@@ -138,7 +216,8 @@ async function statsFor(biz: Biz) {
   // the flat churn-days line is only a fallback if the engine hasn't evaluated them yet.
   let slipping = 0, atRiskN = 0, engine = false;
   try {
-    const rh = await rest(`/rest/v1/customer_rhythm?user_id=eq.${encodeURIComponent(biz.user_id)}&select=status`) as Array<{ status: string }>;
+    // Paged: a business with more than 1,000 customers would otherwise be undercounted.
+    const rh = await restAll(`/rest/v1/customer_rhythm?user_id=eq.${encodeURIComponent(biz.user_id)}&select=status&order=customer_id.asc`) as Array<{ status: string }>;
     if (Array.isArray(rh) && rh.length) {
       engine = true;
       slipping = rh.filter((r) => r.status === "drifting" || r.status === "at_risk").length;
@@ -210,15 +289,18 @@ RULES:
 Respond with ONLY a JSON array, no other text:
 [{"title":"...","campaign_type":"...","trigger_text":"...","gift_name":"...","gift_cost":0,"message":"...","rationale":"...","projected":"..."}]`;
 
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
+  const r = await fetchT("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": anthropicKey, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
       model: "claude-haiku-5-5",
-      max_tokens: 1500,
+      // Haiku 5.5 thinks before answering (adaptive thinking is on by default), and the
+      // thinking counts toward max_tokens: 1500 cut the JSON off mid-list for real
+      // businesses, so the stale suggestion was never replaced. Give it room.
+      max_tokens: 16000,
       messages: [{ role: "user", content: prompt }],
     }),
-  });
+  }, AI_TIMEOUT_MS);
   const data = await r.json();
   if (!r.ok) throw new Error(data?.error?.message || "AI request failed");
 
@@ -279,19 +361,35 @@ Deno.serve(async (req) => {
   const userId = isCron ? "" : await authedUserId(req);
   if (!isCron && !userId) return json({ error: "Not authorized" }, 401);
 
-  // Scale businesses only — this is the Scale plan's AI feature.
-  let filter = "plan=ilike.scale&user_id=not.is.null";
+  // Scale businesses in good standing only — this is the Scale plan's AI feature, and a
+  // canceled or unpaid subscription keeps its plan name.
+  let filter = "plan=ilike.scale&user_id=not.is.null&stripe_subscription_status=in.(active,trialing)";
   if (userId) filter += `&user_id=eq.${encodeURIComponent(userId)}`;
-  const businesses = await rest(
-    `/rest/v1/clicktide?${filter}&select=user_id,business_name,business_type,churn_days,plan&limit=200`,
+  const rows = await restAll(
+    `/rest/v1/clicktide?${filter}&select=id,user_id,business_name,business_type,churn_days,plan&order=user_id.asc,id.asc`,
   ) as Biz[];
+  const businesses: Biz[] = [];
+  for (const b of rows) if (!businesses.some((x) => x.user_id === b.user_id)) businesses.push(b); // one per owner
 
   if (!businesses.length) {
-    return json(userId ? { error: "AI campaign suggestions are a Scale plan feature." } : { ok: true, businesses: 0 }, userId ? 403 : 200);
+    if (isCron) await runFinish(await runStart(), true, { businesses: 0, processed: 0, timed_out: false });
+    return json(userId ? { error: "AI campaign suggestions are a Scale plan feature and need an active subscription." } : { ok: true, businesses: 0 }, userId ? 403 : 200);
+  }
+  if (userId && !(await underLimit(`ai-suggest:user:${userId}`, 86400, ON_DEMAND_PER_DAY))) {
+    return json({ error: "AI suggestions were refreshed several times today. Try again tomorrow." }, 429);
   }
 
+  const startedAt = Date.now();
+  const runId = isCron ? await runStart() : 0;
+  const resumeFrom = isCron ? await resumePoint() : "";
+  const startAt = resumeFrom ? businesses.findIndex((b) => b.user_id >= resumeFrom) : -1;
+  const order = startAt > 0 ? [...businesses.slice(startAt), ...businesses.slice(0, startAt)] : businesses;
+
   const results: Record<string, unknown>[] = [];
-  for (const biz of businesses) {
+  let timedOut = false;
+  let resumeAt = "";
+  for (const biz of order) {
+    if (Date.now() - startedAt > RUN_BUDGET_MS) { timedOut = true; resumeAt = biz.user_id; break; }
     try {
       const outcome = await suggestFor(biz);
       results.push({ business: biz.business_name, ...outcome });
@@ -299,5 +397,10 @@ Deno.serve(async (req) => {
       results.push({ business: biz.business_name, error: e instanceof Error ? e.message : String(e) });
     }
   }
-  return json({ ok: true, businesses: businesses.length, results });
+  const failed = results.filter((x) => "error" in x);
+  await runFinish(runId, true, {
+    businesses: businesses.length, processed: results.length, timed_out: timedOut, resume_from: resumeAt,
+    business_errors: failed.length, last_error: failed.length ? String(failed[0].error).slice(0, 300) : "",
+  });
+  return json({ ok: true, businesses: businesses.length, timed_out: timedOut, resume_from: resumeAt, results });
 });

@@ -1,7 +1,9 @@
 // Clicktide support chat (Maya). Recorded (support_chats table) so the team learns
 // what businesses ask for — including services we don't offer yet.
 // AI answers from a strict knowledge base; account-specific issues route to email.
+// v24: one-off customer email rules (active plan or trial; footer address = the business's own full address, else Clicktide's "sent on behalf of"; footer always added, 100/day (25 on trial), 30/hour, 3/day per customer, Email Studio HTML cleaned), unsubscribes are per business and only the customer can undo them, bounced addresses blocked, Drift Report goes to the login email (one extra on-demand report a day); rate limits: subscribed owners get their own daily pool.
 // v23: AI campaign suggestions explained — learns from each campaign's real results (reached / came back after / $ / cost), honest about small samples, gift budget guard (gift <= ~half a best-customer visit), never sends on its own (ai-suggest-campaigns v13).
+// v23: no Google review requests (feature removed; never suggest review gating or rewards for reviews); profile-change text codes go only to the owner-alerts mobile
 // v22: texting quiet hours — customer texts only 9am–8pm in the business's own time zone (from noon on Sundays); an overnight-due touch is held and the email + text go out together next morning (campaign-runner v39).
 // v21: texting activation — customer texting turns on per business after that business's own carrier (A2P) registration; owner text alerts are live (Settings > Owner text alerts).
 // v21: retention engine — rhythm explanation now matches the live engine (median gap, drifting/at risk/recovered, confidence, one-visit estimates) + the new Customer Intelligence page.
@@ -54,7 +56,13 @@ HOW DATA GETS IN: connect Square, Shopify, Clover, or Stripe (Toast and Mindbody
 
 B2B AND STAFFING AGENCIES (and similar client-based businesses): Clicktide fits when the "customer" is a client company that orders repeatedly — staffing agencies, commercial cleaning contracts, agencies, wholesalers. Drift = a client that hasn't placed an order in 30–90 days (set the win-back window longer to match B2B rhythms — the goals are adjustable). Big-Order Thank-You and 1-Year Anniversary campaigns translate directly, and a branded gift on a decision-maker's desk is classic B2B relationship-keeping; one drifted B2B client is often worth thousands a year. Data gets in via Stripe invoicing (auto-syncs) or quick manual logging — easy at B2B volume (dozens to hundreds of clients, not thousands). Messages are fully editable into business-to-business voice. Honest limit: a staffing agency's WORKERS/candidates are a weaker fit — they don't pay the agency, so there's no purchase rhythm to watch. Clicktide protects the client list, not the candidate bench.
 
+EMAILING ONE CUSTOMER (one-off emails from the customer list or Email Studio): it needs an active plan or trial and the business name in Settings. US law (CAN-SPAM) requires a postal address in every marketing email: Clicktide uses the business's own full mailing address (street, city, state, ZIP) from Settings, and if that isn't filled in it uses Clicktide's mailing address instead, worded "Sent on behalf of [business] by Clicktide" (adding the full address in Settings puts the business's own address in the footer). It goes out from Clicktide's sending address with the BUSINESS's name as the sender, and every email ends with the business's name, the postal address and an Unsubscribe link (that footer is always added and can't be removed). Limits: up to 100 one-off emails a day (25 a day during the trial), 30 an hour, and 3 a day to the same customer; to reach many customers, use a campaign. Email Studio designs are cleaned before sending: scripts, forms, embedded media, style blocks and non-secure (http) images are removed, so keep styling inline. If a limit is hit, the owner sees a "limit reached, try again later" message.
+UNSUBSCRIBES: a customer who unsubscribes stops getting email from THAT business only, not from other businesses that use Clicktide. The owner can mark a customer unsubscribed but can never turn their email back on; only the customer can, from the link in the email. An address that bounced is blocked until the owner corrects the customer's email. The Monday Drift Report goes to the email the owner logs in with, and an extra report on request can be sent at most once a day.
+
 OTHER FEATURES: Email Studio (design branded emails), Brand Studio (design gift artwork and improve soft logo uploads for print), one-off gift sending and multi-customer Gift Cart from the customer list, open/click tracking on campaigns, satisfaction surveys by text (reply 1-5), AI-written campaign messages.
+
+GOOGLE REVIEWS (if asked): Clicktide does not send Google review requests; that feature was removed on purpose. Satisfaction replies still reach the owner, and a 1–2 star rating alerts them right away so they can make it right. If an owner wants more reviews, the ONLY compliant way is to put their review link in a message that goes to ALL of their customers, no matter how anyone rated their visit. Do NOT offer to select, filter or segment customers by rating, satisfaction, happiness, VIP status or star score for a review request, and never call asking only happy or 5-star customers acceptable, even if it is framed as "asking for feedback": that is review gating, which Google prohibits and which can get a business's reviews removed. Never suggest offering a reward, discount, gift or contest entry in exchange for a review (against Google's rules and FTC guidance). If the owner pushes, explain the rule kindly and offer the all-customers option instead.
+
 AI CAMPAIGN SUGGESTIONS (Scale plan): once a week Clicktide's AI studies the business's own numbers and proposes up to 3 campaigns the owner can approve with one click; it never sends anything on its own. It learns from the business's real results: for each campaign it looks at how many customers it reached, how many came back afterward, the dollars from those return visits, and what was spent on gifts and postcards, then leans toward what's working and can propose a better version of a campaign that's trailing. It is honest about small numbers: a campaign that is too new or has reached only a handful of customers is never called a winner or a loser. Gift budget guard: it only suggests a physical gift that costs no more than about half of one return visit from the business's best customers (a $15 mug won't be suggested for a $6-coffee regular); otherwise it picks a free message or a digital reward code. It describes results as customers who "came back after" a campaign, never as revenue the campaign "caused".
 THE CUSTOMER LIST scales to thousands of customers without slowing down (it only loads the page you're looking at). You can search by name, email, or phone; filter by segment (All, Drifting, VIP, Unhappy, New) with live counts; narrow to a last-visit date range; and set how many days without a visit counts as "drifting" (30, 45, 60, or 90 days). Changing that drift window also updates the dashboard's win-back / drift numbers, so the whole picture stays consistent. Unhappy customers (rated 1–2 stars) show a banner and have gifts blocked on purpose — a gift can't fix a bad experience, so reach out personally instead.
 
@@ -68,7 +76,7 @@ ACCOUNT & LOGIN (answer these confidently):
 - Forgot password: click "Forgot password?" on the login page — a reset link comes from support@goclicktide.com (check spam). The link opens a "Choose a new password" screen on the site; the new password works immediately. Links expire — if it says expired, just request a fresh one.
 - Password boxes have a SHOW button to reveal what you typed. Login has a "Keep me logged in on this device" checkbox — leave it checked on your own computer and you'll stay signed in; uncheck it on a shared computer and the session ends when the browser closes.
 - When you're logged in, the top of goclicktide.com shows a green chip with your email plus Dashboard and Log out buttons.
-- Editing business info: during signup you can use the Back button to fix anything before finishing. After signup, edit it in Dashboard → Settings → business profile; for safety, saving asks for a 6-digit confirmation code sent to the email (or phone) ALREADY on the account — codes expire in 15 minutes. That's deliberate: it stops anyone who got into the dashboard from quietly changing the business identity. Every change request is recorded, so if something looks wrong, support can see the full history and help — email support@goclicktide.com.
+- Editing business info: during signup you can use the Back button to fix anything before finishing. After signup, edit it in Dashboard → Settings → business profile; for safety, saving asks for a 6-digit confirmation code sent to the email ALREADY on the account (or by text, but only to the mobile the owner turned on under Settings → Owner text alerts) — codes expire in 15 minutes. That's deliberate: it stops anyone who got into the dashboard from quietly changing the business identity. Every change request is recorded, so if something looks wrong, support can see the full history and help — email support@goclicktide.com.
 
 IF ASKED "why send a gift to someone who left?": you're not rewarding the leaving — you're interrupting the forgetting. It's never the first touch (text day 14, postcard day 30, gift only day 45), and a small gift protecting a regular worth hundreds a year is usually the cheapest save in business.
 
@@ -96,6 +104,32 @@ async function rest(path: string, init: RequestInit = {}) {
   return data;
 }
 
+function clientIp(req: Request) {
+  const cf = req.headers.get("cf-connecting-ip");
+  if (cf) return cf.trim();
+  const real = req.headers.get("x-real-ip");
+  if (real) return real.trim();
+  return (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "unknown";
+}
+
+// Fails closed: every message that gets through is a paid model call.
+async function underLimit(bucket: string, windowSeconds: number, max: number) {
+  try {
+    const r = await fetch(`${supabaseUrl}/rest/v1/rpc/clicktide_rate_limit_hit`, {
+      method: "POST",
+      headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_bucket: bucket, p_window_seconds: windowSeconds, p_max: max }),
+    });
+    if (!r.ok) return false;
+    return (await r.json()) === true;
+  } catch {
+    return false;
+  }
+}
+
+const SLOW_DOWN = "You've sent a lot of messages in a short time — give it a few minutes, or email support@goclicktide.com and a human will help!";
+const BUSY = "I'm getting a lot of questions right now — please email support@goclicktide.com and a human will get back to you.";
+
 async function maybeUserId(req: Request) {
   const auth = req.headers.get("authorization") || "";
   if (!auth.toLowerCase().startsWith("bearer ")) return null;
@@ -109,10 +143,28 @@ async function maybeUserId(req: Request) {
   }
 }
 
+async function isSubscribed(userId: string) {
+  try {
+    const rows = await rest(
+      `/rest/v1/clicktide?user_id=eq.${encodeURIComponent(userId)}&stripe_subscription_status=in.(active,trialing)&select=id&limit=1`,
+    );
+    return Array.isArray(rows) && rows.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   if (!serviceRoleKey || !anthropicKey) return json({ error: "Server is not configured" }, 500);
+
+  // Per caller IP first (counts every request, valid or not), then per session, then
+  // a daily ceiling per pool (anonymous and free accounts share one).
+  const ip = clientIp(req);
+  if (!(await underLimit(`chat:ip:hour:${ip}`, 3600, 30)) || !(await underLimit(`chat:ip:day:${ip}`, 86400, 120))) {
+    return json({ reply: SLOW_DOWN, error: "rate_limited" }, 429);
+  }
 
   let body: { session_id?: string; message?: string };
   try {
@@ -123,8 +175,25 @@ Deno.serve(async (req) => {
   const sessionId = String(body.session_id || "").slice(0, 64);
   const message = String(body.message || "").trim().slice(0, 1000);
   if (!sessionId || !message) return json({ error: "session_id and message are required" }, 400);
-
+  if (!(await underLimit(`chat:session:${sessionId}`, 86400, 60))) {
+    return json({ reply: SLOW_DOWN, error: "rate_limited" }, 429);
+  }
+  // Subscribed owners have their own per-account cap and their own ceiling, so
+  // anonymous traffic using up the public ceiling can't switch Maya off for them.
   const userId = await maybeUserId(req);
+  const owner = userId ? await isSubscribed(userId) : false;
+  if (owner) {
+    if (!(await underLimit(`chat:owner:day:${userId}`, 86400, 150))) {
+      return json({ reply: SLOW_DOWN, error: "rate_limited" }, 429);
+    }
+    if (!(await underLimit("chat:global:owners:day", 86400, 5000))) {
+      console.error("support-chat: owners' daily ceiling reached");
+      return json({ reply: BUSY, error: "rate_limited" }, 429);
+    }
+  } else if (!(await underLimit("chat:global:day", 86400, 1000))) {
+    console.error("support-chat: global daily ceiling reached");
+    return json({ reply: BUSY, error: "rate_limited" }, 429);
+  }
 
   try {
     // conversation context: last 12 turns of this session

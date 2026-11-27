@@ -1,20 +1,31 @@
 // Free POS audit: turn raw POS orders into PII-free per-customer facts.
 //
-// Identity rules match applyOrder() in index.ts exactly (lower-cased email,
-// normalized phone, junk/own numbers ignored), so the audit counts the same
-// people a paid sync would create. Orders with no usable email or phone can't
-// be tied to a person and are counted as `anonymous` — the report discloses it.
+// Identity rules are shared with the paid sync (index.ts imports normalizePhone,
+// isJunkPhone and cleanEmail from here): lower-cased email, normalized phone,
+// junk/own numbers ignored, so the audit counts the same people a paid sync would
+// create. Orders with no usable email or phone can't be tied to a person and are
+// counted as `anonymous` — the report discloses it.
 //
 // Plain JavaScript (Deno imports it directly) so the jsc test rig can load it as
 // well (see audit_test.js).
 
+// Digits only, as +E.164: POS data is stored as the customer's phone, and whatever is
+// stored here is later matched and messaged, so nothing but a plain number gets through.
 export function normalizePhone(v) {
   const s = String(v || "").trim();
-  if (s.startsWith("+")) return s;
+  if (s.startsWith("+")) {
+    const d = s.slice(1).replace(/[\s().-]/g, "");
+    return /^\d{8,15}$/.test(d) ? `+${d}` : "";
+  }
   const d = s.replace(/\D/g, "");
   if (d.length === 10) return `+1${d}`;
   if (d.length === 11 && d.startsWith("1")) return `+${d}`;
   return "";
+}
+
+export function cleanEmail(v) {
+  const e = String(v || "").trim().toLowerCase();
+  return e.length <= 254 && /^[^\s@,;<>"'()]+@[^\s@,;<>"'()]+\.[^\s@,;<>"'()]+$/.test(e) ? e : "";
 }
 
 export function isJunkPhone(phone, own) {
@@ -34,7 +45,7 @@ export function aggregateAuditOrders(orders, own) {
   const people = [];
   let anonymous = 0, badDates = 0, used = 0;
   for (const o of orders || []) {
-    const email = String(o.email || "").trim().toLowerCase();
+    const email = cleanEmail(o.email);
     const raw = normalizePhone(o.phone);
     const phone = raw && !isJunkPhone(raw, own) ? raw.replace(/\D/g, "").slice(-10) : "";
     if (!email && !phone) { anonymous++; continue; }
