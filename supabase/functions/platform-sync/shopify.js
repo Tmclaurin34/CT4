@@ -107,3 +107,16 @@ export function readOrdersResponse(status, body) {
     fieldErrors: Array.isArray(errs) ? errs.length : 0,
   };
 }
+
+// Which order window Shopify will actually return. read_orders alone covers
+// the last 60 days; read_all_orders (needs Shopify's approval) covers all.
+export const SHOPIFY_DEFAULT_ORDER_DAYS = 60;
+export function shopifyOrderWindow(since, scope, now) {
+  const t = Number.isFinite(now) ? now : Date.now();
+  const all = String(scope || "").split(",").map((x) => x.trim()).includes("read_all_orders");
+  if (all) return { since, limited: false, days: null };
+  const floor = t - SHOPIFY_DEFAULT_ORDER_DAYS * 86400000;
+  const s = Date.parse(since);
+  if (Number.isFinite(s) && s >= floor) return { since, limited: false, days: null };
+  return { since: new Date(floor).toISOString(), limited: true, days: SHOPIFY_DEFAULT_ORDER_DAYS };
+}

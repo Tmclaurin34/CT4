@@ -8,7 +8,7 @@
 // for their own connections (JWT). First sync backfills 365 days, paginated.
 
 import { aggregateAuditOrders, sufficiency, validateFacts } from "./audit.js";
-import { GQL_PAGE, LOGICAL_PAGE, mapShopifyOrder, ORDERS_QUERY, ordersSearch, readOrdersResponse, SHOPIFY_API_VERSION, throttleWaitMs } from "./shopify.js";
+import { GQL_PAGE, LOGICAL_PAGE, mapShopifyOrder, ORDERS_QUERY, ordersSearch, readOrdersResponse, SHOPIFY_API_VERSION, shopifyOrderWindow, throttleWaitMs } from "./shopify.js";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -16,6 +16,20 @@ const stripePlatformKey = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 
 const FIRST_SYNC_DAYS = 365;
 const MAX_PAGES = 10; // per connection per run; caps runtime on huge merchants
+
+// Fetch options. Nightly sync uses the defaults; the free POS audit asks for a
+// deeper read-only history pull bounded by a wall-clock deadline, and collects
+// honest counters (orders that can't be tied to a person, truncation).
+type FetchStats = { raw: number; anonymous: number; truncated: boolean; window_days?: number };
+type FetchOpts = { maxPages: number; deadline: number; stats: FetchStats; onPage?: (n: number) => void };
+const defaultOpts = (): FetchOpts => ({ maxPages: MAX_PAGES, deadline: Infinity, stats: { raw: 0, anonymous: 0, truncated: false } });
+function pageGuard(o: FetchOpts, page: number) {
+  if (Date.now() > o.deadline) { o.stats.truncated = true; return false; }
+  return page < o.maxPages;
+}
+function lastPage(o: FetchOpts, page: number, more: boolean) {
+  if (more && page === o.maxPages - 1) o.stats.truncated = true;
+}
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -25,7 +39,7 @@ const cors = {
 
 type Conn = {
   id: string; user_id: string; platform: string; merchant_id: string;
-  shop_domain?: string; access_token: string; last_synced_at?: string;
+  shop_domain?: string; access_token: string; last_synced_at?: string; scope?: string | null;
 };
 type Addr = { address?: string; city?: string; state?: string; zip?: string };
 type Order = { email?: string; phone?: string; name?: string; amount: number; at: string; addr?: Addr };
@@ -174,7 +188,12 @@ async function shopifyOrders(c: Conn, since: string, op: FetchOpts = defaultOpts
   // orders (as with REST), fetched in requests of up to 100. See shopify.js.
   const domain = c.shop_domain || c.merchant_id;
   const url = `https://${domain}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`;
-  const q = ordersSearch(since);
+  // Without Shopify's approved read_all_orders scope only the last 60 days of
+  // orders are visible. Ask for exactly that window and report it, so the audit
+  // says "last 60 days" instead of implying a full year was read.
+  const window = shopifyOrderWindow(since, c.scope);
+  if (window.limited) op.stats.window_days = window.days;
+  const q = ordersSearch(window.since);
   const raw: Record<string, unknown>[] = [];
   let cursor = "";
   let more = true;
@@ -323,6 +342,247 @@ async function applyOrder(userId: string, o: Order, own: Set<string>): Promise<{
   return { res: "created", addrAdded: !!o.addr };
 }
 
+// =====================================================================
+// FREE POS AUDIT (mode: audit_*). Read-only: pulls order history through the
+// business's own connection, reduces it to PII-free per-customer facts, runs
+// the shared drift definition (clicktide_drift_eval via
+// clicktide_audit_build_report), stores ONLY the aggregate report, and deletes
+// the facts. It never writes customers, never touches last_synced_at (so the
+// paid sync still does its own full backfill), and never sends anything.
+// =====================================================================
+declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
+const AUDIT_DAYS = 365;
+const AUDIT_MAX_PAGES = 40;
+const AUDIT_BUDGET_MS = 100_000;
+const AUDIT_PLATFORMS = ["square", "shopify", "clover", "stripe"];
+const AUDITS_PER_DAY = 6;
+
+async function patchAudit(id: string, body: Record<string, unknown>) {
+  await rest(`/rest/v1/pos_audits?id=eq.${id}`, {
+    method: "PATCH", headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ ...body, updated_at: new Date().toISOString() }),
+  });
+}
+
+async function insertFacts(auditId: string, facts: { visits: number; spend: number; first_at: string; last_at: string }[]) {
+  for (let i = 0; i < facts.length; i += 1000) {
+    await rest("/rest/v1/pos_audit_facts", {
+      method: "POST", headers: { Prefer: "return=minimal" },
+      body: JSON.stringify(facts.slice(i, i + 1000).map((f) => ({ audit_id: auditId, ...f }))),
+    });
+  }
+}
+
+type AuditImport = {
+  source: string; platform: string; orders_read: number; orders_used: number; anonymous_orders: number;
+  customers: number; truncated: boolean; recent_history_missing: boolean; window_days: number; rejected_rows?: number;
+};
+
+function auditLimitations(imp: AuditImport, report: Record<string, unknown> = {}): string[] {
+  const out: string[] = [];
+  if (imp.source === "csv") out.push("Built from the CSV you uploaded. Names, emails and phone numbers stayed in your browser — only per-customer visit counts, spend and dates were sent.");
+  else out.push(`Built from up to the last ${imp.window_days} days of completed orders in your ${imp.platform} account.`);
+  if (imp.platform === "shopify" && imp.window_days && imp.window_days < AUDIT_DAYS) out.push(`Shopify only lets Clicktide read your last ${imp.window_days} days of orders until it approves full order-history access, so customers who order less often than that may not show a rhythm yet. The report will deepen automatically once access is approved.`);
+  if (imp.anonymous_orders > 0) out.push(`${imp.anonymous_orders.toLocaleString("en-US")} order${imp.anonymous_orders === 1 ? " had" : "s had"} no customer email or phone attached (walk-ins, cash, guest checkouts), so they can't be tied to a person and aren't counted.`);
+  if (imp.truncated && !imp.recent_history_missing) out.push("Your account has more history than the free audit reads in one pass, so the oldest orders in the window weren't included. A full sync runs after you subscribe.");
+  if (imp.rejected_rows) out.push(`${imp.rejected_rows.toLocaleString("en-US")} CSV row${imp.rejected_rows === 1 ? " was" : "s were"} skipped because a date or amount couldn't be read.`);
+  out.push("Customer satisfaction isn't in POS data, so unhappy customers can't be identified until Clicktide's post-visit surveys run.");
+  out.push("Drift is judged against each customer's own usual gap between visits (the median of their past gaps, ignoring one-off long breaks) — the same engine Clicktide's dashboard and win-back campaigns use.");
+  const conf = (report.confidence || {}) as Record<string, number>;
+  const one = Number(conf.insufficient) || 0, low = Number(conf.low) || 0;
+  if (one > 0) out.push(`${one.toLocaleString("en-US")} customer${one === 1 ? " has" : "s have"} only one visit, so there's no personal rhythm yet: they're compared with your business's typical gap and counted as estimates.`);
+  if (low > 0) out.push(`${low.toLocaleString("en-US")} customer${low === 1 ? " has" : "s have"} only a few visits or very irregular ones, so their rhythm is a low-confidence estimate.`);
+  return out;
+}
+
+async function finishAudit(auditId: string, userId: string, imp: AuditImport) {
+  await patchAudit(auditId, { stage: "analyzing", progress: { ...imp } });
+  let churn = 60;
+  try {
+    const b = await rest(`/rest/v1/clicktide?user_id=eq.${encodeURIComponent(userId)}&select=churn_days&limit=1`);
+    const v = Number(Array.isArray(b) && b[0]?.churn_days);
+    if (v > 0) churn = v;
+  } catch { /* default */ }
+  const report = await rest("/rest/v1/rpc/clicktide_audit_build_report", {
+    method: "POST", body: JSON.stringify({ p_audit: auditId, p_churn: churn }),
+  }) as Record<string, unknown>;
+  const suff = sufficiency(report);
+  if (imp.recent_history_missing) {
+    suff.ok = false;
+    suff.reasons.unshift("Your account has more order history than the free audit can read in one pass, and we couldn't reach your most recent orders — so we can't tell who has actually stopped coming. Try the CSV option with your last 6–12 months, or contact us.");
+  }
+  const full = { ...report, import: imp, limitations: auditLimitations(imp, report), sufficient: suff.ok, insufficient_reasons: suff.reasons };
+  await rest(`/rest/v1/pos_audit_facts?audit_id=eq.${auditId}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+  await patchAudit(auditId, {
+    status: suff.ok ? "complete" : "insufficient_data", stage: "done", report: full,
+    completed_at: new Date().toISOString(),
+  });
+}
+
+function friendlyAuditError(platform: string, e: unknown) {
+  const m = e instanceof Error ? e.message : String(e);
+  if (/ 401| 403/.test(m)) return `${platform} refused the request — the connection may have been revoked. Reconnect and try again.`;
+  if (/ 429/.test(m)) return `${platform} is rate-limiting requests right now. Wait a few minutes and try again.`;
+  if (/ 5\d\d/.test(m)) return `${platform} had a temporary problem answering. Try again in a few minutes.`;
+  return "Something went wrong while reading your order history. Try again — if it keeps failing, contact support@goclicktide.com.";
+}
+
+async function runPosAudit(auditId: string, conn: Conn, fetcher: (c: Conn, s: string, o?: FetchOpts) => Promise<Order[]>) {
+  try {
+    await patchAudit(auditId, { stage: "importing", progress: { orders_read: 0 } });
+    let lastPatch = 0;
+    const opts: FetchOpts = {
+      maxPages: AUDIT_MAX_PAGES, deadline: Date.now() + AUDIT_BUDGET_MS,
+      stats: { raw: 0, anonymous: 0, truncated: false },
+      onPage: (n) => {
+        if (Date.now() - lastPatch < 2500) return;
+        lastPatch = Date.now();
+        patchAudit(auditId, { progress: { orders_read: n } }).catch(() => {});
+      },
+    };
+    const since = new Date(Date.now() - AUDIT_DAYS * 86400000).toISOString();
+    const orders = await fetcher(conn, since, opts);
+    const own = await businessOwnNumbers(conn.user_id);
+    const agg = aggregateAuditOrders(orders, own);
+    // If the pull stopped early AND the newest order we saw is old, the missing
+    // part is the recent history — drift can't be judged honestly.
+    const newest = orders.reduce((m, o) => Math.max(m, Date.parse(o.at) || 0), 0);
+    const recentMissing = opts.stats.truncated && (!newest || newest < Date.now() - 3 * 86400000);
+    await insertFacts(auditId, agg.facts);
+    await finishAudit(auditId, conn.user_id, {
+      source: "pos", platform: conn.platform, orders_read: opts.stats.raw, orders_used: agg.orders,
+      anonymous_orders: opts.stats.anonymous + agg.anonymous, customers: agg.customers,
+      truncated: opts.stats.truncated, recent_history_missing: recentMissing, window_days: opts.stats.window_days || AUDIT_DAYS,
+    });
+  } catch (e) {
+    console.error("pos audit failed", auditId, e);
+    await rest(`/rest/v1/pos_audit_facts?audit_id=eq.${auditId}`, { method: "DELETE", headers: { Prefer: "return=minimal" } }).catch(() => {});
+    await patchAudit(auditId, { status: "failed", stage: "failed", error: friendlyAuditError(conn.platform, e) }).catch(() => {});
+  }
+}
+
+function cleanAttribution(a: unknown) {
+  const out: Record<string, string> = {};
+  if (a && typeof a === "object") {
+    for (const k of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "variant", "session_id", "landing"]) {
+      const v = (a as Record<string, unknown>)[k];
+      if (typeof v === "string" && v) out[k] = v.slice(0, 120);
+    }
+  }
+  return out;
+}
+
+async function auditsToday(userId: string) {
+  const since = new Date(Date.now() - 86400000).toISOString();
+  const rows = await rest(`/rest/v1/pos_audits?user_id=eq.${userId}&created_at=gte.${since}&select=id`);
+  return Array.isArray(rows) ? rows.length : 0;
+}
+
+async function createAudit(userId: string, source: string, platform: string, attribution: unknown) {
+  const rows = await rest("/rest/v1/pos_audits", {
+    method: "POST", headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ user_id: userId, source, platform, status: "running", stage: "connecting", attribution: cleanAttribution(attribution) }),
+  });
+  return String(rows?.[0]?.id || "");
+}
+
+async function handleAudit(req: Request, body: Record<string, unknown>, fetchers: Record<string, (c: Conn, s: string, o?: FetchOpts) => Promise<Order[]>>) {
+  const userId = await authedUserId(req);
+  if (!userId) return json({ error: "Please sign in first." }, 401);
+  const mode = String(body.mode);
+
+  if (mode === "audit_start") {
+    const platform = String(body.platform || "");
+    if (!AUDIT_PLATFORMS.includes(platform)) return json({ error: "That POS isn't supported for the free audit yet." }, 400);
+    // A run already in flight for this user? Hand it back instead of starting a second pull.
+    const fresh = new Date(Date.now() - 4 * 60000).toISOString();
+    const running = await rest(`/rest/v1/pos_audits?user_id=eq.${userId}&status=eq.running&updated_at=gte.${fresh}&select=id&order=created_at.desc&limit=1`);
+    if (Array.isArray(running) && running[0]) return json({ ok: true, audit_id: running[0].id, reused: true });
+    if (await auditsToday(userId) >= AUDITS_PER_DAY) return json({ error: "You've run the free audit several times today. Try again tomorrow." }, 429);
+    const conns = await rest(`/rest/v1/platform_connections?user_id=eq.${userId}&platform=eq.${platform}&is_active=eq.true&select=id,user_id,platform,merchant_id,shop_domain,access_token,last_synced_at,scope&order=updated_at.desc.nullslast&limit=1`) as Conn[];
+    const conn = conns?.[0];
+    if (!conn || !conn.access_token) return json({ error: "not_connected" }, 409);
+    const auditId = await createAudit(userId, "pos", platform, body.attribution);
+    if (!auditId) return json({ error: "Could not start the audit." }, 500);
+    const job = runPosAudit(auditId, conn, fetchers[platform]);
+    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(job);
+    else await job;
+    return json({ ok: true, audit_id: auditId });
+  }
+
+  if (mode === "audit_csv") {
+    if (await auditsToday(userId) >= AUDITS_PER_DAY) return json({ error: "You've run the free audit several times today. Try again tomorrow." }, 429);
+    const v = validateFacts(body.facts, 50000);
+    const meta = (body.meta || {}) as Record<string, unknown>;
+    const auditId = await createAudit(userId, "csv", "csv", body.attribution);
+    if (!auditId) return json({ error: "Could not start the audit." }, 500);
+    try {
+      await patchAudit(auditId, { stage: "importing", progress: { customers: v.facts.length } });
+      await insertFacts(auditId, v.facts);
+      const newest = v.facts.reduce((m, f) => Math.max(m, Date.parse(f.last_at)), 0);
+      await finishAudit(auditId, userId, {
+        source: "csv", platform: "csv", orders_read: Number(meta.rows) || 0,
+        orders_used: v.facts.reduce((s, f) => s + f.visits, 0), anonymous_orders: Math.max(0, Number(meta.anonymous) || 0),
+        customers: v.facts.length, truncated: false, recent_history_missing: !!newest && newest < Date.now() - 120 * 86400000,
+        window_days: 0, rejected_rows: v.rejected + Math.max(0, Number(meta.bad) || 0),
+      });
+    } catch (e) {
+      console.error("csv audit failed", e);
+      await rest(`/rest/v1/pos_audit_facts?audit_id=eq.${auditId}`, { method: "DELETE", headers: { Prefer: "return=minimal" } }).catch(() => {});
+      await patchAudit(auditId, { status: "failed", stage: "failed", error: "We couldn't analyze that file. Check it has a date, an amount and a customer column, then try again." }).catch(() => {});
+    }
+    return json({ ok: true, audit_id: auditId });
+  }
+
+  if (mode === "audit_viewed") {
+    const id = String(body.audit_id || "");
+    if (!/^[0-9a-f-]{36}$/.test(id)) return json({ error: "bad id" }, 400);
+    await rest(`/rest/v1/pos_audits?id=eq.${id}&user_id=eq.${userId}&report_viewed_at=is.null`, {
+      method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ report_viewed_at: new Date().toISOString() }),
+    });
+    return json({ ok: true });
+  }
+
+  if (mode === "audit_delete") {
+    // Disconnect + delete. Only for businesses that haven't subscribed — a paying
+    // account manages its data from Settings, where campaigns depend on it.
+    const b = await rest(`/rest/v1/clicktide?user_id=eq.${userId}&select=stripe_subscription_status&limit=1`);
+    const status = String((Array.isArray(b) && b[0]?.stripe_subscription_status) || "").toLowerCase();
+    if (["active", "trialing", "past_due"].includes(status)) return json({ error: "Your account has an active subscription — manage connections and data from Settings, or email support@goclicktide.com." }, 409);
+    await rest(`/rest/v1/platform_connections?user_id=eq.${userId}`, {
+      method: "PATCH", headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ is_active: false, access_token: "", refresh_token: null, updated_at: new Date().toISOString() }),
+    });
+    await rest(`/rest/v1/pos_audits?user_id=eq.${userId}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+    try {
+      await rest(`/rest/v1/customers?user_id=eq.${userId}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+    } catch (e) {
+      console.error("audit_delete customers", e);
+      return json({ ok: false, partial: true, error: "Your POS is disconnected and the audit report is deleted, but some customer records are linked to past messages. Email support@goclicktide.com and we'll finish the deletion." }, 200);
+    }
+    return json({ ok: true });
+  }
+
+  return json({ error: "Unknown audit mode" }, 400);
+}
+
+// Users who came in through the free POS audit and have no live subscription.
+async function freeAuditOnlyUsers(userIds: string[]): Promise<Set<string>> {
+  const ids = [...new Set(userIds.filter(Boolean))];
+  const out = new Set<string>();
+  if (!ids.length) return out;
+  for (let i = 0; i < ids.length; i += 100) {
+    const chunk = ids.slice(i, i + 100).map(encodeURIComponent).join(",");
+    const audits = await rest(`/rest/v1/pos_audits?user_id=in.(${chunk})&select=user_id`) as { user_id: string }[];
+    const withAudit = new Set((audits || []).map((a) => a.user_id));
+    if (!withAudit.size) continue;
+    const bizs = await rest(`/rest/v1/clicktide?user_id=in.(${[...withAudit].map(encodeURIComponent).join(",")})&select=user_id,stripe_subscription_status`) as { user_id: string; stripe_subscription_status?: string }[];
+    const live = new Set((bizs || []).filter((b) => ["active", "trialing", "past_due"].includes(String(b.stripe_subscription_status || "").toLowerCase())).map((b) => b.user_id));
+    for (const u of withAudit) if (!live.has(u)) out.add(u);
+  }
+  return out;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -341,7 +601,7 @@ Deno.serve(async (req) => {
   let connFilter = "is_active=eq.true&user_id=not.is.null";
   if (userId) connFilter += `&user_id=eq.${encodeURIComponent(userId)}`;
   const conns = await rest(
-    `/rest/v1/platform_connections?${connFilter}&select=id,user_id,platform,merchant_id,shop_domain,access_token,last_synced_at&limit=500`,
+    `/rest/v1/platform_connections?${connFilter}&select=id,user_id,platform,merchant_id,shop_domain,access_token,last_synced_at,scope&limit=500`,
   ) as Conn[];
 
   const results: Record<string, unknown>[] = [];
