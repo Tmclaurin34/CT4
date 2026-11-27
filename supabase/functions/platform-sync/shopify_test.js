@@ -44,4 +44,6 @@ var ca = function () { return {}; };
 seq(mapShopifyOrder({ customer: { defaultEmailAddress: { emailAddress: "a@x.com", marketingState: "UNSUBSCRIBED" } } }, ca).emailOptOut, true, "unsubscribed -> email opt-out");
 seq(mapShopifyOrder({ customer: { defaultEmailAddress: { emailAddress: "a@x.com", marketingState: "SUBSCRIBED" } } }, ca).emailOptOut, false, "subscribed -> no opt-out");
 seq(mapShopifyOrder({ email: "g@x.com" }, ca).emailOptOut, false, "guest order -> no opt-out");
+seq(mapShopifyOrder({ createdAt: "2026-11-27T10:00:00Z", processedAt: "2026-03-05T14:00:00Z" }, ca).at, "2026-03-05T14:00:00Z", "backdated order: visit date is processedAt");
+seq(mapShopifyOrder({ createdAt: "2026-11-27T10:00:00Z" }, ca).at, "2026-11-27T10:00:00Z", "no processedAt: falls back to createdAt");
 print("SHOPIFY MAPPING TESTS: " + sp + " passed, " + sf + " failed");
