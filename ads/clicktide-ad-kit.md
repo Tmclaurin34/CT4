@@ -19,13 +19,13 @@ All example numbers in the images are labelled EXAMPLE and come from a fictional
 | Run time | Let it run **7 days** before judging; don't edit ads in the first 3 days |
 
 ### Ad set A — Salons & barbers ($20/day)
-- **Location:** _your choice_ — recommended: start with one metro area you know (e.g. New York City + 25 mi), then expand.
+- **Location:** **New York City** — in Ads Manager type "New York, New York" and set the radius to **+10 mi** (covers all five boroughs). Location option: *People living in or recently in this location*. Expand to +25 mi (Long Island, Westchester, North Jersey) only after week 2 if results are good.
 - **Age:** 25–65
 - **Detailed targeting** (pick what Meta offers): job titles *Salon owner, Hair stylist, Barber, Salon manager*; interests *Beauty salon, Barbershop, Hair salon, Square (POS), Small business owners*.
 - **Ads:** Ad 4 (Salon) + Ad 2 (Rhythm)
 
 ### Ad set B — Local business owners ($20/day)
-- **Location:** same as A
+- **Location:** same as A (New York City, +10 mi)
 - **Age:** 25–65
 - **Detailed targeting:** *Small business owners, Business page admins*; interests *Square (POS), Shopify, Clover, Local business, Customer retention*.
 - **Ads:** Ad 1 (Report) + Ad 3 (Automation)
@@ -86,7 +86,7 @@ Create a **Custom Audience → Website visitors** only after adding the Meta Pix
 ## 2. Google Search ($400/month ≈ $13/day)
 
 - **Campaign type:** Search · **Bidding:** Maximize clicks (max CPC $3) for the first 2 weeks
-- **Location:** same as Meta
+- **Location:** New York City (in Google Ads choose "New York, NY, United States" — city — plus Brooklyn, Queens, Bronx and Staten Island if offered separately). Location option: *Presence: people in or regularly in your targeted locations*.
 - **Final URL:** `https://goclicktide.com/free-pos-audit?v=1&utm_source=google&utm_medium=cpc&utm_campaign=pos_audit_search`
 
 ### Keywords (phrase match)
@@ -147,6 +147,6 @@ Rough first targets to sanity-check (assumptions, not benchmarks): under $40 per
 - [ ] Facebook Page + Instagram business account for Clicktide (logo, cover, website, short description).
 - [ ] Meta Business account with an ad account and payment method.
 - [ ] Verify the domain goclicktide.com in Meta Business settings (Brand safety → Domains; add the TXT record in Cloudflare DNS).
-- [ ] Choose locations (section 1).
+- [x] Locations: New York City, +10 mi (chosen Nov 27).
 - [ ] Optional, later: Meta Pixel + Conversions API so Meta can optimize for completed reports (needs a cookie-consent update on the site; ask Claude).
 - [ ] Clover: confirm the Clicktide app's permissions are read-only in the Clover developer dashboard.
