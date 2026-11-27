@@ -26,7 +26,7 @@ begin
   foreach t in array array['message_events', 'sms_messages', 'owner_sms_log', 'a2p_registrations', 'support_chats',
                            'email_suppressions', 'ai_suggestions', 'email_templates', 'brand_products',
                            'business_profile_changes', 'funnel_events', 'pos_order_ledger', 'gift_send_claims',
-                           'oauth_pending'] loop
+                           'oauth_pending', 'alerts', 'survey_responses'] loop
     execute format('delete from public.%I where user_id = any($1)', t) using v_users;
   end loop;
   select array_agg(id) into v_ids from public.customers where user_id = any(v_users);
