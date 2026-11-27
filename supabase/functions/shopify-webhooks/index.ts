@@ -129,6 +129,21 @@ async function usageOverdueAlert() {
   } catch (e) { console.error("usage overdue check failed", e); return null; }
 }
 
+// A website-first business that switched to Shopify billing whose Stripe subscription still
+// isn't confirmed stopped after 5 tries could be paying twice: email support (once a day).
+async function stripeSwitchAlert(usage: unknown) {
+  const stuck = (usage as { stripeSwitch?: { stuck?: unknown[] } } | null)?.stripeSwitch?.stuck || [];
+  if (!stuck.length) return 0;
+  const send = await rpc("clicktide_rate_limit_hit", { p_bucket: "shopify-stripe-switch-alert", p_window_seconds: 86400, p_max: 1 }).catch(() => false);
+  if (send === true) {
+    await notifySupport(`Stripe subscription not stopped after switching to Shopify billing (${stuck.length})`,
+      "These businesses now pay through Shopify, but Stripe hasn't confirmed their old subscription will end. " +
+      "Cancel each at period end in the Stripe dashboard (check the right Stripe account), then set done_at in shopify_stripe_switch:\n" +
+      JSON.stringify(stuck, null, 2));
+  }
+  return stuck.length;
+}
+
 // Where Shopify tells us what it billed (legacy AppUsagePricing balanceUsed), compare it with
 // what we reported this cycle. App Pricing exposes no such figure to the Admin API, so for
 // App Pricing stores this is the manual monthly check in docs/shopify-usage-billing.md.
@@ -160,7 +175,8 @@ async function cronRun() {
   try { usage = await reportUsage(); } catch (e) { usage = { error: e instanceof Error ? e.message : String(e) }; }
   const overdue = await usageOverdueAlert();
   const mismatches = await usageMismatchAlert();
-  return { retried: (pending || []).length, billing, usage, overdue, mismatches };
+  const stripeStuck = await stripeSwitchAlert(usage);
+  return { retried: (pending || []).length, billing, usage, overdue, mismatches, stripeStuck };
 }
 
 Deno.serve(async (req) => {
@@ -180,7 +196,8 @@ Deno.serve(async (req) => {
       try { usage = await reportUsage(); } catch (e) { err = e instanceof Error ? e.message : String(e); }
       const overdue = await usageOverdueAlert();
       const mismatches = await usageMismatchAlert();
-      return json({ ok: !err, usage, overdue, mismatches, ...(err ? { error: err } : {}) }, err ? 502 : 200);
+      const stripeStuck = await stripeSwitchAlert(usage);
+      return json({ ok: !err, usage, overdue, mismatches, stripeStuck, ...(err ? { error: err } : {}) }, err ? 502 : 200);
     }
     return json({ ok: true, ...(await cronRun()) });
   }

@@ -59,7 +59,8 @@ grant select, insert, update, delete on public.shopify_usage_limits to service_r
 create table if not exists public.shopify_usage_job (
   id integer primary key default 1 check (id = 1),
   holder text,
-  lease_until timestamptz
+  lease_until timestamptz,
+  last_success_at timestamptz   -- dead-man check (ops-alerts): the reporter last finished a run
 );
 alter table public.shopify_usage_job enable row level security;
 revoke all on public.shopify_usage_job from public, anon, authenticated;
@@ -113,20 +114,29 @@ $$;
 
 -- This cycle's Shopify usage: debits made in the cycle, less refunds of those same debits.
 -- p_reported_only: just what Shopify has acknowledged (2xx).
-create or replace function public.clicktide_shopify_usage_cycle_used(p_user uuid, p_cycle_start timestamptz, p_reported_only boolean default false)
+create or replace function public.clicktide_shopify_usage_cycle_used(p_user uuid, p_cycle_start timestamptz, p_reported_only boolean default false, p_reported_before timestamptz default null)
 returns numeric language sql stable security definer set search_path = '' as $$
   select coalesce((select sum(-round(d.amount::double precision::numeric, 2)) from public.wallet d
                     where d.user_id = p_user and d.shopify_usage and d.shopify_usage_cancelled_at is null
                       and d.transaction_type in ('gift_debit', 'postcard_debit', 'sms_overage')
                       and d.created_at >= p_cycle_start
-                      and (not p_reported_only or d.shopify_usage_reported_at is not null)), 0)
+                      and (not p_reported_only or d.shopify_usage_reported_at is not null)
+                      and (p_reported_before is null or d.shopify_usage_reported_at < p_reported_before)), 0)
        - coalesce((select sum(round(r.amount::double precision::numeric, 2)) from public.wallet r
                     join public.wallet d on d.user_id = r.user_id and d.idempotency_key = left(r.idempotency_key, length(r.idempotency_key) - 7)
                    where r.user_id = p_user and r.shopify_usage and r.shopify_usage_cancelled_at is null
                      and r.transaction_type in ('gift_refund', 'postcard_refund', 'sms_overage_refund')
                      and r.idempotency_key like '%:refund'
                      and d.shopify_usage and d.created_at >= p_cycle_start
-                     and (not p_reported_only or r.shopify_usage_reported_at is not null)), 0);
+                     and (not p_reported_only or r.shopify_usage_reported_at is not null)
+                     and (p_reported_before is null or r.shopify_usage_reported_at < p_reported_before)), 0);
+$$;
+
+-- Unit price of the count meters (must match the Shopify meters: postcard $1.50, extra_text $0.05).
+create or replace function public.clicktide_shopify_usage_unit_price(p_kind text)
+returns numeric language sql immutable set search_path = '' as $$
+  select case when p_kind in ('postcard_debit', 'postcard_refund') then 1.50
+              when p_kind in ('sms_overage', 'sms_overage_refund') then 0.05 end::numeric;
 $$;
 
 -- May this debit go on the business's Shopify bill? See the header for the rules.
@@ -141,7 +151,7 @@ returns boolean language sql stable security definer set search_path = '' as $$
             join public.clicktide_shopify_usage_target(p_user) t on t.shop_domain = lower(l.shop_domain)
             where l.user_id = p_user and not l.test_or_dev and not l.trialing and l.cycle_limit > 0
               and l.synced_at > pg_catalog.now() - interval '3 hours'
-              and l.cycle_start <= pg_catalog.now() and pg_catalog.now() < l.cycle_end
+              and l.cycle_start <= pg_catalog.now() and pg_catalog.now() < l.cycle_end - interval '1 hour'
               and public.clicktide_shopify_usage_cycle_used(p_user, l.cycle_start)
                   + greatest(coalesce(p_debit, 0), 0) <= l.cycle_limit);
 $$;
@@ -163,6 +173,9 @@ declare
   v_billed boolean := false;
   v_sdom  text;
   v_smid  text;
+  v_dkind text;
+  v_want  text;
+  v_damt  numeric;
 begin
   if p_user is null or p_delta is null then
     return jsonb_build_object('ok', false, 'reason', 'invalid_amount');
@@ -197,7 +210,10 @@ begin
     -- Shopify-billed: prepaid first (whole debit), else the whole debit as Shopify usage, else refuse.
     -- A Shopify usage debit needs an idempotency key, so its refund can find it.
     if v_billed and v_prev + v_delta < 0 then
-      if v_key is not null and public.clicktide_shopify_usage_allowed(p_user, -v_delta) then
+      -- postcard / extra_text meters count units (+1), so the amount must be exactly one unit
+      if v_key is not null
+         and (v_kind = 'gift_debit' or -v_delta = public.clicktide_shopify_usage_unit_price(v_kind))
+         and public.clicktide_shopify_usage_allowed(p_user, -v_delta) then
         select t.shop_domain, t.merchant_id into v_sdom, v_smid from public.clicktide_shopify_usage_target(p_user) t;
         v_shop := v_smid is not null;
       end if;
@@ -207,13 +223,21 @@ begin
     end if;
   elsif v_kind in ('gift_refund', 'postcard_refund', 'sms_overage_refund') and v_key like '%:refund' then
     -- A refund follows its own debit: Shopify usage (same shop) only if that exact debit was.
-    select d.shopify_shop_domain, d.shopify_merchant_id into v_sdom, v_smid
+    -- If the key points at a Shopify usage debit of another kind or a smaller amount, refuse it
+    -- (never credit prepaid for money that was billed through Shopify).
+    select d.shopify_shop_domain, d.shopify_merchant_id, d.transaction_type, -round(d.amount::double precision::numeric, 2)
+      into v_sdom, v_smid, v_dkind, v_damt
       from public.wallet d
-     where d.user_id = p_user and d.idempotency_key = left(v_key, length(v_key) - 7) and d.shopify_usage
-       and d.transaction_type = case v_kind when 'gift_refund' then 'gift_debit'
-                                            when 'postcard_refund' then 'postcard_debit' else 'sms_overage' end
-       and -round(d.amount::double precision::numeric, 2) >= v_delta;
-    v_shop := found;
+     where d.user_id = p_user and d.idempotency_key = left(v_key, length(v_key) - 7) and d.shopify_usage;
+    if found then
+      v_want := case v_kind when 'gift_refund' then 'gift_debit' when 'postcard_refund' then 'postcard_debit' else 'sms_overage' end;
+      if v_dkind is distinct from v_want
+         or v_delta > v_damt
+         or (v_kind <> 'gift_refund' and v_delta <> v_damt) then
+        return jsonb_build_object('ok', false, 'reason', 'refund_mismatch');
+      end if;
+      v_shop := true;
+    end if;
   end if;
 
   -- A Shopify usage row is billed by Shopify, so it never moves the prepaid balance.
@@ -340,9 +364,23 @@ begin
   return coalesce(v_ok, false);
 end $$;
 
-create or replace function public.clicktide_shopify_usage_release(p_holder text)
+create or replace function public.clicktide_shopify_usage_release(p_holder text, p_ok boolean default false)
 returns void language sql security definer set search_path = '' as $$
-  update public.shopify_usage_job set lease_until = null where id = 1 and holder = p_holder;
+  update public.shopify_usage_job
+     set lease_until = null,
+         last_success_at = case when p_ok then pg_catalog.now() else last_success_at end
+   where id = 1 and holder = p_holder;
+$$;
+
+-- Ops dead-man check: is the usage reporter running? (Only matters once anything is Shopify-billed.)
+create or replace function public.clicktide_shopify_usage_heartbeat()
+returns jsonb language sql stable security definer set search_path = '' as $$
+  select jsonb_build_object(
+    'last_success_at', (select last_success_at from public.shopify_usage_job where id = 1),
+    'shopify_billed', exists (select 1 from public.clicktide where billing_provider = 'shopify'),
+    'stale', exists (select 1 from public.clicktide where billing_provider = 'shopify')
+             and coalesce((select last_success_at from public.shopify_usage_job where id = 1), '-infinity'::timestamptz)
+                 < pg_catalog.now() - interval '45 minutes');
 $$;
 
 -- Reporter queue: CLAIMS due, unreported, uncancelled usage rows (next_at = now + 15 min, so a
@@ -355,6 +393,12 @@ language sql volatile security definer set search_path = '' as $$
     select w.id from public.wallet w
      where w.shopify_usage and w.shopify_usage_reported_at is null and w.shopify_usage_cancelled_at is null
        and (w.shopify_usage_next_at is null or w.shopify_usage_next_at <= pg_catalog.now())
+       -- a refund goes out only after Shopify has its debit (never a credit for an unbilled charge)
+       and (w.transaction_type not in ('gift_refund', 'postcard_refund', 'sms_overage_refund')
+            or exists (select 1 from public.wallet d
+                        where d.user_id = w.user_id and w.idempotency_key like '%:refund'
+                          and d.idempotency_key = left(w.idempotency_key, length(w.idempotency_key) - 7)
+                          and d.shopify_usage_reported_at is not null))
      order by w.id
      limit greatest(1, least(coalesce(p_limit, 100), 500))
      for update skip locked),
@@ -395,15 +439,16 @@ begin
 end $$;
 
 -- A refund whose own debit (key = refund key minus ':refund') was never sent cancels with it, at
--- the same amount. Rows that were ever claimed or sent (attempts > 0, or next_at in the future)
--- are never netted. Returns pairs netted.
+-- the same amount. A row that was ever claimed by the reporter (next_at set) or attempted
+-- (attempts > 0) is never netted: Shopify may already have accepted it even if the mark never
+-- landed. Returns pairs netted.
 create or replace function public.clicktide_shopify_usage_net()
 returns integer language plpgsql security definer set search_path = '' as $$
 declare r record; v_debit bigint; n integer := 0;
 begin
   for r in select w.id, w.user_id, w.idempotency_key, w.amount, w.transaction_type from public.wallet w
             where w.shopify_usage and w.shopify_usage_reported_at is null and w.shopify_usage_cancelled_at is null
-              and w.shopify_usage_attempts = 0 and (w.shopify_usage_next_at is null or w.shopify_usage_next_at <= pg_catalog.now())
+              and w.shopify_usage_attempts = 0 and w.shopify_usage_next_at is null
               and w.transaction_type in ('gift_refund', 'postcard_refund', 'sms_overage_refund')
               and w.idempotency_key like '%:refund'
             order by w.id for update skip locked loop
@@ -411,7 +456,7 @@ begin
     select d.id into v_debit from public.wallet d
      where d.user_id = r.user_id and d.idempotency_key = left(r.idempotency_key, length(r.idempotency_key) - 7)
        and d.shopify_usage and d.shopify_usage_reported_at is null and d.shopify_usage_cancelled_at is null
-       and d.shopify_usage_attempts = 0 and (d.shopify_usage_next_at is null or d.shopify_usage_next_at <= pg_catalog.now())
+       and d.shopify_usage_attempts = 0 and d.shopify_usage_next_at is null
        and round(d.amount::double precision::numeric, 2) = -round(r.amount::double precision::numeric, 2)
        and d.transaction_type = case r.transaction_type when 'gift_refund' then 'gift_debit'
                                                         when 'postcard_refund' then 'postcard_debit' else 'sms_overage' end
@@ -442,7 +487,7 @@ create or replace function public.clicktide_shopify_usage_mismatches()
 returns jsonb language sql stable security definer set search_path = '' as $$
   select coalesce(jsonb_agg(jsonb_build_object('user_id', l.user_id, 'shop', l.shop_domain, 'shopify_balance_used', l.balance_used, 'reported', x.rep)), '[]'::jsonb)
     from public.shopify_usage_limits l
-    cross join lateral (select public.clicktide_shopify_usage_cycle_used(l.user_id, l.cycle_start, true) rep) x
+    cross join lateral (select public.clicktide_shopify_usage_cycle_used(l.user_id, l.cycle_start, true, l.synced_at) rep) x
    where l.balance_used is not null and l.cycle_start is not null
      and abs(l.balance_used - x.rep) > 0.01
      and l.synced_at > pg_catalog.now() - interval '3 hours';
@@ -463,12 +508,14 @@ declare f text;
 begin
   foreach f in array array[
     'clicktide_shopify_usage_plan_limit(text, boolean)',
+    'clicktide_shopify_usage_unit_price(text)',
     'clicktide_shopify_usage_sync(text, text, timestamptz, boolean, boolean, numeric, numeric)',
     'clicktide_shopify_usage_target(uuid)',
-    'clicktide_shopify_usage_cycle_used(uuid, timestamptz, boolean)',
+    'clicktide_shopify_usage_cycle_used(uuid, timestamptz, boolean, timestamptz)',
     'clicktide_shopify_usage_allowed(uuid, numeric)',
     'clicktide_shopify_usage_lease(text, integer)',
-    'clicktide_shopify_usage_release(text)',
+    'clicktide_shopify_usage_release(text, boolean)',
+    'clicktide_shopify_usage_heartbeat()',
     'clicktide_shopify_usage_pending(integer)',
     'clicktide_shopify_usage_mark(bigint, boolean, text)',
     'clicktide_shopify_usage_net()',

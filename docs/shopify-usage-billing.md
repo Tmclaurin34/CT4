@@ -2,7 +2,7 @@
 
 For Shopify-billed businesses, postcards, gifts and texts past the plan's limit are reported to
 Shopify's App Events API as usage. This covers the database side (migration
-`20261128170100_shopify_usage_billing.sql`) and the reporter (`shopify-webhooks`, job `usage`,
+`20261128170000_shopify_usage_billing.sql`) and the reporter (`shopify-webhooks`, job `usage`,
 every 10 minutes).
 
 ## What gets billed
@@ -19,11 +19,17 @@ every 10 minutes).
   Growth $400, Scale $900. During a free trial the limit is $0, because Shopify's docs don't say
   whether trial usage is billed. To raise it, edit `clicktide_shopify_usage_plan_limit` and confirm
   in the Dev Dashboard logs that trial events are billed.
+- **No new Shopify usage in the cycle's last hour.** An event after the cycle ends is rejected
+  (`PERIOD_CLOSED`). Postcards and gifts need the exact unit price ($1.50 / $0.05) to bill as usage.
 - **Refunds** follow their own debit (key `<debit key>:refund`). A refund of a Shopify charge is
   sent to Shopify as a negative event. If neither the charge nor its refund has been sent yet,
   the pair is cancelled and never sent.
 
 ## Alerts (to support@)
+- **Dead-man (ops-alerts, hourly):** no successful usage run in 45 minutes while any business is
+  Shopify-billed.
+- **Stripe switch stuck:** a business that switched to Shopify billing whose Stripe subscription isn't
+  confirmed stopped after 5 tries. Sent at most daily. Fix it in Stripe, then set `done_at`.
 - **Overdue:** usage not accepted by Shopify an hour after it happened. Sent at most every 6 hours.
 - **Mismatch:** for legacy Billing API subscriptions only, Shopify's `balanceUsed` differs from what
   we reported this cycle.

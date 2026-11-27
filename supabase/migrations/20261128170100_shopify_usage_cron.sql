@@ -8,5 +8,6 @@ select cron.schedule('clicktide-shopify-usage', '*/10 * * * *', $$
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'x-clicktide-cron-key', (select decrypted_secret from vault.decrypted_secrets where name = 'CAMPAIGN_RUNNER_KEY')),
-    body := '{"job":"usage"}'::jsonb)
+    body := '{"job":"usage"}'::jsonb,
+    timeout_milliseconds := 120000)
 $$);

@@ -117,6 +117,25 @@ begin
      and (shopify_usage_next_at is null or shopify_usage_next_at <= now());
   if n <> 1 then raise exception 'FAIL 10c3: partner refund not re-queued'; end if;
 
+  -- 10d. B2 / R1: a claimed debit whose send got a 2xx but whose mark never landed. After the
+  --      claim expires it must still never be netted with a later refund (Shopify billed it).
+  perform clicktide_wallet_apply(u, -1.5, 'postcard_debit', 'Postcard', 'c6', 'k-r1');
+  select count(*) into n from clicktide_shopify_usage_pending(500) p where p.user_id = u and p.transaction_type = 'postcard_debit';
+  if n < 1 then raise exception 'FAIL 10d1: k-r1 not claimed'; end if;
+  update wallet set shopify_usage_next_at = now() - interval '1 second' where idempotency_key = 'k-r1';  -- claim expired, mark lost
+  perform clicktide_wallet_apply(u, 1.5, 'postcard_refund', 'Refund', 'c6', 'k-r1:refund');
+  n := clicktide_shopify_usage_net();
+  if n <> 0 then raise exception 'FAIL 10d2: netted a claimed debit (R1)'; end if;
+  -- 10e. its refund isn't sent while the debit is unreported; it is once the debit is reported
+  select count(*) into n from clicktide_shopify_usage_pending(500) p where p.user_id = u and p.transaction_type = 'postcard_refund'
+     and p.id = (select id from wallet where idempotency_key = 'k-r1:refund');
+  if n <> 0 then raise exception 'FAIL 10e1: refund sent before its debit'; end if;
+  select id into q from wallet where idempotency_key = 'k-r1';
+  perform clicktide_shopify_usage_mark(q.id, true, null);
+  select count(*) into n from clicktide_shopify_usage_pending(500) p where p.id = (select id from wallet where idempotency_key = 'k-r1:refund');
+  if n <> 1 then raise exception 'FAIL 10e2: refund not sent after its debit was reported'; end if;
+  -- (k-r1 + k-r1:refund are both billed, net 0, so the cycle totals below are unchanged)
+
   -- 11. failure backs off; only a success sets reported_at
   select id into q from wallet where idempotency_key = 'k-sn';
   perform clicktide_shopify_usage_mark(q.id, false, 'HTTP 503');
@@ -130,14 +149,14 @@ begin
   v := clicktide_shopify_usage_overdue();
   if (v->>'rows')::int < 1 then raise exception 'FAIL 12: %', v; end if;
 
-  -- 13. owner sees this cycle (own row): debits k-6, k-sn, k-c, k-d = 6.00 less refunds k-c, k-d = 3.00;
-  --     reported so far: k-c and k-d = 3.00
+  -- 13. owner sees this cycle (own row): debits k-6, k-sn, k-c, k-d, k-r1 = 7.50 less refunds k-c,
+  --     k-d, k-r1 = 4.50 -> 3.00; reported so far: debits k-c, k-d, k-r1 = 4.50 (no refund reported yet)
   perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
   set local role authenticated;
   v := clicktide_shopify_usage_this_cycle();
   reset role;
   perform set_config('request.jwt.claims', '', true);
-  if (v->>'billed')::numeric <> 3.00 or (v->>'reported')::numeric <> 3.00 or (v->>'limit')::numeric <> 150 then raise exception 'FAIL 13: %', v; end if;
+  if (v->>'billed')::numeric <> 3.00 or (v->>'reported')::numeric <> 4.50 or (v->>'limit')::numeric <> 150 then raise exception 'FAIL 13: %', v; end if;
 
   -- 14. M2: refunding a PREVIOUS cycle's debit doesn't free this cycle's cap
   perform clicktide_wallet_apply(u, -1.5, 'postcard_debit', 'Postcard', 'c4', 'k-old');
@@ -147,6 +166,30 @@ begin
   r := clicktide_wallet_apply(u, 1.5, 'postcard_refund', 'Refund', 'c4', 'k-old:refund');
   used1 := clicktide_shopify_usage_cycle_used(u, cs);
   if (r->>'shopify_usage')::boolean is not true or used1 <> used0 then raise exception 'FAIL 14: % -> % (%)', used0, used1, r; end if;
+
+  -- 14b. refund_mismatch: the key points at a Shopify debit but the amount is larger, or the kind differs
+  perform clicktide_wallet_apply(u, -1.5, 'postcard_debit', 'Postcard', 'c7', 'k-m');
+  r := clicktide_wallet_apply(u, 3, 'postcard_refund', 'Refund', 'c7', 'k-m:refund');
+  if r->>'reason' is distinct from 'refund_mismatch' then raise exception 'FAIL 14b1: %', r; end if;
+  r := clicktide_wallet_apply(u, 1.5, 'gift_refund', 'Refund', 'c7', 'k-m:refund');
+  if r->>'reason' is distinct from 'refund_mismatch' then raise exception 'FAIL 14b2: %', r; end if;
+  if clicktide_wallet_balance(u) <> 0 then raise exception 'FAIL 14b3: prepaid was credited'; end if;
+  -- a partial gift refund is fine (gift meter counts dollars)
+  perform clicktide_wallet_apply(u, -10, 'gift_debit', 'Gift', 'g9', 'k-g9');
+  r := clicktide_wallet_apply(u, 4, 'gift_refund', 'Refund', 'g9', 'k-g9:refund');
+  if (r->>'shopify_usage')::boolean is not true then raise exception 'FAIL 14b4: %', r; end if;
+  -- 14c. count meters need the exact unit price on the Shopify path
+  r := clicktide_wallet_apply(u, -2, 'postcard_debit', 'Postcard', 'c8', 'k-up');
+  if (r->>'shopify_usage_refused')::boolean is not true then raise exception 'FAIL 14c1: %', r; end if;
+  r := clicktide_wallet_apply(u, -0.10, 'sms_overage', 'Text', 's1', 'k-up2');
+  if (r->>'shopify_usage_refused')::boolean is not true then raise exception 'FAIL 14c2: %', r; end if;
+  r := clicktide_wallet_apply(u, -0.05, 'sms_overage', 'Text', 's1', 'k-up3');
+  if (r->>'shopify_usage')::boolean is not true then raise exception 'FAIL 14c3: %', r; end if;
+  -- 14d. no new Shopify usage in the last hour of the cycle (an event after cycle end is PERIOD_CLOSED)
+  update shopify_usage_limits set cycle_end = now() + interval '30 minutes' where user_id = u;
+  r := clicktide_wallet_apply(u, -1.5, 'postcard_debit', 'Postcard', 'c9', 'k-ce');
+  if (r->>'shopify_usage_refused')::boolean is not true then raise exception 'FAIL 14d: %', r; end if;
+  update shopify_usage_limits set cycle_end = now() + interval '20 days' where user_id = u;
 
   -- 15. B5: a second active Shopify connection -> refused; billed shop != connection -> refused
   insert into platform_connections (id, user_id, platform, shop_domain, is_active, access_token, merchant_id)
@@ -177,6 +220,10 @@ begin
   if clicktide_shopify_usage_lease('B', 300) then raise exception 'FAIL 18b: second holder got the lease'; end if;
   perform clicktide_shopify_usage_release('A');
   if not clicktide_shopify_usage_lease('B', 300) then raise exception 'FAIL 18c'; end if;
+  -- dead-man: U is Shopify-billed and no run has succeeded yet -> stale; a successful run clears it
+  if (clicktide_shopify_usage_heartbeat()->>'stale')::boolean is not true then raise exception 'FAIL 18d: %', clicktide_shopify_usage_heartbeat(); end if;
+  perform clicktide_shopify_usage_release('B', true);
+  if (clicktide_shopify_usage_heartbeat()->>'stale')::boolean is not false then raise exception 'FAIL 18e: %', clicktide_shopify_usage_heartbeat(); end if;
 
   -- 19. grants: browsers can't call the server functions
   if has_function_privilege('authenticated', 'clicktide_shopify_usage_plan_limit(text, boolean)', 'execute')
