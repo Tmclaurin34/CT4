@@ -141,4 +141,21 @@ ok(mb.grant_type === TOKEN_EXCHANGE && mb.subject_token === "old" && mb.subject_
 var rb = refreshBody("cid", "sec", { refresh_token: "r9" });
 ok(rb.grant_type === "refresh_token" && rb.refresh_token === "r9" && rb.client_id === "cid", "refresh body");
 
+ok(isTestShop({ partnerDevelopment: true, publicDisplayName: "Basic" }) === true, "partner dev store -> test");
+ok(isTestShop({ partnerDevelopment: false, publicDisplayName: "Plus Sandbox" }) === true, "plus sandbox -> test");
+ok(isTestShop({ partnerDevelopment: false, publicDisplayName: "Developer Preview" }) === true, "developer preview -> test");
+ok(isTestShop(null) === true && isTestShop(undefined) === true, "unknown plan -> test (fail closed)");
+ok(isTestShop({ partnerDevelopment: false, publicDisplayName: "Basic" }) === false, "real Basic store -> billable");
+ok(isTestShop({ partnerDevelopment: false, publicDisplayName: "Plus" }) === false, "real Plus store -> billable");
+ok(entitlementFromSubscriptions([{ id: "gid://x/1", status: "ACTIVE", test: true, name: "Local" }], { devStore: true }).test === true, "test charge on dev store flagged");
+
+var capSub = { id: "gid://x/2", status: "ACTIVE", name: "Growth", createdAt: "2020-01-01T00:00:00Z", trialDays: 0, lineItems: [
+  { plan: { pricingDetails: { price: { amount: "199.0" }, interval: "EVERY_30_DAYS" } } },
+  { plan: { pricingDetails: { cappedAmount: { amount: "100.0" }, balanceUsed: { amount: "12.5" } } } }] };
+var capEnt = entitlementFromSubscriptions([capSub], {});
+ok(capEnt.capped_amount === 100 && capEnt.balance_used === 12.5 && capEnt.plan === "Growth" && capEnt.status === "active", "legacy usage cap read");
+var noCap = entitlementFromSubscriptions([{ id: "gid://x/3", status: "ACTIVE", name: "Local", createdAt: "2020-01-01T00:00:00Z", trialDays: 0, lineItems: [] }], {});
+ok(noCap.capped_amount === null && noCap.balance_used === null, "app pricing: no Shopify cap");
+ok(SUBSCRIPTION_QUERY.indexOf("cappedAmount") > 0 && SUBSCRIPTION_QUERY.indexOf("publicDisplayName") > 0, "query asks for cap + plan name");
+
 print("SHARED SHOPIFY TESTS: " + pass + " passed, " + (fail + pending) + " failed");

@@ -1,6 +1,6 @@
 // Server-side Shopify helpers shared by shopify-webhooks, shopify-app and
 // shopify-oauth-callback. Pure logic lives in ./shopify.js (unit-tested).
-import { entitlementFromSubscriptions, migrateBody, refreshBody, SHOPIFY_API_VERSION, SUBSCRIPTION_QUERY, tokenAction, tokenFields, usageEventFor } from "./shopify.js";
+import { entitlementFromSubscriptions, isTestShop, migrateBody, refreshBody, SHOPIFY_API_VERSION, SUBSCRIPTION_QUERY, tokenAction, tokenFields, usageEventFor } from "./shopify.js";
 
 export const SUPA = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
 export const SRK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -93,12 +93,12 @@ export async function reconcileBilling(shop: string) {
   if (conn && await freshShopifyToken(conn) === "auth") throw new Error(`shopify token for ${shop} needs reinstall`);
   const token = conn?.access_token;
   let ent;
-  if (!token) ent = { status: "canceled", raw_status: "UNINSTALLED", plan: null, period_end: null, sub_id: null };
+  let devStore = true; // unknown counts as a development store: usage billing stays off
+  if (!token) ent = { status: "canceled", raw_status: "UNINSTALLED", plan: null, period_end: null, sub_id: null, test: false };
   else {
     const data = await adminGraphql(shop, token, SUBSCRIPTION_QUERY);
-    ent = entitlementFromSubscriptions(data?.currentAppInstallation?.activeSubscriptions || [], {
-      devStore: !!data?.shop?.plan?.partnerDevelopment,
-    });
+    devStore = isTestShop(data?.shop?.plan);
+    ent = entitlementFromSubscriptions(data?.currentAppInstallation?.activeSubscriptions || [], { devStore });
   }
   if (!BILLING_ENABLED) {
     console.log(`shopify billing (dry run, flag off) ${shop}: ${JSON.stringify(ent)}`);
@@ -107,7 +107,61 @@ export async function reconcileBilling(shop: string) {
   const applied = await rpc("clicktide_shopify_apply_entitlement", {
     p_shop: shop, p_plan: ent.plan, p_status: ent.status, p_period_end: ent.period_end, p_sub_id: ent.sub_id, p_raw_status: ent.raw_status,
   });
-  return { dry_run: false, entitlement: ent, applied };
+  // A website-first business that just subscribed through Shopify: stop its Stripe plan at the
+  // end of the period it already paid for, so it never pays twice (idempotent per subscription).
+  // (apply_entitlement queues them in shopify_stripe_switch; processStripeSwitches retries.)
+  if (((applied as { stripe_cancel?: unknown[] })?.stripe_cancel || []).length) await processStripeSwitches();
+  // Usage-billing limits (cycle, plan limit, test/dev). A test charge or development store never
+  // gets usage billing; an unknown period end leaves the cycle unknown, so usage is refused.
+  let usage: unknown = null;
+  try {
+    usage = await rpc("clicktide_shopify_usage_sync", {
+      p_shop: shop, p_plan: ent.plan, p_period_end: ent.period_end,
+      p_test_or_dev: !!(ent as { test?: boolean }).test || devStore,
+      p_trialing: ent.status !== "active" && ent.status !== "past_due",
+      p_capped: (ent as { capped_amount?: number | null }).capped_amount ?? null,
+      p_balance_used: (ent as { balance_used?: number | null }).balance_used ?? null,
+    });
+  } catch (e) { console.error("shopify usage sync failed", shop, e); }
+  return { dry_run: false, entitlement: ent, applied, usage };
+}
+
+const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
+export async function cancelStripeAtPeriodEnd(subId: string): Promise<string> {
+  if (!/^sub_[A-Za-z0-9_]+$/.test(String(subId || ""))) return "skipped: not a Stripe subscription id";
+  if (!STRIPE_KEY) return "skipped: no STRIPE_SECRET_KEY";
+  try {
+    const r = await fetch(`https://api.stripe.com/v1/subscriptions/${subId}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${STRIPE_KEY}`, "Content-Type": "application/x-www-form-urlencoded", "Idempotency-Key": `ct-shopify-switch-${subId}` },
+      body: "cancel_at_period_end=true",
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) return `ok (cancel_at ${d?.cancel_at ?? "?"})`;
+    // Already cancelled / gone: nothing left to bill.
+    if (r.status === 404 || /canceled/i.test(String(d?.error?.message || ""))) return `ok (already ended: ${r.status})`;
+    console.error("stripe cancel_at_period_end failed", subId, r.status, JSON.stringify(d?.error || d).slice(0, 200));
+    return `failed ${r.status}`;
+  } catch (e) { return `failed ${e instanceof Error ? e.message : String(e)}`; }
+}
+
+// Every queued Stripe subscription not yet confirmed stopped (runs after a switch and on each
+// 10-minute usage job, so a Stripe outage is retried rather than leaving a double charge).
+export async function processStripeSwitches() {
+  const out = { pending: 0, done: 0, failed: 0 };
+  const rows = await rest("/rest/v1/shopify_stripe_switch?done_at=is.null&select=stripe_subscription_id,user_id,attempts&order=requested_at&limit=50") as Array<{ stripe_subscription_id: string; user_id: string; attempts: number }>;
+  out.pending = (rows || []).length;
+  for (const r of rows || []) {
+    const res = await cancelStripeAtPeriodEnd(r.stripe_subscription_id);
+    const ok = res.startsWith("ok");
+    console.log(`shopify billing: ${r.user_id} switched from Stripe; cancel ${r.stripe_subscription_id} at period end -> ${res}`);
+    await rest(`/rest/v1/shopify_stripe_switch?stripe_subscription_id=eq.${encodeURIComponent(r.stripe_subscription_id)}`, {
+      method: "PATCH", headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ attempts: (r.attempts || 0) + 1, last_result: res.slice(0, 300), ...(ok ? { done_at: new Date().toISOString() } : {}) }),
+    }).catch((e) => console.error("saving stripe switch result failed", e));
+    if (ok) out.done++; else out.failed++;
+  }
+  return out;
 }
 
 // ---- usage billing: report Shopify-billed wallet rows to the App Events API ----
@@ -115,7 +169,7 @@ export async function reconcileBilling(shop: string) {
 // one event per request, idempotency key = wallet row id (Shopify enforces it permanently for
 // billing events). A 202 means accepted; billing validation results appear only in the Dev
 // Dashboard logs. Failed rows stay queued and are retried (clicktide_shopify_usage_pending
-// stops after 10 attempts so a misconfigured meter can't loop forever).
+// backs each failure off, up to once every 6 hours; the overdue alert emails support).
 const APP_EVENTS_URL = "https://api.shopify.com/app/2026-10/events";
 let appEventsToken = { tok: "", exp: 0 };
 async function appEventsAuth(force = false) {
@@ -132,8 +186,36 @@ async function appEventsAuth(force = false) {
 }
 
 export async function reportUsage(limit = 200) {
+  // One reporter at a time: the nightly run and the 10-minute run can overlap.
+  const holder = crypto.randomUUID();
+  if (await rpc("clicktide_shopify_usage_lease", { p_holder: holder, p_seconds: 600 }) !== true) return { skipped: "another run holds the lease" };
+  try { return await reportUsageLeased(limit); }
+  finally { await rpc("clicktide_shopify_usage_release", { p_holder: holder }).catch((e) => console.error("usage lease release failed", e)); }
+}
+
+async function reportUsageLeased(limit: number) {
+  // Keep limits fresh (the gate refuses anything synced more than 3h ago, and App Pricing sends
+  // no subscription webhooks, so a downgrade/cancel is only seen here): re-read the subscription
+  // of any Shopify-billed business whose limits are missing or older than 1 hour.
+  if (BILLING_ENABLED) {
+    try {
+      const billed = await rest("/rest/v1/clicktide?billing_provider=eq.shopify&select=user_id,shopify_shop_domain&limit=500") as Array<{ user_id: string; shopify_shop_domain: string | null }>;
+      const since = encodeURIComponent(new Date(Date.now() - 3600e3).toISOString());
+      const fresh = await rest(`/rest/v1/shopify_usage_limits?synced_at=gt.${since}&select=user_id&limit=1000`) as Array<{ user_id: string }>;
+      const ok = new Set((fresh || []).map((x) => x.user_id));
+      for (const b of billed || []) {
+        if (ok.has(b.user_id) || !b.shopify_shop_domain) continue;
+        try { await reconcileBilling(b.shopify_shop_domain); } catch (e) { console.error("usage limits refresh failed", b.shopify_shop_domain, e); }
+      }
+    } catch (e) { console.error("usage limits refresh failed", e); }
+  }
+  let stripeSwitch: unknown = null;
+  try { stripeSwitch = await processStripeSwitches(); } catch (e) { console.error("stripe switch retry failed", e); }
+  // Cancel unreported charge/refund pairs (a postcard that failed and was refunded never bills).
+  let netted = 0;
+  try { netted = Number(await rpc("clicktide_shopify_usage_net", {})) || 0; } catch (e) { console.error("usage netting failed", e); }
   const rows = await rpc("clicktide_shopify_usage_pending", { p_limit: limit }) as Array<Record<string, unknown>>;
-  const out = { pending: Array.isArray(rows) ? rows.length : 0, sent: 0, failed: 0, skipped: 0 };
+  const out = { stripeSwitch, netted, pending: Array.isArray(rows) ? rows.length : 0, sent: 0, failed: 0, skipped: 0 };
   if (!out.pending) return out;
   let tok = await appEventsAuth();
   for (const row of rows) {
@@ -152,7 +234,7 @@ export async function reportUsage(limit = 200) {
     });
     let r = await send(tok);
     if (r.status === 401) { tok = await appEventsAuth(true); r = await send(tok); }
-    if (r.status === 202 || r.status === 200) {
+    if (r.status >= 200 && r.status < 300) {
       await rpc("clicktide_shopify_usage_mark", { p_id: id, p_ok: true, p_error: null });
       out.sent++;
     } else {

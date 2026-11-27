@@ -5,6 +5,14 @@ export const SHOPIFY_API_VERSION = "2026-10";
 export const SHOPIFY_SCOPES = "read_orders,read_customers";
 export const LIVE_STATUSES = ["active", "trialing", "past_due"];
 
+// Development, sandbox, preview and staff stores never pay a Shopify bill: no usage billing there.
+// Unknown plan info counts as a test shop (fail closed).
+export function isTestShop(plan) {
+  if (!plan || typeof plan !== "object") return true;
+  if (plan.partnerDevelopment) return true;
+  return /develop|sandbox|preview|staff|affiliate|test/i.test(String(plan.publicDisplayName || ""));
+}
+
 export function isShopDomain(s) {
   return /^[a-zA-Z0-9][a-zA-Z0-9-]*\.myshopify\.com$/.test(String(s || ""));
 }
@@ -108,15 +116,32 @@ export function entitlementFromSubscriptions(subs, opts) {
     default: status = "canceled";                  // CANCELLED / DECLINED / EXPIRED
   }
   if (!plan && (status === "active" || status === "trialing")) status = "incomplete"; // unknown plan: no access
-  return { status, raw_status: String(s.status), plan, period_end: s.currentPeriodEnd || null, sub_id: s.id || null };
+  return { status, raw_status: String(s.status), plan, period_end: s.currentPeriodEnd || null, sub_id: s.id || null, test: !!s.test, ...usageCapOf(s) };
+}
+
+// Legacy Billing API subscriptions carry an AppUsagePricing line item with Shopify's own cap;
+// App Pricing (managed) meters have none, so both come back null there.
+export function usageCapOf(sub) {
+  for (const li of (sub && sub.lineItems) || []) {
+    const d = li && li.plan && li.plan.pricingDetails;
+    const cap = d && d.cappedAmount && Number(d.cappedAmount.amount);
+    if (Number.isFinite(cap)) {
+      const used = d.balanceUsed && Number(d.balanceUsed.amount);
+      return { capped_amount: cap, balance_used: Number.isFinite(used) ? used : null };
+    }
+  }
+  return { capped_amount: null, balance_used: null };
 }
 
 export const SUBSCRIPTION_QUERY = `query ClicktideBilling {
-  shop { id name myshopifyDomain plan { partnerDevelopment } }
+  shop { id name myshopifyDomain plan { partnerDevelopment publicDisplayName } }
   currentAppInstallation {
     activeSubscriptions {
       id name status test trialDays createdAt currentPeriodEnd
-      lineItems { plan { pricingDetails { ... on AppRecurringPricing { price { amount currencyCode } interval } } } }
+      lineItems { plan { pricingDetails {
+        ... on AppRecurringPricing { price { amount currencyCode } interval }
+        ... on AppUsagePricing { cappedAmount { amount } balanceUsed { amount } }
+      } } }
     }
   }
 }`;
