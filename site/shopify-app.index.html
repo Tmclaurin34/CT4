@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="shopify-api-key" content="1e876d10b4e052fe9897dd45bd859eca"/>
+<script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
+<title>Clicktide</title>
+<style>
+  :root{--ink:#202223;--muted:#6d7175;--line:#e1e3e5;--bg:#f6f6f7;--card:#fff;--green:#008060;--red:#d72c0d;--blue:#2c6ecb}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"San Francisco","Segoe UI",Roboto,"Helvetica Neue",sans-serif}
+  main{max-width:980px;margin:0 auto;padding:20px}
+  h1{font-size:20px;margin:0 0 4px}
+  h2{font-size:15px;margin:0 0 8px}
+  p{margin:0 0 10px}
+  .muted{color:var(--muted)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:16px;box-shadow:0 1px 0 rgba(0,0,0,.04)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .stat small{display:block;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+  .stat b{font-size:24px}
+  .green{color:var(--green)} .red{color:var(--red)}
+  .btn{display:inline-block;background:#303030;color:#fff;text-decoration:none;border-radius:8px;padding:9px 16px;font-weight:600;border:0;cursor:pointer;font-size:14px}
+  .btn.secondary{background:#fff;color:var(--ink);border:1px solid #c9cccf}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  ol{margin:6px 0 12px 18px;padding:0} li{margin:3px 0}
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+  .brand img{width:34px;height:34px;border-radius:8px}
+  .err{color:var(--red)}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><img src="/apple-touch-icon.png" alt=""/><div><h1>Clicktide</h1><div class="muted" id="storeLine">Win back customers who stopped reordering</div></div></div>
+
+  <div class="card" id="loading"><p class="muted">Loading your store…</p></div>
+
+  <!-- Store not linked to a Clicktide account yet -->
+  <section id="unclaimed" hidden>
+    <div class="card">
+      <h2>Finish connecting Clicktide</h2>
+      <p>Clicktide is installed on <b id="uStore"></b> with read-only access to orders and customers. One more step: link the store to your Clicktide account, where your customer rhythms, win-back campaigns, postcards and gifts live.</p>
+      <ol>
+        <li>Open Clicktide and sign in, or create your account.</li>
+        <li>Confirm <b>"Connect this Shopify store"</b>.</li>
+        <li>Clicktide imports your order history and learns each customer's usual reorder rhythm. Come back here to see who's drifting.</li>
+      </ol>
+      <div class="row"><a class="btn" id="claimBtn" href="#" target="_blank" rel="noopener">Connect my Clicktide account</a>
+      <button class="btn secondary" id="recheck" type="button">I've connected it, refresh</button></div>
+      <p class="muted" style="margin-top:10px">The link works once and expires after an hour. If it expires, refresh this page for a new one.</p>
+    </div>
+  </section>
+
+  <!-- Linked store: summary -->
+  <section id="connected" hidden>
+    <div class="grid">
+      <div class="stat"><small>Customers</small><b id="sCustomers">0</b></div>
+      <div class="stat"><small>On their usual rhythm</small><b class="green" id="sHealthy">0</b></div>
+      <div class="stat"><small>Drifting or at risk</small><b class="red" id="sSlipping">0</b></div>
+      <div class="stat"><small>Their past spend</small><b id="sSpend">$0</b></div>
+    </div>
+    <div class="card">
+      <h2>Who's slipping away</h2>
+      <p id="slipLine"></p>
+      <p class="muted" id="campLine"></p>
+      <div class="row">
+        <a class="btn" id="dashBtn" href="https://goclicktide.com/" target="_blank" rel="noopener">Open the full Clicktide dashboard</a>
+      </div>
+      <p class="muted" style="margin-top:10px" id="syncLine"></p>
+    </div>
+  </section>
+
+  <div class="card" id="error" hidden><p class="err" id="errText"></p><button class="btn secondary" id="retry" type="button">Try again</button></div>
+</main>
+<script>
+(function(){
+  var FN="https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1/shopify-embedded";
+  function $(id){return document.getElementById(id);}
+  function show(id){["loading","unclaimed","connected","error"].forEach(function(x){$(x).hidden=(x!==id);});}
+  function n(v){return Number(v||0).toLocaleString("en-US");}
+  function fail(msg){$("errText").textContent=msg;show("error");}
+  async function load(){
+    show("loading");
+    if(typeof shopify==="undefined"||!shopify.idToken){fail("Open Clicktide from your Shopify admin (Apps → Clicktide).");return;}
+    try{
+      var tok=await shopify.idToken();
+      var r=await fetch(FN,{method:"POST",headers:{Authorization:"Bearer "+tok}});
+      var d=await r.json().catch(function(){return {};});
+      if(!r.ok)throw new Error(d.error||"Clicktide couldn't load right now.");
+      if(d.store_name)$("storeLine").textContent=d.store_name;
+      if(d.status==="unclaimed"){
+        $("uStore").textContent=d.store_name||d.shop||"your store";
+        $("claimBtn").href=d.claim_url;
+        show("unclaimed");return;
+      }
+      var s=d.summary||{};
+      var slipping=Number(s.drifting||0)+Number(s.at_risk||0);
+      $("sCustomers").textContent=n(s.customers);
+      $("sHealthy").textContent=n(s.healthy);
+      $("sSlipping").textContent=n(slipping);
+      $("sSpend").textContent="$"+n(s.slipping_spend);
+      $("slipLine").textContent=slipping
+        ? n(slipping)+" customer"+(slipping===1?" has":"s have")+" gone longer than their own usual rhythm without ordering. Together they've spent $"+n(s.slipping_spend)+" with you."
+        : "Nobody is past their usual rhythm right now.";
+      var ac=Number(s.active_campaigns||0);
+      $("campLine").textContent=ac?ac+" win-back campaign"+(ac===1?" is":"s are")+" running. Nothing is sent until you turn a campaign on.":"No win-back campaigns are running yet. Turn one on in the dashboard; nothing is sent until you do.";
+      if(d.dashboard_url)$("dashBtn").href=d.dashboard_url;
+      $("syncLine").textContent=s.last_synced_at?"Orders last synced "+new Date(s.last_synced_at).toLocaleString():"Your first import runs within a few minutes of connecting.";
+      show("connected");
+    }catch(e){fail(e.message||"Clicktide couldn't load right now.");}
+  }
+  $("recheck").onclick=load; $("retry").onclick=load;
+  load();
+})();
+</script>
+</body>
+</html>

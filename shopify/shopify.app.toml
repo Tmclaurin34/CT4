@@ -1,13 +1,15 @@
 # Clicktide Shopify app configuration (deployed with: shopify app deploy --path shopify).
-# Mirrors Dev Dashboard version clicktide-4-shopify-install and adds the webhook
-# subscriptions, which can only be set from this file.
+# Embedded app (App Store 2.2.2): the admin loads goclicktide.com/shopify-app/ with App Bridge.
+# Webhook subscriptions can only be set from this file.
 client_id = "1e876d10b4e052fe9897dd45bd859eca"
 name = "clicktide 3"
-application_url = "https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1/shopify-app"
-embedded = false
+application_url = "https://goclicktide.com/shopify-app/"
+embedded = true
 
 [access_scopes]
 scopes = "read_orders,read_customers,read_all_orders"
+# Shopify-managed install: no OAuth redirect; the embedded page token-exchanges its session token.
+use_legacy_install_flow = false
 
 [auth]
 redirect_urls = ["https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1/shopify-oauth-callback"]
