@@ -15,8 +15,8 @@
 //   _shared/shopify_server.ts); until then they are dry runs.
 //
 // Deploy with verify_jwt = false (Shopify sends no Supabase JWT).
-import { compliancePayload, HANDLED_TOPICS, isShopDomain, verifyWebhookHmac } from "../_shared/shopify.js";
-import { reconcileBilling, reportUsage, rest, rpc, SRK } from "../_shared/shopify_server.ts";
+import { compliancePayload, HANDLED_TOPICS, isShopDomain, SHOPIFY_API_VERSION, verifyWebhookHmac } from "../_shared/shopify.js";
+import { freshShopifyToken, reconcileBilling, reportUsage, rest, rpc, type ShopConn, SRK } from "../_shared/shopify_server.ts";
 
 const SECRET = Deno.env.get("SHOPIFY_CLIENT_SECRET") ?? "";
 const RESEND = Deno.env.get("RESEND_API_KEY") ?? "";
@@ -42,6 +42,33 @@ async function notifySupport(subject: string, text: string) {
   return !!r?.ok;
 }
 
+// Shopify sends shop/redact 48 hours after an uninstall, and does so even when the merchant has
+// reinstalled the app in the meantime. A store that is installed again right now is a current
+// customer and keeps its data, so ask Shopify before deleting anything: "installed" means there
+// is an active connection whose token Shopify still accepts. Anything uncertain throws, so the
+// event is retried later instead of deleting (or skipping) on a guess.
+async function shopInstalledNow(shop: string): Promise<boolean> {
+  const conns = await rest(`/rest/v1/platform_connections?platform=eq.shopify&shop_domain=ilike.${encodeURIComponent(shop)}&is_active=eq.true&access_token=neq.&select=id,shop_domain,access_token,refresh_token,token_expires_at,raw_response&order=updated_at.desc&limit=1`);
+  const conn = Array.isArray(conns) && conns[0] ? conns[0] as ShopConn : null;
+  if (!conn) return false; // uninstalled and never reinstalled: no live token on file
+  const fresh = await freshShopifyToken(conn);
+  if (fresh === "auth") return false; // Shopify refuses to renew this install's token: it is gone
+  if (fresh === "transient") throw new Error("could not reach Shopify to confirm the install; will retry");
+  let r: Response;
+  try {
+    r = await fetch(`https://${shop}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, {
+      method: "POST",
+      headers: { "X-Shopify-Access-Token": conn.access_token, "Content-Type": "application/json" },
+      body: JSON.stringify({ query: "{ shop { id } }" }),
+    });
+  } catch { throw new Error("could not reach Shopify to confirm the install; will retry"); }
+  if (r.status === 401 || r.status === 403 || r.status === 404) return false; // token revoked or store gone
+  if (r.status === 402 || r.status === 423) return true; // store frozen or locked, app still installed
+  const body = await r.json().catch(() => null);
+  if (r.ok && body?.data?.shop?.id) return true;
+  throw new Error(`could not confirm the install with Shopify (HTTP ${r.status}); will retry`);
+}
+
 async function process(ev: Ev) {
   // deno-lint-ignore no-explicit-any
   const p = (ev.payload || {}) as Record<string, any>;
@@ -57,7 +84,13 @@ async function process(ev: Ev) {
       scrub = true;
       break;
     case "shop/redact":
-      result = await rpc("clicktide_shopify_redact_shop", { p_shop: ev.shop_domain });
+      if (await shopInstalledNow(ev.shop_domain)) {
+        // Reinstalled since the uninstall this request refers to: the merchant is using the app.
+        result = { skipped: "store has reinstalled the app and is active; nothing deleted" };
+        console.log(`shop/redact for ${ev.shop_domain} skipped: the store is installed again`);
+      } else {
+        result = await rpc("clicktide_shopify_redact_shop", { p_shop: ev.shop_domain });
+      }
       scrub = true;
       break;
     case "customers/data_request": {
@@ -189,8 +222,17 @@ Deno.serve(async (req) => {
     try { expected = String(await rpc("clicktide_internal_key", {}) || ""); } catch { /* */ }
     if (!expected || cronKey !== expected) return json({ error: "Not authorized" }, 401);
     // {"job":"usage"}: the 10-minute run that only reports usage billing to Shopify.
-    let job = "";
-    try { job = String((await req.clone().json())?.job || ""); } catch { /* empty body */ }
+    let job = "", jobShop = "";
+    try {
+      const b = await req.clone().json();
+      job = String(b?.job || ""); jobShop = String(b?.shop || "").toLowerCase();
+    } catch { /* empty body */ }
+    // {"job":"installed","shop":"x.myshopify.com"}: ops check of the shop/redact guard. Reads only.
+    if (job === "installed") {
+      if (!isShopDomain(jobShop)) return json({ error: "bad shop" }, 400);
+      try { return json({ ok: true, shop: jobShop, installed: await shopInstalledNow(jobShop) }); }
+      catch (e) { return json({ ok: false, shop: jobShop, error: e instanceof Error ? e.message : String(e) }, 502); }
+    }
     if (job === "usage") {
       let usage: unknown, err = "";
       try { usage = await reportUsage(); } catch (e) { err = e instanceof Error ? e.message : String(e); }
