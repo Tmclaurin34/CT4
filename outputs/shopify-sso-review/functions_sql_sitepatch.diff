@@ -1,0 +1,801 @@
+diff --git a/shopify/site-patches/nonembedded_index_patch.py b/shopify/site-patches/nonembedded_index_patch.py
+new file mode 100644
+index 0000000..35ef395
+--- /dev/null
++++ b/shopify/site-patches/nonembedded_index_patch.py
+@@ -0,0 +1,177 @@
++"""Shopify non-embedded release: goclicktide.com dashboard changes (index.html).
++
++Usage: python3 -I nonembedded_index_patch.py INDEX_HTML [--check]
++Applies anchored replacements; every anchor must match exactly once (or the patch is already
++applied), otherwise nothing is written. Safe to re-run.
++
++What it changes, for Shopify merchants only:
++ 1. A store's own Clicktide account (made at install, app_metadata.shopify_shop) arriving with a
++    sign-in link from the Shopify admin goes straight to the dashboard, never the onboarding
++    wizard (which lists other POS systems), and gets no welcome e-mail about POS connections.
++ 2. The sign-in confirmation names the Shopify store instead of an internal e-mail address.
++ 3. Any account with a Shopify store (or a pending store link) opens the dashboard, unpaid or
++    not; "Finish setup" / "Billing required" send it to Shopify's plan page.
++ 4. isShopifyBiz()/isShopifyBilling() know about the store from the first load, so other POS
++    options and Stripe stay hidden everywhere, not just after Settings was opened.
++ 5. A website account that logs in with a pending store link lands on the dashboard, where the
++    existing confirm-and-claim step runs (it used to stall in the wizard).
++"""
++import sys
++
++MARK = "/*ct-shopify-nonembedded-v1*/"
++
++PATCHES = [
++    # --- helpers + store lookup ---------------------------------------------------------
++    ("helpers",
++     "function isShopifyBilling(){",
++     MARK + """
++// The Shopify store this account belongs to: an account Clicktide made for a store at install
++// (app_metadata.shopify_shop), or any account with a Shopify store attached.
++var ctShopifyShop="";
++function ctIsShopDomain(s){return /^[a-z0-9][a-z0-9-]*\\.myshopify\\.com$/.test(String(s||""));}
++function shopifyAccountShop(){try{var s=String(S&&S.user&&S.user.app_metadata&&S.user.app_metadata.shopify_shop||"").toLowerCase();return ctIsShopDomain(s)?s:"";}catch(e){return "";}}
++function shopifyStoreOf(biz){
++  var c=[shopifyAccountShop(),biz&&biz.shopify_shop_domain,typeof bizLock!=="undefined"&&bizLock&&bizLock.shopify_shop_domain,ctShopifyShop];
++  for(var i=0;i<c.length;i++){var s=String(c[i]||"").toLowerCase();if(ctIsShopDomain(s))return s;}
++  return "";
++}
++function shopifyPlanUrl(shop){return "https://admin.shopify.com/store/"+encodeURIComponent(String(shop).replace(/\\.myshopify\\.com$/,""))+"/charges/"+SHOPIFY_APP_HANDLE+"/pricing_plans";}
++// Pays through Shopify: a Shopify store and no Stripe subscription of its own (website-first
++// businesses that already pay through Stripe keep Stripe until they pick a Shopify plan).
++function shopifyPaysInShopify(biz){var b=biz||(typeof bizLock!=="undefined"?bizLock:null)||{};if(b.billing_provider==="shopify")return true;if(b.billing_provider==="stripe"||b.stripe_subscription_id)return false;return !!shopifyStoreOf(b);}
++async function loadShopifyStore(tok){
++  if(DEMO||!S||!S.token)return "";
++  try{var r=await fetch(SU+"/rest/v1/platform_connections?select=shop_domain&platform=eq.shopify&is_active=eq.true&"+scope("")+"&order=updated_at.desc&limit=1",{headers:h(tok||S.token)});
++    var rows=await r.json();var s=Array.isArray(rows)&&rows[0]?String(rows[0].shop_domain||"").toLowerCase():"";ctShopifyShop=ctIsShopDomain(s)?s:"";}catch(e){}
++  return ctShopifyShop;
++}
++// Sign-in link from the Shopify admin for a store's own account: same login-CSRF rule as
++// acceptLinkSession (silent only when that account is already signed in here), but the prompt
++// names the store instead of an internal e-mail address.
++async function shopifyLinkOk(u){
++  var cur=S&&S.user,shop=String(u&&u.app_metadata&&u.app_metadata.shopify_shop||"");
++  if(cur&&cur.id&&cur.id===u.id)return true;
++  var m="Open Clicktide for the Shopify store "+shop+"?";
++  if(cur&&cur.email)m+="\\n\\nThis signs "+cur.email+" out on this device.";
++  m+="\\n\\nIf you didn't just open Clicktide from your Shopify admin, choose Cancel.";
++  var ok=await confirmModal({title:"Open Clicktide?",message:m,okText:"Open Clicktide",cancelText:"Cancel"});
++  if(ok)rememberAuthIntent(u.email,"shopify");
++  return ok;
++}
++function goFinishSetup(){
++  var shop=shopifyStoreOf(null);
++  if(shop&&shopifyPaysInShopify(null)){window.location.href=shopifyPlanUrl(shop);return;}
++  resumeOnboarding();
++}
++function isShopifyBilling(){"""),
++
++    ("isShopifyBilling",
++     """    if(typeof bizLock==="undefined"||!bizLock)return false;
++    if(bizLock.billing_provider==="shopify")return true;""",
++     """    if(shopifyAccountShop())return true;
++    if(typeof bizLock==="undefined"||!bizLock)return false;
++    if(bizLock.billing_provider==="shopify")return true;"""),
++
++    ("isShopifyBiz",
++     """  try{return !!((typeof platConn!=="undefined"&&platConn.shopify&&platConn.shopify.merchant_id)||(typeof bizLock!=="undefined"&&bizLock&&bizLock.billing_provider==="shopify"));}catch(e){return false;}""",
++     """  try{return !!((typeof platConn!=="undefined"&&platConn.shopify&&platConn.shopify.merchant_id)||(typeof bizLock!=="undefined"&&bizLock&&bizLock.billing_provider==="shopify")||shopifyStoreOf(null));}catch(e){return false;}"""),
++
++    # --- plan page for unbilled Shopify businesses -------------------------------------
++    ("shopifyBillingUrl",
++     """    if(b.billing_provider==="shopify"&&/^[a-z0-9][a-z0-9-]*\\.myshopify\\.com$/.test(String(b.shopify_shop_domain||""))){""",
++     """    var _ss=shopifyStoreOf(b);
++    if(_ss&&shopifyPaysInShopify(b)&&!(b.billing_provider==="shopify"&&ctIsShopDomain(b.shopify_shop_domain)))return shopifyPlanUrl(_ss);
++    if(b.billing_provider==="shopify"&&/^[a-z0-9][a-z0-9-]*\\.myshopify\\.com$/.test(String(b.shopify_shop_domain||""))){"""),
++
++    ("banner",
++     """<button class="btn btn-gold" style="padding:10px 16px" onclick="resumeOnboarding()">Finish setup</button></div>""",
++     """<button class="btn btn-gold" style="padding:10px 16px" onclick="goFinishSetup()">${shopifyStoreOf(biz)&&shopifyPaysInShopify(biz)?"Choose a plan":"Finish setup"}</button></div>"""),
++
++    ("banner-text",
++     """Your campaigns and gifts switch on the moment your plan is active — finish setting up to start your 30-day free trial.</div>""",
++     """${shopifyStoreOf(biz)&&shopifyPaysInShopify(biz)?"Your campaigns and gifts switch on the moment your plan is active. Choose a plan in Shopify to start your 30-day free trial.":"Your campaigns and gifts switch on the moment your plan is active — finish setting up to start your 30-day free trial."}</div>"""),
++
++    ("requirePaid",
++     """onclick="this.closest('.ov').remove();resumeOnboarding()">Finish setup</button>""",
++     """onclick="this.closest('.ov').remove();goFinishSetup()">${shopifyStoreOf(biz)&&shopifyPaysInShopify(biz)?"Choose a plan":"Finish setup"}</button>"""),
++
++    # --- never strand a Shopify business in the wizard ---------------------------------
++    ("goDashboardOrResume",
++     """  if(hasPaidAccess(biz)){clearOnboardingProgress();if(biz&&biz.onboarding_complete!==true)setBizFields({onboarding_complete:true});go("dash");return;}
++  return resumeOnboarding(biz);""",
++     """  if(hasPaidAccess(biz)){clearOnboardingProgress();if(biz&&biz.onboarding_complete!==true)setBizFields({onboarding_complete:true});go("dash");return;}
++  // Shopify stores (and a store link waiting to be confirmed) use the dashboard; their plan is
++  // chosen in Shopify, and the dashboard runs the store-link confirmation.
++  if(shopifyStoreOf(biz)||pendingShopifyClaim()||await loadShopifyStore()){clearOnboardingProgress();go("dash");return;}
++  return resumeOnboarding(biz);"""),
++
++    ("finishAuthReturn",
++     """  await ensureBizProfile(token,u);
++  const biz=await loadBiz();
++  hydrateOnboardingFromBiz(biz);""",
++     """  await ensureBizProfile(token,u);
++  // A Shopify store's own account (opened from the Shopify admin), or a store link waiting to
++  // be confirmed: straight to the dashboard (no onboarding wizard, no POS welcome e-mail).
++  if(shopifyAccountShop()||pendingShopifyClaim()){clearOnboardingProgress();obAwaitConfirm=false;history.replaceState({view:"dash"},"","/");go("dash");return;}
++  const biz=await loadBiz();
++  hydrateOnboardingFromBiz(biz);"""),
++
++    ("acceptLinkSession",
++     """  if(!u||!u.id)throw new Error("Email confirmed, but Clicktide could not load the account. Please log in.");""",
++     """  // A Shopify store's own account: ask with the store's name (shopifyLinkOk). On yes it marks
++  // this e-mail as expected, so the general check below accepts it without asking again.
++  if(u&&u.id&&ctIsShopDomain(u.app_metadata&&u.app_metadata.shopify_shop)&&!(await shopifyLinkOk(u))){scr=S?"dash":"login";R();return;}
++  if(!u||!u.id)throw new Error("Email confirmed, but Clicktide could not load the account. Please log in.");"""),
++
++    ("ssoArrival",
++     """    const hashToken=hashParams.get("access_token");""",
++     """    // Opened from the Shopify admin: one-time code in the fragment (#ct_sso=…). Clear it from the
++    // address bar at once, then swap it for the store account's session at shopify-sso. The usual
++    // confirmation (shopifyLinkOk) and two-step check still run in finishAuthReturn.
++    const ssoCode=hashParams.get("ct_sso");
++    if(ssoCode){
++      cleanAuthUrl();
++      const sr=await fetch(FN+"/shopify-sso",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:ssoCode})});
++      const sd=await sr.json().catch(function(){return {};});
++      if(!sr.ok||!sd.access_token)throw new Error(sd.error||"This sign-in link expired. Open Clicktide from your Shopify admin again.");
++      await finishAuthReturn(sd.access_token,sd.user||null,"magiclink",{refresh_token:sd.refresh_token||"",expires_in:sd.expires_in||"",expires_at:sd.expires_at||""});
++      return;
++    }
++    const hashToken=hashParams.get("access_token");"""),
++
++    ("dLoad",
++     """    bizLock=await loadBiz()||{};
++    const paid=hasPaidAccess(bizLock);""",
++     """    bizLock=await loadBiz()||{};
++    if(!shopifyStoreOf(bizLock))await loadShopifyStore(tok);
++    const paid=hasPaidAccess(bizLock);"""),
++]
++
++
++def main():
++    if len(sys.argv) < 2:
++        sys.exit(__doc__)
++    path, check = sys.argv[1], "--check" in sys.argv
++    s = open(path, encoding="utf-8").read()
++    if MARK in s:
++        print("already applied")
++        return
++    out, problems = s, []
++    for name, old, new in PATCHES:
++        n = out.count(old)
++        if n != 1:
++            problems.append(f"{name}: anchor found {n} times")
++            continue
++        out = out.replace(old, new, 1)
++    if problems:
++        print("NOT APPLIED:\n  " + "\n  ".join(problems))
++        sys.exit(1)
++    if check:
++        print(f"{len(PATCHES)} patch(es) would apply")
++        return
++    open(path, "w", encoding="utf-8").write(out)
++    print(f"applied {len(PATCHES)} patch(es)")
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/supabase/functions/_shared/shopify_server.ts b/supabase/functions/_shared/shopify_server.ts
+index e096973..6f40516 100644
+--- a/supabase/functions/_shared/shopify_server.ts
++++ b/supabase/functions/_shared/shopify_server.ts
+@@ -278,3 +278,125 @@ async function reportUsageLeased(limit: number) {
+   }
+   return out;
+ }
++
++// ---- Shopify sign-in (non-embedded app, App Store 2.3.x and "seamless sign up") ----
++// A store installed from Shopify gets its own Clicktide account, created here (no password,
++// no e-mail round trip). Opening the app from the Shopify admin then signs that account in
++// with a one-time link. Accounts that were made on the website and linked to a store by the
++// owner (claim flow) are never signed in this way: those owners log in themselves.
++export const APP_BASE_URL = Deno.env.get("APP_BASE_URL") ?? "https://goclicktide.com";
++// A domain Clicktide controls and never receives mail at: nobody can pre-register or read these.
++export const PROVISION_EMAIL_DOMAIN = "shopify-users.goclicktide.com";
++
++async function authAdmin(path: string, init: RequestInit = {}) {
++  const r = await fetch(`${SUPA}/auth/v1/admin${path}`, {
++    ...init,
++    headers: { apikey: SRK, Authorization: `Bearer ${SRK}`, "Content-Type": "application/json", ...(init.headers || {}) },
++  });
++  const d = await r.json().catch(() => ({}));
++  return { ok: r.ok, status: r.status, data: d as Record<string, any> };
++}
++
++function randHex(n: number) {
++  return Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => b.toString(16).padStart(2, "0")).join("");
++}
++
++// The Clicktide account Clicktide created for exactly this store?
++export async function provisionedFor(userId: string, shop: string): Promise<boolean> {
++  const u = await authAdmin(`/users/${encodeURIComponent(userId)}`);
++  return u.ok && String(u.data?.app_metadata?.shopify_shop || "").toLowerCase() === shop.toLowerCase();
++}
++
++// Where to send the merchant: goclicktide.com/#ct_sso=<one-time code>. The code is in the URL
++// fragment (never sent to a server or logged), lives 60 seconds, is single use and bound to the
++// account and shop (clicktide_shopify_sso_mint; refused for staff or without an active store
++// connection). The page swaps it for a session at shopify-sso.
++export async function ssoUrlFor(userId: string, shop: string): Promise<string | null> {
++  if (!(await provisionedFor(userId, shop))) return null;
++  const code = await rpc("clicktide_shopify_sso_mint", { p_user: userId, p_shop: shop });
++  if (typeof code !== "string" || !/^[0-9a-f]{64}$/.test(code)) return null;
++  return `${APP_BASE_URL}/#ct_sso=${code}`;
++}
++
++// shopify-sso: one-time code -> session for the store's own account, created server-side.
++export async function sessionForSsoCode(code: string): Promise<Record<string, unknown> | null> {
++  const t = await rpc("clicktide_shopify_sso_take", { p_code: code }) as Record<string, any>;
++  if (!t?.ok) return null;
++  const userId = String(t.user_id), shop = String(t.shop);
++  const u = await authAdmin(`/users/${encodeURIComponent(userId)}`);
++  const email = String(u.data?.email || "");
++  if (!u.ok || !email || String(u.data?.app_metadata?.shopify_shop || "").toLowerCase() !== shop) return null;
++  const g = await authAdmin("/generate_link", { method: "POST", body: JSON.stringify({ type: "magiclink", email }) });
++  const hashed = String(g.data?.hashed_token || g.data?.properties?.hashed_token || "");
++  if (!g.ok || !hashed) { console.error("shopify sso link failed", shop, g.status); return null; }
++  const v = await fetch(`${SUPA}/auth/v1/verify`, {
++    method: "POST", headers: { apikey: SRK, "Content-Type": "application/json" },
++    body: JSON.stringify({ type: "magiclink", token_hash: hashed }),
++  });
++  const sess = await v.json().catch(() => ({})) as Record<string, any>;
++  if (!v.ok || !sess?.access_token) { console.error("shopify sso verify failed", shop, v.status); return null; }
++  return { access_token: sess.access_token, refresh_token: sess.refresh_token, expires_in: sess.expires_in, expires_at: sess.expires_at, user: sess.user, shop };
++}
++
++async function shopProfile(shop: string, token: string) {
++  try {
++    const r = await fetch(`https://${shop}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, {
++      method: "POST", headers: { "X-Shopify-Access-Token": token, "Content-Type": "application/json" },
++      body: JSON.stringify({ query: "{ shop { name contactEmail email ianaTimezone } }" }),
++    });
++    const s = (await r.json().catch(() => ({})))?.data?.shop;
++    if (s) return { name: String(s.name || "").replace(/[<>]/g, "").slice(0, 120), email: String(s.contactEmail || s.email || "").slice(0, 200), tz: String(s.ianaTimezone || "") };
++  } catch (e) { console.error("shop profile lookup failed", shop, e); }
++  return { name: "", email: "", tz: "" };
++}
++
++export type ClaimResult =
++  | { ok: true; userId: string; shop: string; created: boolean }
++  | { ok: false; reason: "expired" | "website_account" | "failed"; shop?: string };
++
++// Install from Shopify finished (claim token in hand): attach the store to the Clicktide
++// account Clicktide made for it before (reinstall), or make that account now. A store owned
++// by a website account is left for its owner to claim after logging in.
++export async function provisionForClaim(claim: string): Promise<ClaimResult> {
++  const hash = await sha256Hex(claim);
++  const info = await rpc("clicktide_shopify_claim_info", { p_token_hash: hash }) as Record<string, any>;
++  if (!info?.ok) return { ok: false, reason: "expired" };
++  const shop = String(info.shop_domain || "").toLowerCase();
++  const owner = info.owner ? String(info.owner) : "";
++  if (owner) {
++    if (!(await provisionedFor(owner, shop))) return { ok: false, reason: "website_account", shop };
++    const r = await rpc("clicktide_shopify_claim", { p_token_hash: hash, p_user: owner }) as Record<string, any>;
++    return r?.ok ? { ok: true, userId: owner, shop, created: false } : { ok: false, reason: "failed", shop };
++  }
++  // New store: create its account and business profile, then claim.
++  const rows = await rest(`/rest/v1/shopify_install_claims?token_hash=eq.${hash}&select=connection_id&limit=1`) as Array<{ connection_id: string }>;
++  const conn = rows?.[0] ? (await rest(`/rest/v1/platform_connections?id=eq.${rows[0].connection_id}&select=access_token,merchant_name&limit=1`) as Array<{ access_token: string; merchant_name: string }>)?.[0] : null;
++  const prof = conn?.access_token ? await shopProfile(shop, conn.access_token) : { name: "", email: "", tz: "" };
++  const name = prof.name || conn?.merchant_name || shop.replace(/\.myshopify\.com$/, "");
++  const slug = shop.replace(/\.myshopify\.com$/, "").slice(0, 50);
++  let email = `${slug}@${PROVISION_EMAIL_DOMAIN}`;
++  const create = () => authAdmin("/users", {
++    method: "POST",
++    body: JSON.stringify({ email, email_confirm: true, app_metadata: { shopify_shop: shop, signup: "shopify" }, user_metadata: { business_name: name } }),
++  });
++  let cu = await create();
++  if (!cu.ok && (cu.status === 422 || cu.status === 409)) { email = `${slug}-${randHex(3)}@${PROVISION_EMAIL_DOMAIN}`; cu = await create(); }
++  const userId = String(cu.data?.id || "");
++  if (!cu.ok || !userId) { console.error("shopify account create failed", shop, cu.status, JSON.stringify(cu.data).slice(0, 200)); return { ok: false, reason: "failed", shop }; }
++  try {
++    await rest("/rest/v1/clicktide", {
++      method: "POST", headers: { Prefer: "return=minimal" },
++      // Owner alerts and receipts go to the store's contact address from Shopify, never the
++      // internal sign-in address.
++      body: JSON.stringify({ user_id: userId, business_name: name, email: prof.email || null, business_email: prof.email || null, onboarding_complete: true, business_type: "other", churn_days: 60 }),
++    });
++    const r = await rpc("clicktide_shopify_claim", { p_token_hash: hash, p_user: userId }) as Record<string, any>;
++    if (!r?.ok) throw new Error(`claim ${r?.error || "failed"}`);
++    return { ok: true, userId, shop, created: true };
++  } catch (e) {
++    console.error("shopify account setup failed; removing the half-made account", shop, e);
++    await rest(`/rest/v1/clicktide?user_id=eq.${userId}`, { method: "DELETE" }).catch(() => {});
++    await authAdmin(`/users/${userId}`, { method: "DELETE" }).catch(() => {});
++    return { ok: false, reason: "failed", shop };
++  }
++}
+diff --git a/supabase/functions/shopify-app/index.ts b/supabase/functions/shopify-app/index.ts
+index 45976cf..1df7b71 100644
+--- a/supabase/functions/shopify-app/index.ts
++++ b/supabase/functions/shopify-app/index.ts
+@@ -6,11 +6,14 @@
+ // approval they land in the app UI (2.3.3, see shopify-oauth-callback).
+ // Deploy with verify_jwt = false.
+ import { freshTimestamp, isShopDomain, planSelectionUrl, SHOPIFY_SCOPES, verifyQueryHmac } from "../_shared/shopify.js";
+-import { APP_HANDLE, BILLING_ENABLED, reconcileBilling, rest, SUPA } from "../_shared/shopify_server.ts";
++import { APP_HANDLE, BILLING_ENABLED, reconcileBilling, rest, rpc, ssoUrlFor, SUPA } from "../_shared/shopify_server.ts";
+ 
+ const APP_BASE_URL = Deno.env.get("APP_BASE_URL") ?? "https://goclicktide.com";
+ const SECRET = Deno.env.get("SHOPIFY_CLIENT_SECRET") ?? "";
+ const CLIENT_ID = Deno.env.get("SHOPIFY_CLIENT_ID") ?? "";
++// See shopify-oauth-callback: account-per-store sign-in, off until goclicktide.com supports it.
++const AUTO_ACCOUNTS = (Deno.env.get("SHOPIFY_AUTO_ACCOUNTS") ?? "") === "true";
++const LAUNCH_MAX_AGE_S = 10 * 60;
+ 
+ function go(url: string) { return Response.redirect(url, 302); }
+ function app(params: Record<string, string>) {
+@@ -28,7 +31,7 @@ Deno.serve(async (req) => {
+   }
+ 
+   // Installed, claimed and still holding a token? Then this is "open app".
+-  const conns = await rest(`/rest/v1/platform_connections?platform=eq.shopify&shop_domain=ilike.${encodeURIComponent(shop)}&is_active=eq.true&access_token=neq.&user_id=not.is.null&select=id&limit=1`);
++  const conns = await rest(`/rest/v1/platform_connections?platform=eq.shopify&shop_domain=ilike.${encodeURIComponent(shop)}&is_active=eq.true&access_token=neq.&user_id=not.is.null&select=id,user_id&order=updated_at.desc&limit=1`);
+   if (Array.isArray(conns) && conns[0]) {
+     if (BILLING_ENABLED) {
+       try {
+@@ -36,6 +39,19 @@ Deno.serve(async (req) => {
+         if (!["active", "trialing", "past_due"].includes(String(b.entitlement?.status))) return go(planSelectionUrl(shop, APP_HANDLE));
+       } catch (e) { console.error("billing check on open failed", shop, e); }
+     }
++    // Sign the store's own Clicktide account in: only from a fresh, never-before-used signed
++    // launch, and only for an account Clicktide created for this store (never a website
++    // account an owner linked by hand).
++    if (AUTO_ACCOUNTS) {
++      const ts = Number(url.searchParams.get("timestamp"));
++      const fresh = Number.isFinite(ts) && Math.abs(Date.now() / 1000 - ts) < LAUNCH_MAX_AGE_S;
++      try {
++        if (fresh && await rpc("clicktide_shopify_launch_once", { p_hmac: String(url.searchParams.get("hmac") || ""), p_shop: shop }) === true) {
++          const signIn = await ssoUrlFor(String(conns[0].user_id), shop);
++          if (signIn) return go(signIn);
++        }
++      } catch (e) { console.error("shopify launch sign-in failed", shop, e); }
++    }
+     return app({ ct_platform: "shopify", ct_shop: shop });
+   }
+ 
+diff --git a/supabase/functions/shopify-oauth-callback/index.ts b/supabase/functions/shopify-oauth-callback/index.ts
+index 22ef4b0..36624ca 100644
+--- a/supabase/functions/shopify-oauth-callback/index.ts
++++ b/supabase/functions/shopify-oauth-callback/index.ts
+@@ -5,8 +5,12 @@
+ //    user yet, so the connection is saved unclaimed with a one-time claim token; the
+ //    merchant signs in / signs up and shopify-claim attaches it to their business.
+ import { freshTimestamp, SHOPIFY_API_VERSION, tokenFields } from "../_shared/shopify.js";
++import { BILLING_ENABLED, provisionForClaim, reconcileBilling, ssoUrlFor } from "../_shared/shopify_server.ts";
+ 
+ const APP_BASE_URL = Deno.env.get("APP_BASE_URL") ?? "https://goclicktide.com";
++// Secret SHOPIFY_AUTO_ACCOUNTS=true turns on account-per-store sign-in (needs the matching
++// goclicktide.com release). Off: the old claim link (log in / sign up, then confirm).
++const AUTO_ACCOUNTS = (Deno.env.get("SHOPIFY_AUTO_ACCOUNTS") ?? "") === "true";
+ 
+ const SUPA = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
+ const SRK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+@@ -166,6 +170,19 @@ async function saveUnclaimed(fields: Record<string, unknown>, shop: string, shop
+     body: JSON.stringify({ token_hash: await sha256Hex(claim), connection_id: connId, shop_domain: shop }),
+   });
+   if (!c.ok) return fail(null, "Could not finish installing Clicktide. Please open it again from your Shopify admin.");
++  // Non-embedded app: give the store its own Clicktide account and sign the merchant straight
++  // in (no second sign-up). A store that belongs to an account made on the website falls back
++  // to the claim link, which that owner finishes after logging in.
++  if (AUTO_ACCOUNTS) {
++    try {
++      const p = await provisionForClaim(claim);
++      if (p.ok) {
++        if (BILLING_ENABLED) { try { await reconcileBilling(shop); } catch (e) { console.error("billing after install", shop, e); } }
++        const signIn = await ssoUrlFor(p.userId, shop);
++        if (signIn) return Response.redirect(signIn, 302);
++      } else if (p.reason !== "website_account") console.error("shopify auto account failed", shop, p.reason);
++    } catch (e) { console.error("shopify auto account error", shop, e); }
++  }
+   return redirect(APP_BASE_URL, { ct_platform: "shopify", ct_shopify_claim: claim, ct_shop: shop, ct_name: encodeURIComponent(shopName) });
+ }
+ 
+diff --git a/supabase/functions/shopify-sso/index.ts b/supabase/functions/shopify-sso/index.ts
+new file mode 100644
+index 0000000..08910e9
+--- /dev/null
++++ b/supabase/functions/shopify-sso/index.ts
+@@ -0,0 +1,44 @@
++// Swap a one-time Shopify sign-in code (goclicktide.com/#ct_sso=…, minted by shopify-app or
++// shopify-oauth-callback for a store's own Clicktide account) for a session. The browser POSTs
++// { code }; the code is single use, 60 seconds, bound to account + shop, and refused for staff or
++// without an active store connection (clicktide_shopify_sso_take). The page still shows its
++// sign-in confirmation, and two-step accounts are still asked for their code (the session is aal1).
++// Deploy with verify_jwt = false.
++import { rpc, sessionForSsoCode } from "../_shared/shopify_server.ts";
++
++const ORIGIN = Deno.env.get("APP_BASE_URL") ?? "https://goclicktide.com";
++const cors = {
++  "Access-Control-Allow-Origin": ORIGIN,
++  "Access-Control-Allow-Headers": "content-type, apikey, authorization, x-client-info",
++  "Access-Control-Allow-Methods": "POST, OPTIONS",
++  "Cache-Control": "no-store",
++};
++function json(body: unknown, status = 200) {
++  return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
++}
++function clientIp(req: Request) {
++  return (req.headers.get("cf-connecting-ip") || req.headers.get("x-real-ip") || (req.headers.get("x-forwarded-for") || "").split(",")[0] || "unknown").trim();
++}
++
++const EXPIRED = "This sign-in link expired. Open Clicktide from your Shopify admin again.";
++
++Deno.serve(async (req) => {
++  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
++  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
++  try {
++    if (await rpc("clicktide_rate_limit_hit", { p_bucket: `shopify-sso:ip:${clientIp(req)}`, p_window_seconds: 600, p_max: 30 }) !== true) {
++      return json({ error: "Too many attempts. Wait a few minutes and open Clicktide from your Shopify admin again." }, 429);
++    }
++  } catch { return json({ error: "Clicktide couldn't sign you in right now. Please try again." }, 503); }
++  let code = "";
++  try { code = String((await req.json())?.code || ""); } catch { /* */ }
++  if (!/^[0-9a-f]{64}$/.test(code)) return json({ error: EXPIRED }, 400);
++  try {
++    const s = await sessionForSsoCode(code);
++    if (!s) return json({ error: EXPIRED }, 401);
++    return json(s);
++  } catch (e) {
++    console.error("shopify-sso failed", e);
++    return json({ error: "Clicktide couldn't sign you in right now. Please try again." }, 502);
++  }
++});
+diff --git a/supabase/functions/shopify-webhooks/index.ts b/supabase/functions/shopify-webhooks/index.ts
+index 676cd65..e792137 100644
+--- a/supabase/functions/shopify-webhooks/index.ts
++++ b/supabase/functions/shopify-webhooks/index.ts
+@@ -15,8 +15,8 @@
+ //   _shared/shopify_server.ts); until then they are dry runs.
+ //
+ // Deploy with verify_jwt = false (Shopify sends no Supabase JWT).
+-import { compliancePayload, HANDLED_TOPICS, isShopDomain, verifyWebhookHmac } from "../_shared/shopify.js";
+-import { reconcileBilling, reportUsage, rest, rpc, SRK } from "../_shared/shopify_server.ts";
++import { compliancePayload, HANDLED_TOPICS, isShopDomain, SHOPIFY_API_VERSION, verifyWebhookHmac } from "../_shared/shopify.js";
++import { freshShopifyToken, reconcileBilling, reportUsage, rest, rpc, type ShopConn, SRK } from "../_shared/shopify_server.ts";
+ 
+ const SECRET = Deno.env.get("SHOPIFY_CLIENT_SECRET") ?? "";
+ const RESEND = Deno.env.get("RESEND_API_KEY") ?? "";
+@@ -42,6 +42,33 @@ async function notifySupport(subject: string, text: string) {
+   return !!r?.ok;
+ }
+ 
++// Shopify sends shop/redact 48 hours after an uninstall, and does so even when the merchant has
++// reinstalled the app in the meantime. A store that is installed again right now is a current
++// customer and keeps its data, so ask Shopify before deleting anything: "installed" means there
++// is an active connection whose token Shopify still accepts. Anything uncertain throws, so the
++// event is retried later instead of deleting (or skipping) on a guess.
++async function shopInstalledNow(shop: string): Promise<boolean> {
++  const conns = await rest(`/rest/v1/platform_connections?platform=eq.shopify&shop_domain=ilike.${encodeURIComponent(shop)}&is_active=eq.true&access_token=neq.&select=id,shop_domain,access_token,refresh_token,token_expires_at,raw_response&order=updated_at.desc&limit=1`);
++  const conn = Array.isArray(conns) && conns[0] ? conns[0] as ShopConn : null;
++  if (!conn) return false; // uninstalled and never reinstalled: no live token on file
++  const fresh = await freshShopifyToken(conn);
++  if (fresh === "auth") return false; // Shopify refuses to renew this install's token: it is gone
++  if (fresh === "transient") throw new Error("could not reach Shopify to confirm the install; will retry");
++  let r: Response;
++  try {
++    r = await fetch(`https://${shop}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, {
++      method: "POST",
++      headers: { "X-Shopify-Access-Token": conn.access_token, "Content-Type": "application/json" },
++      body: JSON.stringify({ query: "{ shop { id } }" }),
++    });
++  } catch { throw new Error("could not reach Shopify to confirm the install; will retry"); }
++  if (r.status === 401 || r.status === 403 || r.status === 404) return false; // token revoked or store gone
++  if (r.status === 402 || r.status === 423) return true; // store frozen or locked, app still installed
++  const body = await r.json().catch(() => null);
++  if (r.ok && body?.data?.shop?.id) return true;
++  throw new Error(`could not confirm the install with Shopify (HTTP ${r.status}); will retry`);
++}
++
+ async function process(ev: Ev) {
+   // deno-lint-ignore no-explicit-any
+   const p = (ev.payload || {}) as Record<string, any>;
+@@ -57,7 +84,13 @@ async function process(ev: Ev) {
+       scrub = true;
+       break;
+     case "shop/redact":
+-      result = await rpc("clicktide_shopify_redact_shop", { p_shop: ev.shop_domain });
++      if (await shopInstalledNow(ev.shop_domain)) {
++        // Reinstalled since the uninstall this request refers to: the merchant is using the app.
++        result = { skipped: "store has reinstalled the app and is active; nothing deleted" };
++        console.log(`shop/redact for ${ev.shop_domain} skipped: the store is installed again`);
++      } else {
++        result = await rpc("clicktide_shopify_redact_shop", { p_shop: ev.shop_domain });
++      }
+       scrub = true;
+       break;
+     case "customers/data_request": {
+@@ -189,8 +222,17 @@ Deno.serve(async (req) => {
+     try { expected = String(await rpc("clicktide_internal_key", {}) || ""); } catch { /* */ }
+     if (!expected || cronKey !== expected) return json({ error: "Not authorized" }, 401);
+     // {"job":"usage"}: the 10-minute run that only reports usage billing to Shopify.
+-    let job = "";
+-    try { job = String((await req.clone().json())?.job || ""); } catch { /* empty body */ }
++    let job = "", jobShop = "";
++    try {
++      const b = await req.clone().json();
++      job = String(b?.job || ""); jobShop = String(b?.shop || "").toLowerCase();
++    } catch { /* empty body */ }
++    // {"job":"installed","shop":"x.myshopify.com"}: ops check of the shop/redact guard. Reads only.
++    if (job === "installed") {
++      if (!isShopDomain(jobShop)) return json({ error: "bad shop" }, 400);
++      try { return json({ ok: true, shop: jobShop, installed: await shopInstalledNow(jobShop) }); }
++      catch (e) { return json({ ok: false, shop: jobShop, error: e instanceof Error ? e.message : String(e) }, 502); }
++    }
+     if (job === "usage") {
+       let usage: unknown, err = "";
+       try { usage = await reportUsage(); } catch (e) { err = e instanceof Error ? e.message : String(e); }
+diff --git a/supabase/migrations/20261128180000_shopify_one_store_and_provision.sql b/supabase/migrations/20261128180000_shopify_one_store_and_provision.sql
+new file mode 100644
+index 0000000..20a5618
+--- /dev/null
++++ b/supabase/migrations/20261128180000_shopify_one_store_and_provision.sql
+@@ -0,0 +1,86 @@
++-- Shopify review prep (non-embedded app):
++-- 1. One Shopify store per Clicktide account. Claiming a second store used to leave two active
++--    connections on one business, and billing then flipped between the two shops' plans.
++--    Now the claim is refused (and NOT consumed, so the merchant can sign in with another
++--    account or let Clicktide set one up for the store).
++-- 2. clicktide_shopify_claim_info: what shopify-claim needs to decide between "set up a new
++--    Clicktide account for this store" and "this store already belongs to an account".
++
++CREATE OR REPLACE FUNCTION public.clicktide_shopify_claim(p_token_hash text, p_user uuid)
++ RETURNS jsonb
++ LANGUAGE plpgsql
++ SECURITY DEFINER
++ SET search_path TO ''
++AS $function$
++declare c record; v_conn record; v_existing uuid;
++begin
++  select * into c from public.shopify_install_claims
++   where token_hash = p_token_hash and claimed_at is null and expires_at > now() for update;
++  if not found then return jsonb_build_object('ok', false, 'error', 'expired_or_used'); end if;
++  select * into v_conn from public.platform_connections where id = c.connection_id;
++  if not found then return jsonb_build_object('ok', false, 'error', 'expired_or_used'); end if;
++  if v_conn.user_id is not null and v_conn.user_id <> p_user then return jsonb_build_object('ok', false, 'error', 'already_claimed'); end if;
++  if exists (select 1 from public.platform_connections o
++              where o.platform = 'shopify' and o.id <> v_conn.id and o.is_active
++                and o.user_id is not null and o.user_id <> p_user
++                and (o.merchant_id = v_conn.merchant_id or lower(o.shop_domain) = lower(v_conn.shop_domain))) then
++    update public.platform_connections set is_active = false, access_token = '', refresh_token = null, updated_at = now() where id = v_conn.id;
++    update public.shopify_install_claims set claimed_at = now() where token_hash = p_token_hash;
++    return jsonb_build_object('ok', false, 'error', 'already_claimed');
++  end if;
++  -- One store per account: this account already has a DIFFERENT active Shopify store.
++  if exists (select 1 from public.platform_connections o
++              where o.platform = 'shopify' and o.user_id = p_user and o.is_active and o.id <> v_conn.id
++                and o.merchant_id is distinct from v_conn.merchant_id
++                and lower(coalesce(o.shop_domain, '')) <> lower(coalesce(v_conn.shop_domain, ''))) then
++    return jsonb_build_object('ok', false, 'error', 'other_store',
++      'other_shop', (select o.shop_domain from public.platform_connections o
++                      where o.platform = 'shopify' and o.user_id = p_user and o.is_active and o.id <> v_conn.id
++                      order by o.updated_at desc limit 1));
++  end if;
++  select id into v_existing from public.platform_connections
++   where user_id = p_user and platform = 'shopify' and merchant_id = v_conn.merchant_id and id <> v_conn.id;
++  if v_existing is not null then  -- reinstall: move the new grant onto the business's existing row
++    delete from public.platform_connections where id = v_conn.id;
++    update public.platform_connections set
++           access_token = v_conn.access_token, refresh_token = v_conn.refresh_token, token_expires_at = v_conn.token_expires_at,
++           scope = v_conn.scope, shop_domain = v_conn.shop_domain, merchant_name = v_conn.merchant_name,
++           raw_response = coalesce(v_conn.raw_response, raw_response), is_active = true, revoked_at = null, disconnected_at = null,
++           sync_status = null, sync_fail_count = 0, sync_error = null, sync_error_at = null, sync_next_at = now(), updated_at = now()
++     where id = v_existing;
++  else
++    update public.platform_connections set user_id = p_user, sync_next_at = now(), updated_at = now() where id = v_conn.id;
++    v_existing := v_conn.id;
++  end if;
++  update public.shopify_install_claims set claimed_at = now(), claimed_by = p_user where token_hash = p_token_hash;
++  return jsonb_build_object('ok', true, 'connection_id', v_existing, 'shop_domain', v_conn.shop_domain);
++end $function$;
++revoke all on function public.clicktide_shopify_claim(text, uuid) from public, anon, authenticated;
++grant execute on function public.clicktide_shopify_claim(text, uuid) to service_role;
++
++-- A valid, unused claim: its shop, and the Clicktide account that already owns this store (the
++-- most recent connection for the same shop id or domain that has an owner), if any.
++CREATE OR REPLACE FUNCTION public.clicktide_shopify_claim_info(p_token_hash text)
++ RETURNS jsonb
++ LANGUAGE sql
++ STABLE
++ SECURITY DEFINER
++ SET search_path TO ''
++AS $function$
++  select case when c.token_hash is null then jsonb_build_object('ok', false)
++  else jsonb_build_object(
++    'ok', true,
++    'shop_domain', lower(v.shop_domain),
++    'merchant_id', v.merchant_id,
++    'merchant_name', v.merchant_name,
++    'owner', (select o.user_id from public.platform_connections o
++               where o.platform = 'shopify' and o.user_id is not null
++                 and (o.merchant_id = v.merchant_id or lower(o.shop_domain) = lower(v.shop_domain))
++               order by o.is_active desc, o.updated_at desc limit 1))
++  end
++  from (select 1) one
++  left join public.shopify_install_claims c on c.token_hash = p_token_hash and c.claimed_at is null and c.expires_at > now()
++  left join public.platform_connections v on v.id = c.connection_id;
++$function$;
++revoke all on function public.clicktide_shopify_claim_info(text) from public, anon, authenticated;
++grant execute on function public.clicktide_shopify_claim_info(text) to service_role;
+diff --git a/supabase/migrations/20261128180100_shopify_launch_nonces.sql b/supabase/migrations/20261128180100_shopify_launch_nonces.sql
+new file mode 100644
+index 0000000..f7bb112
+--- /dev/null
++++ b/supabase/migrations/20261128180100_shopify_launch_nonces.sql
+@@ -0,0 +1,23 @@
++-- Opening Clicktide from the Shopify admin signs a store-provisioned account in. Each signed
++-- launch URL may do that once: its hmac is recorded here (server-only, pruned after a day).
++create table if not exists public.shopify_launch_nonces (
++  hmac text primary key,
++  shop_domain text not null,
++  used_at timestamptz not null default now()
++);
++alter table public.shopify_launch_nonces enable row level security;
++revoke all on public.shopify_launch_nonces from public, anon, authenticated;
++grant select, insert, delete on public.shopify_launch_nonces to service_role;
++
++-- True the first time a launch hmac is seen (and records it); false on any replay.
++create or replace function public.clicktide_shopify_launch_once(p_hmac text, p_shop text)
++returns boolean language plpgsql security definer set search_path = '' as $$
++declare n int;
++begin
++  delete from public.shopify_launch_nonces where used_at < now() - interval '1 day';
++  insert into public.shopify_launch_nonces (hmac, shop_domain) values (p_hmac, lower(p_shop)) on conflict (hmac) do nothing;
++  get diagnostics n = row_count;
++  return n = 1;
++end $$;
++revoke all on function public.clicktide_shopify_launch_once(text, text) from public, anon, authenticated;
++grant execute on function public.clicktide_shopify_launch_once(text, text) to service_role;
+diff --git a/supabase/migrations/20261128180200_shopify_sso_codes.sql b/supabase/migrations/20261128180200_shopify_sso_codes.sql
+new file mode 100644
+index 0000000..ebd6e01
+--- /dev/null
++++ b/supabase/migrations/20261128180200_shopify_sso_codes.sql
+@@ -0,0 +1,58 @@
++-- Sign-in from the Shopify admin for a store's own Clicktide account (security review):
++-- shopify-app / shopify-oauth-callback redirect to goclicktide.com/#ct_sso=<code> (fragment, so the
++-- code never reaches a server log); the page POSTs it to shopify-sso, which takes it here and only
++-- then creates the session server-side. Codes: single use, 60 seconds, stored hashed, bound to the
++-- account and the shop. Minted and taken only for a non-staff account with an ACTIVE connection to
++-- that shop (shopify-sso also re-checks app_metadata.shopify_shop through the admin API).
++create table if not exists public.shopify_sso_codes (
++  code_hash text primary key,
++  user_id uuid not null,
++  shop_domain text not null,
++  expires_at timestamptz not null,
++  created_at timestamptz not null default now()
++);
++alter table public.shopify_sso_codes enable row level security;
++revoke all on public.shopify_sso_codes from public, anon, authenticated;
++grant select, insert, delete on public.shopify_sso_codes to service_role;
++
++create or replace function public.clicktide_shopify_sso_eligible(p_user uuid, p_shop text)
++returns boolean language sql stable security definer set search_path = '' as $$
++  select p_user is not null
++     and not exists (select 1 from public.clicktide_staff s where s.user_id = p_user and coalesce(s.is_active, true))
++     and exists (select 1 from public.platform_connections c
++                  where c.user_id = p_user and c.platform = 'shopify' and c.is_active
++                    and coalesce(c.access_token, '') <> '' and lower(c.shop_domain) = lower(p_shop));
++$$;
++
++create or replace function public.clicktide_shopify_sso_mint(p_user uuid, p_shop text)
++returns text language plpgsql security definer set search_path = '' as $$
++declare v_code text;
++begin
++  if not public.clicktide_shopify_sso_eligible(p_user, p_shop) then return null; end if;
++  delete from public.shopify_sso_codes where expires_at < now() - interval '1 hour';
++  v_code := replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '');
++  insert into public.shopify_sso_codes (code_hash, user_id, shop_domain, expires_at)
++  values (encode(sha256(convert_to(v_code, 'UTF8')), 'hex'), p_user, lower(p_shop), now() + interval '60 seconds');
++  return v_code;
++end $$;
++
++-- Single use: the row is deleted as it is read. Eligibility is checked again at take time.
++create or replace function public.clicktide_shopify_sso_take(p_code text)
++returns jsonb language plpgsql security definer set search_path = '' as $$
++declare r record;
++begin
++  if p_code is null or p_code !~ '^[0-9a-f]{64}$' then return jsonb_build_object('ok', false); end if;
++  delete from public.shopify_sso_codes
++   where code_hash = encode(sha256(convert_to(p_code, 'UTF8')), 'hex')
++  returning user_id, shop_domain, expires_at into r;
++  if not found or r.expires_at < now() then return jsonb_build_object('ok', false); end if;
++  if not public.clicktide_shopify_sso_eligible(r.user_id, r.shop_domain) then return jsonb_build_object('ok', false); end if;
++  return jsonb_build_object('ok', true, 'user_id', r.user_id, 'shop', r.shop_domain);
++end $$;
++
++revoke all on function public.clicktide_shopify_sso_eligible(uuid, text) from public, anon, authenticated;
++revoke all on function public.clicktide_shopify_sso_mint(uuid, text) from public, anon, authenticated;
++revoke all on function public.clicktide_shopify_sso_take(text) from public, anon, authenticated;
++grant execute on function public.clicktide_shopify_sso_eligible(uuid, text) to service_role;
++grant execute on function public.clicktide_shopify_sso_mint(uuid, text) to service_role;
++grant execute on function public.clicktide_shopify_sso_take(text) to service_role;
+diff --git a/supabase/tests/shopify_one_store_test.sql b/supabase/tests/shopify_one_store_test.sql
+new file mode 100644
+index 0000000..5006815
+--- /dev/null
++++ b/supabase/tests/shopify_one_store_test.sql
+@@ -0,0 +1,32 @@
++-- One store per account + claim_info. Run with 20261128180000 in one rolled-back transaction.
++do $t$
++declare
++  u uuid := '675f5e6d-2de0-43e3-91f9-8126b5e6967a';  -- has clicktide-test active
++  other uuid := gen_random_uuid();
++  c1 uuid; r jsonb; i jsonb;
++begin
++  insert into platform_connections (id, user_id, platform, shop_domain, is_active, access_token, merchant_id, merchant_name)
++  values (gen_random_uuid(), null, 'shopify', 'second-dev.myshopify.com', true, 'tok2', '999111222', 'Second') returning id into c1;
++  insert into shopify_install_claims (token_hash, connection_id, shop_domain) values ('h1', c1, 'second-dev.myshopify.com');
++
++  -- 1. info: valid claim, no owner yet
++  i := clicktide_shopify_claim_info('h1');
++  if (i->>'ok')::boolean is not true or i->>'shop_domain' <> 'second-dev.myshopify.com' or i->>'owner' is not null then raise exception 'FAIL 1: %', i; end if;
++  -- 2. an account that already has another store is refused, claim NOT consumed
++  r := clicktide_shopify_claim('h1', u);
++  if r->>'error' is distinct from 'other_store' or r->>'other_shop' <> 'clicktide-test.myshopify.com' then raise exception 'FAIL 2: %', r; end if;
++  if not exists (select 1 from shopify_install_claims where token_hash = 'h1' and claimed_at is null) then raise exception 'FAIL 2b: claim consumed'; end if;
++  -- 3. a fresh account can claim it
++  insert into auth.users(id, email, aud, role) values (other, 'one-store-test@example.test', 'authenticated', 'authenticated');
++  r := clicktide_shopify_claim('h1', other);
++  if (r->>'ok')::boolean is not true then raise exception 'FAIL 3: %', r; end if;
++  -- 4. info for clicktide-test's store via a new unclaimed row: owner = u (reinstall path)
++  insert into platform_connections (id, user_id, platform, shop_domain, is_active, access_token, merchant_id)
++  values (gen_random_uuid(), null, 'shopify', 'clicktide-test.myshopify.com', false, '', '81761337561') returning id into c1;
++  insert into shopify_install_claims (token_hash, connection_id, shop_domain) values ('h2', c1, 'clicktide-test.myshopify.com');
++  i := clicktide_shopify_claim_info('h2');
++  if (i->>'owner')::uuid is distinct from u then raise exception 'FAIL 4: %', i; end if;
++  -- 5. unknown claim
++  if (clicktide_shopify_claim_info('nope')->>'ok')::boolean is not false then raise exception 'FAIL 5'; end if;
++  raise exception 'ALL ONE-STORE TESTS PASSED';
++end $t$;
+diff --git a/supabase/tests/shopify_sso_codes_test.sql b/supabase/tests/shopify_sso_codes_test.sql
+new file mode 100644
+index 0000000..f82d224
+--- /dev/null
++++ b/supabase/tests/shopify_sso_codes_test.sql
+@@ -0,0 +1,39 @@
++-- SSO codes. Run with 20261128180200 in one rolled-back transaction.
++do $t$
++declare
++  u uuid := '675f5e6d-2de0-43e3-91f9-8126b5e6967a';  -- active clicktide-test connection
++  shop text := 'clicktide-test.myshopify.com';
++  code text; r jsonb; staff_had boolean;
++begin
++  select exists(select 1 from clicktide_staff where user_id = u and coalesce(is_active, true)) into staff_had;
++  if staff_had then
++    -- 1. staff accounts never get a code
++    if clicktide_shopify_sso_mint(u, shop) is not null then raise exception 'FAIL 1: staff got a code'; end if;
++    delete from clicktide_staff where user_id = u;   -- rolled back
++  end if;
++  -- 1b. make it staff (rolled back): no code
++  insert into clicktide_staff(user_id, role, is_active) values (u, 'support', true) on conflict (user_id) do update set is_active = true;
++  if clicktide_shopify_sso_mint(u, shop) is not null then raise exception 'FAIL 1b: staff got a code'; end if;
++  delete from clicktide_staff where user_id = u;
++  -- 2. wrong shop: no code
++  if clicktide_shopify_sso_mint(u, 'other.myshopify.com') is not null then raise exception 'FAIL 2'; end if;
++  -- 3. mint + take once
++  code := clicktide_shopify_sso_mint(u, shop);
++  if code !~ '^[0-9a-f]{64}$' then raise exception 'FAIL 3a: %', code; end if;
++  if exists (select 1 from shopify_sso_codes where code_hash = code) then raise exception 'FAIL 3b: stored in clear'; end if;
++  r := clicktide_shopify_sso_take(code);
++  if (r->>'ok')::boolean is not true or (r->>'user_id')::uuid <> u or r->>'shop' <> shop then raise exception 'FAIL 3c: %', r; end if;
++  -- 4. replay refused
++  if (clicktide_shopify_sso_take(code)->>'ok')::boolean then raise exception 'FAIL 4: replay'; end if;
++  -- 5. expired refused
++  code := clicktide_shopify_sso_mint(u, shop);
++  update shopify_sso_codes set expires_at = now() - interval '1 second';
++  if (clicktide_shopify_sso_take(code)->>'ok')::boolean then raise exception 'FAIL 5: expired'; end if;
++  -- 6. connection deactivated between mint and take: refused
++  code := clicktide_shopify_sso_mint(u, shop);
++  update platform_connections set is_active = false where user_id = u and platform = 'shopify';
++  if (clicktide_shopify_sso_take(code)->>'ok')::boolean then raise exception 'FAIL 6: inactive store'; end if;
++  -- 7. junk
++  if (clicktide_shopify_sso_take('xyz')->>'ok')::boolean then raise exception 'FAIL 7'; end if;
++  raise exception 'ALL SSO CODE TESTS PASSED (staff case tested: %)', staff_had;
++end $t$;

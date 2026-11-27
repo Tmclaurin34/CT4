@@ -7,3 +7,6 @@
 .venv/
 node_modules/
 supabase/.temp/
+
+# Large rendered videos (published on YouTube; GitHub rejects files over 100 MB)
+outputs/**/*.mp4

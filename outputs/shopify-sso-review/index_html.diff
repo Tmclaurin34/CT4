@@ -1,0 +1,141 @@
+--- /private/tmp/claude-502/-Users-charles--claude-spares-spare-RVRdC4/0c21bf62-274b-4dc0-99c5-55f143c64646/scratchpad/site_test/prod.html	2026-11-27 15:17:03
++++ /private/tmp/claude-502/-Users-charles--claude-spares-spare-RVRdC4/0c21bf62-274b-4dc0-99c5-55f143c64646/scratchpad/site_test/index.html	2026-11-27 15:17:03
+@@ -1137,10 +1137,16 @@
+     if(!_ls){scr=S?"dash":"login";R();setTimeout(function(){alert("Log in with your email, password and two-step code to continue.");},80);return;}
+     if(_ls.access_token!==token){token=_ls.access_token;sessionData=Object.assign({},sessionData||{},{refresh_token:_ls.refresh_token||"",expires_in:_ls.expires_in||"",expires_at:_ls.expires_at||""});if(_ls.user)u=_ls.user;}
+   }
++  // A Shopify store's own account: ask with the store's name (shopifyLinkOk). On yes it marks
++  // this e-mail as expected, so the general check below accepts it without asking again.
++  if(u&&u.id&&ctIsShopDomain(u.app_metadata&&u.app_metadata.shopify_shop)&&!(await shopifyLinkOk(u))){scr=S?"dash":"login";R();return;}
+   if(!u||!u.id)throw new Error("Email confirmed, but Clicktide could not load the account. Please log in.");
+   if(!(await acceptLinkSession(u))){scr=S?"dash":"login";R();return;}
+   saveSession(Object.assign({},sessionData||{},{access_token:token,user:u}),true);
+   await ensureBizProfile(token,u);
++  // A Shopify store's own account (opened from the Shopify admin), or a store link waiting to
++  // be confirmed: straight to the dashboard (no onboarding wizard, no POS welcome e-mail).
++  if(shopifyAccountShop()||pendingShopifyClaim()){clearOnboardingProgress();obAwaitConfirm=false;history.replaceState({view:"dash"},"","/");go("dash");return;}
+   const biz=await loadBiz();
+   hydrateOnboardingFromBiz(biz);
+   restoreOnboardingProgress();
+@@ -1228,14 +1234,14 @@
+ function hasPaidAccess(biz){return["active","trialing"].includes(String(biz?.stripe_subscription_status||"").toLowerCase());}
+ function billingLockBanner(biz){
+   return `<div style="background:rgba(192,57,43,.07);border:1px solid rgba(192,57,43,.22);border-radius:14px;padding:15px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+-    <div><div style="font-size:13px;font-weight:800;color:#C0392B;margin-bottom:3px">Finish setup to start sending campaigns &amp; gifts</div><div style="font-size:12px;color:#6B6F76;line-height:1.55">You can preview sample gifts right now. Your campaigns and gifts switch on the moment your plan is active — finish setting up to start your 30-day free trial.</div></div>
+-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-outline" style="padding:10px 16px" onclick="go('samples')">View samples</button><button class="btn btn-gold" style="padding:10px 16px" onclick="resumeOnboarding()">Finish setup</button></div>
++    <div><div style="font-size:13px;font-weight:800;color:#C0392B;margin-bottom:3px">Finish setup to start sending campaigns &amp; gifts</div><div style="font-size:12px;color:#6B6F76;line-height:1.55">You can preview sample gifts right now. ${shopifyStoreOf(biz)&&shopifyPaysInShopify(biz)?"Your campaigns and gifts switch on the moment your plan is active. Choose a plan in Shopify to start your 30-day free trial.":"Your campaigns and gifts switch on the moment your plan is active — finish setting up to start your 30-day free trial."}</div></div>
++    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-outline" style="padding:10px 16px" onclick="go('samples')">View samples</button><button class="btn btn-gold" style="padding:10px 16px" onclick="goFinishSetup()">${shopifyStoreOf(biz)&&shopifyPaysInShopify(biz)?"Choose a plan":"Finish setup"}</button></div>
+   </div>`;
+ }
+ async function requirePaidAction(){
+   const biz=await loadBiz()||{};
+   if(hasPaidAccess(biz))return true;
+-  document.body.insertAdjacentHTML("beforeend",modal("Billing required",`<div style="font-size:13px;color:rgba(240,244,255,.65);line-height:1.7;margin-bottom:16px">This action requires an active Clicktide subscription. Finish checkout or update billing before sending campaigns, adding wallet funds, or creating shipments.</div><div style="display:flex;gap:10px"><button class="btn-full btn-gold" onclick="this.closest('.ov').remove();resumeOnboarding()">Finish setup</button><button class="btn btn-ghost" style="padding:10px 20px" onclick="this.closest('.ov').remove()">Close</button></div>`));
++  document.body.insertAdjacentHTML("beforeend",modal("Billing required",`<div style="font-size:13px;color:rgba(240,244,255,.65);line-height:1.7;margin-bottom:16px">This action requires an active Clicktide subscription. Finish checkout or update billing before sending campaigns, adding wallet funds, or creating shipments.</div><div style="display:flex;gap:10px"><button class="btn-full btn-gold" onclick="this.closest('.ov').remove();goFinishSetup()">${shopifyStoreOf(biz)&&shopifyPaysInShopify(biz)?"Choose a plan":"Finish setup"}</button><button class="btn btn-ghost" style="padding:10px 20px" onclick="this.closest('.ov').remove()">Close</button></div>`));
+   return false;
+ }
+ // Save the business profile form (Settings). Changes only apply after the
+@@ -1811,8 +1817,48 @@
+ // pays through Stripe keeps Stripe (plan, wallet top-ups, wallet-funded postcards and gifts)
+ // even with a Shopify store connected, until it picks a plan in Shopify. Mirrors
+ // create-checkout-session. isShopifyBiz() (any Shopify store) only hides other POS options.
++/*ct-shopify-nonembedded-v1*/
++// The Shopify store this account belongs to: an account Clicktide made for a store at install
++// (app_metadata.shopify_shop), or any account with a Shopify store attached.
++var ctShopifyShop="";
++function ctIsShopDomain(s){return /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(String(s||""));}
++function shopifyAccountShop(){try{var s=String(S&&S.user&&S.user.app_metadata&&S.user.app_metadata.shopify_shop||"").toLowerCase();return ctIsShopDomain(s)?s:"";}catch(e){return "";}}
++function shopifyStoreOf(biz){
++  var c=[shopifyAccountShop(),biz&&biz.shopify_shop_domain,typeof bizLock!=="undefined"&&bizLock&&bizLock.shopify_shop_domain,ctShopifyShop];
++  for(var i=0;i<c.length;i++){var s=String(c[i]||"").toLowerCase();if(ctIsShopDomain(s))return s;}
++  return "";
++}
++function shopifyPlanUrl(shop){return "https://admin.shopify.com/store/"+encodeURIComponent(String(shop).replace(/\.myshopify\.com$/,""))+"/charges/"+SHOPIFY_APP_HANDLE+"/pricing_plans";}
++// Pays through Shopify: a Shopify store and no Stripe subscription of its own (website-first
++// businesses that already pay through Stripe keep Stripe until they pick a Shopify plan).
++function shopifyPaysInShopify(biz){var b=biz||(typeof bizLock!=="undefined"?bizLock:null)||{};if(b.billing_provider==="shopify")return true;if(b.billing_provider==="stripe"||b.stripe_subscription_id)return false;return !!shopifyStoreOf(b);}
++async function loadShopifyStore(tok){
++  if(DEMO||!S||!S.token)return "";
++  try{var r=await fetch(SU+"/rest/v1/platform_connections?select=shop_domain&platform=eq.shopify&is_active=eq.true&"+scope("")+"&order=updated_at.desc&limit=1",{headers:h(tok||S.token)});
++    var rows=await r.json();var s=Array.isArray(rows)&&rows[0]?String(rows[0].shop_domain||"").toLowerCase():"";ctShopifyShop=ctIsShopDomain(s)?s:"";}catch(e){}
++  return ctShopifyShop;
++}
++// Sign-in link from the Shopify admin for a store's own account: same login-CSRF rule as
++// acceptLinkSession (silent only when that account is already signed in here), but the prompt
++// names the store instead of an internal e-mail address.
++async function shopifyLinkOk(u){
++  var cur=S&&S.user,shop=String(u&&u.app_metadata&&u.app_metadata.shopify_shop||"");
++  if(cur&&cur.id&&cur.id===u.id)return true;
++  var m="Open Clicktide for the Shopify store "+shop+"?";
++  if(cur&&cur.email)m+="\n\nThis signs "+cur.email+" out on this device.";
++  m+="\n\nIf you didn't just open Clicktide from your Shopify admin, choose Cancel.";
++  var ok=await confirmModal({title:"Open Clicktide?",message:m,okText:"Open Clicktide",cancelText:"Cancel"});
++  if(ok)rememberAuthIntent(u.email,"shopify");
++  return ok;
++}
++function goFinishSetup(){
++  var shop=shopifyStoreOf(null);
++  if(shop&&shopifyPaysInShopify(null)){window.location.href=shopifyPlanUrl(shop);return;}
++  resumeOnboarding();
++}
+ function isShopifyBilling(){
+   try{
++    if(shopifyAccountShop())return true;
+     if(typeof bizLock==="undefined"||!bizLock)return false;
+     if(bizLock.billing_provider==="shopify")return true;
+     if(bizLock.billing_provider==="stripe"||bizLock.stripe_subscription_id)return false;
+@@ -1820,7 +1866,7 @@
+   }catch(e){return false;}
+ }
+ function isShopifyBiz(){
+-  try{return !!((typeof platConn!=="undefined"&&platConn.shopify&&platConn.shopify.merchant_id)||(typeof bizLock!=="undefined"&&bizLock&&bizLock.billing_provider==="shopify"));}catch(e){return false;}
++  try{return !!((typeof platConn!=="undefined"&&platConn.shopify&&platConn.shopify.merchant_id)||(typeof bizLock!=="undefined"&&bizLock&&bizLock.billing_provider==="shopify")||shopifyStoreOf(null));}catch(e){return false;}
+ }
+ // Shopify stores never fund the wallet through Stripe. Once billed through Shopify, postcards,
+ // gifts and texts past the plan's limit go on the Shopify bill (usage charges); before that
+@@ -1924,6 +1970,8 @@
+ // management go to Shopify's hosted plan page instead of Stripe.
+ async function shopifyBillingUrl(){
+   try{var b=await loadBiz()||{};
++    var _ss=shopifyStoreOf(b);
++    if(_ss&&shopifyPaysInShopify(b)&&!(b.billing_provider==="shopify"&&ctIsShopDomain(b.shopify_shop_domain)))return shopifyPlanUrl(_ss);
+     if(b.billing_provider==="shopify"&&/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(String(b.shopify_shop_domain||""))){
+       return "https://admin.shopify.com/store/"+encodeURIComponent(String(b.shopify_shop_domain).replace(/\.myshopify\.com$/,""))+"/charges/"+SHOPIFY_APP_HANDLE+"/pricing_plans";
+     }}catch(e){}
+@@ -2128,6 +2176,9 @@
+   const biz=await loadBiz().catch(function(){return null;});
+   hydrateOnboardingFromBiz(biz);
+   if(hasPaidAccess(biz)){clearOnboardingProgress();if(biz&&biz.onboarding_complete!==true)setBizFields({onboarding_complete:true});go("dash");return;}
++  // Shopify stores (and a store link waiting to be confirmed) use the dashboard; their plan is
++  // chosen in Shopify, and the dashboard runs the store-link confirmation.
++  if(shopifyStoreOf(biz)||pendingShopifyClaim()||await loadShopifyStore()){clearOnboardingProgress();go("dash");return;}
+   return resumeOnboarding(biz);
+ }
+ // "Open Dashboard" on the Go-Live / subscribed screen: always open the dashboard.
+@@ -2169,6 +2220,18 @@
+ 
+   try{
+     const authType=params.get("type")||hashParams.get("type")||"email";
++    // Opened from the Shopify admin: one-time code in the fragment (#ct_sso=…). Clear it from the
++    // address bar at once, then swap it for the store account's session at shopify-sso. The usual
++    // confirmation (shopifyLinkOk) and two-step check still run in finishAuthReturn.
++    const ssoCode=hashParams.get("ct_sso");
++    if(ssoCode){
++      cleanAuthUrl();
++      const sr=await fetch(FN+"/shopify-sso",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:ssoCode})});
++      const sd=await sr.json().catch(function(){return {};});
++      if(!sr.ok||!sd.access_token)throw new Error(sd.error||"This sign-in link expired. Open Clicktide from your Shopify admin again.");
++      await finishAuthReturn(sd.access_token,sd.user||null,"magiclink",{refresh_token:sd.refresh_token||"",expires_in:sd.expires_in||"",expires_at:sd.expires_at||""});
++      return;
++    }
+     const hashToken=hashParams.get("access_token");
+     if(hashToken){
+       cleanAuthUrl();
+@@ -3926,6 +3989,7 @@
+   try{
+     await loadRhythmMap(tok);
+     bizLock=await loadBiz()||{};
++    if(!shopifyStoreOf(bizLock))await loadShopifyStore(tok);
+     const paid=hasPaidAccess(bizLock);
+     if(paid){clearOnboardingProgress();if(justOnboarded||bizLock.onboarding_complete!==true)setBizFields({onboarding_complete:true});}
+     const paidBanner=paid?"":billingLockBanner(bizLock);

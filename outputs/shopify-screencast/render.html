@@ -1,0 +1,58 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#000}canvas{display:block}</style>
+<script src="images.js"></script><script src="scenes.js"></script></head><body><canvas id="c" width="1920" height="1080"></canvas>
+<script>
+const W=1920,H=1080,AREA=862,BAR=H-AREA,FADE=0.5;
+const cv=document.getElementById('c');let g=cv.getContext('2d');
+const NAVY='#0E1726',INK='#FFFFFF',SOFT='#C9D6EA',ACC='#4EA3FF';
+const FONT='-apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif';
+const imgs={};
+function load(){return Promise.all(Object.entries(IMGS).map(([k,v])=>new Promise(r=>{const i=new Image();i.onload=()=>{imgs[k]={i,w:v.w,h:v.h};r()};i.src=v.d})))}
+let starts=[],T=0;SCENES.forEach(s=>{starts.push(T);T+=s.dur});window.TOTAL=T;
+function wrap(t,max,font){g.font=font;const w=t.split(' ');const L=[];let l='';for(const x of w){const n=l?l+' '+x:x;if(g.measureText(n).width>max&&l){L.push(l);l=x}else l=n}if(l)L.push(l);return L}
+function ease(t){return t<0?0:t>1?1:t*t*(3-2*t)}
+function drawCard(s,a){g.globalAlpha=a;const gr=g.createLinearGradient(0,0,W,H);gr.addColorStop(0,'#0B1220');gr.addColorStop(1,'#123056');g.fillStyle=gr;g.fillRect(0,0,W,H);
+ // logo mark
+ g.save();g.translate(W/2,330);for(let k=0;k<8;k++){g.rotate(Math.PI/4);g.fillStyle='#7DB8FF';g.beginPath();g.ellipse(0,-34,13,30,0,0,Math.PI*2);g.fill()}g.fillStyle='#fff';g.beginPath();g.arc(0,0,14,0,Math.PI*2);g.fill();g.restore();
+ g.textAlign='center';g.fillStyle=INK;g.font='700 84px '+FONT;g.fillText(s.title,W/2,500);
+ g.fillStyle=SOFT;g.font='400 40px '+FONT;wrap(s.sub,1400,g.font).forEach((l,i)=>g.fillText(l,W/2,580+i*54));
+ if(s.small){g.fillStyle='#8FA3BF';g.font='400 30px '+FONT;g.fillText(s.small,W/2,720)}
+ g.textAlign='left';g.globalAlpha=1}
+function geom(im){const sc=Math.min(W/im.w,AREA/im.h);const w=im.w*sc,h=im.h*sc;return {sc,x:(W-w)/2,y:(AREA-h)/2,w,h}}
+function drawShot(s,a,lt){const im=imgs[s.img];const G=geom(im);const p=lt/s.dur;
+ g.globalAlpha=a;g.fillStyle=NAVY;g.fillRect(0,0,W,H);
+ const z=1+0.018*ease(p);const tx=s.x!=null?G.x+s.x*G.sc:W/2,ty=s.y!=null?G.y+s.y*G.sc:AREA/2;const cx=W/2,cy=AREA/2;
+ g.save();g.beginPath();g.rect(0,0,W,AREA);g.clip();g.translate(cx,cy);g.scale(z,z);g.translate(-cx,-cy);g.drawImage(im.i,G.x,G.y,G.w,G.h);
+ if(s.x!=null&&p>0.42){const q=(lt-0.42*s.dur);const px=G.x+s.x*G.sc,py=G.y+s.y*G.sc;
+   for(let k=0;k<2;k++){const ph=((q*1.1)+k*0.5)%1;g.strokeStyle='rgba(255,122,0,'+(0.85*(1-ph))+')';g.lineWidth=5;g.beginPath();g.arc(px,py,34+ph*40,0,Math.PI*2);g.stroke()}
+   g.strokeStyle='rgba(255,122,0,0.95)';g.lineWidth=4;g.beginPath();g.arc(px,py,30,0,Math.PI*2);g.stroke()}
+ g.restore();
+ // caption bar
+ g.fillStyle=NAVY;g.fillRect(0,AREA,W,BAR);g.fillStyle=ACC;g.fillRect(0,AREA,W,4);
+ g.font='700 24px '+FONT;const chip=s.step.toUpperCase();const cw=g.measureText(chip).width+36;g.fillStyle='rgba(78,163,255,0.18)';rr(60,AREA+36,cw,42,21);g.fill();g.fillStyle=ACC;g.fillText(chip,78,AREA+65);
+ g.fillStyle=INK;g.font='700 44px '+FONT;g.fillText(s.title,60+cw+24,AREA+72);
+ g.fillStyle=SOFT;g.font='400 32px '+FONT;wrap(s.sub,W-420,g.font).slice(0,2).forEach((l,i)=>g.fillText(l,60,AREA+130+i*42));
+ g.fillStyle='#8FA3BF';g.font='600 26px '+FONT;g.textAlign='right';g.fillText('Clicktide · Shopify app review',W-60,AREA+72);g.textAlign='left';
+ g.globalAlpha=1}
+function rr(x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
+function drawScene(i,a,lt){const s=SCENES[i];if(s.card)drawCard(s,a);else drawShot(s,a,lt)}
+const offA=document.createElement('canvas'),offB=document.createElement('canvas');offA.width=offB.width=W;offA.height=offB.height=H;const main=g;
+function paint(cnv,i,lt){g=cnv.getContext('2d');g.globalAlpha=1;g.clearRect(0,0,W,H);drawScene(i,1,lt);g=main}
+function frame(t){g.globalAlpha=1;g.fillStyle='#000';g.fillRect(0,0,W,H);
+ let i=0;while(i<SCENES.length-1&&t>=starts[i+1])i++;const lt=t-starts[i];
+ paint(offA,i,lt);g.drawImage(offA,0,0);
+ if(i<SCENES.length-1){const rem=SCENES[i].dur-lt;if(rem<FADE){const k=1-rem/FADE;paint(offB,i+1,0);
+   const cardInvolved=SCENES[i].card||SCENES[i+1].card;
+   if(cardInvolved){g.globalAlpha=k;g.drawImage(offB,0,0);g.globalAlpha=1}
+   else{g.globalAlpha=k;g.drawImage(offB,0,0,W,AREA,0,0,W,AREA);g.globalAlpha=1;g.fillStyle=NAVY;g.fillRect(0,AREA+4,W,BAR-4);
+     if(k<0.5){g.globalAlpha=1-2*k;g.drawImage(offA,0,AREA+4,W,BAR-4,0,AREA+4,W,BAR-4)}else{g.globalAlpha=2*k-1;g.drawImage(offB,0,AREA+4,W,BAR-4,0,AREA+4,W,BAR-4)}g.globalAlpha=1}}}
+ // progress
+ g.fillStyle='rgba(255,255,255,0.12)';g.fillRect(0,H-6,W,6);g.fillStyle=ACC;g.fillRect(0,H-6,W*Math.min(1,t/T),6)}
+window.renderAt=(t)=>frame(t);
+window.record=async()=>{await load();frame(0);
+ const st=cv.captureStream(30);const mt='video/mp4;codecs=avc1.640028';
+ const rec=new MediaRecorder(st,{mimeType:mt,videoBitsPerSecond:6000000});const ch=[];rec.ondataavailable=e=>{if(e.data.size)ch.push(e.data)};
+ const done=new Promise(r=>rec.onstop=r);rec.start(1000);const t0=performance.now();
+ await new Promise(res=>{function tick(){const t=(performance.now()-t0)/1000;frame(Math.min(t,T));if(t<T+0.3)requestAnimationFrame(tick);else res()}requestAnimationFrame(tick)});
+ rec.stop();await done;const blob=new Blob(ch,{type:'video/mp4'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='clicktide-shopify-review-screencast.mp4';document.body.appendChild(a);a.click();return blob.size};
+window.ready=load;
+</script></body></html>

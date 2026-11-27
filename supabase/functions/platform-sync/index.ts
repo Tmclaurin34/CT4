@@ -58,7 +58,10 @@ const FETCH_TIMEOUT_MS = 12_000;
 const CLAIM_SECONDS = 180;
 const LEASE_SECONDS = 300;
 const OVERLAP_MS = 2 * 3600_000; // re-read the tail of the last pass; the ledger drops repeats
-const RESYNC_MS = 20 * 3600_000;
+// A store is due again 50 minutes after a successful sync, so the hourly cron (:40) picks it
+// up on every run: a new order shows up within about an hour (it used to wait ~20 hours).
+// Each run only reads orders since the last pass (plus OVERLAP_MS), so this stays cheap.
+const RESYNC_MS = 50 * 60_000;
 const SLICE_MS = 7 * 86400_000;
 const SQUARE_REFRESH_BEFORE_MS = 7 * 86400_000;
 const RHYTHM_TIMEOUT_MS = 9_000; // clicktide_refresh_rhythm runs under PostgREST's 8 s statement timeout
