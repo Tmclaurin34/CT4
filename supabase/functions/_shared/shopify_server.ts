@@ -285,7 +285,8 @@ async function reportUsageLeased(limit: number) {
 // with a one-time link. Accounts that were made on the website and linked to a store by the
 // owner (claim flow) are never signed in this way: those owners log in themselves.
 export const APP_BASE_URL = Deno.env.get("APP_BASE_URL") ?? "https://goclicktide.com";
-const PROVISION_EMAIL_DOMAIN = Deno.env.get("SHOPIFY_ACCOUNT_EMAIL_DOMAIN") ?? "shopify.goclicktide.com";
+// A domain Clicktide controls and never receives mail at: nobody can pre-register or read these.
+export const PROVISION_EMAIL_DOMAIN = "shopify-users.goclicktide.com";
 
 async function authAdmin(path: string, init: RequestInit = {}) {
   const r = await fetch(`${SUPA}/auth/v1/admin${path}`, {
@@ -306,21 +307,35 @@ export async function provisionedFor(userId: string, shop: string): Promise<bool
   return u.ok && String(u.data?.app_metadata?.shopify_shop || "").toLowerCase() === shop.toLowerCase();
 }
 
-// One-time sign-in link for a store-provisioned account: goclicktide.com verifies the
-// token_hash with /auth/v1/verify (type magiclink). Nothing is e-mailed.
-export async function signInUrlFor(userId: string, shop: string): Promise<string | null> {
+// Where to send the merchant: goclicktide.com/#ct_sso=<one-time code>. The code is in the URL
+// fragment (never sent to a server or logged), lives 60 seconds, is single use and bound to the
+// account and shop (clicktide_shopify_sso_mint; refused for staff or without an active store
+// connection). The page swaps it for a session at shopify-sso.
+export async function ssoUrlFor(userId: string, shop: string): Promise<string | null> {
+  if (!(await provisionedFor(userId, shop))) return null;
+  const code = await rpc("clicktide_shopify_sso_mint", { p_user: userId, p_shop: shop });
+  if (typeof code !== "string" || !/^[0-9a-f]{64}$/.test(code)) return null;
+  return `${APP_BASE_URL}/#ct_sso=${code}`;
+}
+
+// shopify-sso: one-time code -> session for the store's own account, created server-side.
+export async function sessionForSsoCode(code: string): Promise<Record<string, unknown> | null> {
+  const t = await rpc("clicktide_shopify_sso_take", { p_code: code }) as Record<string, any>;
+  if (!t?.ok) return null;
+  const userId = String(t.user_id), shop = String(t.shop);
   const u = await authAdmin(`/users/${encodeURIComponent(userId)}`);
   const email = String(u.data?.email || "");
-  if (!u.ok || !email || String(u.data?.app_metadata?.shopify_shop || "").toLowerCase() !== shop.toLowerCase()) return null;
+  if (!u.ok || !email || String(u.data?.app_metadata?.shopify_shop || "").toLowerCase() !== shop) return null;
   const g = await authAdmin("/generate_link", { method: "POST", body: JSON.stringify({ type: "magiclink", email }) });
   const hashed = String(g.data?.hashed_token || g.data?.properties?.hashed_token || "");
-  if (!g.ok || !hashed) { console.error("shopify sign-in link failed", shop, g.status, JSON.stringify(g.data).slice(0, 200)); return null; }
-  const url = new URL(APP_BASE_URL);
-  url.searchParams.set("token_hash", hashed);
-  url.searchParams.set("type", "magiclink");
-  url.searchParams.set("ct_platform", "shopify");
-  url.searchParams.set("ct_shop", shop);
-  return url.toString();
+  if (!g.ok || !hashed) { console.error("shopify sso link failed", shop, g.status); return null; }
+  const v = await fetch(`${SUPA}/auth/v1/verify`, {
+    method: "POST", headers: { apikey: SRK, "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "magiclink", token_hash: hashed }),
+  });
+  const sess = await v.json().catch(() => ({})) as Record<string, any>;
+  if (!v.ok || !sess?.access_token) { console.error("shopify sso verify failed", shop, v.status); return null; }
+  return { access_token: sess.access_token, refresh_token: sess.refresh_token, expires_in: sess.expires_in, expires_at: sess.expires_at, user: sess.user, shop };
 }
 
 async function shopProfile(shop: string, token: string) {
@@ -358,17 +373,22 @@ export async function provisionForClaim(claim: string): Promise<ClaimResult> {
   const conn = rows?.[0] ? (await rest(`/rest/v1/platform_connections?id=eq.${rows[0].connection_id}&select=access_token,merchant_name&limit=1`) as Array<{ access_token: string; merchant_name: string }>)?.[0] : null;
   const prof = conn?.access_token ? await shopProfile(shop, conn.access_token) : { name: "", email: "", tz: "" };
   const name = prof.name || conn?.merchant_name || shop.replace(/\.myshopify\.com$/, "");
-  const email = `${shop.replace(/\.myshopify\.com$/, "").slice(0, 40)}.${randHex(4)}@${PROVISION_EMAIL_DOMAIN}`;
-  const cu = await authAdmin("/users", {
+  const slug = shop.replace(/\.myshopify\.com$/, "").slice(0, 50);
+  let email = `${slug}@${PROVISION_EMAIL_DOMAIN}`;
+  const create = () => authAdmin("/users", {
     method: "POST",
     body: JSON.stringify({ email, email_confirm: true, app_metadata: { shopify_shop: shop, signup: "shopify" }, user_metadata: { business_name: name } }),
   });
+  let cu = await create();
+  if (!cu.ok && (cu.status === 422 || cu.status === 409)) { email = `${slug}-${randHex(3)}@${PROVISION_EMAIL_DOMAIN}`; cu = await create(); }
   const userId = String(cu.data?.id || "");
   if (!cu.ok || !userId) { console.error("shopify account create failed", shop, cu.status, JSON.stringify(cu.data).slice(0, 200)); return { ok: false, reason: "failed", shop }; }
   try {
     await rest("/rest/v1/clicktide", {
       method: "POST", headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({ user_id: userId, business_name: name, email: prof.email || email, business_email: prof.email || null, onboarding_complete: true, business_type: "other", churn_days: 60 }),
+      // Owner alerts and receipts go to the store's contact address from Shopify, never the
+      // internal sign-in address.
+      body: JSON.stringify({ user_id: userId, business_name: name, email: prof.email || null, business_email: prof.email || null, onboarding_complete: true, business_type: "other", churn_days: 60 }),
     });
     const r = await rpc("clicktide_shopify_claim", { p_token_hash: hash, p_user: userId }) as Record<string, any>;
     if (!r?.ok) throw new Error(`claim ${r?.error || "failed"}`);
