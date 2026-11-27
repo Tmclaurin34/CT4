@@ -147,6 +147,17 @@ async function engineProblems(since: string) {
     if (s.sms_registry_error) out.push(`${label}: the A2P registrations could not be read`);
     if (Number(s.wallet_refund_failed) > 0) out.push(`${label}: ${s.wallet_refund_failed} wallet refund(s) failed — check the ledger`);
   }
+  // Shopify usage reporter (shopify-webhooks {"job":"usage"}, every 10 min): once any business is
+  // billed through Shopify, a reporter that stops means postcards/gifts/texts go unbilled.
+  try {
+    const hb = await rest("/rest/v1/rpc/clicktide_shopify_usage_heartbeat", { method: "POST", body: "{}" });
+    if (hb && hb.stale) {
+      out.push(`Shopify usage reporter: no successful run ${hb.last_success_at ? `since ${et(hb.last_success_at)}` : "on record"} (expected every 10 minutes) — Shopify usage charges are not being sent`);
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/could not find the function|does not exist/i.test(msg)) out.push(`Shopify usage reporter heartbeat could not be read: ${msg.slice(0, 160)}`);
+  }
   return out;
 }
 

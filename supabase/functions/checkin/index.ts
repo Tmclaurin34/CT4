@@ -75,6 +75,80 @@ function clientIp(req: Request) {
   return (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "unknown";
 }
 
+// ---- Cloudflare Turnstile (package "turnstile", 2026-11-27) -----------------------------
+// DORMANT until the owner sets the TURNSTILE_SECRET_KEY edge secret: with no secret the check
+// is skipped (logged once per instance), so nothing changes before then. With a secret, the
+// request needs a token (body field turnstile_token) that Cloudflare's siteverify accepts,
+// solved on one of Clicktide's own hostnames, for this form's action. Single-use: siteverify
+// refuses a replayed token (timeout-or-duplicate).
+// "unavailable" = siteverify could not give an answer (network error, timeout, non-JSON
+// reply, or Cloudflare says our secret is missing/invalid or it had an internal error). Each
+// function decides what that means (see TURNSTILE_FAIL_OPEN below).
+const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+const TURNSTILE_HOSTS = ["goclicktide.com", "www.goclicktide.com", "clicktide-app.pages.dev"];
+const TURNSTILE_REFUSED = { ok: false, error: "Please complete the check", code: "turnstile_failed" };
+const TURNSTILE_DOWN = { ok: false, error: "The security check is unavailable right now. Please try again in a minute.", code: "turnstile_unavailable" };
+let turnstileOffLogged = false;
+
+function turnstileHostOk(host: unknown) {
+  const h = String(host || "").toLowerCase();
+  // the Pages project's own preview aliases (preview.clicktide-app.pages.dev, <hash>.…)
+  return TURNSTILE_HOSTS.includes(h) || h.endsWith(".clicktide-app.pages.dev");
+}
+
+async function turnstileCheck(req: Request, token: unknown, action: string): Promise<"ok" | "skipped" | "rejected" | "unavailable"> {
+  const secret = (Deno.env.get("TURNSTILE_SECRET_KEY") ?? "").trim();
+  if (!secret) {
+    if (!turnstileOffLogged) { turnstileOffLogged = true; console.log("turnstile: TURNSTILE_SECRET_KEY is not set; check skipped"); }
+    return "skipped";
+  }
+  const t = typeof token === "string" ? token.trim() : "";
+  if (!t || t.length > 2048) return "rejected";
+  const form = new URLSearchParams({ secret, response: t });
+  const ip = (req.headers.get("cf-connecting-ip") || "").trim();
+  if (ip) form.set("remoteip", ip);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 5000);
+  let d: { success?: unknown; hostname?: unknown; action?: unknown; "error-codes"?: unknown } | null = null;
+  try {
+    const r = await fetch(TURNSTILE_VERIFY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: form.toString(),
+      signal: ctrl.signal,
+    });
+    d = await r.json();
+  } catch (e) {
+    console.error("turnstile: siteverify unreachable", e instanceof Error ? e.name : String(e));
+    return "unavailable";
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!d || typeof d !== "object" || typeof d.success !== "boolean") return "unavailable";
+  const codes = Array.isArray(d["error-codes"]) ? (d["error-codes"] as unknown[]).map(String) : [];
+  if (d.success !== true) {
+    // A missing or wrong secret is a configuration error, not an outage: refuse the request so
+    // the owner sees it at once (a fail-open function would otherwise run with no bot check).
+    if (codes.some((c) => c === "missing-input-secret" || c === "invalid-input-secret")) {
+      console.error("turnstile: secret misconfigured:", codes.join(","));
+      return "rejected";
+    }
+    if (codes.some((c) => c === "internal-error")) {
+      console.error("turnstile: siteverify internal error:", codes.join(","));
+      return "unavailable";
+    }
+    return "rejected";
+  }
+  if (!turnstileHostOk(d.hostname)) { console.warn("turnstile: token from an unexpected hostname"); return "rejected"; }
+  if (action && d.action !== action) { console.warn("turnstile: token for a different action"); return "rejected"; }
+  return "ok";
+}
+// checkin fails OPEN when siteverify can't answer (network error / timeout / Cloudflare-side
+// error): a customer checking in at the counter must not be turned away
+// because Cloudflare is unreachable, and the per-IP / per-business limits below still apply.
+// A missing, invalid, replayed, wrong-hostname or wrong-action token is still refused.
+const TURNSTILE_ACTION = "checkin";
+
 // Fails open: check-in at the counter must keep working if the limiter is unreachable.
 async function underLimit(bucket: string, windowSeconds: number, max: number) {
   try {
@@ -263,7 +337,7 @@ Deno.serve(async (req) => {
 
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
-  let body: { b?: string; name?: string; phone?: string; consent?: boolean; consent_marketing?: boolean; consent_transactional?: boolean; form_version?: string };
+  let body: { b?: string; name?: string; phone?: string; consent?: boolean; consent_marketing?: boolean; consent_transactional?: boolean; form_version?: string; turnstile_token?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -273,7 +347,13 @@ Deno.serve(async (req) => {
   const b = String(body.b || "");
   if (!UUID.test(b)) return json({ error: "Invalid link" }, 400);
   // One visitor can't flood a business's list; one business can't be flooded by many.
-  if (!(await underLimit(`checkin:post:ip:${ip}`, 3600, 30)) || !(await underLimit(`checkin:post:biz:${b}`, 3600, 400))) {
+  if (!(await underLimit(`checkin:post:ip:${ip}`, 3600, 30))) {
+    return json({ error: "Too many check-ins right now — please try again shortly." }, 429);
+  }
+  const ts = await turnstileCheck(req, body?.turnstile_token, TURNSTILE_ACTION);
+  if (ts === "rejected") return json(TURNSTILE_REFUSED, 400);
+  if (ts === "unavailable") console.warn("turnstile: siteverify unavailable; check-in allowed (fail open)");
+  if (!(await underLimit(`checkin:post:biz:${b}`, 3600, 400))) {
     return json({ error: "Too many check-ins right now — please try again shortly." }, 429);
   }
   const info = await businessInfo(b);

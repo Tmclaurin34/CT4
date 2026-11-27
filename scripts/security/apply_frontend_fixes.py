@@ -1303,6 +1303,344 @@ AUDIT.extend([
 ])
 
 
+# ---------------------------------------------------------------------------------------
+# package "turnstile" (2026-11-27): Cloudflare Turnstile on every form that reaches Supabase
+# Auth (sign-up, password log-in, resend confirmation) or a public Clicktide function
+# (password-reset, launch-inquiry, check-in). Appended after every earlier patch.
+#
+# DORMANT-SAFE. Supabase Auth ignores `gotrue_meta_security` while its CAPTCHA setting is off,
+# and the functions skip the check while TURNSTILE_SECRET_KEY is unset, so shipping this
+# changes nothing a visitor can notice except the small "Verifying… / Success" box. If the
+# Turnstile script can't load, the form is still sent (without a token) and whatever the
+# server answers is shown: nothing is blocked on the client side, nothing is skipped on the
+# server side once the owner turns the check on.
+#
+# GoTrue v2.199.0 (internal/api/middleware.go verifyCaptcha + captchaRequest): /signup,
+# /recover, /resend, /magiclink, /otp and /token (grant_type=password; refresh_token, pkce and
+# id_token are exempt) read the token from the JSON body field
+# gotrue_meta_security.captcha_token. A service-role caller (password-reset's admin
+# generate_link) is exempt, which is why password-reset verifies Turnstile itself.
+# No production page calls /otp, /magiclink or /recover today (checked 2026-11-27).
+# ---------------------------------------------------------------------------------------
+
+TS_SITE_KEY = "0x4AAAAAAGVfstoxEkbfB9VK"  # public site key (Managed mode); the secret is never in a page
+
+# Shared page helper. Same text on all four pages except the last line, which starts the
+# watcher (childList only for the app's re-rendering screens; class changes too for the audit
+# page, whose panels are shown by toggling a "hide" class).
+TS_HELPER = r'''// -- Cloudflare Turnstile bot check (package "turnstile", 2026-11-27) ----------------------
+// Forms that reach Supabase Auth (sign-up, log in, resend) or Clicktide's public
+// password-reset / launch-inquiry / check-in functions carry a Turnstile token. The token is
+// ignored until the owner turns the check on (Supabase Auth CAPTCHA + TURNSTILE_SECRET_KEY).
+// The script loads only once a form with a check slot is on screen. If it can't load, the
+// form is still sent (without a token) and the server's answer is shown.
+var CT_TS_KEY="%s";
+var CT_TS_SRC="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=ctTsOnload";
+var ctTs={state:"idle",slots:[],timer:0,lastErr:""};
+function ctTsOff(){return !!window.CT_TS_OFF||(typeof DEMO!=="undefined"&&!!DEMO);}
+function ctTsSlot(id,action){return '<div class="ct-ts" id="'+id+'" data-ts-action="'+action+'" style="margin:0 0 12px"></div>';}
+function ctTsBody(o,t){if(t)o.gotrue_meta_security={captcha_token:t};return o;}
+function ctTsLoad(){
+  if(ctTs.state!=="idle")return;
+  ctTs.state="loading";
+  window.ctTsOnload=function(){clearTimeout(ctTs.timer);ctTs.state=window.turnstile&&window.turnstile.render?"ready":"failed";ctTsScan();};
+  var fail=function(){if(ctTs.state==="loading")ctTs.state="failed";};
+  ctTs.timer=setTimeout(fail,10000);
+  try{var s=document.createElement("script");s.src=CT_TS_SRC;s.async=true;s.onerror=fail;(document.head||document.body).appendChild(s);}catch(e){fail();}
+}
+function ctTsScan(){
+  if(ctTsOff())return;
+  ctTs.slots=ctTs.slots.filter(function(r){if(r.el.isConnected)return true;try{window.turnstile.remove(r.wid);}catch(e){}return false;});
+  var els=document.querySelectorAll(".ct-ts:not([data-ts-on])");
+  for(var i=0;i<els.length;i++){
+    var el=els[i];
+    if(!(el.offsetWidth||el.offsetHeight||el.getClientRects().length))continue; // hidden panel: rendered once shown
+    if(ctTs.state==="idle"){ctTsLoad();return;}
+    if(ctTs.state==="ready")ctTsMount(el);
+  }
+}
+function ctTsMount(el){
+  el.setAttribute("data-ts-on","1");
+  var r={el:el,wid:null,tok:"",busy:false,err:false};
+  try{
+    r.wid=window.turnstile.render(el,{sitekey:CT_TS_KEY,action:el.getAttribute("data-ts-action")||undefined,size:el.offsetWidth<300?"compact":"flexible","refresh-expired":"auto",
+      callback:function(t){r.tok=String(t||"");r.err=false;r.busy=false;},
+      "expired-callback":function(){r.tok="";},
+      "error-callback":function(){r.tok="";r.err=true;r.busy=false;},
+      "before-interactive-callback":function(){r.busy=true;},
+      "after-interactive-callback":function(){r.busy=false;}});
+  }catch(e){r.err=true;}
+  ctTs.slots.push(r);
+}
+function ctTsRec(id){var el=document.getElementById(id);if(!el)return null;for(var i=0;i<ctTs.slots.length;i++)if(ctTs.slots[i].el===el)return ctTs.slots[i];return null;}
+// The slot's token, or "" when there is none to wait for (script didn't load, widget error,
+// demo mode, no slot). Waits up to 15s for a running check, 2 minutes while it asks the visitor.
+function ctTsToken(id){
+  return new Promise(function(res){
+    if(ctTsOff())return res("");
+    var t0=Date.now();
+    (function poll(){
+      var el=document.getElementById(id),r=ctTsRec(id),w=Date.now()-t0;
+      if(!el||ctTs.state==="failed")return res("");
+      if(r&&r.tok)return res(r.tok);
+      if(r&&r.err&&(r.wid==null||w>3000))return res("");
+      if(!r&&ctTs.state!=="loading")ctTsScan();
+      if(w>(r&&r.busy?120000:15000))return res("");
+      setTimeout(poll,150);
+    })();
+  });
+}
+// Tokens are single-use: every submit is followed by a reset (a fresh check starts at once).
+function ctTsReset(id){var r=ctTsRec(id);if(!r)return;r.tok="";r.err=false;try{window.turnstile.reset(r.wid);}catch(e){}}
+// A refusal from the check (Supabase Auth: captcha_failed; Clicktide functions:
+// turnstile_failed / turnstile_unavailable) as a message for the visitor, else "".
+function ctTsErr(d){
+  d=d||{};var c=String(d.error_code||d.code||""),m=String(d.msg||d.message||d.error||"");
+  if(c==="turnstile_unavailable")return m||"The security check is unavailable right now. Please try again in a minute.";
+  if(c!=="captcha_failed"&&c!=="turnstile_failed"&&!/captcha protection/i.test(m))return "";
+  return ctTs.state==="failed"?"The security check couldn't load. Reload the page (allow challenges.cloudflare.com if you use a blocker), then try again.":"Please complete the security check, then try again.";
+}
+// fetch(...).then(ctTsCheck): records a refusal from the check in ctTs.lastErr ("" otherwise);
+// reads a copy of the body, so the caller can still read the response itself.
+function ctTsCheck(r){ctTs.lastErr="";if(!r||r.ok||!r.clone)return r;return r.clone().json().then(function(d){ctTs.lastErr=ctTsErr(d);return r;},function(){return r;});}
+function ctTsWatch(attrs){
+  var q=false,kick=function(){if(q)return;q=true;setTimeout(function(){q=false;ctTsScan();},0);};
+  try{new MutationObserver(kick).observe(document.documentElement,attrs?{childList:true,subtree:true,attributes:true,attributeFilter:["class"]}:{childList:true,subtree:true});}catch(e){}
+  kick();
+}
+''' % TS_SITE_KEY
+
+# ----- index.html ------------------------------------------------------------------------
+
+# idx-auth-intent-signup's text (`async up(e,p,m){rememberAuthIntent(...)...redirect_to=`) stays
+# untouched, so the token comes in as the 4th argument (arguments[3]) rather than a new name.
+IDX_AU_UP_OLD = r'''${encodeURIComponent(authRedirectTo())}`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e,password:p,data:m})});const d=await r.json();if(!r.ok){'''
+IDX_AU_UP_NEW = r'''${encodeURIComponent(authRedirectTo())}`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify(ctTsBody({email:e,password:p,data:m},arguments[3]))});const d=await r.json();if(!r.ok){const _ce=ctTsErr(d);if(_ce)throw new Error(_ce);'''
+IDX_AU_IN_OLD = r'''  async in(e,p){const r=await fetch(`${SU}/auth/v1/token?grant_type=password`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e,password:p})});const d=await r.json();if(!r.ok){'''
+IDX_AU_IN_NEW = r'''  async in(e,p,ct){const r=await fetch(`${SU}/auth/v1/token?grant_type=password`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify(ctTsBody({email:e,password:p},ct))});const d=await r.json();if(!r.ok){const _ce=ctTsErr(d);if(_ce)throw new Error(_ce);'''
+
+# idx-auth-intent-resend's lines (rememberAuthIntent + `await fetch(SU+"/auth/v1/resend...`) stay
+# contiguous and unchanged: the token is fetched above them, the result is checked after them.
+IDX_RESEND_TOK_OLD = '''  if(btn){btn.disabled=true;btn.textContent="Sending...";}
+  try{
+    rememberAuthIntent(e,"signup");
+'''
+IDX_RESEND_TOK_NEW = '''  if(btn){btn.disabled=true;btn.textContent="Sending...";}
+  try{
+    var _tk=await ctTsToken("tsResend");
+    rememberAuthIntent(e,"signup");
+'''
+IDX_RESEND_OLD = r''',{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({type:"signup",email:e})});
+    if(btn)btn.textContent="Sent ✓ — check spam too";'''
+IDX_RESEND_NEW = r''',{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify(ctTsBody({type:"signup",email:e},_tk))}).then(ctTsCheck).finally(function(){ctTsReset("tsResend");});
+    if(ctTs.lastErr){if(btn){btn.disabled=false;btn.textContent="Didn't get it? Resend email";}ctToast(ctTs.lastErr,"warn");return;}
+    if(btn)btn.textContent="Sent ✓ — check spam too";'''
+
+# idx-auth-intent-reset's text ends at `try{await fetch(FN+"/password-reset"` and stays as it is;
+# the token is awaited inside the body (the button already says "Sending…").
+IDX_FP_SEND_OLD = r''',{method:"POST",headers:{"Content-Type":"application/json",apikey:SK},body:JSON.stringify({email:e})});}catch(_){}
+  if(msg){msg.style.color="#1E874F";'''
+IDX_FP_SEND_NEW = r''',{method:"POST",headers:{"Content-Type":"application/json",apikey:SK},body:JSON.stringify({email:e,turnstile_token:(await ctTsToken("tsFp"))||undefined})}).then(ctTsCheck);}catch(_){ctTs.lastErr="";}
+  ctTsReset("tsFp");
+  if(ctTs.lastErr){if(msg){msg.style.color="#C0392B";msg.textContent=ctTs.lastErr;msg.style.display="block";}btn.disabled=false;btn.textContent="Send reset link";return;}
+  if(msg){msg.style.color="#1E874F";'''
+
+IDX_IQ_SEND_OLD = r'''    try{await fetch(FN+"/launch-inquiry",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:e,source:location.pathname+location.search})});}catch(_){}
+    try{localStorage.setItem("ct_pref_email",e);}catch(_){}'''
+IDX_IQ_SEND_NEW = r'''    var _tk=await ctTsToken("tsIq"),_ce="";
+    try{var _rr=await fetch(FN+"/launch-inquiry",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:e,source:location.pathname+location.search,turnstile_token:_tk||undefined})});if(!_rr.ok)_ce=ctTsErr(await _rr.json().catch(function(){return {};}));}catch(_){}
+    ctTsReset("tsIq");
+    if(_ce){b.textContent="Keep me posted →";b.disabled=false;ctToast(_ce,"warn");return;}
+    try{localStorage.setItem("ct_pref_email",e);}catch(_){}'''
+
+INDEX.extend([
+    P("idx-ts-helpers", "Turnstile helpers (lazy script, slots, token, reset, error text) + render watcher",
+      r'''function authRedirectTo(){return window.location.origin+window.location.pathname;}''',
+      TS_HELPER + "ctTsWatch(false);\n" + r'''function authRedirectTo(){return window.location.origin+window.location.pathname;}'''),
+    P("idx-ts-au-up", "sign-up sends the Turnstile token (gotrue_meta_security.captcha_token); a refused check gets a clear message",
+      IDX_AU_UP_OLD, IDX_AU_UP_NEW),
+    P("idx-ts-au-in", "password log-in sends the Turnstile token; a refused check gets a clear message",
+      IDX_AU_IN_OLD, IDX_AU_IN_NEW),
+    P("idx-ts-auth-slot", "log-in / sign-up screen: Turnstile slot above the error line",
+      r'''    <div class="err" id="aErr"></div>''',
+      r'''    ${ctTsSlot("tsAuth",il?"login":"signup")}<div class="err" id="aErr"></div>'''),
+    P("idx-ts-doauth", "log-in / sign-up screen: token fetched before the call, widget reset after it",
+      r'''    const r=il?await au.in(e,p):await au.up(e,p,meta);''',
+      r'''    const _tk=await ctTsToken("tsAuth");
+    const r=await (il?au.in(e,p,_tk):au.up(e,p,meta,_tk)).finally(function(){ctTsReset("tsAuth");});'''),
+    P("idx-ts-ob-slot", "onboarding sign-up form: Turnstile slot (only while signed out)",
+      r'''${S?"":legalConsent("oAgree")}<div class="err" id="oErr"></div>''',
+      r'''${S?"":legalConsent("oAgree")}${S?"":ctTsSlot("tsOb","signup")}<div class="err" id="oErr"></div>'''),
+    P("idx-ts-ob-signup", "onboarding sign-up: token fetched before the call, widget reset after it",
+      r'''    const r=await au.up(e,p,meta);''',
+      r'''    const _tk=await ctTsToken("tsOb");
+    const r=await au.up(e,p,meta,_tk).finally(function(){ctTsReset("tsOb");});'''),
+    P("idx-ts-resend-slot", "check-your-email screen: Turnstile slot above Resend",
+      r'''<button class="btn btn-ghost" style="padding:10px 18px" onclick="resendConfirm(this)">''',
+      r'''<div style="max-width:320px;margin:0 auto">${ctTsSlot("tsResend","resend")}</div><button class="btn btn-ghost" style="padding:10px 18px" onclick="resendConfirm(this)">'''),
+    P("idx-ts-resend-token", "resend confirmation: token fetched first (above idx-auth-intent-resend's lines)",
+      IDX_RESEND_TOK_OLD, IDX_RESEND_TOK_NEW),
+    P("idx-ts-resend", "resend confirmation sends the token; a refused check re-enables the button with a message",
+      IDX_RESEND_OLD, IDX_RESEND_NEW),
+    P("idx-ts-fp-slot", "forgot-password modal: Turnstile slot",
+      r'''    +'<div id="fpMsg" style="display:none;font-size:12px;margin:0 0 12px;line-height:1.5"></div>'
+''',
+      r'''    +ctTsSlot("tsFp","password_reset")
+    +'<div id="fpMsg" style="display:none;font-size:12px;margin:0 0 12px;line-height:1.5"></div>'
+'''),
+    P("idx-ts-fp-send", "password-reset request sends turnstile_token; only a refused check changes the reply shown",
+      IDX_FP_SEND_OLD, IDX_FP_SEND_NEW),
+    P("idx-ts-iq-slot", "launch-inquiry overlay: Turnstile slot above the button",
+      r'''<button id="ctIqB" style="width:100%;margin-top:12px;''',
+      r'''<div style="margin-top:12px">${ctTsSlot("tsIq","launch_inquiry")}</div><button id="ctIqB" style="width:100%;margin-top:12px;'''),
+    P("idx-ts-iq-send", "launch inquiry sends turnstile_token; a refused check keeps the overlay open",
+      IDX_IQ_SEND_OLD, IDX_IQ_SEND_NEW),
+])
+
+# ----- free-pos-audit.html ---------------------------------------------------------------
+
+# fpa-auth-intent-signup's lines (rememberAuthIntent + `var r=await fetch(...signup?redirect_to=...)`)
+# stay as they are; the token is awaited inside the body.
+FPA_SIGNUP_OLD = r''',{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:email,password:pw,data:meta})});
+    var d=await r.json().catch(function(){return{};});
+    if(!r.ok){var c=d.error_code||d.error;'''
+FPA_SIGNUP_NEW = r''',{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify(ctTsBody({email:email,password:pw,data:meta},await ctTsToken("tsSignup")))}).finally(function(){ctTsReset("tsSignup");});
+    var d=await r.json().catch(function(){return{};});
+    if(!r.ok&&ctTsErr(d))throw new Error(ctTsErr(d));
+    if(!r.ok){var c=d.error_code||d.error;'''
+FPA_LOGIN_OLD = r'''    var r=await fetch(SU+"/auth/v1/token?grant_type=password",{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:$("lEmail").value.trim(),password:$("lPw").value})});
+    var d=await r.json().catch(function(){return{};});
+    if(!r.ok){'''
+FPA_LOGIN_NEW = r'''    var tk=await ctTsToken("tsLogin");
+    var r=await fetch(SU+"/auth/v1/token?grant_type=password",{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify(ctTsBody({email:$("lEmail").value.trim(),password:$("lPw").value},tk))}).finally(function(){ctTsReset("tsLogin");});
+    var d=await r.json().catch(function(){return{};});
+    if(!r.ok&&ctTsErr(d))throw new Error(ctTsErr(d));
+    if(!r.ok){'''
+FPA_RESEND_OLD = r'''  try{var r=await fetch(SU+"/auth/v1/resend",{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({type:"signup",email:email,options:{emailRedirectTo:location.origin+"/free-pos-audit?step=connect"}})});$("resendMsg").textContent=r.ok?" Sent — check your inbox.":" Couldn't resend — wait a minute and try again.";}catch(e){$("resendMsg").textContent=" Couldn't resend right now.";}'''
+FPA_RESEND_NEW = r'''  var tk=await ctTsToken("tsResend");
+  try{var r=await fetch(SU+"/auth/v1/resend",{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify(ctTsBody({type:"signup",email:email,options:{emailRedirectTo:location.origin+"/free-pos-audit?step=connect"}},tk))});var ce=r.ok?"":ctTsErr(await r.json().catch(function(){return{};}));$("resendMsg").textContent=r.ok?" Sent — check your inbox.":ce?" "+ce:" Couldn't resend — wait a minute and try again.";}catch(e){$("resendMsg").textContent=" Couldn't resend right now.";}
+  ctTsReset("tsResend");'''
+# fpa-auth-intent-reset's patched text is the whole fetch line, so it cannot stay verbatim; the
+# remember line it added is kept, and fpa-auth-intent-reset learns (also=) that this upgraded
+# text counts as done, the engine's way for a later patch to upgrade an earlier one in place.
+FPA_FORGOT_OLD = r'''  rememberAuthIntent(em,"recovery");
+  try{await fetch(FN+"/password-reset",{method:"POST",headers:{"Content-Type":"application/json",apikey:SK},body:JSON.stringify({email:em,redirect_to:"https://goclicktide.com/free-pos-audit"})});}catch(x){}
+  $("fpMsg").textContent="Sent.'''
+FPA_FORGOT_MARK = '''  rememberAuthIntent(em,"recovery");
+  try{var rr=await fetch(FN+"/password-reset"'''
+FPA_FORGOT_NEW = r'''  rememberAuthIntent(em,"recovery");
+  try{var rr=await fetch(FN+"/password-reset",{method:"POST",headers:{"Content-Type":"application/json",apikey:SK},body:JSON.stringify({email:em,redirect_to:"https://goclicktide.com/free-pos-audit",turnstile_token:(await ctTsToken("tsForgot"))||undefined})}).then(ctTsCheck);}catch(x){ctTs.lastErr="";}
+  ctTsReset("tsForgot");
+  if(ctTs.lastErr){b.disabled=false;b.innerHTML="Send reset link &rarr;";return err("fpErr",ctTs.lastErr);}
+  $("fpMsg").textContent="Sent.'''
+assert FPA_FORGOT_NEW.startswith(FPA_FORGOT_MARK)
+for _p in AUDIT:
+    if _p.pid == "fpa-auth-intent-reset":
+        _p.also = _p.also + (FPA_FORGOT_MARK,)
+
+AUDIT.extend([
+    P("fpa-ts-helpers", "Turnstile helpers + watcher (panels are shown by class, so class changes are watched too)",
+      r'''$("fForgot").addEventListener("submit",async function(e){''',
+      TS_HELPER + "ctTsWatch(true);\n" + r'''$("fForgot").addEventListener("submit",async function(e){'''),
+    P("fpa-ts-signup-slot", "sign-up form: Turnstile slot",
+      r'''      <button class="btn btn-dark" style="width:100%" type="submit" id="sBtn">''',
+      r'''      <div class="ct-ts" id="tsSignup" data-ts-action="signup" style="margin:0 0 12px"></div>
+      <button class="btn btn-dark" style="width:100%" type="submit" id="sBtn">'''),
+    P("fpa-ts-login-slot", "log-in form: Turnstile slot",
+      r'''      <button class="btn btn-dark" style="width:100%" type="submit" id="lBtn">''',
+      r'''      <div class="ct-ts" id="tsLogin" data-ts-action="login" style="margin:0 0 12px"></div>
+      <button class="btn btn-dark" style="width:100%" type="submit" id="lBtn">'''),
+    P("fpa-ts-forgot-slot", "forgot-password form: Turnstile slot",
+      r'''      <button class="btn btn-dark" style="width:100%" type="submit" id="fpBtn">''',
+      r'''      <div class="ct-ts" id="tsForgot" data-ts-action="password_reset" style="margin:0 0 12px"></div>
+      <button class="btn btn-dark" style="width:100%" type="submit" id="fpBtn">'''),
+    P("fpa-ts-resend-slot", "check-your-email panel: Turnstile slot above Resend",
+      r'''    <button class="btn btn-ghost btn-sm" id="resendBtn" style="margin-top:14px">''',
+      r'''    <div class="ct-ts" id="tsResend" data-ts-action="resend" style="margin:14px 0 0"></div>
+    <button class="btn btn-ghost btn-sm" id="resendBtn" style="margin-top:14px">'''),
+    P("fpa-ts-signup", "sign-up sends the token; widget reset after the call; a refused check gets a clear message",
+      FPA_SIGNUP_OLD, FPA_SIGNUP_NEW),
+    P("fpa-ts-login", "password log-in sends the token; widget reset after the call",
+      FPA_LOGIN_OLD, FPA_LOGIN_NEW),
+    P("fpa-ts-resend", "resend confirmation sends the token; widget reset after the call",
+      FPA_RESEND_OLD, FPA_RESEND_NEW),
+    P("fpa-ts-forgot", "password-reset request sends turnstile_token; only a refused check changes the reply shown",
+      FPA_FORGOT_OLD, FPA_FORGOT_NEW),
+])
+
+# ----- backoffice.html -------------------------------------------------------------------
+# The strict meta CSP gains exactly three sources for challenges.cloudflare.com: script-src
+# (api.js), frame-src (the widget iframe; it fell back to default-src 'self') and connect-src.
+# Everything else in the policy is unchanged.
+
+BO_CSP_TS = BO_CSP.replace(
+    "script-src 'self' 'unsafe-inline'; ",
+    "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; ").replace(
+    "connect-src 'self' https://hmihfncvahsdlmefyxyg.supabase.co;",
+    "connect-src 'self' https://hmihfncvahsdlmefyxyg.supabase.co https://challenges.cloudflare.com;")
+assert BO_CSP_TS.count("https://challenges.cloudflare.com") == 3 and BO_CSP_TS != BO_CSP
+BO_TS_CSP_MARK = "frame-src https://challenges.cloudflare.com"
+# bo-csp anchors on <title>, which stays in the page, so once its policy is upgraded it would
+# look "todo" again and add a second (stricter) meta CSP. The engine's `unless` marks it n/a
+# when the upgraded policy is present: a pre-WP7 page still gets bo-csp first, then bo-ts-csp.
+for _p in BACKOFFICE:
+    if _p.pid == "bo-csp":
+        assert _p.unless is None
+        _p.unless = BO_TS_CSP_MARK
+
+BO_TS_SIGNIN_OLD = r'''try{const r=await fetch(`${SU}/auth/v1/token?grant_type=password`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e,password:p})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.access_token)throw new Error(d.msg||'''
+BO_TS_SIGNIN_NEW = r'''try{const _tk=await ctTsToken("tsBo");const r=await fetch(`${SU}/auth/v1/token?grant_type=password`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify(ctTsBody({email:e,password:p},_tk))}).finally(()=>ctTsReset("tsBo"));const d=await r.json().catch(()=>({}));if(!r.ok||!d.access_token)throw new Error(ctTsErr(d)||d.msg||'''
+
+BACKOFFICE.extend([
+    P("bo-ts-csp", "CSP: challenges.cloudflare.com allowed for script, frame and connect (Turnstile), nothing else changed",
+      BO_CSP, BO_CSP_TS),
+    P("bo-ts-helpers", "Turnstile helpers + render watcher",
+      r'''function login(){return `''',
+      TS_HELPER + "ctTsWatch(false);\n" + r'''function login(){return `'''),
+    P("bo-ts-slot", "staff log-in card: Turnstile slot above the button",
+      r'''<button class="btn gold" style="width:100%;margin-top:18px" onclick="signIn()">Log in</button>''',
+      r'''<div style="margin-top:14px">${ctTsSlot("tsBo","staff_login")}</div><button class="btn gold" style="width:100%;margin-top:6px" onclick="signIn()">Log in</button>'''),
+    P("bo-ts-signin", "staff password log-in sends the token; widget reset after the call",
+      BO_TS_SIGNIN_OLD, BO_TS_SIGNIN_NEW),
+])
+
+# ----- checkin.html ----------------------------------------------------------------------
+# The checkin function verifies the token itself (POST only), so it travels as
+# turnstile_token. The demo page (no ?b=) loads nothing.
+
+CHECKIN.extend([
+    P("ck-ts-helpers", "Turnstile helpers; off on the demo page (no ?b=)",
+      r'''var WL=false;
+''',
+      r'''var WL=false;
+''' + TS_HELPER + '''var CT_TS_OFF=!b;
+ctTsWatch(false);
+'''),
+    P("ck-ts-slot", "check-in form: Turnstile slot above the button",
+      r'''    <button class="btn" id="btn" type="submit">Check in →</button>''',
+      r'''    <div class="ct-ts" id="tsCheckin" data-ts-action="checkin" style="margin:0 0 10px"></div>
+    <button class="btn" id="btn" type="submit">Check in →</button>'''),
+    P("ck-ts-post", "check-in POST waits for the token and sends it as turnstile_token",
+      r'''  fetch(FN,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+    b:b,''',
+      r'''  ctTsToken("tsCheckin").then(function(tk){return fetch(FN,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+    turnstile_token:tk||undefined,
+    b:b,'''),
+    P("ck-ts-reset", "check-in: widget reset as soon as the answer arrives (the first-visit name step needs a fresh token)",
+      r'''.then(function(r){return r.json().then(function(d){return{s:r.status,d:d};});}).then(function(x){''',
+      r''';}).then(function(r){ctTsReset("tsCheckin");return r.json().then(function(d){return{s:r.status,d:d};});}).then(function(x){'''),
+    P("ck-ts-neterr", "check-in: widget reset after a network error too",
+      r'''  }).catch(function(){
+    fail("Network hiccup — try again.");''',
+      r'''  }).catch(function(){
+    ctTsReset("tsCheckin");
+    fail("Network hiccup — try again.");'''),
+    P("ck-ts-errmsg", "check-in: a refused check gets a clear message",
+      r'''      fail((x.d&&x.d.error)||"Something went wrong — try again.");''',
+      r'''      fail(ctTsErr(x.d)||(x.d&&x.d.error)||"Something went wrong — try again.");'''),
+])
+
+
 PAGES = {
     "index.html": (INDEX, "function giftEsc("),
     "free-pos-audit.html": (AUDIT, 'id="posGrid"'),
