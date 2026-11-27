@@ -4,7 +4,7 @@
 //  - shopify-app state (install started inside Shopify, review rule 2.3.2): no Clicktide
 //    user yet, so the connection is saved unclaimed with a one-time claim token; the
 //    merchant signs in / signs up and shopify-claim attaches it to their business.
-import { freshTimestamp, SHOPIFY_API_VERSION } from "../_shared/shopify.js";
+import { freshTimestamp, SHOPIFY_API_VERSION, tokenFields } from "../_shared/shopify.js";
 
 const APP_BASE_URL = Deno.env.get("APP_BASE_URL") ?? "https://goclicktide.com";
 
@@ -223,14 +223,17 @@ Deno.serve(async (req: Request) => {
       client_id: Deno.env.get("SHOPIFY_CLIENT_ID"),
       client_secret: secret,
       code,
+      expiring: 1, // Shopify only accepts expiring offline tokens on the Admin API now
     }),
   });
 
   if (!tokenRes.ok) return fail(st, "Failed to exchange Shopify code.");
 
   const tokenJson = await tokenRes.json().catch(() => ({}));
-  const access_token = String(tokenJson.access_token || "");
+  const tok = tokenFields(tokenJson, Date.now());
+  const access_token = tok.access_token;
   if (!access_token) return fail(st, "Shopify did not return an access token.");
+  const tokenSave = { refresh_token: tok.refresh_token, token_expires_at: tok.token_expires_at };
 
   let shopName = shop;
   let shopId = shop;
@@ -246,12 +249,13 @@ Deno.serve(async (req: Request) => {
       const json = await shopRes.json();
       shopName = json.data?.shop?.name ?? shop;
       shopId = String(json.data?.shop?.id ?? shop).split("/").pop() || shop;
-    }
-  } catch (_) {}
+      if (!json.data?.shop) console.error("shopify shop lookup returned no shop", shop, JSON.stringify(json?.errors || "").slice(0, 200));
+    } else console.error("shopify shop lookup failed", shop, shopRes.status, (await shopRes.text().catch(() => "")).slice(0, 200));
+  } catch (e) { console.error("shopify shop lookup error", shop, e); }
   shopName = cleanName(shopName, shop);
 
   if (st.install) {
-    return await saveUnclaimed({ merchant_id: shopId, merchant_name: shopName, shop_domain: shop, access_token, scope: tokenJson.scope || null, raw_response: { shop } }, shop, shopName);
+    return await saveUnclaimed({ merchant_id: shopId, merchant_name: shopName, shop_domain: shop, access_token, ...tokenSave, scope: tokenJson.scope || null, raw_response: { shop, refresh_expires_at: tok.refresh_expires_at } }, shop, shopName);
   }
 
   return await finish(st, "shopify", "Shopify", {
@@ -259,8 +263,9 @@ Deno.serve(async (req: Request) => {
     merchant_name: shopName,
     shop_domain: shop,
     access_token,
+    ...tokenSave,
     scope: tokenJson.scope || null,
-    raw_response: { shop },
+    raw_response: { shop, refresh_expires_at: tok.refresh_expires_at },
   }, {
     ct_platform: "shopify",
     ct_merchant: shopId,

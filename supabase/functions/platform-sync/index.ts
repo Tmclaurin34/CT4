@@ -25,6 +25,7 @@
 // are re-evaluated with clicktide_refresh_rhythm at the end of the run (time-boxed).
 
 import { aggregateAuditOrders, cleanEmail, isJunkPhone, normalizePhone, sufficiency, validateFacts } from "./audit.js";
+import { freshShopifyToken, type ShopConn } from "../_shared/shopify_server.ts";
 import { GQL_PAGE, LOGICAL_PAGE, mapShopifyOrder, ORDERS_QUERY, ordersRangeSearch, ordersSearch, readOrdersResponse, SHOPIFY_API_VERSION, shopifyOrderWindow, throttleWaitMs } from "./shopify.js";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
@@ -957,6 +958,10 @@ async function syncConnection(c: Conn, holder: string, runDeadline: number, own:
     const t = await ensureSquareToken(c, false);
     if (t === "auth") return await recordFailure(c, holder, cur, st, "auth", "Square sign-in expired");
   }
+  if (c.platform === "shopify") {
+    const t = await freshShopifyToken(c as unknown as ShopConn, false);
+    if (t === "auth") return await recordFailure(c, holder, cur, st, "auth", "Shopify sign-in expired");
+  }
   const pass = phase === "head" ? cur.head : cur.back;
   const sq: SquareCtx = { locIds: null, cursor: "", endAt: "", cache: new Map(), bulk: true };
   let refreshed = false;
@@ -967,6 +972,13 @@ async function syncConnection(c: Conn, holder: string, runDeadline: number, own:
     try {
       page = await fetchPage(c, pass, sq, deadline);
     } catch (e) {
+      if (c.platform === "shopify" && !refreshed && e instanceof ProviderError && (e.status === 401 || e.status === 403)) {
+        refreshed = true;
+        const t = await freshShopifyToken(c as unknown as ShopConn, true);
+        if (t === "ok") continue;
+        if (t === "auth") return await recordFailure(c, holder, cur, st, "auth", "Shopify sign-in expired");
+        return await recordFailure(c, holder, cur, st, "transient", "Shopify token refresh failed");
+      }
       if (c.platform === "square" && !refreshed && e instanceof ProviderError && e.status === 401) {
         refreshed = true;
         const t = await ensureSquareToken(c, true);
@@ -1332,6 +1344,7 @@ async function handleAudit(req: Request, body: Record<string, unknown>, fetchers
     const conn = conns?.[0];
     if (!conn || !connUsable(conn)) return json({ error: "not_connected" }, 409);
     if (conn.platform === "square" && await ensureSquareToken(conn, false) === "auth") return json({ error: "not_connected" }, 409);
+    if (conn.platform === "shopify" && await freshShopifyToken(conn as unknown as ShopConn, false) === "auth") return json({ error: "not_connected" }, 409);
     const auditId = await createAudit(userId, "pos", platform, body.attribution);
     if (!auditId) return json({ error: "Could not start the audit." }, 500);
     const job = runPosAudit(auditId, conn, fetchers[platform]);

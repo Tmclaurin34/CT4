@@ -79,4 +79,20 @@ eq(compliancePayload("customers/redact", { shop_domain: "s", customer: { id: 1, 
 
 drainMicrotasks && drainMicrotasks();
 if (pending) print("FAIL: async tests did not finish");
+
+// expiring offline tokens
+var nowT = Date.parse("2026-11-27T06:00:00Z");
+var tf = tokenFields({ access_token: "a1", refresh_token: "r1", expires_in: 3600, refresh_token_expires_in: 7776000 }, nowT);
+ok(tf.access_token === "a1" && tf.refresh_token === "r1" && tf.token_expires_at === "2026-11-27T07:00:00.000Z" && tf.refresh_expires_at === "2027-02-25T06:00:00.000Z", "tokenFields reads expiries");
+ok(tokenFields({ access_token: "a2" }, nowT).token_expires_at === null, "tokenFields: no expiry -> null");
+ok(tokenAction({ access_token: "old" }, nowT) === "migrate", "legacy non-expiring token -> migrate");
+ok(tokenAction({ access_token: "a", refresh_token: "r", token_expires_at: "2026-11-27T06:03:00Z" }, nowT) === "refresh", "expires in 3 min -> refresh");
+ok(tokenAction({ access_token: "a", refresh_token: "r", token_expires_at: "2026-11-27T07:00:00Z" }, nowT) === "ok", "fresh token -> ok");
+ok(tokenAction({ access_token: "a", refresh_token: "r", token_expires_at: "2026-11-27T07:00:00Z" }, nowT, true) === "refresh", "force -> refresh");
+ok(tokenAction({ access_token: "" }, nowT) === "ok", "no token -> nothing to do");
+var mb = migrateBody("cid", "sec", { access_token: "old" });
+ok(mb.grant_type === TOKEN_EXCHANGE && mb.subject_token === "old" && mb.subject_token_type === OFFLINE_TOKEN_TYPE && mb.requested_token_type === OFFLINE_TOKEN_TYPE && mb.expiring === "1", "migrate body");
+var rb = refreshBody("cid", "sec", { refresh_token: "r9" });
+ok(rb.grant_type === "refresh_token" && rb.refresh_token === "r9" && rb.client_id === "cid", "refresh body");
+
 print("SHARED SHOPIFY TESTS: " + pass + " passed, " + (fail + pending) + " failed");
