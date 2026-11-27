@@ -238,7 +238,8 @@ async function reportUsageLeased(limit: number) {
     const shopId = String(row.merchant_id || "");
     const ev = /^\d+$/.test(shopId) ? usageEventFor(row, shopId, Date.now()) : null;
     if (!ev) {
-      await rpc("clicktide_shopify_usage_mark", { p_id: id, p_ok: false, p_error: /^\d+$/.test(shopId) ? "not a billable kind" : "no Shopify shop id" });
+      await rpc("clicktide_shopify_usage_mark", { p_id: id, p_ok: false, p_error: /^\d+$/.test(shopId) ? "not a billable kind" : "no Shopify shop id" })
+        .catch((e) => console.error("usage mark failed", id, e));
       out.skipped++;
       continue;
     }
