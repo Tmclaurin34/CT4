@@ -110,17 +110,48 @@ PATCHES_2 = [
 ]
 
 
+# Round 3 (same day): the backend bills a Shopify store's postcards and gifts only once the
+# paid plan is running (clicktide_shopify_usage_allowed: status active or past_due, not a
+# development store, not in the free trial). Round 1 gated the gift screens on
+# shopifyBilledNow(), which also counts the trial, so a trial store got past the screen and
+# then a backend refusal worded "Insufficient gift wallet balance". Gate on the same rule as
+# the backend, say why plainly, and translate that backend refusal for Shopify stores.
+MARK3 = "/*ct-shopify-billing-copy-3*/"
+NOT_YET = "Postcards and gifts are billed through Shopify once your paid plan begins. They are not sent during the free trial or on development stores."
+PATCHES_3 = [
+    ("usage-helper",
+     "// Wallet page, Shopify-billed stores:",
+     MARK3 + "\n// Same rule as clicktide_shopify_usage_allowed's plan check: Shopify bills postcards and gifts\n"
+     "// only while the paid plan runs (not in the free trial). A development store is refused by\n"
+     "// the backend too; sendPhysicalGift words that refusal for Shopify stores.\n"
+     "function shopifyUsageChargeable(){try{return !!(typeof bizLock!==\"undefined\"&&bizLock&&bizLock.billing_provider===\"shopify\"&&[\"active\",\"past_due\"].includes(String(bizLock.stripe_subscription_status||\"\").toLowerCase()));}catch(e){return false;}}\n"
+     "// Wallet page, Shopify-billed stores:"),
+    ("gate-note", "const short=!shopifyBilledNow()&&cost>bal;", "const short=!shopifyUsageChargeable()&&cost>bal;"),
+    ("gate-gift", "if(!shopifyBilledNow()&&cost>balance){", "if(!shopifyUsageChargeable()&&cost>balance){"),
+    ("gate-gift-confirm", "(shopifyBilledNow()&&cost>balance?", "(shopifyUsageChargeable()&&cost>balance?"),
+    ("gate-cart-note", "else if(!shopifyBilledNow()&&total>giftCartBalance){", "else if(!shopifyUsageChargeable()&&total>giftCartBalance){"),
+    ("gate-cart", "if(!shopifyBilledNow()&&total>giftCartBalance){alert", "if(!shopifyUsageChargeable()&&total>giftCartBalance){alert"),
+    ("gate-cart-confirm", "(shopifyBilledNow()&&total>giftCartBalance?", "(shopifyUsageChargeable()&&total>giftCartBalance?"),
+    ("not-yet-text", '"Gifts start once your Clicktide plan is active in Shopify."', '"' + NOT_YET + '"', 4),
+    ("backend-refusal",
+     'if(!res.ok){throw new Error(data.error||"Gift fulfillment failed");}',
+     'if(!res.ok){throw new Error(isShopifyBilling()&&/insufficient gift wallet/i.test(String(data.error||""))?"' + NOT_YET + '":(data.error||"Gift fulfillment failed"));}'),
+]
+
+
 def apply(s, mark, patches):
-    """Returns (text, applied_count, problems)."""
+    """Returns (text, applied_count, problems). A patch may carry an expected count (default 1)."""
     if mark in s:
         return s, 0, []
     out, problems = s, []
-    for name, old, new in patches:
+    for p in patches:
+        name, old, new = p[0], p[1], p[2]
+        want = p[3] if len(p) > 3 else 1
         n = out.count(old)
-        if n != 1:
-            problems.append(f"{name}: anchor found {n} times")
+        if n != want:
+            problems.append(f"{name}: anchor found {n} times (want {want})")
             continue
-        out = out.replace(old, new, 1)
+        out = out.replace(old, new)
     return (s, 0, problems) if problems else (out, len(patches), [])
 
 
@@ -130,7 +161,7 @@ def main():
     path, check = sys.argv[1], "--check" in sys.argv
     s = open(path, encoding="utf-8").read()
     total, problems = 0, []
-    for mark, patches in ((MARK, PATCHES), (MARK2, PATCHES_2)):
+    for mark, patches in ((MARK, PATCHES), (MARK2, PATCHES_2), (MARK3, PATCHES_3)):
         s, n, p = apply(s, mark, patches)
         total += n
         problems += p
