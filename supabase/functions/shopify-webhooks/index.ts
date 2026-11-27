@@ -16,7 +16,7 @@
 //
 // Deploy with verify_jwt = false (Shopify sends no Supabase JWT).
 import { compliancePayload, HANDLED_TOPICS, isShopDomain, SHOPIFY_API_VERSION, verifyWebhookHmac } from "../_shared/shopify.js";
-import { freshShopifyToken, reconcileBilling, reportUsage, rest, rpc, type ShopConn, SRK } from "../_shared/shopify_server.ts";
+import { deleteAuthUser, freshShopifyToken, reconcileBilling, reportUsage, rest, rpc, type ShopConn, SRK } from "../_shared/shopify_server.ts";
 
 const SECRET = Deno.env.get("SHOPIFY_CLIENT_SECRET") ?? "";
 const RESEND = Deno.env.get("RESEND_API_KEY") ?? "";
@@ -90,6 +90,16 @@ async function process(ev: Ev) {
         console.log(`shop/redact for ${ev.shop_domain} skipped: the store is installed again`);
       } else {
         result = await rpc("clicktide_shopify_redact_shop", { p_shop: ev.shop_domain });
+        // The account Clicktide made for this store (signed in from Shopify) is store data too:
+        // erase its profile, customers, campaigns and shipments, then delete its login.
+        // Website accounts that linked the store keep today's behaviour.
+        const gone = await rpc("clicktide_shopify_redact_store_accounts", { p_shop: ev.shop_domain }) as string[];
+        let deleted = 0;
+        for (const id of Array.isArray(gone) ? gone : []) {
+          if (!(await deleteAuthUser(String(id)))) throw new Error(`could not delete store account ${id}; will retry`);
+          deleted++;
+        }
+        result = { ...((result as Record<string, unknown>) || {}), store_accounts_deleted: deleted };
       }
       scrub = true;
       break;
