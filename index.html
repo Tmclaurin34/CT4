@@ -1011,6 +1011,7 @@ async function finishAuthReturn(token,user,type,sessionData){
   restoreOnboardingProgress();
   if(typeof finishPendingMindbodyActivation==="function")await finishPendingMindbodyActivation().catch(function(){});
   fetch(FN+"/send-welcome-email",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:"{}"}).catch(function(){});
+  if(ctAuditFlow()){window.location.replace("/free-pos-audit?step=connect");return;}
   obE=u.email||obE;obAwaitConfirm=false;scr="onboard";if(obS<2)obS=2;saveOnboardingProgress();history.replaceState({view:"onboard"},"","");R();
 }
 
@@ -1199,8 +1200,24 @@ function _days(dateStr){
 // gap, bounded 14..120 days. Falls back to the business default for new/thin-history
 // customers (under 2 visits) until they establish a pattern. This is why a quarterly
 // regular isn't nagged at 60 days, and an every-other-month customer isn't chased at 30.
+// Retention engine (shared with campaigns, reports and the free audit): when the
+// engine has evaluated this customer, its drift line wins over the formula below.
+window.ctRhythm=window.ctRhythm||null;
+async function loadRhythmMap(tok){
+  if(typeof DEMO!=="undefined"&&DEMO)return;
+  if(!S||!S.token)return;
+  if(window.ctRhythmAt&&Date.now()-window.ctRhythmAt<5*60*1000)return;
+  try{
+    var rows=await db.selAll("customer_rhythm",scope(""),tok);
+    if(!Array.isArray(rows))return;
+    var m={};rows.forEach(function(r){m[String(r.customer_id)]=r;});
+    window.ctRhythm=m;window.ctRhythmAt=Date.now();
+  }catch(e){}
+}
 function effChurn(c,def){
   def=def||60;
+  var rh=window.ctRhythm&&c&&c.id!=null?window.ctRhythm[String(c.id)]:null;
+  if(rh&&rh.drift_after_days!=null&&isFinite(Number(rh.drift_after_days)))return Math.max(1,Math.round(Number(rh.drift_after_days)));
   var v=Number((c&&(c.visits||c.order_count))||0);
   var fo=c&&c.first_order_at?Date.parse(c.first_order_at):NaN;
   var la=c?Date.parse(c.last_visit_at||c.last_order_at||""):NaN;
@@ -1871,7 +1888,11 @@ function openDashboardNow(){
 // -- Handle OAuth callback redirect back to this page ------------------------
 // Edge functions redirect to: goclicktide.com?ct_platform=square&ct_merchant=xxx&ct_name=Yyy
 // or on error: goclicktide.com?ct_error=...
+// Free POS audit (/free-pos-audit): POS logins and email-confirm links that started
+// there come back to the app root — hand them back to the audit page.
+function ctAuditFlow(){try{var v=JSON.parse(localStorage.getItem("ct_audit")||"null");return !!(v&&Date.now()-Number(v.at)<86400000);}catch(e){return false;}}
 (async function handleOAuthReturn(){
+  try{var _ap=new URLSearchParams(window.location.search);if(ctAuditFlow()&&(_ap.get("ct_platform")||_ap.get("ct_error"))){window.location.replace("/free-pos-audit"+window.location.search);return;}}catch(e){}
   try{obPl=storedPlan()||obPl;}catch(e){}
   const params=new URLSearchParams(window.location.search);
   const hashParams=new URLSearchParams((window.location.hash||"").replace(/^#/,""));
@@ -3830,6 +3851,7 @@ async function dLoad(){
   const justOnboarded=sessionStorage.getItem("ct_justonboarded");
   if(justOnboarded)sessionStorage.removeItem("ct_justonboarded");
   try{
+    await loadRhythmMap(tok);
     bizLock=await loadBiz()||{};
     const paid=hasPaidAccess(bizLock);
     if(paid){clearOnboardingProgress();if(justOnboarded||bizLock.onboarding_complete!==true)setBizFields({onboarding_complete:true});}
@@ -5317,6 +5339,7 @@ async function doPwReset(btn){
     if(!r.ok)throw new Error(d.message||d.error_description||"Could not update password");
     document.querySelector(".ov")?.remove();
     alert("Password updated! Log in with your new password.");
+    if(ctAuditFlow()){window.location.replace("/free-pos-audit?step=connect");return;}
     go("login");
   }catch(ex){if(er){er.textContent=ex.message;er.style.display="block";}if(btn){btn.disabled=false;btn.textContent="Update password →";}}
 }
