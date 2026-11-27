@@ -1,14 +1,17 @@
 # Clicktide Shopify app configuration (deployed with: shopify app deploy --path shopify).
-# Embedded app (App Store 2.2.2): the admin loads goclicktide.com/shopify-app/ with App Bridge.
+# Non-embedded app: opening Clicktide from the Shopify admin goes to the shopify-app function, which
+# checks Shopify's signed launch, runs OAuth on install/reinstall, and signs the store's own Clicktide
+# account in at goclicktide.com (one-time #ct_sso code). App Bridge / 2.2.2-2.2.3 don't apply.
 # Webhook subscriptions can only be set from this file.
 client_id = "1e876d10b4e052fe9897dd45bd859eca"
 name = "Clicktide"
-application_url = "https://goclicktide.com/shopify-app/"
-embedded = true
+application_url = "https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1/shopify-app"
+embedded = false
 
 [access_scopes]
 scopes = "read_orders,read_customers,read_all_orders"
-# Shopify-managed install: no OAuth redirect; the embedded page token-exchanges its session token.
+# Shopify-managed install grants the scopes; shopify-app then gets the offline token with the
+# authorization code grant (redirect below).
 use_legacy_install_flow = false
 
 [auth]
