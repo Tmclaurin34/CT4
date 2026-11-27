@@ -1,6 +1,6 @@
 // Server-side Shopify helpers shared by shopify-webhooks, shopify-app and
 // shopify-oauth-callback. Pure logic lives in ./shopify.js (unit-tested).
-import { entitlementFromSubscriptions, migrateBody, refreshBody, SHOPIFY_API_VERSION, SUBSCRIPTION_QUERY, tokenAction, tokenFields } from "./shopify.js";
+import { entitlementFromSubscriptions, migrateBody, refreshBody, SHOPIFY_API_VERSION, SUBSCRIPTION_QUERY, tokenAction, tokenFields, usageEventFor } from "./shopify.js";
 
 export const SUPA = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
 export const SRK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -108,4 +108,60 @@ export async function reconcileBilling(shop: string) {
     p_shop: shop, p_plan: ent.plan, p_status: ent.status, p_period_end: ent.period_end, p_sub_id: ent.sub_id, p_raw_status: ent.raw_status,
   });
   return { dry_run: false, entitlement: ent, applied };
+}
+
+// ---- usage billing: report Shopify-billed wallet rows to the App Events API ----
+// https://shopify.dev/docs/api/app-events. App-level token (client credentials, 60 minutes),
+// one event per request, idempotency key = wallet row id (Shopify enforces it permanently for
+// billing events). A 202 means accepted; billing validation results appear only in the Dev
+// Dashboard logs. Failed rows stay queued and are retried (clicktide_shopify_usage_pending
+// stops after 10 attempts so a misconfigured meter can't loop forever).
+const APP_EVENTS_URL = "https://api.shopify.com/app/2026-10/events";
+let appEventsToken = { tok: "", exp: 0 };
+async function appEventsAuth(force = false) {
+  if (!force && appEventsToken.tok && Date.now() < appEventsToken.exp) return appEventsToken.tok;
+  const r = await fetch("https://api.shopify.com/auth/access_token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json", "User-Agent": "Clicktide/1.0 (+https://goclicktide.com)" },
+    body: JSON.stringify({ client_id: CLIENT_ID, client_secret: CLIENT_SECRET, grant_type: "client_credentials" }),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d?.access_token) throw new Error(`app events auth ${r.status}`);
+  appEventsToken = { tok: String(d.access_token), exp: Date.now() + 50 * 60 * 1000 };
+  return appEventsToken.tok;
+}
+
+export async function reportUsage(limit = 200) {
+  const rows = await rpc("clicktide_shopify_usage_pending", { p_limit: limit }) as Array<Record<string, unknown>>;
+  const out = { pending: Array.isArray(rows) ? rows.length : 0, sent: 0, failed: 0, skipped: 0 };
+  if (!out.pending) return out;
+  let tok = await appEventsAuth();
+  for (const row of rows) {
+    const id = Number(row.id);
+    const shopId = String(row.merchant_id || "");
+    const ev = /^\d+$/.test(shopId) ? usageEventFor(row, shopId, Date.now()) : null;
+    if (!ev) {
+      await rpc("clicktide_shopify_usage_mark", { p_id: id, p_ok: false, p_error: /^\d+$/.test(shopId) ? "not a billable kind" : "no Shopify shop id" });
+      out.skipped++;
+      continue;
+    }
+    const send = (t: string) => fetch(APP_EVENTS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${t}`, "User-Agent": "Clicktide/1.0 (+https://goclicktide.com)" },
+      body: JSON.stringify(ev),
+    });
+    let r = await send(tok);
+    if (r.status === 401) { tok = await appEventsAuth(true); r = await send(tok); }
+    if (r.status === 202 || r.status === 200) {
+      await rpc("clicktide_shopify_usage_mark", { p_id: id, p_ok: true, p_error: null });
+      out.sent++;
+    } else {
+      const text = (await r.text().catch(() => "")).slice(0, 200);
+      console.error("shopify usage event failed", id, r.status, text);
+      await rpc("clicktide_shopify_usage_mark", { p_id: id, p_ok: false, p_error: `HTTP ${r.status} ${text}` });
+      out.failed++;
+      if (r.status === 429) break; // rate limited: the next run continues
+    }
+  }
+  return out;
 }

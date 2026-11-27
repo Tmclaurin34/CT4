@@ -16,7 +16,7 @@
 //
 // Deploy with verify_jwt = false (Shopify sends no Supabase JWT).
 import { compliancePayload, HANDLED_TOPICS, isShopDomain, verifyWebhookHmac } from "../_shared/shopify.js";
-import { reconcileBilling, rest, rpc, SRK } from "../_shared/shopify_server.ts";
+import { reconcileBilling, reportUsage, rest, rpc, SRK } from "../_shared/shopify_server.ts";
 
 const SECRET = Deno.env.get("SHOPIFY_CLIENT_SECRET") ?? "";
 const RESEND = Deno.env.get("RESEND_API_KEY") ?? "";
@@ -123,7 +123,9 @@ async function cronRun() {
     try { billing.push({ shop: s, ...(await reconcileBilling(s)) }); }
     catch (e) { billing.push({ shop: s, error: e instanceof Error ? e.message : String(e) }); }
   }
-  return { retried: (pending || []).length, billing };
+  let usage: unknown;
+  try { usage = await reportUsage(); } catch (e) { usage = { error: e instanceof Error ? e.message : String(e) }; }
+  return { retried: (pending || []).length, billing, usage };
 }
 
 Deno.serve(async (req) => {
@@ -135,6 +137,13 @@ Deno.serve(async (req) => {
     let expected = "";
     try { expected = String(await rpc("clicktide_internal_key", {}) || ""); } catch { /* */ }
     if (!expected || cronKey !== expected) return json({ error: "Not authorized" }, 401);
+    // {"job":"usage"}: the 10-minute run that only reports usage billing to Shopify.
+    let job = "";
+    try { job = String((await req.clone().json())?.job || ""); } catch { /* empty body */ }
+    if (job === "usage") {
+      try { return json({ ok: true, usage: await reportUsage() }); }
+      catch (e) { return json({ ok: false, error: e instanceof Error ? e.message : String(e) }, 502); }
+    }
     return json({ ok: true, ...(await cronRun()) });
   }
 

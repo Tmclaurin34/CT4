@@ -234,3 +234,44 @@ export function exchangeBody(clientId, clientSecret, idToken) {
   return { client_id: clientId, client_secret: clientSecret, grant_type: TOKEN_EXCHANGE, subject_token: idToken,
            subject_token_type: ID_TOKEN_TYPE, requested_token_type: OFFLINE_TOKEN_TYPE, expiring: "1" };
 }
+
+// ---- usage billing (Shopify App Pricing usage meters, App Events API) ----
+// Postcards, gifts and texts past the plan's limit are charged on the merchant's Shopify bill.
+// Each wallet-ledger row marked shopify_usage becomes one billing event. Meter handles and
+// prices must match the plan's usage meters in the Partner Dashboard:
+//   postcard   $1.50 per unit (engine POSTCARD_PRICE)     value = postcards (refund: -1)
+//   extra_text $0.05 per unit (engine SMS_OVERAGE_PRICE)  value = texts (refund: -1)
+//   gift       $1.00 per unit                             value = the gift's dollar cost
+export const USAGE_METERS = {
+  postcard_debit: { handle: "postcard", unit: "count", sign: 1 },
+  postcard_refund: { handle: "postcard", unit: "count", sign: -1 },
+  sms_overage: { handle: "extra_text", unit: "count", sign: 1 },
+  sms_overage_refund: { handle: "extra_text", unit: "count", sign: -1 },
+  gift_debit: { handle: "gift", unit: "dollars", sign: 1 },
+  gift_refund: { handle: "gift", unit: "dollars", sign: -1 },
+};
+
+// row: { id, amount, transaction_type, created_at }; shopId: numeric id or gid. Returns the
+// App Events body, or null if the row isn't a billable kind. Whole numbers go as JSON integers,
+// fractional ones as quoted decimal strings (the API rejects unquoted floats).
+export function usageEventFor(row, shopId, now) {
+  const m = USAGE_METERS[String(row && row.transaction_type)];
+  const amt = Math.abs(Number(row && row.amount));
+  if (!m || !Number.isFinite(amt) || amt === 0) return null;
+  let value;
+  if (m.unit === "count") value = m.sign;
+  else {
+    const cents = Math.round(amt * 100);
+    value = cents % 100 === 0 ? m.sign * (cents / 100) : (m.sign < 0 ? "-" : "") + (cents / 100).toFixed(2);
+  }
+  const sid = String(shopId || "");
+  const t = Date.parse(row.created_at || "");
+  const at = Number.isFinite(t) ? Math.min(t, Number.isFinite(now) ? now : Date.now()) : (Number.isFinite(now) ? now : Date.now());
+  return {
+    shop_id: /^gid:\/\//.test(sid) ? sid : "gid://shopify/Shop/" + sid,
+    event_handle: m.handle,
+    timestamp: new Date(at).toISOString().replace(/\.\d{3}Z$/, "Z"),
+    idempotency_key: "ct-wallet-" + String(row.id),
+    attributes: { value: value },
+  };
+}
