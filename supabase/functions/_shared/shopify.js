@@ -141,3 +141,42 @@ export function compliancePayload(topic, body) {
 }
 
 export const HANDLED_TOPICS = ["customers/data_request", "customers/redact", "shop/redact", "app/uninstalled", "app_subscriptions/update"];
+
+// ---- expiring offline access tokens ----
+// Shopify no longer accepts non-expiring offline tokens on the Admin API. Install asks
+// for an expiring one (expiring=1); it is renewed with its refresh token (which rotates),
+// and a legacy non-expiring token is migrated once via token exchange.
+export const TOKEN_REFRESH_BEFORE_MS = 5 * 60 * 1000;
+export const TOKEN_EXCHANGE = "urn:ietf:params:oauth:grant-type:token-exchange";
+export const OFFLINE_TOKEN_TYPE = "urn:shopify:params:oauth:token-type:offline-access-token";
+
+// Fields to store from an access_token response (code grant, refresh or migration).
+export function tokenFields(d, now) {
+  const t = Number.isFinite(now) ? now : Date.now();
+  const exp = Number(d && d.expires_in);
+  const rexp = Number(d && d.refresh_token_expires_in);
+  return {
+    access_token: String((d && d.access_token) || ""),
+    refresh_token: (d && d.refresh_token) ? String(d.refresh_token) : null,
+    token_expires_at: Number.isFinite(exp) && exp > 0 ? new Date(t + exp * 1000).toISOString() : null,
+    refresh_expires_at: Number.isFinite(rexp) && rexp > 0 ? new Date(t + rexp * 1000).toISOString() : null,
+  };
+}
+
+// "refresh" | "migrate" | "ok" for a stored connection.
+export function tokenAction(conn, now, force) {
+  const t = Number.isFinite(now) ? now : Date.now();
+  if (!conn || !conn.access_token) return "ok";
+  if (!conn.refresh_token) return "migrate";
+  const exp = Date.parse(conn.token_expires_at || "");
+  if (force || !Number.isFinite(exp) || exp < t + TOKEN_REFRESH_BEFORE_MS) return "refresh";
+  return "ok";
+}
+
+export function refreshBody(clientId, clientSecret, conn) {
+  return { client_id: clientId, client_secret: clientSecret, grant_type: "refresh_token", refresh_token: conn.refresh_token };
+}
+export function migrateBody(clientId, clientSecret, conn) {
+  return { client_id: clientId, client_secret: clientSecret, grant_type: TOKEN_EXCHANGE, subject_token: conn.access_token,
+           subject_token_type: OFFLINE_TOKEN_TYPE, requested_token_type: OFFLINE_TOKEN_TYPE, expiring: "1" };
+}

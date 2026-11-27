@@ -1,6 +1,6 @@
 // Server-side Shopify helpers shared by shopify-webhooks, shopify-app and
 // shopify-oauth-callback. Pure logic lives in ./shopify.js (unit-tested).
-import { entitlementFromSubscriptions, SHOPIFY_API_VERSION, SUBSCRIPTION_QUERY } from "./shopify.js";
+import { entitlementFromSubscriptions, migrateBody, refreshBody, SHOPIFY_API_VERSION, SUBSCRIPTION_QUERY, tokenAction, tokenFields } from "./shopify.js";
 
 export const SUPA = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
 export const SRK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -23,6 +23,43 @@ export async function rest(path: string, init: RequestInit = {}) {
 
 export async function rpc(name: string, args: Record<string, unknown>) {
   return await rest(`/rest/v1/rpc/${name}`, { method: "POST", body: JSON.stringify(args) });
+}
+
+const CLIENT_ID = Deno.env.get("SHOPIFY_CLIENT_ID") ?? "";
+const CLIENT_SECRET = Deno.env.get("SHOPIFY_CLIENT_SECRET") ?? "";
+
+export type ShopConn = { id: string; shop_domain?: string | null; access_token: string; refresh_token?: string | null; token_expires_at?: string | null; raw_response?: Record<string, unknown> | null };
+
+// Keep a Shopify connection's offline token usable (expiring tokens, see shopify.js).
+// Mutates conn and saves the new token. "auth" = the store must reinstall/reconnect.
+export async function freshShopifyToken(conn: ShopConn, force = false): Promise<"ok" | "auth" | "transient"> {
+  const action = tokenAction(conn, Date.now(), force);
+  if (action === "ok") return "ok";
+  const shop = String(conn.shop_domain || "").toLowerCase();
+  if (!/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(shop) || !CLIENT_ID || !CLIENT_SECRET) return "auth";
+  const body = action === "migrate" ? migrateBody(CLIENT_ID, CLIENT_SECRET, conn) : refreshBody(CLIENT_ID, CLIENT_SECRET, conn);
+  let r: Response;
+  try {
+    r = await fetch(`https://${shop}/admin/oauth/access_token`, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(body) });
+  } catch { return "transient"; }
+  const d = await r.json().catch(() => ({}));
+  const f = tokenFields(d, Date.now());
+  if (!r.ok || !f.access_token) {
+    console.error(`shopify token ${action} failed`, shop, r.status, JSON.stringify(d).slice(0, 200));
+    return r.status >= 400 && r.status < 500 ? "auth" : "transient";
+  }
+  conn.access_token = f.access_token;
+  conn.refresh_token = f.refresh_token || conn.refresh_token || null;
+  conn.token_expires_at = f.token_expires_at;
+  const raw = { ...(conn.raw_response || {}), refresh_expires_at: f.refresh_expires_at };
+  conn.raw_response = raw;
+  try {
+    await rest(`/rest/v1/platform_connections?id=eq.${conn.id}`, {
+      method: "PATCH", headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ access_token: conn.access_token, refresh_token: conn.refresh_token, token_expires_at: conn.token_expires_at, raw_response: raw, updated_at: new Date().toISOString() }),
+    });
+  } catch (e) { console.error("saving refreshed shopify token failed", conn.id, e); }
+  return "ok";
 }
 
 export async function adminGraphql(shop: string, token: string, query: string, variables: Record<string, unknown> = {}) {
@@ -51,8 +88,10 @@ export function legacyId(gid: unknown) {
 // subscription webhooks (since 2026-04-28), so this runs on app open, after
 // install, after plan selection, and nightly.
 export async function reconcileBilling(shop: string) {
-  const conns = await rest(`/rest/v1/platform_connections?platform=eq.shopify&shop_domain=ilike.${encodeURIComponent(shop)}&is_active=eq.true&access_token=neq.&select=access_token&limit=1`);
-  const token = Array.isArray(conns) && conns[0]?.access_token;
+  const conns = await rest(`/rest/v1/platform_connections?platform=eq.shopify&shop_domain=ilike.${encodeURIComponent(shop)}&is_active=eq.true&access_token=neq.&select=id,shop_domain,access_token,refresh_token,token_expires_at,raw_response&order=updated_at.desc&limit=1`);
+  const conn = Array.isArray(conns) && conns[0] ? conns[0] as ShopConn : null;
+  if (conn && await freshShopifyToken(conn) === "auth") throw new Error(`shopify token for ${shop} needs reinstall`);
+  const token = conn?.access_token;
   let ent;
   if (!token) ent = { status: "canceled", raw_status: "UNINSTALLED", plan: null, period_end: null, sub_id: null };
   else {
