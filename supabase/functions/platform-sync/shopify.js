@@ -12,6 +12,7 @@
 //   - phone   = customer's default phone (REST used customer.phone only)
 //   - addr    = shipping address, else the customer's default address
 //   - amount  = totalPriceSet.shopMoney.amount (REST total_price, shop currency)
+//   - at      = processedAt (the sale date; = createdAt except for imported/backdated orders)
 //   - void    = cancelled, or financial status REFUNDED / VOIDED
 //   - emailOptOut = the customer's email marketing state is UNSUBSCRIBED / REDACTED
 //
@@ -33,6 +34,7 @@ export const ORDERS_QUERY = `query ClicktideOrders($first: Int!, $after: String,
     nodes {
       legacyResourceId
       createdAt
+      processedAt
       cancelledAt
       displayFinancialStatus
       email
@@ -78,7 +80,10 @@ export function mapShopifyOrder(node, cleanAddr) {
     name,
     addr: cleanAddr(sa.address1, sa.address2, sa.city, sa.provinceCode || sa.province, sa.zip, sa.countryCodeV2 || sa.country),
     amount: Number(o.totalPriceSet && o.totalPriceSet.shopMoney && o.totalPriceSet.shopMoney.amount) || 0,
-    at: o.createdAt,
+    // processedAt is when the sale happened; it differs from createdAt only for orders
+    // imported with a past date (store migrations, backfills). The search stays on
+    // created_at so the nightly sync still catches a backdated order the day it's added.
+    at: o.processedAt || o.createdAt,
     id: String(o.legacyResourceId || "") || undefined,
     // The shopper unsubscribed from the store's email marketing: Clicktide won't email them.
     emailOptOut: SHOPIFY_EMAIL_OPTED_OUT.includes(String((cu.defaultEmailAddress && cu.defaultEmailAddress.marketingState) || "").toUpperCase()),
