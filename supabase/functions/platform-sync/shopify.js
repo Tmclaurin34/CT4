@@ -13,6 +13,7 @@
 //   - addr    = shipping address, else the customer's default address
 //   - amount  = totalPriceSet.shopMoney.amount (REST total_price, shop currency)
 //   - void    = cancelled, or financial status REFUNDED / VOIDED
+//   - emailOptOut = the customer's email marketing state is UNSUBSCRIBED / REDACTED
 //
 // Plain JavaScript so Deno imports it and the jsc test rig can load it
 // (see shopify_test.js / run_audit_tests.sh).
@@ -40,7 +41,7 @@ export const ORDERS_QUERY = `query ClicktideOrders($first: Int!, $after: String,
       customer {
         firstName
         lastName
-        defaultEmailAddress { emailAddress }
+        defaultEmailAddress { emailAddress marketingState }
         defaultPhoneNumber { phoneNumber }
         defaultAddress { address1 address2 city province provinceCode zip country countryCodeV2 }
       }
@@ -55,6 +56,14 @@ export function ordersSearch(since) {
   const iso = Number.isFinite(t) ? new Date(t).toISOString() : new Date(0).toISOString();
   return `created_at:>='${iso}'`;
 }
+
+// One time slice [start, end) of the resumable nightly sync (oldest first inside it).
+export function ordersRangeSearch(startMs, endMs) {
+  return `created_at:>='${new Date(startMs).toISOString()}' created_at:<'${new Date(endMs).toISOString()}'`;
+}
+
+// Shopify email marketing states that mean "don't email this shopper".
+export const SHOPIFY_EMAIL_OPTED_OUT = ["UNSUBSCRIBED", "REDACTED"];
 
 // node: one GraphQL Order node. cleanAddr: index.ts's US-address cleaner.
 export function mapShopifyOrder(node, cleanAddr) {
@@ -71,6 +80,8 @@ export function mapShopifyOrder(node, cleanAddr) {
     amount: Number(o.totalPriceSet && o.totalPriceSet.shopMoney && o.totalPriceSet.shopMoney.amount) || 0,
     at: o.createdAt,
     id: String(o.legacyResourceId || "") || undefined,
+    // The shopper unsubscribed from the store's email marketing: Clicktide won't email them.
+    emailOptOut: SHOPIFY_EMAIL_OPTED_OUT.includes(String((cu.defaultEmailAddress && cu.defaultEmailAddress.marketingState) || "").toUpperCase()),
     // Cancelled / refunded orders aren't visits (kept out of the visit history).
     void: !!o.cancelledAt || status === "REFUNDED" || status === "VOIDED",
   };

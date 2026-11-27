@@ -14,7 +14,7 @@ var full = { legacyResourceId: "5001", createdAt: "2026-10-01T15:00:00Z", cancel
   shippingAddress: { address1: "1 Main St", address2: "Apt 2", city: "Brooklyn", provinceCode: "NY", zip: "11201", countryCodeV2: "US" },
   customer: { firstName: "Ann", lastName: "Lee", defaultEmailAddress: { emailAddress: "ann@example.com" }, defaultPhoneNumber: { phoneNumber: "+13472223344" }, defaultAddress: null } };
 seq(mapShopifyOrder(full, cleanAddr), { email: "ann@example.com", phone: "+13472223344", name: "Ann Lee",
-  addr: { address: "1 Main St, Apt 2", city: "Brooklyn", state: "NY", zip: "11201" }, amount: 42.5, at: "2026-10-01T15:00:00Z", id: "5001", void: false }, "full order maps like REST");
+  addr: { address: "1 Main St, Apt 2", city: "Brooklyn", state: "NY", zip: "11201" }, amount: 42.5, at: "2026-10-01T15:00:00Z", id: "5001", emailOptOut: false, void: false }, "full order maps like REST");
 var guest = mapShopifyOrder({ legacyResourceId: "5002", createdAt: "2026-10-02T00:00:00Z", email: "guest@example.com", totalPriceSet: { shopMoney: { amount: "10" } }, customer: null, shippingAddress: null }, cleanAddr);
 seq([guest.email, guest.phone, guest.name, guest.addr, guest.amount], ["guest@example.com", undefined, "", undefined, 10], "guest checkout falls back to order email");
 var fb = mapShopifyOrder({ legacyResourceId: "5003", createdAt: "x", customer: { firstName: "Bo", defaultAddress: { address1: "9 Elm", city: "Austin", province: "Texas", zip: "73301", country: "United States" } } }, cleanAddr);
@@ -39,4 +39,9 @@ seq([w.limited, w.days, w.since], [true, 60, "2026-09-27T00:00:00.000Z"], "no re
 seq(shopifyOrderWindow("2025-11-26T00:00:00Z", "read_orders, read_all_orders", nowT).limited, false, "read_all_orders: full window");
 seq(shopifyOrderWindow("2026-11-20T00:00:00Z", "read_orders", nowT).limited, false, "nightly incremental within 60 days unaffected");
 seq(shopifyOrderWindow("2025-11-26T00:00:00Z", null, nowT).limited, true, "unknown scope treated as 60 days");
+seq(ordersRangeSearch(Date.parse("2026-01-01T00:00:00Z"), Date.parse("2026-01-08T00:00:00Z")), "created_at:>='2026-01-01T00:00:00.000Z' created_at:<'2026-01-08T00:00:00.000Z'", "slice search");
+var ca = function () { return {}; };
+seq(mapShopifyOrder({ customer: { defaultEmailAddress: { emailAddress: "a@x.com", marketingState: "UNSUBSCRIBED" } } }, ca).emailOptOut, true, "unsubscribed -> email opt-out");
+seq(mapShopifyOrder({ customer: { defaultEmailAddress: { emailAddress: "a@x.com", marketingState: "SUBSCRIBED" } } }, ca).emailOptOut, false, "subscribed -> no opt-out");
+seq(mapShopifyOrder({ email: "g@x.com" }, ca).emailOptOut, false, "guest order -> no opt-out");
 print("SHOPIFY MAPPING TESTS: " + sp + " passed, " + sf + " failed");
