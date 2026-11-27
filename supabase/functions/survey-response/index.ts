@@ -5,6 +5,12 @@
 // A reply belongs to the business whose number / Messaging Service RECEIVED it
 // (a2p_registrations), and is matched only against that business's customers —
 // never across tenants. A number not linked to a business is ignored.
+// SMS double opt-in (2026-11): a reply of exactly YES / Y / START confirms a pending
+// check-in opt-in (clicktide_sms_optin_confirm: this business, this phone, asked within
+// the last 7 days, no STOP since) and only then sets sms_consent=true, recording the
+// YES's SID and time. It is never read as a survey rating and never becomes an owner
+// alert; with no pending request it does nothing. Twilio's own opt-in handling answers
+// the keyword, so no reply is sent from here. STOP handling is unchanged.
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -152,6 +158,13 @@ async function customersWithPhone(userId: string, ten: string): Promise<Customer
 // opt-out flag, a reply that starts with STOP ("Stop texting me"), or a short reply that
 // says stop/unsubscribe/opt out/revoke ("please stop"). CANCEL and END only count alone:
 // "cancel my appointment" is not an opt-out.
+// Opt-in keywords for the double opt-in, alone (trailing punctuation allowed): "Yes!",
+// "y", "START". "Yes 5" or "yes, loved it" are not keywords (they go on to the rating).
+function isOptInKeyword(body: string) {
+  const t = body.trim().toLowerCase().replace(/[.!\s]+$/, "");
+  return t === "yes" || t === "y" || t === "start";
+}
+
 function isOptOut(body: string, optOutType: string) {
   if (optOutType.toUpperCase() === "STOP") return true;
   const t = body.trim().toLowerCase().replace(/[.!?\s]+$/, "");
@@ -237,6 +250,20 @@ Deno.serve(async (req) => {
         headers: { Prefer: "return=minimal" },
         body: JSON.stringify({ sms_unsubscribed_at: new Date().toISOString(), sms_consent: false, sms_service_consent: false }),
       });
+      return twiml();
+    }
+
+    // Double opt-in YES: handled here and nowhere else — never a rating, never an alert.
+    if (isOptInKeyword(body)) {
+      try {
+        const r = await rest("/rest/v1/rpc/clicktide_sms_optin_confirm", {
+          method: "POST",
+          body: JSON.stringify({ p_user: userId, p_phone: fromPhone, p_yes_sid: params.MessageSid || null, p_yes_body: body.slice(0, 160) }),
+        }) as { confirmed?: boolean; reason?: string };
+        if (!r?.confirmed && r?.reason !== "no_pending") globalThis.console?.warn("opt-in YES not applied:", r?.reason);
+      } catch (e) {
+        globalThis.console?.error("opt-in confirm failed:", e);
+      }
       return twiml();
     }
 

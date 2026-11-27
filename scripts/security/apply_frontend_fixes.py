@@ -943,7 +943,365 @@ function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){retur
     P("ck-esc-biz", "success card: business name",
       r'''"Thanks for coming back to "+(x.d.business_name||"us")+''',
       r'''"Thanks for coming back to "+esc(x.d.business_name||"us")+'''),
+    # Package "sms" (2026-11): SMS double opt-in. The check-in names its form version (kept
+    # as consent evidence), the marketing box says a confirmation text follows, and the
+    # success card asks for the YES when one was sent. Works with the old and new checkin
+    # function alike (sms_confirmation is simply absent from the old one).
+    P("ck-optin-form-version", "check-in POST names its form version (opt-in evidence)",
+      r'''    consent_transactional:tx
+  })})''',
+      r'''    consent_transactional:tx,
+    form_version:"checkin-2026-11-27-doi"
+  })})'''),
+    P("ck-optin-label", "marketing box: a confirmation text follows (reply YES)",
+      r'''Reply HELP for help, STOP to opt out.</span></label>
+      <label class="consent"><input type="checkbox" id="consent_t"/>''',
+      r'''Reply HELP for help, STOP to opt out. We&rsquo;ll text you once to confirm &mdash; reply <b>YES</b> to start.</span></label>
+      <label class="consent"><input type="checkbox" id="consent_t"/>'''),
+    P("ck-optin-done-note", "success card: ask for the YES when a confirmation text went out",
+      r'''        (WL?'':'<div class="power">Powered by <b>CLICKTIDE</b> · goclicktide.com</div>');
+      return;''',
+      r'''        (x.d.sms_confirmation==="sent"?'<div class="sub" style="margin-top:-8px">Check your texts: reply <b>YES</b> to confirm you want texts from '+esc(x.d.business_name||"us")+'.</div>':'')+
+        (WL?'':'<div class="power">Powered by <b>CLICKTIDE</b> · goclicktide.com</div>');
+      return;'''),
 ]
+
+# ---------------------------------------------------------------------------------------
+# package "web" (2026-11-27): owner two-step verification + third-party script pinning.
+# Appended to the lists above, so every earlier patch runs first.
+# ---------------------------------------------------------------------------------------
+
+# The MFA block exactly as production has it (after idx-mfa-session).
+MFA_OLD = r'''function securityCard(){
+  setTimeout(loadMfaStatus,300);
+  return '<div class="dc" style="margin-bottom:24px"><div class="dch"><div class="dct"><i class=ig-lock></i> Security — Two-step verification</div></div><div style="font-size:12px;color:rgba(240,244,255,.5);line-height:1.7;margin-bottom:12px">Add an authenticator app (Google Authenticator, 1Password, Authy). After your password, we\'ll ask for a 6-digit code at login.</div><div id="mfaStatus" style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:12px">Checking status...</div><button class="btn btn-gold" id="mfaBtn" style="display:none" onclick="mfaEnroll(this)">Enable 2-step verification</button><button class="btn btn-outline" id="mfaOffBtn" style="display:none" onclick="mfaDisable()">Turn off 2-step verification</button></div>';
+}
+async function loadMfaStatus(){
+  var st=document.getElementById("mfaStatus"),on=document.getElementById("mfaBtn"),off=document.getElementById("mfaOffBtn");
+  if(!st||!S||!S.token)return;
+  try{
+    var r=await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+S.token}});
+    var u=await r.json();
+    var f=(u.factors||[]).filter(function(x){return x.status==="verified"&&x.factor_type==="totp";})[0];
+    window.__mfaFactor=f||null;
+    if(f){st.innerHTML='<span style="color:#22C55E">● 2-step verification is ON</span>';if(off)off.style.display="inline-block";if(on)on.style.display="none";}
+    else{st.innerHTML='<span style="color:#FF9F4D">○ Not enabled</span>';if(on)on.style.display="inline-block";if(off)off.style.display="none";}
+  }catch(e){if(st)st.textContent="Could not check status.";}
+}
+async function mfaEnroll(btn){
+  if(btn){btn.disabled=true;btn.textContent="Setting up...";}
+  try{
+    var r=await fetch(SU+"/auth/v1/factors",{method:"POST",headers:{apikey:SK,Authorization:"Bearer "+S.token,"Content-Type":"application/json"},body:JSON.stringify({factor_type:"totp",friendly_name:"Authenticator"})});
+    var d=await r.json();
+    if(!r.ok)throw new Error(d.message||d.msg||"Could not start enrollment");
+    var qr=(d.totp&&d.totp.qr_code)||"";
+    var img=qr.indexOf("data:")===0?qr:"data:image/svg+xml;utf8,"+encodeURIComponent(qr);
+    document.body.insertAdjacentHTML("beforeend",modal("Scan with your authenticator app",'<div style="text-align:center"><img src="'+img+'" style="width:190px;height:190px;background:#fff;border-radius:12px;padding:8px"/><div style="font-size:11px;color:rgba(240,244,255,.45);margin:10px 0 4px">Or enter this secret manually:</div><div style="font-size:11px;font-family:monospace;background:#101828;border-radius:8px;padding:8px;word-break:break-all;margin-bottom:14px">'+((d.totp&&d.totp.secret)||"")+'</div><div class="fg"><label class="fl">6-digit code from the app</label><input class="fi" id="mfaCode" inputmode="numeric" maxlength="6" placeholder="123456"/></div><div id="mfaErr" style="display:none;color:#FF6B6B;font-size:12px;margin-bottom:10px"></div><button class="btn-full btn-gold" onclick="mfaVerify(\''+d.id+'\',this)">Verify &amp; enable →</button></div>'));
+  }catch(ex){alert(ex.message);}
+  if(btn){btn.disabled=false;btn.textContent="Enable 2-step verification";}
+}
+async function mfaVerify(fid,btn){
+  var code=(document.getElementById("mfaCode")?.value||"").trim();
+  var er=document.getElementById("mfaErr");
+  if(code.length!==6){if(er){er.textContent="Enter the 6-digit code.";er.style.display="block";}return;}
+  if(btn){btn.disabled=true;btn.textContent="Verifying...";}
+  try{
+    var c=await fetch(SU+"/auth/v1/factors/"+fid+"/challenge",{method:"POST",headers:{apikey:SK,Authorization:"Bearer "+S.token,"Content-Type":"application/json"},body:"{}"});
+    var cd=await c.json();if(!c.ok)throw new Error(cd.message||"Challenge failed");
+    var v=await fetch(SU+"/auth/v1/factors/"+fid+"/verify",{method:"POST",headers:{apikey:SK,Authorization:"Bearer "+S.token,"Content-Type":"application/json"},body:JSON.stringify({challenge_id:cd.id,code:code})});
+    var vd=await v.json();if(!v.ok)throw new Error(vd.message||vd.msg||"Wrong code — try again");
+    if(vd.access_token)saveSession(vd);
+    document.querySelector(".ov")?.remove();
+    alert("2-step verification is ON ✓ You'll be asked for a code at every login.");
+    loadMfaStatus();
+  }catch(ex){if(er){er.textContent=ex.message;er.style.display="block";}if(btn){btn.disabled=false;btn.textContent="Verify & enable →";}}
+}
+async function mfaDisable(){
+  var f=window.__mfaFactor;if(!f)return;
+  if(!await confirmModal({title:"Turn off 2-step verification?",message:"Your account will be less protected without it.",okText:"Turn off",danger:true}))return;
+  try{await fetch(SU+"/auth/v1/factors/"+f.id,{method:"DELETE",headers:{apikey:SK,Authorization:"Bearer "+S.token}});loadMfaStatus();}catch(ex){alert(ex.message);}
+}
+'''
+
+# Owner two-step verification, rebuilt against GoTrue v2.199.0 (the version this project runs):
+#   POST   /auth/v1/factors                 enroll; totp.qr_code is RAW SVG markup, not a data: URI
+#   POST   /auth/v1/factors/{id}/challenge  then  /verify {challenge_id, code}
+#          -> the response is the same session upgraded to aal2 (new access + refresh token);
+#             GoTrue also signs out the user's aal1 sessions and drops unverified factors
+#   DELETE /auth/v1/factors/{id}            a verified factor needs an aal2 session (422
+#             insufficient_aal otherwise); afterwards the sessions are downgraded to aal1
+#   PUT    /auth/v1/user {password}         refused (401 insufficient_aal) from an aal1 session
+#             once a factor is verified -- that is what a password-reset link gives
+# Factor friendly names must be unique per user, so each enrollment gets a timestamped name and
+# stale unverified factors are deleted first.
+MFA_NEW = r'''// -- Owner two-step verification (Supabase Auth TOTP factors) -------------------------
+// It is a login-screen check: doAuth() (password login) and finishAuthReturn() (email links) ask
+// for the code when the account has a verified authenticator. The database does not demand an
+// aal2 token for owner requests, so this is not server-side enforcement.
+function mfaAal(t){try{var p=String(t||"").split(".")[1];if(!p)return "";p=p.replace(/-/g,"+").replace(/_/g,"/");while(p.length%4)p+="=";var c=JSON.parse(atob(p));return String((c&&c.aal)||"");}catch(e){return "";}}
+// GoTrue returns the QR code as raw SVG markup; an <img> needs it as a data: URI.
+function mfaQrSrc(raw){raw=String(raw||"").trim();if(/^data:image\/(svg\+xml|png)[;,]/i.test(raw))return raw;if(/^(<\?xml|<!--|<svg)/i.test(raw)&&/<svg[\s>]/i.test(raw))return "data:image/svg+xml;utf8,"+encodeURIComponent(raw);return "";}
+function mfaErrText(d,fallback){return String((d&&(d.msg||d.message||d.error_description||(typeof d.error==="string"?d.error:"")))||fallback);}
+function mfaTotp(fs){return ((fs||[]).filter(function(x){return x&&x.status==="verified"&&x.factor_type==="totp";})[0])||null;}
+// Auth API call with the signed-in owner's token; an expired token is refreshed once.
+async function mfaFetch(url,init){
+  init=init||{};
+  var hd=function(){var h={apikey:SK,Authorization:"Bearer "+((S&&S.token)||"")};if(init.body)h["Content-Type"]="application/json";return h;};
+  var r=await fetch(url,Object.assign({},init,{headers:hd()}));
+  if(r.status===401&&await refreshSession())r=await fetch(url,Object.assign({},init,{headers:hd()}));
+  var d=await r.json().catch(function(){return {};});
+  return {r:r,d:d||{}};
+}
+// Step a session (the owner's, or a password-reset link's) up to aal2 with the current code.
+// Returns GoTrue's token response, or null when the owner cancels or has no authenticator.
+async function mfaStepUp(token,factorId,title,desc){
+  var hd={apikey:SK,Authorization:"Bearer "+token,"Content-Type":"application/json"};
+  if(!factorId){
+    var u=await fetch(SU+"/auth/v1/user",{headers:hd}).then(function(r){return r.ok?r.json():{};}).catch(function(){return {};});
+    var tf=mfaTotp(u&&u.factors);if(!tf)return null;factorId=tf.id;
+  }
+  var note="";
+  for(var tries=0;tries<3;tries++){
+    var code=await promptModal({title:title||"Two-step verification",label:"6-digit code",desc:note+(desc||"Enter the code from your authenticator app."),placeholder:"123456",inputmode:"numeric",maxlength:6,okText:"Verify",required:true,requiredMsg:"Enter the 6-digit code."});
+    if(code==null)return null;
+    code=String(code).replace(/\s+/g,"");
+    if(!/^\d{6}$/.test(code)){note="Use the 6 digits from the app. ";continue;}
+    var c=await fetch(SU+"/auth/v1/factors/"+encodeURIComponent(factorId)+"/challenge",{method:"POST",headers:hd,body:"{}"});
+    var cd=await c.json().catch(function(){return {};});
+    if(!c.ok||!cd.id)throw new Error(mfaErrText(cd,"Couldn't start the code check — try again."));
+    var v=await fetch(SU+"/auth/v1/factors/"+encodeURIComponent(factorId)+"/verify",{method:"POST",headers:hd,body:JSON.stringify({challenge_id:cd.id,code:code})});
+    var vd=await v.json().catch(function(){return {};});
+    if(v.ok&&vd.access_token)return vd;
+    if(vd.error_code&&vd.error_code!=="mfa_verification_failed")throw new Error(mfaErrText(vd,"Couldn't check the code — try again."));
+    note="That code didn't match — try the newest one. ";
+  }
+  throw new Error("That code didn't match. Wait for a new code in your authenticator app and try again.");
+}
+// A session that arrives in an email link is aal1. For an account with an authenticator it is
+// used only after the current code verifies. Returns the session to keep ({access_token} alone
+// when no code is needed), or null (cancelled, wrong code, or the account couldn't be checked).
+async function mfaLinkSession(token,u){
+  var fs=u&&Array.isArray(u.factors)?u.factors:null;
+  if(!fs){
+    var x=await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+token}}).catch(function(){return null;});
+    if(!x||!x.ok)return null;
+    var ud=await x.json().catch(function(){return null;});
+    if(!ud||!ud.id)return null;
+    fs=Array.isArray(ud.factors)?ud.factors:[];
+  }
+  var tf=mfaTotp(fs);
+  if(!tf||mfaAal(token)==="aal2")return {access_token:token};
+  try{return await mfaStepUp(token,tf.id,"Two-step verification","Your account uses two-step verification. Enter the code from your authenticator app to finish signing in.");}
+  catch(ex){alert(ex.message);return null;}
+}
+function securityCard(){
+  if(DEMO||!S||!S.token)return "";
+  setTimeout(loadMfaStatus,0);
+  return '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.35);margin-bottom:10px">Security</div>'
+    +'<div class="dc" id="mfaCard" style="margin-bottom:24px"><div class="dch"><div class="dct">Two-step verification</div></div>'
+    +'<div style="font-size:11px;color:rgba(240,244,255,.45);line-height:1.5;margin:2px 0 12px">Adds a second step when you log in to Clicktide. After your email and password, the login screen asks for a 6-digit code from an authenticator app on your phone (Apple Passwords, Google Authenticator, 1Password or Authy). Keep your email account secure too, and if you lose your phone, contact support@goclicktide.com.</div>'
+    +'<div id="mfaStatus" style="font-size:12px;color:rgba(240,244,255,.55);margin-bottom:12px">Checking…</div>'
+    +'<button class="btn btn-gold" id="mfaBtn" style="display:none;padding:9px 18px" onclick="mfaEnroll(this)">Turn on two-step verification</button>'
+    +'<button class="btn btn-outline" id="mfaOffBtn" style="display:none;padding:9px 18px" onclick="mfaDisable(this)">Turn off two-step verification</button></div>';
+}
+async function loadMfaStatus(){
+  if(DEMO||!S||!S.token||!document.getElementById("mfaStatus"))return;
+  var f=null,ok=false;
+  try{var x=await mfaFetch(SU+"/auth/v1/user");ok=x.r.ok;if(ok)f=mfaTotp(x.d.factors);}catch(e){}
+  var st=document.getElementById("mfaStatus"),on=document.getElementById("mfaBtn"),off=document.getElementById("mfaOffBtn");
+  if(!st)return;
+  if(!ok){st.textContent="Couldn't check two-step verification right now — reload the page to try again.";return;}
+  window.__mfaFactor=f;
+  if(f){st.innerHTML='<span style="color:#1E874F;font-weight:700">On</span> <span style="color:#3A3E45">— logging in with your password also asks for a code from your authenticator app.</span>';if(off)off.style.display="inline-block";if(on)on.style.display="none";}
+  else{st.innerHTML='<span style="color:#0F1115;font-weight:700">Off</span> <span style="color:#3A3E45">— your login needs only your password.</span>';if(on)on.style.display="inline-block";if(off)off.style.display="none";}
+}
+async function mfaEnroll(btn){
+  if(DEMO||!S||!S.token)return;
+  if(btn){btn.disabled=true;btn.textContent="Setting up…";}
+  try{
+    var me=await mfaFetch(SU+"/auth/v1/user");
+    if(!me.r.ok)throw new Error("Couldn't check your login — log out, log in again, and retry.");
+    var fs=me.d.factors||[];
+    if(mfaTotp(fs)){loadMfaStatus();throw new Error("Two-step verification is already on for this login.");}
+    // A setup that was never finished leaves an unverified factor behind: remove it first.
+    for(var i=0;i<fs.length;i++){if(fs[i]&&fs[i].id&&fs[i].status!=="verified")await mfaFetch(SU+"/auth/v1/factors/"+encodeURIComponent(fs[i].id),{method:"DELETE"}).catch(function(){});}
+    var x=await mfaFetch(SU+"/auth/v1/factors",{method:"POST",body:JSON.stringify({factor_type:"totp",friendly_name:"Clicktide "+new Date().toISOString().slice(0,19).replace("T"," "),issuer:"Clicktide"})});
+    var d=x.d,qr=mfaQrSrc(d.totp&&d.totp.qr_code),secret=String((d.totp&&d.totp.secret)||"");
+    if(!x.r.ok||!d.id||(!qr&&!secret))throw new Error(mfaErrText(d,"Couldn't start two-step setup — try again."));
+    window.__mfaPending=String(d.id);
+    document.body.insertAdjacentHTML("beforeend",modal("Turn on two-step verification",
+      '<div style="font-size:13px;color:#3A3E45;line-height:1.6;margin-bottom:12px"><b>1.</b> Open an authenticator app on your phone (Apple Passwords, Google Authenticator, 1Password or Authy) and scan this code.</div>'
+      +(qr?'<div style="text-align:center;margin-bottom:10px"><img src="'+giftEsc(qr)+'" alt="QR code for your authenticator app" style="width:190px;height:190px;background:#FFFFFF;border:1px solid rgba(15,23,42,.12);border-radius:12px;padding:8px"/></div>':'')
+      +(secret?'<div style="font-size:11px;color:#6B6F76;margin:0 0 4px">Can\'t scan it? Type this key into the app instead:</div><div style="font-size:12px;font-family:monospace;background:#F4F6FA;color:#0F1115;border-radius:8px;padding:8px;word-break:break-all;letter-spacing:1px;margin-bottom:14px">'+giftEsc(secret)+'</div>':'')
+      +'<div style="font-size:13px;color:#3A3E45;line-height:1.6;margin-bottom:8px"><b>2.</b> Type the 6-digit code the app shows.</div>'
+      +'<div class="fg"><label class="fl">6-digit code</label><input class="fi" id="mfaCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456"/></div>'
+      +'<div id="mfaErr" style="display:none;color:#C0392B;font-size:12px;margin-bottom:10px"></div>'
+      +'<button class="btn-full btn-gold" id="mfaGo" onclick="mfaVerify(null,this)">Verify &amp; turn on</button>'));
+    var ci=document.getElementById("mfaCode");
+    if(ci){ci.onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();mfaVerify(null,document.getElementById("mfaGo"));}};setTimeout(function(){try{ci.focus();}catch(_){}},60);}
+  }catch(ex){alert(ex.message);}
+  if(btn){btn.disabled=false;btn.textContent="Turn on two-step verification";}
+}
+async function mfaVerify(fid,btn){
+  fid=String(fid||window.__mfaPending||"");
+  var code=String(document.getElementById("mfaCode")?.value||"").replace(/\s+/g,"");
+  var er=document.getElementById("mfaErr");
+  var bad=function(m){if(er){er.textContent=m;er.style.display="block";}};
+  if(!fid){bad("This setup has expired — close it and start again.");return;}
+  if(!/^\d{6}$/.test(code)){bad("Enter the 6-digit code from your authenticator app.");return;}
+  if(btn){btn.disabled=true;btn.textContent="Checking…";}
+  try{
+    var c=await mfaFetch(SU+"/auth/v1/factors/"+encodeURIComponent(fid)+"/challenge",{method:"POST",body:"{}"});
+    if(!c.r.ok||!c.d.id)throw new Error(mfaErrText(c.d,"Couldn't start the code check — try again."));
+    var v=await mfaFetch(SU+"/auth/v1/factors/"+encodeURIComponent(fid)+"/verify",{method:"POST",body:JSON.stringify({challenge_id:c.d.id,code:code})});
+    var vd=v.d;
+    if(!v.r.ok||!vd.access_token)throw new Error(vd.error_code==="mfa_verification_failed"?"That code didn't match — check the time on your phone and try the newest code.":mfaErrText(vd,"That code didn't match — try again."));
+    // The verify response is this session upgraded to aal2: keep it (refresh token included).
+    if(vd.access_token)saveSession(vd);
+    window.__mfaPending=null;
+    var ov=btn&&btn.closest?btn.closest(".ov"):null;if(ov)ov.remove();else document.querySelector(".ov")?.remove();
+    alert("Two-step verification is on. When you log in with your password, Clicktide will ask for a code from your app. You may need to log in again on your other devices.");
+    loadMfaStatus();
+  }catch(ex){bad(ex.message);if(btn){btn.disabled=false;btn.textContent="Verify & turn on";}}
+}
+async function mfaDisable(btn){
+  var f=window.__mfaFactor;if(DEMO||!f||!S||!S.token)return;
+  if(!await confirmModal({title:"Turn off two-step verification?",message:"Your login will need only your password again.",okText:"Turn off",danger:true}))return;
+  if(btn){btn.disabled=true;btn.textContent="Turning off…";}
+  try{
+    var me=await mfaFetch(SU+"/auth/v1/user");
+    f=me.r.ok?mfaTotp(me.d.factors):f;
+    if(!f){ctToast("Two-step verification is already off.","info");return;}
+    // Removing a verified authenticator needs an aal2 session. A session that started without
+    // the code (or from before two-step was on) is stepped up first.
+    if(mfaAal(S.token)!=="aal2"){
+      var up=await mfaStepUp(S.token,f.id,"Confirm it's you","To turn off two-step verification, enter the current code from your authenticator app.");
+      if(!up)return;
+      saveSession(up);
+    }
+    var x=await mfaFetch(SU+"/auth/v1/factors/"+encodeURIComponent(f.id),{method:"DELETE"});
+    if(!x.r.ok)throw new Error(x.d.error_code==="insufficient_aal"?"Please log out and log in again with your code, then turn it off.":mfaErrText(x.d,"Couldn't turn off two-step verification — try again."));
+    window.__mfaFactor=null;
+    await refreshSession(); // the server downgraded this session; pick up the new token
+    alert("Two-step verification is off.");
+  }catch(ex){alert(ex.message);}
+  finally{if(btn){btn.disabled=false;btn.textContent="Turn off two-step verification";}loadMfaStatus();}
+}
+'''
+
+PW_RESET_OLD = r'''    var r=await fetch(SU+"/auth/v1/user",{method:"PUT",headers:{apikey:SK,Authorization:"Bearer "+window.__rcTok,"Content-Type":"application/json"},body:JSON.stringify({password:p})});
+    var d=await r.json();
+    if(!r.ok)throw new Error(d.message||d.error_description||"Could not update password");'''
+
+PW_RESET_NEW = r'''    var putPw=function(){return fetch(SU+"/auth/v1/user",{method:"PUT",headers:{apikey:SK,Authorization:"Bearer "+window.__rcTok,"Content-Type":"application/json"},body:JSON.stringify({password:p})});};
+    var r=await putPw();
+    var d=await r.json().catch(function(){return {};});
+    // With two-step on, Supabase only takes a new password from an aal2 session: the reset
+    // link's session is stepped up with the owner's code, then the change is sent again.
+    if(!r.ok&&d&&d.error_code==="insufficient_aal"){
+      var up=await mfaStepUp(window.__rcTok,null,"Two-step verification","Your account uses two-step verification. Enter the code from your authenticator app to set the new password.");
+      if(!up)throw new Error("Your two-step code is needed to set a new password.");
+      window.__rcTok=up.access_token;
+      r=await putPw();d=await r.json().catch(function(){return {};});
+    }
+    if(!r.ok)throw new Error(d.msg||d.message||d.error_description||"Could not update password");'''
+
+FABRIC_TAG = r'''<script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>'''
+# sha384 of the exact bytes jsDelivr serves for this URL; computed twice from jsDelivr and once
+# from dist/fabric.min.js in the npm tarball (whose sha512 matches the registry's integrity).
+FABRIC_SRI = "sha384-8E2vEX6CrzCvnhTD2fZ1qYM8/814HwUQP5F3fGZ7HQhjPdrBpUFY2F8ixbfIg8Xr"
+
+INDEX.extend([
+    # --- third-party scripts --------------------------------------------------------
+    P("idx-sri-fabric", "fabric 5.3.0 from jsDelivr is pinned with Subresource Integrity",
+      FABRIC_TAG,
+      FABRIC_TAG.replace('"></script>', '" integrity="%s" crossorigin="anonymous"></script>' % FABRIC_SRI)),
+    # editor.unlayer.com/embed.js has no versioned URL, so it can't carry an integrity hash. It
+    # is already loaded lazily: only emInitUnlayer() (run when the Email Studio tab opens)
+    # appends it, so it never runs for visitors or on other dashboard pages. No patch needed.
+
+    # --- owner two-step verification ------------------------------------------------
+    # must come after idx-mfa-session, whose result is part of MFA_OLD (MFA_NEW keeps it)
+    P("idx-mfa-block", "two-step verification: raw-SVG QR, stale factors removed, aal2 session kept, turn-off asks for a code on aal1",
+      MFA_OLD, MFA_NEW),
+    P("idx-mfa-settings", "two-step verification card shown on the Settings page (signed-in owner, not demo)",
+      '''        ${bizTextingCard}
+''',
+      '''        ${bizTextingCard}
+        ${securityCard()}
+'''),
+    P("idx-mfa-pwreset", "password reset with two-step on: asks for the code (Supabase refuses the change from an aal1 session)",
+      PW_RESET_OLD, PW_RESET_NEW),
+    # Inserted above idx-auth-accept's lines (which stay contiguous and untouched): a session
+    # from an email link (magic link, email-change link) of an account with an authenticator is
+    # stepped up to aal2 before the "sign in as ...?" prompt and before it is stored.
+    P("idx-mfa-linklogin", "email-link sign-in with two-step on: asks for the code before the link's session is kept",
+      r'''    const r=await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+token}});
+    u=await r.json();
+  }
+''',
+      r'''    const r=await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+token}});
+    u=await r.json();
+  }
+  // Two-step accounts: a link's session is aal1 and is kept only after the current code verifies.
+  if(u&&u.id){
+    const _ls=await mfaLinkSession(token,u);
+    if(!_ls){scr=S?"dash":"login";R();setTimeout(function(){alert("Log in with your email, password and two-step code to continue.");},80);return;}
+    if(_ls.access_token!==token){token=_ls.access_token;sessionData=Object.assign({},sessionData||{},{refresh_token:_ls.refresh_token||"",expires_in:_ls.expires_in||"",expires_at:_ls.expires_at||""});if(_ls.user)u=_ls.user;}
+  }
+'''),
+])
+
+FPA_MFA_HELPERS = r'''// Two-step verification (accounts with an authenticator app, turned on in the main app's
+// Settings): a password login or a reset link here becomes a session only after the current
+// code verifies (aal2), the same as the main app. This page shares the app's stored login.
+async function fpaMfaFactor(tok,user){var fs=user&&Array.isArray(user.factors)?user.factors:null;if(!fs){try{var r=await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+tok}});fs=((await r.json())||{}).factors||[];}catch(e){fs=[];}}return fs.filter(function(f){return f&&f.status==="verified"&&f.factor_type==="totp";})[0]||null;}
+async function fpaMfaStepUp(tok,fid){
+  var hd={apikey:SK,Authorization:"Bearer "+tok,"Content-Type":"application/json"},msg="Two-step verification: enter the 6-digit code from your authenticator app.";
+  for(var i=0;i<3;i++){
+    var code=prompt(msg,"");if(code==null)return null;code=String(code).replace(/\s+/g,"");
+    if(!/^\d{6}$/.test(code)){msg="Enter the 6-digit code from your authenticator app (numbers only).";continue;}
+    var c=await fetch(SU+"/auth/v1/factors/"+encodeURIComponent(fid)+"/challenge",{method:"POST",headers:hd,body:"{}"});
+    var cd=await c.json().catch(function(){return{};});
+    if(!c.ok||!cd.id)throw new Error(cd.msg||"Couldn't start the code check — try again.");
+    var v=await fetch(SU+"/auth/v1/factors/"+encodeURIComponent(fid)+"/verify",{method:"POST",headers:hd,body:JSON.stringify({challenge_id:cd.id,code:code})});
+    var vd=await v.json().catch(function(){return{};});
+    if(v.ok&&vd.access_token)return vd;
+    if(vd.error_code&&vd.error_code!=="mfa_verification_failed")throw new Error(vd.msg||"Couldn't check the code — try again.");
+    msg="That code didn't match. Enter the newest 6-digit code from your authenticator app.";
+  }
+  throw new Error("That code didn't match. Wait for a new code in your authenticator app and try again.");
+}
+$("fLogin").addEventListener("submit",async function(e){'''
+
+AUDIT.extend([
+    P("fpa-mfa-helpers", "two-step verification helpers (code prompt, challenge + verify)",
+      r'''$("fLogin").addEventListener("submit",async function(e){''', FPA_MFA_HELPERS),
+    P("fpa-mfa-login", "password login asks for the two-step code when the account has an authenticator",
+      r'''    saveSession(d);setNav();await ensureBiz({});await afterLogin();''',
+      r'''    var tf=await fpaMfaFactor(d.access_token,d.user);
+    if(tf){var up=await fpaMfaStepUp(d.access_token,tf.id);if(!up)throw new Error("Your two-step code is needed to log in.");d=Object.assign({},d,up,{user:up.user||d.user});}
+    saveSession(d);setNav();await ensureBiz({});await afterLogin();'''),
+    # Inserted before fpa-auth-accept-recovery's lines (which it leaves untouched): the reset
+    # link's session is stepped up first, so the stored session and RECOVERY_TOKEN are aal2
+    # and Supabase accepts the new password.
+    P("fpa-mfa-recovery", "reset link with two-step on: the code is asked before the link's session is used (staged line only)",
+      r'''      var ru=await (await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+ht}})).json();''',
+      r'''      var ru=await (await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+ht}})).json();
+      var rtf=ru&&ru.id?await fpaMfaFactor(ht,ru):null;
+      if(rtf){var rup=null;try{rup=await fpaMfaStepUp(ht,rtf.id);}catch(x){alert(x.message);}if(rup&&rup.access_token){ht=rup.access_token;hashP.set("refresh_token",rup.refresh_token||"");hashP.set("expires_in",String(rup.expires_in||""));hashP.delete("expires_at");if(rup.user)ru=rup.user;}else{var resetDeclined=true;ru=null;}}''',
+      needs='var RECOVERY_TOKEN=""'),
+    # Inserted above fpa-auth-accept's line (left untouched): an email-link session of an
+    # account with an authenticator is stepped up to aal2 before it is stored.
+    P("fpa-mfa-linklogin", "email-link sign-in with two-step on: the code is asked before the link's session is kept",
+      r'''      var u=await (await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+ht}})).json();
+''',
+      r'''      var u=await (await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+ht}})).json();
+      var ltf=u&&u.id?await fpaMfaFactor(ht,u):null;
+      if(ltf){var lup=null;try{lup=await fpaMfaStepUp(ht,ltf.id);}catch(x){alert(x.message);}if(lup&&lup.access_token){ht=lup.access_token;hashP.set("refresh_token",lup.refresh_token||"");hashP.set("expires_in",String(lup.expires_in||""));hashP.delete("expires_at");if(lup.user)u=lup.user;}else u=null;}
+'''),
+])
+
 
 PAGES = {
     "index.html": (INDEX, "function giftEsc("),

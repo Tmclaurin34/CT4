@@ -804,6 +804,26 @@ $("resendBtn").onclick=async function(){
   var email=$("confEmail").textContent;$("resendMsg").textContent=" Sending…";rememberAuthIntent(email,"signup");
   try{var r=await fetch(SU+"/auth/v1/resend",{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({type:"signup",email:email,options:{emailRedirectTo:location.origin+"/free-pos-audit?step=connect"}})});$("resendMsg").textContent=r.ok?" Sent — check your inbox.":" Couldn't resend — wait a minute and try again.";}catch(e){$("resendMsg").textContent=" Couldn't resend right now.";}
 };
+// Two-step verification (accounts with an authenticator app, turned on in the main app's
+// Settings): a password login or a reset link here becomes a session only after the current
+// code verifies (aal2), the same as the main app. This page shares the app's stored login.
+async function fpaMfaFactor(tok,user){var fs=user&&Array.isArray(user.factors)?user.factors:null;if(!fs){try{var r=await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+tok}});fs=((await r.json())||{}).factors||[];}catch(e){fs=[];}}return fs.filter(function(f){return f&&f.status==="verified"&&f.factor_type==="totp";})[0]||null;}
+async function fpaMfaStepUp(tok,fid){
+  var hd={apikey:SK,Authorization:"Bearer "+tok,"Content-Type":"application/json"},msg="Two-step verification: enter the 6-digit code from your authenticator app.";
+  for(var i=0;i<3;i++){
+    var code=prompt(msg,"");if(code==null)return null;code=String(code).replace(/\s+/g,"");
+    if(!/^\d{6}$/.test(code)){msg="Enter the 6-digit code from your authenticator app (numbers only).";continue;}
+    var c=await fetch(SU+"/auth/v1/factors/"+encodeURIComponent(fid)+"/challenge",{method:"POST",headers:hd,body:"{}"});
+    var cd=await c.json().catch(function(){return{};});
+    if(!c.ok||!cd.id)throw new Error(cd.msg||"Couldn't start the code check — try again.");
+    var v=await fetch(SU+"/auth/v1/factors/"+encodeURIComponent(fid)+"/verify",{method:"POST",headers:hd,body:JSON.stringify({challenge_id:cd.id,code:code})});
+    var vd=await v.json().catch(function(){return{};});
+    if(v.ok&&vd.access_token)return vd;
+    if(vd.error_code&&vd.error_code!=="mfa_verification_failed")throw new Error(vd.msg||"Couldn't check the code — try again.");
+    msg="That code didn't match. Enter the newest 6-digit code from your authenticator app.";
+  }
+  throw new Error("That code didn't match. Wait for a new code in your authenticator app and try again.");
+}
 $("fLogin").addEventListener("submit",async function(e){
   e.preventDefault();err("logErr");
   var b=$("lBtn");b.disabled=true;b.textContent="Logging in…";
@@ -811,6 +831,8 @@ $("fLogin").addEventListener("submit",async function(e){
     var r=await fetch(SU+"/auth/v1/token?grant_type=password",{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:$("lEmail").value.trim(),password:$("lPw").value})});
     var d=await r.json().catch(function(){return{};});
     if(!r.ok){if((d.error_code||d.error)==="email_not_confirmed")throw new Error("Your email isn't confirmed yet — click the link we emailed you.");throw new Error(d.msg||d.error_description||"Wrong email or password.");}
+    var tf=await fpaMfaFactor(d.access_token,d.user);
+    if(tf){var up=await fpaMfaStepUp(d.access_token,tf.id);if(!up)throw new Error("Your two-step code is needed to log in.");d=Object.assign({},d,up,{user:up.user||d.user});}
     saveSession(d);setNav();await ensureBiz({});await afterLogin();
   }catch(ex){err("logErr",ex.message);}
   finally{b.disabled=false;b.innerHTML="Log in &rarr;";}
@@ -1169,6 +1191,8 @@ async function deleteData(platform){
   if(ht&&hashP.get("type")==="recovery"){
     try{
       var ru=await (await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+ht}})).json();
+      var rtf=ru&&ru.id?await fpaMfaFactor(ht,ru):null;
+      if(rtf){var rup=null;try{rup=await fpaMfaStepUp(ht,rtf.id);}catch(x){alert(x.message);}if(rup&&rup.access_token){ht=rup.access_token;hashP.set("refresh_token",rup.refresh_token||"");hashP.set("expires_in",String(rup.expires_in||""));hashP.delete("expires_at");if(rup.user)ru=rup.user;}else{var resetDeclined=true;ru=null;}}
       if(ru&&ru.id&&!acceptLinkSession(ru)){var resetDeclined=true;ru=null;}
       if(ru&&ru.id){RECOVERY_TOKEN=ht;saveSession({access_token:ht,refresh_token:hashP.get("refresh_token")||"",expires_in:hashP.get("expires_in")||"",expires_at:hashP.get("expires_at")||"",user:ru});}
     }catch(e){}
@@ -1183,6 +1207,8 @@ async function deleteData(platform){
   if(ht){
     try{
       var u=await (await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+ht}})).json();
+      var ltf=u&&u.id?await fpaMfaFactor(ht,u):null;
+      if(ltf){var lup=null;try{lup=await fpaMfaStepUp(ht,ltf.id);}catch(x){alert(x.message);}if(lup&&lup.access_token){ht=lup.access_token;hashP.set("refresh_token",lup.refresh_token||"");hashP.set("expires_in",String(lup.expires_in||""));hashP.delete("expires_at");if(lup.user)u=lup.user;}else u=null;}
       if(u&&u.id&&acceptLinkSession(u)){saveSession({access_token:ht,refresh_token:hashP.get("refresh_token")||"",expires_in:hashP.get("expires_in")||"",expires_at:hashP.get("expires_at")||"",user:u});
         fetch(FN+"/send-welcome-email",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+ht},body:"{}"}).catch(function(){});}
     }catch(e){}

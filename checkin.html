@@ -37,7 +37,7 @@ h1{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin:
     <div id="nameWrap">
       <input class="fi" id="name" placeholder="Your name"/>
       <label class="consent"><input type="checkbox" id="consent_m"/>
-        <span>By checking this box you agree to receive <b>marketing texts</b> (offers, rewards, and win-back messages) from this business via Clicktide. Message frequency varies. Msg &amp; data rates may apply. Reply HELP for help, STOP to opt out.</span></label>
+        <span>By checking this box you agree to receive <b>marketing texts</b> (offers, rewards, and win-back messages) from this business via Clicktide. Message frequency varies. Msg &amp; data rates may apply. Reply HELP for help, STOP to opt out. We&rsquo;ll text you once to confirm &mdash; reply <b>YES</b> to start.</span></label>
       <label class="consent"><input type="checkbox" id="consent_t"/>
         <span>By checking this box you agree to receive <b>account &amp; service texts</b> (visit reminders and gift or order updates) from this business via Clicktide. Message frequency varies. Msg &amp; data rates may apply. Reply HELP for help, STOP to opt out.</span></label>
       <div class="links"><a href="privacy.html">Privacy Policy</a> &nbsp;&middot;&nbsp; <a href="sms-policy.html">SMS Policy</a> &nbsp;&middot;&nbsp; <a href="terms.html">Terms of Service</a></div>
@@ -86,7 +86,8 @@ function go(ev){
     name:document.getElementById("name").value,
     consent:mk||tx,
     consent_marketing:mk,
-    consent_transactional:tx
+    consent_transactional:tx,
+    form_version:"checkin-2026-11-27-doi"
   })}).then(function(r){return r.json().then(function(d){return{s:r.status,d:d};});}).then(function(x){
     if(x.d&&x.d.ok){
       var who=esc(x.d.first_name||"there");
@@ -94,6 +95,7 @@ function go(ev){
         '<div class="done"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.5 2.5 5-5.5"/></svg></div>'+
         '<h1>'+(x.d.already?"Already checked in!":"You\'re checked in, "+who+"!")+'</h1>'+
         '<div class="sub">'+(x.d.already?"We counted your visit earlier today.":"Thanks for coming back to "+esc(x.d.business_name||"us")+". See you next time!")+'</div>'+
+        (x.d.sms_confirmation==="sent"?'<div class="sub" style="margin-top:-8px">Check your texts: reply <b>YES</b> to confirm you want texts from '+esc(x.d.business_name||"us")+'.</div>':'')+
         (WL?'':'<div class="power">Powered by <b>CLICKTIDE</b> · goclicktide.com</div>');
       return;
     }
