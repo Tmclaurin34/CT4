@@ -7,6 +7,9 @@
 // Runs nightly via pg_cron (cron key), or on demand by a logged-in business
 // for their own connections (JWT). First sync backfills 365 days, paginated.
 
+import { aggregateAuditOrders, sufficiency, validateFacts } from "./audit.js";
+import { GQL_PAGE, LOGICAL_PAGE, mapShopifyOrder, ORDERS_QUERY, ordersSearch, readOrdersResponse, SHOPIFY_API_VERSION, throttleWaitMs } from "./shopify.js";
+
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const stripePlatformKey = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
@@ -166,32 +169,54 @@ async function squareOrders(c: Conn, since: string): Promise<Order[]> {
   return out;
 }
 
-async function shopifyOrders(c: Conn, since: string): Promise<Order[]> {
+async function shopifyOrders(c: Conn, since: string, op: FetchOpts = defaultOpts()): Promise<Order[]> {
+  // GraphQL Admin API (REST is retired for public apps). One logical page = 250
+  // orders (as with REST), fetched in requests of up to 100. See shopify.js.
   const domain = c.shop_domain || c.merchant_id;
-  const raw: Record<string, never>[] = [];
-  let sinceId = "";
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const url = `https://${domain}/admin/api/2024-01/orders.json?status=any&limit=250&created_at_min=${encodeURIComponent(since)}${sinceId ? `&since_id=${sinceId}` : ""}`;
-    const r = await fetch(url, { headers: { "X-Shopify-Access-Token": c.access_token } });
-    if (!r.ok) throw new Error(`shopify orders ${r.status}`);
-    const orders = (await r.json()).orders || [];
-    if (!orders.length) break;
-    raw.push(...orders);
-    sinceId = String(orders[orders.length - 1].id || "");
-    if (orders.length < 250 || !sinceId) break;
+  const url = `https://${domain}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`;
+  const q = ordersSearch(since);
+  const raw: Record<string, unknown>[] = [];
+  let cursor = "";
+  let more = true;
+  let fieldErrors = 0;
+  for (let page = 0; more && pageGuard(op, page); page++) {
+    let got = 0;
+    while (got < LOGICAL_PAGE && more) {
+      if (Date.now() > op.deadline) { op.stats.truncated = true; more = false; break; }
+      const first = Math.min(GQL_PAGE, LOGICAL_PAGE - got);
+      let res: ReturnType<typeof readOrdersResponse> = { throttled: true };
+      let body: Record<string, unknown> = {};
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const r = await fetch(url, {
+          method: "POST",
+          headers: { "X-Shopify-Access-Token": c.access_token, "Content-Type": "application/json" },
+          body: JSON.stringify({ query: ORDERS_QUERY, variables: { first, after: cursor || null, q } }),
+        });
+        body = await r.json().catch(() => ({}));
+        res = readOrdersResponse(r.status, body);
+        if (!res.throttled) break;
+        await new Promise((ok) => setTimeout(ok, Math.max(1000, throttleWaitMs(body.extensions, 1000))));
+      }
+      if (res.throttled) throw new Error("shopify orders 429");
+      if (res.error) throw new Error(res.error);
+      fieldErrors += res.fieldErrors || 0;
+      const nodes = res.orders || [];
+      raw.push(...nodes);
+      got += nodes.length;
+      cursor = res.cursor || "";
+      more = !!res.hasNext && !!cursor && nodes.length > 0;
+      const wait = throttleWaitMs(body.extensions, 1000);
+      if (more && wait) await new Promise((ok) => setTimeout(ok, Math.min(wait, 10_000)));
+    }
+    op.onPage?.(raw.length);
+    lastPage(op, page, more);
   }
-  return raw.map((o) => {
-    const cu = (o.customer || {}) as Record<string, never>;
-    const sa = ((o as Record<string, never>).shipping_address || (cu.default_address as Record<string, string>) || {}) as Record<string, string>;
-    return {
-      email: (cu as Record<string, string>).email || (o as Record<string, string>).email,
-      phone: (cu as Record<string, string>).phone,
-      name: [(cu as Record<string, string>).first_name, (cu as Record<string, string>).last_name].filter(Boolean).join(" "),
-      addr: cleanAddr(sa.address1, sa.address2, sa.city, sa.province_code || sa.province, sa.zip, sa.country_code || sa.country),
-      amount: Number((o as Record<string, string>).total_price) || 0,
-      at: (o as Record<string, string>).created_at,
-    };
-  }).filter((x: Order) => x.email || x.phone);
+  if (fieldErrors) console.warn(`shopify ${domain}: ${fieldErrors} field error(s) — protected customer fields may be redacted`);
+  op.stats.raw += raw.length;
+  const mapped = raw.map((o) => mapShopifyOrder(o, cleanAddr) as Order);
+  const kept = mapped.filter((x: Order) => x.email || x.phone);
+  op.stats.anonymous += mapped.length - kept.length;
+  return kept;
 }
 
 async function cloverOrders(c: Conn, since: string): Promise<Order[]> {
