@@ -122,6 +122,16 @@ Partner Dashboard → Apps → clicktide 3 → Distribution → Manage listing �
 - **Growth** — $199 / month
 - **Scale** — $449 / month
 
+**Usage meters** (same on all three plans; the handles must match `USAGE_METERS` in `_shared/shopify.js` exactly, or Shopify accepts the event with 202 but never bills it):
+
+| Meter handle | Price per unit | What one unit is |
+|---|---|---|
+| `postcard` | $1.50 | one mailed postcard (refunds are sent as −1) |
+| `extra_text` | $0.05 | one text past the plan's included texts |
+| `gift` | $1.00 | one dollar of gift cost (fractional values, e.g. `"14.99"`) |
+
+Clicktide caps usage itself (Local $150, Growth $400, Scale $900 a cycle; $0 during the free trial). App Pricing meters have no Shopify-side cap. Operations, alerts and the monthly check: `docs/shopify-usage-billing.md`.
+
 Set the **welcome / post-approval link** to `https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1/shopify-app`. Copy the **app handle** from the plan page URL (`admin.shopify.com/store/<store>/charges/<handle>/pricing_plans`). It's needed as a secret (next section).
 
 ### Step 6 — Listing text (paste)
@@ -167,7 +177,7 @@ Set the **welcome / post-approval link** to `https://hmihfncvahsdlmefyxyg.supaba
    - Replace the "enter your .myshopify.com domain" Connect Shopify box (forbidden by rule 2.3.1) with a button to the app's install link.
    - Businesses with `billing_provider = 'shopify'` or a Shopify connection: "Choose plan" opens `admin.shopify.com/store/<store>/charges/<handle>/pricing_plans` instead of Stripe Checkout, and "Manage billing" goes there too (no Stripe portal).
 6. **Test on a development store** end to end: install from the link, OAuth, sign up, claim, import, plan selection (test charge), open from the Shopify admin, uninstall, then `shopify app webhook trigger` for each compliance topic.
-7. **Turn billing on** (`SHOPIFY_BILLING_ENABLED=true`) only after step 6 passes and your OK.
+7. **Turn billing on** (`SHOPIFY_BILLING_ENABLED=true`) only after step 6 passes and your OK. Then, on the dev store, send one postcard with a $0 wallet. The dev store refuses it (test stores never bill usage), which is correct. To see a usage event reach Shopify, check Dev Dashboard → Logs → **App billing event** for a real (non-dev) store's first postcard. A rejection there (`NO_MATCHING_METER`) means a meter handle is wrong.
 8. Then submit for review.
 
 ---
