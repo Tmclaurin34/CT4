@@ -1,5 +1,5 @@
 -- Website-first (Stripe) business that connects Shopify. Run in one transaction with
--- 20261128170000_shopify_switch_from_stripe.sql; ends with raise exception (nothing kept).
+-- 20261128170200_shopify_switch_from_stripe.sql; ends with raise exception (nothing kept).
 do $t$
 declare
   u uuid := '675f5e6d-2de0-43e3-91f9-8126b5e6967a';  -- Clicktide Test Business (clicktide-test store connected)
@@ -22,10 +22,15 @@ begin
   select * into b from clicktide where user_id = u;
   if b.billing_provider <> 'stripe' or b.stripe_subscription_status <> 'active' then raise exception 'FAIL 2: % %', r, row_to_json(b); end if;
 
-  -- 3. live Shopify plan: switches to Shopify and asks to cancel the Stripe subscription
+  -- 2b. Shopify plan still in its free trial: the Stripe payer keeps Stripe (could still cancel the trial)
   r := clicktide_shopify_apply_entitlement(shop, 'Local', 'trialing', now() + interval '30 days', 'gid://shopify/AppSubscription/1', 'ACTIVE');
   select * into b from clicktide where user_id = u;
-  if b.billing_provider <> 'shopify' or b.plan <> 'Local' or b.stripe_subscription_status <> 'trialing'
+  if b.billing_provider <> 'stripe' or b.stripe_subscription_status <> 'active' or jsonb_array_length(r->'stripe_cancel') <> 0 then raise exception 'FAIL 2b: % %', r, row_to_json(b); end if;
+
+  -- 3. paid Shopify plan: switches to Shopify and asks to cancel the Stripe subscription
+  r := clicktide_shopify_apply_entitlement(shop, 'Local', 'active', now() + interval '30 days', 'gid://shopify/AppSubscription/1', 'ACTIVE');
+  select * into b from clicktide where user_id = u;
+  if b.billing_provider <> 'shopify' or b.plan <> 'Local' or b.stripe_subscription_status <> 'active'
      or r->'stripe_cancel'->0->>'stripe_subscription_id' <> 'sub_TESTswitch' then raise exception 'FAIL 3: % %', r, row_to_json(b); end if;
 
   if not exists (select 1 from shopify_stripe_switch where stripe_subscription_id = 'sub_TESTswitch' and user_id = u and done_at is null)
@@ -36,11 +41,18 @@ begin
   perform set_config('request.jwt.claim.role', 'service_role', true);
   update clicktide set stripe_subscription_status = 'canceled', billing_provider = 'stripe', plan = 'Growth' where user_id = u;
   select * into b from clicktide where user_id = u;
-  if b.billing_provider <> 'shopify' or b.plan <> 'Local' or b.stripe_subscription_status <> 'trialing' then raise exception 'FAIL 4: %', row_to_json(b); end if;
+  if b.billing_provider <> 'shopify' or b.plan <> 'Local' or b.stripe_subscription_status <> 'active' then raise exception 'FAIL 4: %', row_to_json(b); end if;
 
   -- 5. re-run (nightly): already Shopify-billed, no second cancel request
   r := clicktide_shopify_apply_entitlement(shop, 'Local', 'active', now() + interval '30 days', 'gid://shopify/AppSubscription/1', 'ACTIVE');
   if jsonb_array_length(r->'stripe_cancel') <> 0 or (r->>'applied')::int <> 1 then raise exception 'FAIL 5: %', r; end if;
+
+  -- 6. uninstall: the connection is already inactive; the Shopify entitlement still ends
+  perform set_config('request.jwt.claim.role', '', true);
+  update platform_connections set is_active = false where platform = 'shopify' and user_id = u;
+  r := clicktide_shopify_apply_entitlement(shop, null, 'canceled', null, null, 'UNINSTALLED');
+  select * into b from clicktide where user_id = u;
+  if (r->>'applied')::int <> 1 or b.stripe_subscription_status <> 'canceled' then raise exception 'FAIL 6: % %', r, row_to_json(b); end if;
 
   raise exception 'ALL SWITCH TESTS PASSED';
 end $t$;

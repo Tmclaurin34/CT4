@@ -1,5 +1,5 @@
 -- A website-first business (pays through Stripe) that connects Shopify keeps Stripe. If it
--- later actually subscribes through Shopify (a live Shopify plan), it switches to Shopify
+-- later actually subscribes through Shopify (a PAID, out-of-trial Shopify plan), it switches to Shopify
 -- billing here, and the caller cancels its Stripe subscription at period end so it never
 -- pays twice. A pending/declined/cancelled Shopify subscription never touches a Stripe payer.
 -- Durable queue of Stripe subscriptions to stop at period end (retried until Stripe confirms).
@@ -19,7 +19,9 @@ create or replace function public.clicktide_shopify_apply_entitlement(
   p_shop text, p_plan text, p_status text, p_period_end timestamptz, p_sub_id text, p_raw_status text)
 returns jsonb language plpgsql security definer set search_path to '' as $$
 declare r record; v_applied int := 0; v_conflicts int := 0; v_cancel jsonb := '[]'::jsonb;
-  v_live boolean := p_plan is not null and p_status in ('active', 'trialing');
+  -- Only a PAID Shopify plan ends a Stripe one: during a Shopify trial the merchant can still
+  -- cancel, and would then have lost a paid Stripe period.
+  v_live boolean := p_plan is not null and p_status = 'active';
   v_stripe boolean;
 begin
   if p_plan is not null and p_plan not in ('Local','Growth','Scale') then raise exception 'bad plan %', p_plan; end if;
@@ -28,6 +30,10 @@ begin
              from public.clicktide b
             where b.user_id in (select user_id from public.platform_connections
                                  where platform = 'shopify' and lower(shop_domain) = lower(p_shop) and is_active and user_id is not null)
+               -- after app/uninstalled the connection is already inactive: still end the
+               -- Shopify-billed business's entitlement for that shop
+               or (b.billing_provider = 'shopify' and lower(coalesce(b.shopify_shop_domain, '')) = lower(p_shop)
+                   and coalesce(p_status, '') not in ('active', 'trialing'))
             for update of b
   loop
     v_stripe := r.billing_provider = 'stripe'

@@ -137,18 +137,25 @@ export async function cancelStripeAtPeriodEnd(subId: string): Promise<string> {
       body: "cancel_at_period_end=true",
     });
     const d = await r.json().catch(() => ({}));
-    if (r.ok) return `ok (cancel_at ${d?.cancel_at ?? "?"})`;
-    // Already cancelled / gone: nothing left to bill.
-    if (r.status === 404 || /canceled/i.test(String(d?.error?.message || ""))) return `ok (already ended: ${r.status})`;
-    console.error("stripe cancel_at_period_end failed", subId, r.status, JSON.stringify(d?.error || d).slice(0, 200));
-    return `failed ${r.status}`;
+    if (!r.ok && !/canceled/i.test(String(d?.error?.message || ""))) {
+      console.error("stripe cancel_at_period_end failed", subId, r.status, JSON.stringify(d?.error || d).slice(0, 200));
+      return `failed ${r.status} ${String(d?.error?.code || "")}`.trim();
+    }
+    // Done only once Stripe itself says it won't bill again: read it back (a 404 is not proof;
+    // it may be the wrong Stripe account or key).
+    const g = await fetch(`https://api.stripe.com/v1/subscriptions/${subId}`, { headers: { Authorization: `Bearer ${STRIPE_KEY}` } });
+    const sub = await g.json().catch(() => ({}));
+    if (g.ok && (sub?.status === "canceled" || sub?.cancel_at_period_end === true)) {
+      return `ok (${sub.status}${sub.cancel_at_period_end ? `, ends ${sub.cancel_at ?? sub.current_period_end ?? "?"}` : ""})`;
+    }
+    return `failed: not confirmed (${g.status} ${String(sub?.status || sub?.error?.code || "")})`;
   } catch (e) { return `failed ${e instanceof Error ? e.message : String(e)}`; }
 }
 
 // Every queued Stripe subscription not yet confirmed stopped (runs after a switch and on each
 // 10-minute usage job, so a Stripe outage is retried rather than leaving a double charge).
 export async function processStripeSwitches() {
-  const out = { pending: 0, done: 0, failed: 0 };
+  const out = { pending: 0, done: 0, failed: 0, stuck: [] as Array<{ user_id: string; stripe_subscription_id: string; attempts: number; last: string }> };
   const rows = await rest("/rest/v1/shopify_stripe_switch?done_at=is.null&select=stripe_subscription_id,user_id,attempts&order=requested_at&limit=50") as Array<{ stripe_subscription_id: string; user_id: string; attempts: number }>;
   out.pending = (rows || []).length;
   for (const r of rows || []) {
@@ -159,7 +166,12 @@ export async function processStripeSwitches() {
       method: "PATCH", headers: { Prefer: "return=minimal" },
       body: JSON.stringify({ attempts: (r.attempts || 0) + 1, last_result: res.slice(0, 300), ...(ok ? { done_at: new Date().toISOString() } : {}) }),
     }).catch((e) => console.error("saving stripe switch result failed", e));
-    if (ok) out.done++; else out.failed++;
+    if (ok) out.done++;
+    else {
+      out.failed++;
+      // reported to support by shopify-webhooks (usage job), rate-limited
+      if ((r.attempts || 0) + 1 >= 5) out.stuck.push({ user_id: r.user_id, stripe_subscription_id: r.stripe_subscription_id, attempts: (r.attempts || 0) + 1, last: res.slice(0, 200) });
+    }
   }
   return out;
 }
@@ -189,8 +201,11 @@ export async function reportUsage(limit = 200) {
   // One reporter at a time: the nightly run and the 10-minute run can overlap.
   const holder = crypto.randomUUID();
   if (await rpc("clicktide_shopify_usage_lease", { p_holder: holder, p_seconds: 600 }) !== true) return { skipped: "another run holds the lease" };
-  try { return await reportUsageLeased(limit); }
-  finally { await rpc("clicktide_shopify_usage_release", { p_holder: holder }).catch((e) => console.error("usage lease release failed", e)); }
+  let ok = false;
+  try { const out = await reportUsageLeased(limit); ok = true; return out; }
+  finally {
+    await rpc("clicktide_shopify_usage_release", { p_holder: holder, p_ok: ok }).catch((e) => console.error("usage lease release failed", e));
+  }
 }
 
 async function reportUsageLeased(limit: number) {
@@ -232,15 +247,30 @@ async function reportUsageLeased(limit: number) {
       headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${t}`, "User-Agent": "Clicktide/1.0 (+https://goclicktide.com)" },
       body: JSON.stringify(ev),
     });
-    let r = await send(tok);
-    if (r.status === 401) { tok = await appEventsAuth(true); r = await send(tok); }
+    let r: Response;
+    try {
+      r = await send(tok);
+      if (r.status === 401) { tok = await appEventsAuth(true); r = await send(tok); }
+    } catch (e) {
+      // network error: unknown whether Shopify got it; mark as a failure (retried later under the
+      // same idempotency key, so Shopify can't bill it twice) and keep going
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("shopify usage event network error", id, msg);
+      await rpc("clicktide_shopify_usage_mark", { p_id: id, p_ok: false, p_error: `network: ${msg}`.slice(0, 300) })
+        .catch((e2) => console.error("usage mark failed after network error", id, e2));
+      out.failed++;
+      continue;
+    }
     if (r.status >= 200 && r.status < 300) {
-      await rpc("clicktide_shopify_usage_mark", { p_id: id, p_ok: true, p_error: null });
-      out.sent++;
+      // Shopify accepted it. If recording that fails, the row stays claimed (never netted: it has
+      // next_at set) and is re-sent after the claim expires; the idempotency key makes that a no-op.
+      try { await rpc("clicktide_shopify_usage_mark", { p_id: id, p_ok: true, p_error: null }); out.sent++; }
+      catch (e) { console.error("usage mark failed after 2xx; will re-send under the same key", id, e); out.failed++; }
     } else {
       const text = (await r.text().catch(() => "")).slice(0, 200);
       console.error("shopify usage event failed", id, r.status, text);
-      await rpc("clicktide_shopify_usage_mark", { p_id: id, p_ok: false, p_error: `HTTP ${r.status} ${text}` });
+      await rpc("clicktide_shopify_usage_mark", { p_id: id, p_ok: false, p_error: `HTTP ${r.status} ${text}` })
+        .catch((e) => console.error("usage mark failed", id, e));
       out.failed++;
       if (r.status === 429) break; // rate limited: the next run continues
     }
