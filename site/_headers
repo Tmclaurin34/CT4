@@ -1,0 +1,4 @@
+# Clicktide's embedded Shopify page may only be framed by the Shopify admin (App Store
+# clickjacking requirement). Nothing else on the site is affected by this file.
+/shopify-app/*
+  Content-Security-Policy: frame-ancestors https://admin.shopify.com https://*.myshopify.com

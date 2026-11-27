@@ -1,0 +1,302 @@
+// Shared Shopify helpers (plain JS: Deno imports it, the jsc test rig loads it).
+// Tests: supabase/functions/_shared/run_shopify_tests.sh
+
+export const SHOPIFY_API_VERSION = "2026-10";
+export const SHOPIFY_SCOPES = "read_orders,read_customers";
+export const LIVE_STATUSES = ["active", "trialing", "past_due"];
+
+// Development, sandbox, preview and staff stores never pay a Shopify bill: no usage billing there.
+// Unknown plan info counts as a test shop (fail closed).
+export function isTestShop(plan) {
+  if (!plan || typeof plan !== "object") return true;
+  if (plan.partnerDevelopment) return true;
+  return /develop|sandbox|preview|staff|affiliate|test/i.test(String(plan.publicDisplayName || ""));
+}
+
+export function isShopDomain(s) {
+  return /^[a-zA-Z0-9][a-zA-Z0-9-]*\.myshopify\.com$/.test(String(s || ""));
+}
+
+export function bytesToBase64(bytes) {
+  const abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  let out = "", i = 0;
+  for (; i + 2 < bytes.length; i += 3) {
+    const n = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2];
+    out += abc[(n >> 18) & 63] + abc[(n >> 12) & 63] + abc[(n >> 6) & 63] + abc[n & 63];
+  }
+  if (i < bytes.length) {
+    const n = (bytes[i] << 16) | ((i + 1 < bytes.length ? bytes[i + 1] : 0) << 8);
+    out += abc[(n >> 18) & 63] + abc[(n >> 12) & 63] + (i + 1 < bytes.length ? abc[(n >> 6) & 63] : "=") + "=";
+  }
+  return out;
+}
+
+export function bytesToHex(bytes) {
+  let s = "";
+  for (let i = 0; i < bytes.length; i++) s += (bytes[i] < 16 ? "0" : "") + bytes[i].toString(16);
+  return s;
+}
+
+// Constant-time string compare (length leak only).
+export function safeEqual(a, b) {
+  a = String(a || ""); b = String(b || "");
+  if (!a || a.length !== b.length) return false;
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return d === 0;
+}
+
+function utf8(s) { return new TextEncoder().encode(s); }
+
+async function hmacBytes(subtle, secret, message) {
+  const key = await subtle.importKey("raw", utf8(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return new Uint8Array(await subtle.sign("HMAC", key, typeof message === "string" ? utf8(message) : message));
+}
+
+// Webhooks: base64(HMAC-SHA256(raw body, client secret)) == X-Shopify-Hmac-Sha256.
+export async function verifyWebhookHmac(rawBody, header, secret, subtle) {
+  if (!secret || !header) return false;
+  return safeEqual(bytesToBase64(await hmacBytes(subtle, secret, rawBody)), String(header).trim());
+}
+
+// OAuth / app-URL requests: hex HMAC of the sorted query string without hmac/signature.
+export function queryHmacMessage(params) {
+  const parts = [];
+  for (const [k, v] of params) if (k !== "hmac" && k !== "signature") parts.push(`${k}=${v}`);
+  return parts.sort().join("&");
+}
+export async function verifyQueryHmac(params, secret, subtle) {
+  const list = Array.from(params);
+  const h = (list.find(([k]) => k === "hmac") || [])[1];
+  if (!secret || !h) return false;
+  return safeEqual(bytesToHex(await hmacBytes(subtle, secret, queryHmacMessage(list))), String(h).toLowerCase());
+}
+
+// Shopify request timestamps older than a day are replays.
+export function freshTimestamp(ts, now) {
+  const t = Number(ts);
+  return Number.isFinite(t) && Math.abs((now || Date.now()) / 1000 - t) < 86400;
+}
+
+// ---- billing: Shopify App Pricing subscription -> Clicktide entitlement ----
+const PLAN_PRICES = { 79: "Local", 199: "Growth", 449: "Scale" };
+
+export function planFromSubscription(sub) {
+  const name = String((sub && sub.name) || "").toLowerCase();
+  for (const p of ["Local", "Growth", "Scale"]) if (name.indexOf(p.toLowerCase()) >= 0) return p;
+  const items = (sub && sub.lineItems) || [];
+  for (const li of items) {
+    const amt = Math.round(Number(li && li.plan && li.plan.pricingDetails && li.plan.pricingDetails.price && li.plan.pricingDetails.price.amount));
+    if (PLAN_PRICES[amt]) return PLAN_PRICES[amt];
+  }
+  return "";
+}
+
+// subs: currentAppInstallation.activeSubscriptions. opts: { now, devStore, allowTest }.
+// Returns the Stripe-style status the paywall reads ('trialing'/'active' = access).
+export function entitlementFromSubscriptions(subs, opts) {
+  const now = (opts && opts.now) || Date.now();
+  const list = (Array.isArray(subs) ? subs : []).filter(Boolean);
+  // A test charge only unlocks Clicktide on a development store (app review), never a real shop.
+  const usable = list.filter((s) => !s.test || (opts && (opts.devStore || opts.allowTest)));
+  const rank = { ACTIVE: 0, FROZEN: 1, PENDING: 2 };
+  usable.sort((a, b) => (rank[a.status] ?? 9) - (rank[b.status] ?? 9));
+  const s = usable[0];
+  if (!s) return { status: "canceled", raw_status: list.length ? "TEST_IGNORED" : "NONE", plan: null, period_end: null, sub_id: null };
+  const plan = planFromSubscription(s) || null;
+  let status;
+  switch (String(s.status)) {
+    case "ACTIVE": {
+      const trialEnd = Date.parse(s.createdAt) + (Number(s.trialDays) || 0) * 86400000;
+      status = Number.isFinite(trialEnd) && trialEnd > now ? "trialing" : "active";
+      break;
+    }
+    case "FROZEN": status = "unpaid"; break;       // store's Shopify bill unpaid: paywalled
+    case "PENDING": status = "incomplete"; break;  // merchant hasn't approved yet
+    default: status = "canceled";                  // CANCELLED / DECLINED / EXPIRED
+  }
+  if (!plan && (status === "active" || status === "trialing")) status = "incomplete"; // unknown plan: no access
+  return { status, raw_status: String(s.status), plan, period_end: s.currentPeriodEnd || null, sub_id: s.id || null, test: !!s.test, ...usageCapOf(s) };
+}
+
+// Legacy Billing API subscriptions carry an AppUsagePricing line item with Shopify's own cap;
+// App Pricing (managed) meters have none, so both come back null there.
+export function usageCapOf(sub) {
+  for (const li of (sub && sub.lineItems) || []) {
+    const d = li && li.plan && li.plan.pricingDetails;
+    const cap = d && d.cappedAmount && Number(d.cappedAmount.amount);
+    if (Number.isFinite(cap)) {
+      const used = d.balanceUsed && Number(d.balanceUsed.amount);
+      return { capped_amount: cap, balance_used: Number.isFinite(used) ? used : null };
+    }
+  }
+  return { capped_amount: null, balance_used: null };
+}
+
+export const SUBSCRIPTION_QUERY = `query ClicktideBilling {
+  shop { id name myshopifyDomain plan { partnerDevelopment publicDisplayName } }
+  currentAppInstallation {
+    activeSubscriptions {
+      id name status test trialDays createdAt currentPeriodEnd
+      lineItems { plan { pricingDetails {
+        ... on AppRecurringPricing { price { amount currencyCode } interval }
+        ... on AppUsagePricing { cappedAmount { amount } balanceUsed { amount } }
+      } } }
+    }
+  }
+}`;
+
+// Shopify App Pricing's hosted plan page for this shop.
+export function planSelectionUrl(shopDomain, appHandle) {
+  const store = String(shopDomain || "").replace(/\.myshopify\.com$/, "");
+  return `https://admin.shopify.com/store/${encodeURIComponent(store)}/charges/${encodeURIComponent(appHandle)}/pricing_plans`;
+}
+
+// Fields of a compliance payload we need; everything else is dropped before storage.
+export function compliancePayload(topic, body) {
+  const b = body || {};
+  const cu = b.customer || {};
+  if (topic === "shop/redact") return { shop_id: b.shop_id || null, shop_domain: b.shop_domain || null };
+  return {
+    shop_id: b.shop_id || null, shop_domain: b.shop_domain || null,
+    customer: { id: cu.id || null, email: cu.email || null, phone: cu.phone || null },
+    orders: (b.orders_to_redact || b.orders_requested || []).map(String).slice(0, 5000),
+    data_request_id: (b.data_request && b.data_request.id) || null,
+  };
+}
+
+export const HANDLED_TOPICS = ["customers/data_request", "customers/redact", "shop/redact", "app/uninstalled", "app_subscriptions/update"];
+
+// ---- expiring offline access tokens ----
+// Shopify no longer accepts non-expiring offline tokens on the Admin API. Install asks
+// for an expiring one (expiring=1); it is renewed with its refresh token (which rotates),
+// and a legacy non-expiring token is migrated once via token exchange.
+export const TOKEN_REFRESH_BEFORE_MS = 5 * 60 * 1000;
+export const TOKEN_EXCHANGE = "urn:ietf:params:oauth:grant-type:token-exchange";
+export const OFFLINE_TOKEN_TYPE = "urn:shopify:params:oauth:token-type:offline-access-token";
+
+// Fields to store from an access_token response (code grant, refresh or migration).
+export function tokenFields(d, now) {
+  const t = Number.isFinite(now) ? now : Date.now();
+  const exp = Number(d && d.expires_in);
+  const rexp = Number(d && d.refresh_token_expires_in);
+  return {
+    access_token: String((d && d.access_token) || ""),
+    refresh_token: (d && d.refresh_token) ? String(d.refresh_token) : null,
+    token_expires_at: Number.isFinite(exp) && exp > 0 ? new Date(t + exp * 1000).toISOString() : null,
+    refresh_expires_at: Number.isFinite(rexp) && rexp > 0 ? new Date(t + rexp * 1000).toISOString() : null,
+  };
+}
+
+// "refresh" | "migrate" | "ok" for a stored connection.
+export function tokenAction(conn, now, force) {
+  const t = Number.isFinite(now) ? now : Date.now();
+  if (!conn || !conn.access_token) return "ok";
+  if (!conn.refresh_token) return "migrate";
+  const exp = Date.parse(conn.token_expires_at || "");
+  if (force || !Number.isFinite(exp) || exp < t + TOKEN_REFRESH_BEFORE_MS) return "refresh";
+  return "ok";
+}
+
+export function refreshBody(clientId, clientSecret, conn) {
+  return { client_id: clientId, client_secret: clientSecret, grant_type: "refresh_token", refresh_token: conn.refresh_token };
+}
+export function migrateBody(clientId, clientSecret, conn) {
+  return { client_id: clientId, client_secret: clientSecret, grant_type: TOKEN_EXCHANGE, subject_token: conn.access_token,
+           subject_token_type: OFFLINE_TOKEN_TYPE, requested_token_type: OFFLINE_TOKEN_TYPE, expiring: "1" };
+}
+
+// ---- embedded app: App Bridge session tokens ----
+// Shopify signs the session token (an HS256 JWT) with the app's client secret. We accept it
+// only if the signature, audience (our client id), time window and shop (dest/iss) all check.
+export function base64UrlToBytes(s) {
+  const abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const t = String(s || "").replace(/-/g, "+").replace(/_/g, "/").replace(/=+$/, "");
+  const out = [];
+  let buf = 0, bits = 0;
+  for (let i = 0; i < t.length; i++) {
+    const v = abc.indexOf(t[i]);
+    if (v < 0) return null;
+    buf = (buf << 6) | v; bits += 6;
+    if (bits >= 8) { bits -= 8; out.push((buf >> bits) & 255); }
+  }
+  return new Uint8Array(out);
+}
+function bytesToUtf8(b) {
+  let s = "";
+  for (let i = 0; i < b.length; i++) s += "%" + (b[i] < 16 ? "0" : "") + b[i].toString(16);
+  try { return decodeURIComponent(s); } catch (_) { return null; }
+}
+export function bytesToBase64Url(bytes) {
+  return bytesToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+export async function verifySessionToken(token, secret, clientId, subtle, now) {
+  const t = Number.isFinite(now) ? now : Date.now();
+  const parts = String(token || "").split(".");
+  if (parts.length !== 3 || !secret || !clientId) return { ok: false, reason: "malformed" };
+  let header, payload;
+  try {
+    header = JSON.parse(bytesToUtf8(base64UrlToBytes(parts[0])) || "null");
+    payload = JSON.parse(bytesToUtf8(base64UrlToBytes(parts[1])) || "null");
+  } catch (_) { return { ok: false, reason: "malformed" }; }
+  if (!header || header.alg !== "HS256" || !payload) return { ok: false, reason: "malformed" };
+  const sig = bytesToBase64Url(await hmacBytes(subtle, secret, parts[0] + "." + parts[1]));
+  if (!safeEqual(sig, parts[2])) return { ok: false, reason: "signature" };
+  const sec = t / 1000;
+  if (!(Number(payload.exp) > sec - 5)) return { ok: false, reason: "expired" };
+  if (Number(payload.nbf) > sec + 5) return { ok: false, reason: "not_yet_valid" };
+  const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+  if (!aud.includes(clientId)) return { ok: false, reason: "audience" };
+  const m = /^https:\/\/([a-z0-9][a-z0-9-]*\.myshopify\.com)$/.exec(String(payload.dest || "").toLowerCase());
+  if (!m) return { ok: false, reason: "shop" };
+  if (String(payload.iss || "").toLowerCase().indexOf("https://" + m[1]) !== 0) return { ok: false, reason: "issuer" };
+  return { ok: true, shop: m[1], user: String(payload.sub || ""), sid: String(payload.sid || "") };
+}
+
+// Token exchange: App Bridge session token -> expiring offline access token (embedded install).
+export const ID_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id_token";
+export function exchangeBody(clientId, clientSecret, idToken) {
+  return { client_id: clientId, client_secret: clientSecret, grant_type: TOKEN_EXCHANGE, subject_token: idToken,
+           subject_token_type: ID_TOKEN_TYPE, requested_token_type: OFFLINE_TOKEN_TYPE, expiring: "1" };
+}
+
+// ---- usage billing (Shopify App Pricing usage meters, App Events API) ----
+// Postcards, gifts and texts past the plan's limit are charged on the merchant's Shopify bill.
+// Each wallet-ledger row marked shopify_usage becomes one billing event. Meter handles and
+// prices must match the plan's usage meters in the Partner Dashboard:
+//   postcard   $1.50 per unit (engine POSTCARD_PRICE)     value = postcards (refund: -1)
+//   extra_text $0.05 per unit (engine SMS_OVERAGE_PRICE)  value = texts (refund: -1)
+//   gift       $1.00 per unit                             value = the gift's dollar cost
+export const USAGE_METERS = {
+  postcard_debit: { handle: "postcard", unit: "count", sign: 1 },
+  postcard_refund: { handle: "postcard", unit: "count", sign: -1 },
+  sms_overage: { handle: "extra_text", unit: "count", sign: 1 },
+  sms_overage_refund: { handle: "extra_text", unit: "count", sign: -1 },
+  gift_debit: { handle: "gift", unit: "dollars", sign: 1 },
+  gift_refund: { handle: "gift", unit: "dollars", sign: -1 },
+};
+
+// row: { id, amount, transaction_type, created_at }; shopId: numeric id or gid. Returns the
+// App Events body, or null if the row isn't a billable kind. Whole numbers go as JSON integers,
+// fractional ones as quoted decimal strings (the API rejects unquoted floats).
+export function usageEventFor(row, shopId, now) {
+  const m = USAGE_METERS[String(row && row.transaction_type)];
+  const amt = Math.abs(Number(row && row.amount));
+  if (!m || !Number.isFinite(amt) || amt === 0) return null;
+  let value;
+  if (m.unit === "count") value = m.sign;
+  else {
+    const cents = Math.round(amt * 100);
+    value = cents % 100 === 0 ? m.sign * (cents / 100) : (m.sign < 0 ? "-" : "") + (cents / 100).toFixed(2);
+  }
+  const sid = String(shopId || "");
+  const t = Date.parse(row.created_at || "");
+  const at = Number.isFinite(t) ? Math.min(t, Number.isFinite(now) ? now : Date.now()) : (Number.isFinite(now) ? now : Date.now());
+  return {
+    shop_id: /^gid:\/\//.test(sid) ? sid : "gid://shopify/Shop/" + sid,
+    event_handle: m.handle,
+    timestamp: new Date(at).toISOString().replace(/\.\d{3}Z$/, "Z"),
+    idempotency_key: "ct-wallet-" + String(row.id),
+    attributes: { value: value },
+  };
+}
