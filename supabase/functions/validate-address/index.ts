@@ -5,21 +5,59 @@
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
+// A logged-in business checks addresses one at a time (gift sends, Gift Cart lines);
+// these ceilings sit far above that and bound what one account can spend on Google.
+const CHECKS_PER_USER_PER_DAY = 300;
+const CHECKS_PER_IP_PER_DAY = 600;
+
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// Internal calls (gift-address, printify-fulfill-gift) authenticate with the
+function safeEqual(a: string, b: string) {
+  if (!a || !b || a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return mismatch === 0;
+}
+
+// Internal calls (gift-address, the *-fulfill-gift functions) authenticate with the
 // service role; the dashboard sends the owner's JWT. Anonymous use is refused —
 // once a Google key is configured this would otherwise be a free public proxy.
-async function isAuthorized(req: Request) {
+async function caller(req: Request): Promise<{ internal: boolean; userId: string } | null> {
   const auth = req.headers.get("authorization") || "";
-  if (!auth.toLowerCase().startsWith("bearer ")) return false;
-  if (serviceRoleKey && auth === `Bearer ${serviceRoleKey}`) return true;
+  if (!auth.toLowerCase().startsWith("bearer ")) return null;
+  if (serviceRoleKey && safeEqual(auth, `Bearer ${serviceRoleKey}`)) return { internal: true, userId: "" };
   const r = await fetch(`${supabaseUrl}/auth/v1/user`, { headers: { apikey: serviceRoleKey, Authorization: auth } });
-  return r.ok;
+  if (!r.ok) return null;
+  const user = await r.json().catch(() => null);
+  const userId = String(user?.id || "");
+  return userId ? { internal: false, userId } : null;
+}
+
+function clientIp(req: Request) {
+  const cf = req.headers.get("cf-connecting-ip");
+  if (cf) return cf.trim();
+  const real = req.headers.get("x-real-ip");
+  if (real) return real.trim();
+  return (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "unknown";
+}
+
+// Fails closed: each check can be a paid Google call.
+async function underLimit(bucket: string, windowSeconds: number, max: number) {
+  try {
+    const r = await fetch(`${supabaseUrl}/rest/v1/rpc/clicktide_rate_limit_hit`, {
+      method: "POST",
+      headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_bucket: bucket, p_window_seconds: windowSeconds, p_max: max }),
+    });
+    if (!r.ok) return false;
+    return (await r.json()) === true;
+  } catch {
+    return false;
+  }
 }
 
 function json(body: unknown, status = 200) {
@@ -139,7 +177,8 @@ async function validateWithCensus(street: string, city: string, state: string, z
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
-  if (!await isAuthorized(req)) return json({ error: "Not authorized" }, 401);
+  const who = await caller(req);
+  if (!who) return json({ error: "Not authorized" }, 401);
 
   let body: Record<string, string>;
   try {
@@ -147,13 +186,22 @@ Deno.serve(async (req) => {
   } catch {
     return json({ error: "Invalid JSON body" }, 400);
   }
+  if (!body || typeof body !== "object") return json({ error: "Invalid JSON body" }, 400);
 
-  const street = String(body.address || "").trim();
-  const city = String(body.city || "").trim();
-  const state = String(body.state || "").trim();
+  const street = String(body.address || "").trim().slice(0, 200);
+  const city = String(body.city || "").trim().slice(0, 100);
+  const state = String(body.state || "").trim().slice(0, 40);
   const zip = cleanZip(String(body.zip || ""));
   const missing = complete(street, city, state, zip);
   if (missing) return json({ error: missing }, 400);
+
+  if (!who.internal) {
+    const ip = clientIp(req);
+    if (!(await underLimit(`va:user:${who.userId}`, 86400, CHECKS_PER_USER_PER_DAY)) ||
+        !(await underLimit(`va:ip:${ip}`, 86400, CHECKS_PER_IP_PER_DAY))) {
+      return json({ error: "Too many address checks today. You can still confirm the address as typed." }, 429);
+    }
+  }
 
   try {
     try {

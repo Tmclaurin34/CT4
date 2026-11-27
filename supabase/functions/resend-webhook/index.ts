@@ -3,10 +3,27 @@
 // verifies the Svix signature, attributes each event to the business,
 // campaign, and customer via campaign_sends (which stores the Resend
 // email id in `detail`), and records it in message_events.
+// A spam complaint or a hard bounce also puts the address on that business's
+// email_suppressions list (contract C2), so no sender emails it again. One-off
+// sends have no campaign_sends row; they carry a ct_biz tag naming the business.
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const webhookSecret = Deno.env.get("RESEND_WEBHOOK_SECRET") ?? "";
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+type Tags = Record<string, string> | Array<{ name?: string; value?: string }>;
+
+type ResendEvent = {
+  type?: string;
+  created_at?: string;
+  data?: {
+    email_id?: string;
+    to?: string[] | string;
+    tags?: Tags;
+    bounce?: { type?: string };
+  };
+};
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -56,6 +73,21 @@ async function validSignature(req: Request, rawBody: string) {
   });
 }
 
+// Resend sends tags as {name: value}; accept the [{name, value}] form too.
+function tagValue(tags: Tags | undefined, name: string): string {
+  if (!tags || typeof tags !== "object") return "";
+  if (Array.isArray(tags)) return String(tags.find((t) => t?.name === name)?.value || "");
+  return String(tags[name] || "");
+}
+
+function recipients(to: string[] | string | undefined): string[] {
+  const list = Array.isArray(to) ? to : to ? [to] : [];
+  return list
+    .map((a) => String(a || "").trim())
+    .map((a) => (/<([^>]+)>/.exec(a)?.[1] || a).trim().toLowerCase())
+    .filter((a) => a.includes("@"));
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   if (!serviceRoleKey) return json({ error: "Server secrets are not configured" }, 500);
@@ -64,7 +96,7 @@ Deno.serve(async (req) => {
   const rawBody = await req.text();
   if (!(await validSignature(req, rawBody))) return json({ error: "Invalid signature" }, 401);
 
-  let event: { type?: string; created_at?: string; data?: { email_id?: string } };
+  let event: ResendEvent;
   try {
     event = JSON.parse(rawBody);
   } catch {
@@ -80,6 +112,38 @@ Deno.serve(async (req) => {
     `/rest/v1/campaign_sends?channel=eq.email&detail=eq.${encodeURIComponent(emailId)}&select=user_id,campaign_id,customer_id&limit=1`,
   );
   const send = Array.isArray(sends) ? sends[0] : null;
+
+  // Resend's email.bounced is a permanent rejection; only skip one it marks transient.
+  const bounceType = String(event.data?.bounce?.type || "").toLowerCase();
+  const reason = type === "email.complained"
+    ? "complaint"
+    : type === "email.bounced" && (bounceType === "" || bounceType === "permanent")
+    ? "bounce"
+    : "";
+  if (reason) {
+    const tagBiz = tagValue(event.data?.tags, "ct_biz");
+    const business = String(send?.user_id || (UUID.test(tagBiz) ? tagBiz : ""));
+    let addresses = recipients(event.data?.to);
+    if (!addresses.length && send?.customer_id) {
+      const { data: rows } = await rest(`/rest/v1/customers?id=eq.${encodeURIComponent(String(send.customer_id))}&select=email&limit=1`);
+      addresses = recipients(Array.isArray(rows) && rows[0]?.email ? String(rows[0].email) : undefined);
+    }
+    if (business) {
+      for (const address of addresses) {
+        const r = await rest("/rest/v1/rpc/clicktide_email_optout", {
+          method: "POST",
+          body: JSON.stringify({ p_user: business, p_email: address, p_reason: reason }),
+        });
+        if (!r.ok) {
+          console.error("email suppression failed:", r.status, JSON.stringify(r.data));
+          return json({ error: "Could not record suppression" }, 500);
+        }
+      }
+    } else {
+      console.error(`resend-webhook: ${type} for ${emailId} could not be attributed to a business; not suppressed`);
+    }
+  }
+
   if (!send) return json({ received: true, unattributed: true });
 
   const insert = await rest("/rest/v1/message_events?on_conflict=provider_message_id,event_type", {

@@ -9,6 +9,8 @@ type MindbodyBody = {
   siteId?: string | number;
 };
 
+const IN_USE = "This Mindbody SiteID is already connected to another Clicktide account. If it's your business, contact support@goclicktide.com.";
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -20,13 +22,25 @@ function env(name: string) {
   return Deno.env.get(name) || "";
 }
 
+function supabaseUrl() {
+  return env("SUPABASE_URL") || "https://hmihfncvahsdlmefyxyg.supabase.co";
+}
+
+function serviceHeaders() {
+  const serviceRoleKey = env("SUPABASE_SERVICE_ROLE_KEY");
+  return {
+    apikey: serviceRoleKey,
+    Authorization: `Bearer ${serviceRoleKey}`,
+    "Content-Type": "application/json",
+  };
+}
+
 async function authedUser(req: Request) {
-  const supabaseUrl = env("SUPABASE_URL") || "https://hmihfncvahsdlmefyxyg.supabase.co";
   const serviceRoleKey = env("SUPABASE_SERVICE_ROLE_KEY");
   const authorization = req.headers.get("authorization") || "";
   if (!serviceRoleKey || !authorization.toLowerCase().startsWith("bearer ")) return null;
 
-  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+  const response = await fetch(`${supabaseUrl()}/auth/v1/user`, {
     headers: {
       apikey: serviceRoleKey,
       Authorization: authorization,
@@ -34,6 +48,34 @@ async function authedUser(req: Request) {
   });
   if (!response.ok) return null;
   return await response.json();
+}
+
+// Fails open: activation is an owner-facing flow; the limiter only stops someone
+// hammering Mindbody with Clicktide's source credentials.
+async function underLimit(bucket: string, windowSeconds: number, max: number) {
+  try {
+    const r = await fetch(`${supabaseUrl()}/rest/v1/rpc/clicktide_rate_limit_hit`, {
+      method: "POST",
+      headers: serviceHeaders(),
+      body: JSON.stringify({ p_bucket: bucket, p_window_seconds: windowSeconds, p_max: max }),
+    });
+    if (!r.ok) return true;
+    return (await r.json()) === true;
+  } catch {
+    return true;
+  }
+}
+
+// A SiteID is read with Clicktide's own Mindbody source credentials, so whichever
+// account holds it would see that studio's data. One SiteID, one active account.
+async function claimedByAnotherAccount(userId: string, siteId: string) {
+  const response = await fetch(
+    `${supabaseUrl()}/rest/v1/platform_connections?platform=eq.mindbody&merchant_id=eq.${encodeURIComponent(siteId)}&is_active=eq.true&user_id=neq.${encodeURIComponent(userId)}&select=id&limit=1`,
+    { headers: serviceHeaders() },
+  );
+  if (!response.ok) throw new Error("Could not check the Mindbody SiteID");
+  const rows = await response.json().catch(() => []);
+  return Array.isArray(rows) && rows.length > 0;
 }
 
 function activationCodeFrom(data: Record<string, unknown>) {
@@ -93,14 +135,12 @@ async function requestActivationCode(siteId: string) {
   throw new Error(lastError || "Mindbody request failed");
 }
 
+// Saved through the same RPC as the POS callbacks, so the one-account-per-SiteID rule
+// holds even if two accounts submit the same SiteID at once.
 async function saveConnection(userId: string, siteId: string, activationCode: string, raw: Record<string, unknown>) {
-  const supabaseUrl = env("SUPABASE_URL") || "https://hmihfncvahsdlmefyxyg.supabase.co";
-  const serviceRoleKey = env("SUPABASE_SERVICE_ROLE_KEY");
-  if (!serviceRoleKey) throw new Error("Supabase service role key is not configured");
+  if (!env("SUPABASE_SERVICE_ROLE_KEY")) throw new Error("Supabase service role key is not configured");
 
-  const row = {
-    user_id: userId,
-    platform: "mindbody",
+  const fields = {
     merchant_id: siteId,
     merchant_name: `Mindbody Site ${siteId}`,
     access_token: activationCode,
@@ -111,37 +151,17 @@ async function saveConnection(userId: string, siteId: string, activationCode: st
       activation_status: "code_issued",
       response: raw,
     },
-    connected_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    is_active: true,
   };
 
-  const headers = {
-    apikey: serviceRoleKey,
-    Authorization: `Bearer ${serviceRoleKey}`,
-    "Content-Type": "application/json",
-  };
-
-  const filter = `user_id=eq.${encodeURIComponent(userId)}&platform=eq.mindbody`;
-  const updateResponse = await fetch(`${supabaseUrl}/rest/v1/platform_connections?${filter}`, {
-    method: "PATCH",
-    headers: { ...headers, Prefer: "return=representation" },
-    body: JSON.stringify(row),
-  });
-  const updated = await updateResponse.json().catch(() => []);
-  if (updateResponse.ok && Array.isArray(updated) && updated.length) return updated[0];
-
-  const insertResponse = await fetch(`${supabaseUrl}/rest/v1/platform_connections`, {
+  const response = await fetch(`${supabaseUrl()}/rest/v1/rpc/clicktide_platform_connection_save`, {
     method: "POST",
-    headers: { ...headers, Prefer: "return=representation" },
-    body: JSON.stringify(row),
+    headers: serviceHeaders(),
+    body: JSON.stringify({ p_user: userId, p_platform: "mindbody", p_fields: fields }),
   });
-  const inserted = await insertResponse.json().catch(() => null);
-  if (!insertResponse.ok) {
-    const error = inserted?.message || inserted?.error || "Could not save Mindbody connection";
-    throw new Error(error);
-  }
-  return Array.isArray(inserted) ? inserted[0] : inserted;
+  const result = await response.json().catch(() => null);
+  if (response.ok && result?.ok === true) return result;
+  if (result?.reason === "merchant_in_use") return { ok: false, inUse: true };
+  throw new Error(result?.message || result?.error || "Could not save Mindbody connection");
 }
 
 Deno.serve(async (req) => {
@@ -163,9 +183,15 @@ Deno.serve(async (req) => {
     return json({ error: "Enter a valid numeric Mindbody SiteID" }, 400);
   }
 
+  if (!(await underLimit(`mindbody-activate:user:${user.id}`, 3600, 10))) {
+    return json({ error: "Too many activation requests — try again in an hour." }, 429);
+  }
+
   try {
+    if (await claimedByAnotherAccount(String(user.id), siteId)) return json({ error: IN_USE }, 409);
     const { activationCode, raw } = await requestActivationCode(siteId);
-    await saveConnection(user.id, siteId, activationCode, raw);
+    const saved = await saveConnection(String(user.id), siteId, activationCode, raw);
+    if (!saved.ok) return json({ error: IN_USE }, 409);
     return json({
       ok: true,
       platform: "mindbody",
