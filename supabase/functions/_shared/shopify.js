@@ -180,3 +180,57 @@ export function migrateBody(clientId, clientSecret, conn) {
   return { client_id: clientId, client_secret: clientSecret, grant_type: TOKEN_EXCHANGE, subject_token: conn.access_token,
            subject_token_type: OFFLINE_TOKEN_TYPE, requested_token_type: OFFLINE_TOKEN_TYPE, expiring: "1" };
 }
+
+// ---- embedded app: App Bridge session tokens ----
+// Shopify signs the session token (an HS256 JWT) with the app's client secret. We accept it
+// only if the signature, audience (our client id), time window and shop (dest/iss) all check.
+export function base64UrlToBytes(s) {
+  const abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const t = String(s || "").replace(/-/g, "+").replace(/_/g, "/").replace(/=+$/, "");
+  const out = [];
+  let buf = 0, bits = 0;
+  for (let i = 0; i < t.length; i++) {
+    const v = abc.indexOf(t[i]);
+    if (v < 0) return null;
+    buf = (buf << 6) | v; bits += 6;
+    if (bits >= 8) { bits -= 8; out.push((buf >> bits) & 255); }
+  }
+  return new Uint8Array(out);
+}
+function bytesToUtf8(b) {
+  let s = "";
+  for (let i = 0; i < b.length; i++) s += "%" + (b[i] < 16 ? "0" : "") + b[i].toString(16);
+  try { return decodeURIComponent(s); } catch (_) { return null; }
+}
+export function bytesToBase64Url(bytes) {
+  return bytesToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+export async function verifySessionToken(token, secret, clientId, subtle, now) {
+  const t = Number.isFinite(now) ? now : Date.now();
+  const parts = String(token || "").split(".");
+  if (parts.length !== 3 || !secret || !clientId) return { ok: false, reason: "malformed" };
+  let header, payload;
+  try {
+    header = JSON.parse(bytesToUtf8(base64UrlToBytes(parts[0])) || "null");
+    payload = JSON.parse(bytesToUtf8(base64UrlToBytes(parts[1])) || "null");
+  } catch (_) { return { ok: false, reason: "malformed" }; }
+  if (!header || header.alg !== "HS256" || !payload) return { ok: false, reason: "malformed" };
+  const sig = bytesToBase64Url(await hmacBytes(subtle, secret, parts[0] + "." + parts[1]));
+  if (!safeEqual(sig, parts[2])) return { ok: false, reason: "signature" };
+  const sec = t / 1000;
+  if (!(Number(payload.exp) > sec - 5)) return { ok: false, reason: "expired" };
+  if (Number(payload.nbf) > sec + 5) return { ok: false, reason: "not_yet_valid" };
+  const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+  if (!aud.includes(clientId)) return { ok: false, reason: "audience" };
+  const m = /^https:\/\/([a-z0-9][a-z0-9-]*\.myshopify\.com)$/.exec(String(payload.dest || "").toLowerCase());
+  if (!m) return { ok: false, reason: "shop" };
+  if (String(payload.iss || "").toLowerCase().indexOf("https://" + m[1]) !== 0) return { ok: false, reason: "issuer" };
+  return { ok: true, shop: m[1], user: String(payload.sub || ""), sid: String(payload.sid || "") };
+}
+
+// Token exchange: App Bridge session token -> expiring offline access token (embedded install).
+export const ID_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id_token";
+export function exchangeBody(clientId, clientSecret, idToken) {
+  return { client_id: clientId, client_secret: clientSecret, grant_type: TOKEN_EXCHANGE, subject_token: idToken,
+           subject_token_type: ID_TOKEN_TYPE, requested_token_type: OFFLINE_TOKEN_TYPE, expiring: "1" };
+}

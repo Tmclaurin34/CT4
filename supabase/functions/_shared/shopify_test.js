@@ -77,6 +77,39 @@ eq(planSelectionUrl("ct-test.myshopify.com", "clicktide-3"), "https://admin.shop
 eq(compliancePayload("customers/redact", { shop_domain: "s", customer: { id: 1, email: "a@b.c", phone: "1", extra: "x" }, orders_to_redact: [10, 11], junk: 1 }),
    { shop_id: null, shop_domain: "s", customer: { id: 1, email: "a@b.c", phone: "1" }, orders: ["10", "11"], data_request_id: null }, "payload minimised");
 
+// embedded session tokens (signed with the same test HMAC as the webhook tests)
+function b64u(str) { var b = []; var e = unescape(encodeURIComponent(str)); for (var i = 0; i < e.length; i++) b.push(e.charCodeAt(i)); return bytesToBase64Url(new Uint8Array(b)); }
+function mkToken(payload, secret) {
+  var h = b64u(JSON.stringify({ alg: "HS256", typ: "JWT" })), p = b64u(JSON.stringify(payload));
+  return fakeSubtle.sign("HMAC", new TextEncoder().encode(secret), new Uint8Array(Array.prototype.map.call(unescape(encodeURIComponent(h + "." + p)), function (c) { return c.charCodeAt(0); })))
+    .then(function (sig) { return h + "." + p + "." + bytesToBase64Url(new Uint8Array(sig)); });
+}
+var stNow = Date.parse("2026-11-27T06:00:00Z"), stSec = stNow / 1000;
+var goodP = { iss: "https://demo.myshopify.com/admin", dest: "https://demo.myshopify.com", aud: "cid123", sub: "42", exp: stSec + 60, nbf: stSec - 5, iat: stSec - 5, jti: "j", sid: "s" };
+pending++;
+mkToken(goodP, "sec").then(function (tok) {
+  return verifySessionToken(tok, "sec", "cid123", fakeSubtle, stNow).then(function (r) {
+    ok(r.ok && r.shop === "demo.myshopify.com" && r.user === "42", "session token: valid accepted, shop from dest");
+    return verifySessionToken(tok, "other", "cid123", fakeSubtle, stNow); }).then(function (r) {
+    ok(!r.ok && r.reason === "signature", "session token: wrong secret rejected");
+    return verifySessionToken(tok, "sec", "cidXXX", fakeSubtle, stNow); }).then(function (r) {
+    ok(!r.ok && r.reason === "audience", "session token: wrong audience rejected");
+    return verifySessionToken(tok, "sec", "cid123", fakeSubtle, stNow + 120000); }).then(function (r) {
+    ok(!r.ok && r.reason === "expired", "session token: expired rejected");
+    var parts = tok.split("."); var forged = parts[0] + "." + b64u(JSON.stringify(Object.assign({}, goodP, { dest: "https://victim.myshopify.com", iss: "https://victim.myshopify.com/admin" }))) + "." + parts[2];
+    return verifySessionToken(forged, "sec", "cid123", fakeSubtle, stNow); }).then(function (r) {
+    ok(!r.ok && r.reason === "signature", "session token: tampered payload rejected");
+    return mkToken(Object.assign({}, goodP, { iss: "https://evil.myshopify.com/admin" }), "sec"); }).then(function (t2) {
+    return verifySessionToken(t2, "sec", "cid123", fakeSubtle, stNow); }).then(function (r) {
+    ok(!r.ok && r.reason === "issuer", "session token: iss/dest mismatch rejected");
+    return verifySessionToken("a.b", "sec", "cid123", fakeSubtle, stNow); }).then(function (r) {
+    ok(!r.ok && r.reason === "malformed", "session token: malformed rejected");
+    var eb = exchangeBody("cid", "sec", "idtok");
+    ok(eb.subject_token_type === ID_TOKEN_TYPE && eb.requested_token_type === OFFLINE_TOKEN_TYPE && eb.expiring === "1" && eb.subject_token === "idtok", "token exchange body");
+    pending--;
+  });
+}).then(null, function (e) { fail++; print("FAIL: async session " + e); pending--; });
+
 drainMicrotasks && drainMicrotasks();
 if (pending) print("FAIL: async tests did not finish");
 
