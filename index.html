@@ -984,7 +984,7 @@ function showPasswordReset(token){
   cleanAuthUrl();
   document.body.insertAdjacentHTML("beforeend",modal("Choose a new password",`
     <div style="font-size:13px;color:rgba(240,244,255,.62);line-height:1.65;margin-bottom:14px">Set a new password for your Clicktide account. You'll use it the next time you log in.</div>
-    <div class="fg"><label class="fl">New password</label><div style="position:relative"><input class="fi" id="rcPw" type="password" autocomplete="new-password" placeholder="At least 6 characters" style="padding-right:52px"/>${pwToggleBtn("rcPw")}</div></div>
+    <div class="fg"><label class="fl">New password</label><div style="position:relative"><input class="fi" id="rcPw" type="password" autocomplete="new-password" placeholder="At least 8 characters" style="padding-right:52px"/>${pwToggleBtn("rcPw")}</div></div>
     <div id="rcErr" style="display:none;color:#FF6B6B;font-size:12px;margin-bottom:10px"></div>
     <button class="btn-full btn-gold" onclick="doPwReset(this)">Update password →</button>
   `));
@@ -1122,7 +1122,7 @@ function validSignup(d){
   if(!d.name||!d.name.trim())return"Please enter your name";
   if(!isEmail(d.email))return"Please enter a valid personal email";
   if(!isPhone(d.phone))return"Please enter a valid personal phone";
-  if(!d.pw||d.pw.length<6)return"Password must be at least 6 characters";
+  if(!d.pw||d.pw.length<8)return"Password must be at least 8 characters";
   if(!d.biz||!d.biz.trim())return"Please enter your business name";
   if(!isPhone(d.bphone))return"Please enter a valid business phone";
   if(!isEmail(d.bemail))return"Please enter a valid business email";
@@ -5331,7 +5331,7 @@ async function resendConfirm(btn){
 async function doPwReset(btn){
   var p=document.getElementById("rcPw")?.value||"";
   var er=document.getElementById("rcErr");
-  if(p.length<6){if(er){er.textContent="Password must be at least 6 characters.";er.style.display="block";}return;}
+  if(p.length<8){if(er){er.textContent="Password must be at least 8 characters.";er.style.display="block";}return;}
   if(btn){btn.disabled=true;btn.textContent="Updating...";}
   try{
     var r=await fetch(SU+"/auth/v1/user",{method:"PUT",headers:{apikey:SK,Authorization:"Bearer "+window.__rcTok,"Content-Type":"application/json"},body:JSON.stringify({password:p})});

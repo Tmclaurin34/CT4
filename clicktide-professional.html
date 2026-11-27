@@ -319,7 +319,7 @@ function validSignup(d){
   if(!d.name||!d.name.trim())return"Please enter your name";
   if(!isEmail(d.email))return"Please enter a valid personal email";
   if(!isPhone(d.phone))return"Please enter a valid personal phone";
-  if(!d.pw||d.pw.length<6)return"Password must be at least 6 characters";
+  if(!d.pw||d.pw.length<8)return"Password must be at least 8 characters";
   if(!d.biz||!d.biz.trim())return"Please enter your business name";
   if(!isPhone(d.bphone))return"Please enter a valid business phone";
   if(!isEmail(d.bemail))return"Please enter a valid business email";

@@ -17,7 +17,7 @@
 <body>
 <main>
   <h1>Clicktide Privacy Policy</h1>
-  <div class="meta">Effective date: June 19, 2026</div>
+  <div class="meta">Effective date: November 27, 2026</div>
   <div class="box">Clicktide is operated by Six Seasons Partners LLC. This Privacy Policy explains how Clicktide collects, uses, shares, and protects information.</div>
 
   <h2>Privacy Policy Section for SMS Messaging</h2>
@@ -34,6 +34,10 @@
   <h2>2. Information from connected services</h2>
   <p>When you connect a point-of-sale, commerce, payment, scheduling, email, SMS, or fulfillment provider, we receive information allowed by that provider and authorized by you. This may include transaction, customer, subscription, product, appointment, or campaign data needed to operate Clicktide.</p>
   <p>Platform connections are made through each provider's official OAuth authorization flow — Clicktide never receives or stores your platform password. Where the provider supports it, Clicktide requests read-only permissions limited to viewing sales and customer information: Clicktide cannot move funds, issue refunds, or modify products, prices, or settings inside your point-of-sale or commerce platform. Access tokens are stored securely, and you may revoke Clicktide's access at any time from your Clicktide settings or from the provider's own dashboard.</p>
+
+  <h3>Shopify stores</h3>
+  <p>If you install Clicktide from Shopify, Clicktide reads your store's orders and the customers on those orders (name, email, phone number and mailing address, plus order dates, totals and items) with read-only permissions. Clicktide uses this data only to provide Clicktide to your store: learning each customer's visit rhythm, showing who is drifting away, and sending the win-back messages, rewards, postcards or gifts you turn on. Clicktide never sells Shopify customer data, never shares it with other merchants, and never uses one store's data for another store.</p>
+  <p>Clicktide honors Shopify's privacy requests: when Shopify sends a customer data request, we provide that customer's data to the store owner; when Shopify asks us to erase a customer, we delete that customer's records; and when a store uninstalls Clicktide, syncing stops immediately and Shopify's shop-erasure request (sent 48 hours later) deletes the store's customer data. Each request is completed within 30 days. Text messages and emails respect each customer's opt-in and unsubscribe choices.</p>
 
   <h2>3. How we use information</h2>
   <ul>
@@ -63,10 +67,16 @@
   <p>Payment information is processed by Stripe or another payment processor. Clicktide does not store full payment card numbers. Payment processors handle payment data under their own terms and privacy policies.</p>
 
   <h2>9. Data retention</h2>
-  <p>We retain information as long as needed to provide the service, comply with legal and accounting obligations, resolve disputes, enforce agreements, and maintain security. You may request deletion of account data, subject to lawful retention requirements and technical limitations.</p>
+  <p>We keep information only as long as needed to provide the service:</p>
+  <ul>
+    <li><strong>Active accounts:</strong> customer and sales data is kept while your business has an active or trialing Clicktide plan.</li>
+    <li><strong>Closed accounts:</strong> 90 days after a business's plan ends (cancelled, unpaid or never started), Clicktide automatically deletes that business's customer records, visit history, text message history and the personal details on gift shipments, and disconnects its POS or commerce platform. Account, billing and invoice records are kept as required for accounting and legal purposes.</li>
+    <li><strong>Rolling limits for all accounts:</strong> text message history is deleted after 2 years, the transaction de-duplication ledger after 400 days, site analytics events after 13 months, and expired sign-in links after 1 day.</li>
+    <li><strong>On request:</strong> you can ask us to delete your account data at any time by emailing support; Shopify customer and shop erasure requests are completed within 30 days.</li>
+  </ul>
 
   <h2>10. Security</h2>
-  <p>We use administrative, technical, and organizational safeguards designed to protect information. No system is perfectly secure, and we cannot guarantee absolute security.</p>
+  <p>We use administrative, technical, and organizational safeguards designed to protect information, including: encryption of data in transit (TLS/HTTPS) and at rest (AES-256 database storage); per-business data isolation enforced in the database, so one business can never read another's customers; access to customer data limited to the few Clicktide staff who need it for support, with every staff view or change of a business's data recorded in a permanent access log; platform access tokens stored server-side only; and a written security incident response process, including notifying affected businesses and, where required, regulators and platforms such as Shopify. No system is perfectly secure, and we cannot guarantee absolute security.</p>
 
   <h2>11. Your choices</h2>
   <p>You can update account information in the dashboard, disconnect integrations, stop campaigns, request export or deletion where available, and contact us for privacy questions. Customers who receive messages from a business should contact that business or use the opt-out method provided in the message.</p>
