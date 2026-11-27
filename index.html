@@ -1138,10 +1138,16 @@ async function finishAuthReturn(token,user,type,sessionData){
     if(!_ls){scr=S?"dash":"login";R();setTimeout(function(){alert("Log in with your email, password and two-step code to continue.");},80);return;}
     if(_ls.access_token!==token){token=_ls.access_token;sessionData=Object.assign({},sessionData||{},{refresh_token:_ls.refresh_token||"",expires_in:_ls.expires_in||"",expires_at:_ls.expires_at||""});if(_ls.user)u=_ls.user;}
   }
+  // A Shopify store's own account: ask with the store's name (shopifyLinkOk). On yes it marks
+  // this e-mail as expected, so the general check below accepts it without asking again.
+  if(u&&u.id&&ctIsShopDomain(u.app_metadata&&u.app_metadata.shopify_shop)&&!(await shopifyLinkOk(u))){scr=S?"dash":"login";R();return;}
   if(!u||!u.id)throw new Error("Email confirmed, but Clicktide could not load the account. Please log in.");
   if(!(await acceptLinkSession(u))){scr=S?"dash":"login";R();return;}
   saveSession(Object.assign({},sessionData||{},{access_token:token,user:u}),true);
   await ensureBizProfile(token,u);
+  // A Shopify store's own account (opened from the Shopify admin), or a store link waiting to
+  // be confirmed: straight to the dashboard (no onboarding wizard, no POS welcome e-mail).
+  if(shopifyAccountShop()||pendingShopifyClaim()){clearOnboardingProgress();obAwaitConfirm=false;history.replaceState({view:"dash"},"","/");go("dash");return;}
   const biz=await loadBiz();
   hydrateOnboardingFromBiz(biz);
   restoreOnboardingProgress();
@@ -1229,14 +1235,14 @@ async function setBizFields(fields){const tok=S?.token||SK;const id=myId();if(!i
 function hasPaidAccess(biz){return["active","trialing"].includes(String(biz?.stripe_subscription_status||"").toLowerCase());}
 function billingLockBanner(biz){
   return `<div style="background:rgba(192,57,43,.07);border:1px solid rgba(192,57,43,.22);border-radius:14px;padding:15px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
-    <div><div style="font-size:13px;font-weight:800;color:#C0392B;margin-bottom:3px">Finish setup to start sending campaigns &amp; gifts</div><div style="font-size:12px;color:#6B6F76;line-height:1.55">You can preview sample gifts right now. Your campaigns and gifts switch on the moment your plan is active — finish setting up to start your 30-day free trial.</div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-outline" style="padding:10px 16px" onclick="go('samples')">View samples</button><button class="btn btn-gold" style="padding:10px 16px" onclick="resumeOnboarding()">Finish setup</button></div>
+    <div><div style="font-size:13px;font-weight:800;color:#C0392B;margin-bottom:3px">Finish setup to start sending campaigns &amp; gifts</div><div style="font-size:12px;color:#6B6F76;line-height:1.55">You can preview sample gifts right now. ${shopifyStoreOf(biz)&&shopifyPaysInShopify(biz)?"Your campaigns and gifts switch on the moment your plan is active. Choose a plan in Shopify to start your 30-day free trial.":"Your campaigns and gifts switch on the moment your plan is active — finish setting up to start your 30-day free trial."}</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-outline" style="padding:10px 16px" onclick="go('samples')">View samples</button><button class="btn btn-gold" style="padding:10px 16px" onclick="goFinishSetup()">${shopifyStoreOf(biz)&&shopifyPaysInShopify(biz)?"Choose a plan":"Finish setup"}</button></div>
   </div>`;
 }
 async function requirePaidAction(){
   const biz=await loadBiz()||{};
   if(hasPaidAccess(biz))return true;
-  document.body.insertAdjacentHTML("beforeend",modal("Billing required",`<div style="font-size:13px;color:rgba(240,244,255,.65);line-height:1.7;margin-bottom:16px">This action requires an active Clicktide subscription. Finish checkout or update billing before sending campaigns, adding wallet funds, or creating shipments.</div><div style="display:flex;gap:10px"><button class="btn-full btn-gold" onclick="this.closest('.ov').remove();resumeOnboarding()">Finish setup</button><button class="btn btn-ghost" style="padding:10px 20px" onclick="this.closest('.ov').remove()">Close</button></div>`));
+  document.body.insertAdjacentHTML("beforeend",modal("Billing required",`<div style="font-size:13px;color:rgba(240,244,255,.65);line-height:1.7;margin-bottom:16px">This action requires an active Clicktide subscription. Finish checkout or update billing before sending campaigns, adding wallet funds, or creating shipments.</div><div style="display:flex;gap:10px"><button class="btn-full btn-gold" onclick="this.closest('.ov').remove();goFinishSetup()">${shopifyStoreOf(biz)&&shopifyPaysInShopify(biz)?"Choose a plan":"Finish setup"}</button><button class="btn btn-ghost" style="padding:10px 20px" onclick="this.closest('.ov').remove()">Close</button></div>`));
   return false;
 }
 // Save the business profile form (Settings). Changes only apply after the
@@ -1812,8 +1818,48 @@ const SHOPIFY_APP_HANDLE="clicktide";
 // pays through Stripe keeps Stripe (plan, wallet top-ups, wallet-funded postcards and gifts)
 // even with a Shopify store connected, until it picks a plan in Shopify. Mirrors
 // create-checkout-session. isShopifyBiz() (any Shopify store) only hides other POS options.
+/*ct-shopify-nonembedded-v1*/
+// The Shopify store this account belongs to: an account Clicktide made for a store at install
+// (app_metadata.shopify_shop), or any account with a Shopify store attached.
+var ctShopifyShop="";
+function ctIsShopDomain(s){return /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(String(s||""));}
+function shopifyAccountShop(){try{var s=String(S&&S.user&&S.user.app_metadata&&S.user.app_metadata.shopify_shop||"").toLowerCase();return ctIsShopDomain(s)?s:"";}catch(e){return "";}}
+function shopifyStoreOf(biz){
+  var c=[shopifyAccountShop(),biz&&biz.shopify_shop_domain,typeof bizLock!=="undefined"&&bizLock&&bizLock.shopify_shop_domain,ctShopifyShop];
+  for(var i=0;i<c.length;i++){var s=String(c[i]||"").toLowerCase();if(ctIsShopDomain(s))return s;}
+  return "";
+}
+function shopifyPlanUrl(shop){return "https://admin.shopify.com/store/"+encodeURIComponent(String(shop).replace(/\.myshopify\.com$/,""))+"/charges/"+SHOPIFY_APP_HANDLE+"/pricing_plans";}
+// Pays through Shopify: a Shopify store and no Stripe subscription of its own (website-first
+// businesses that already pay through Stripe keep Stripe until they pick a Shopify plan).
+function shopifyPaysInShopify(biz){var b=biz||(typeof bizLock!=="undefined"?bizLock:null)||{};if(b.billing_provider==="shopify")return true;if(b.billing_provider==="stripe"||b.stripe_subscription_id)return false;return !!shopifyStoreOf(b);}
+async function loadShopifyStore(tok){
+  if(DEMO||!S||!S.token)return "";
+  try{var r=await fetch(SU+"/rest/v1/platform_connections?select=shop_domain&platform=eq.shopify&is_active=eq.true&"+scope("")+"&order=updated_at.desc&limit=1",{headers:h(tok||S.token)});
+    var rows=await r.json();var s=Array.isArray(rows)&&rows[0]?String(rows[0].shop_domain||"").toLowerCase():"";ctShopifyShop=ctIsShopDomain(s)?s:"";}catch(e){}
+  return ctShopifyShop;
+}
+// Sign-in link from the Shopify admin for a store's own account: same login-CSRF rule as
+// acceptLinkSession (silent only when that account is already signed in here), but the prompt
+// names the store instead of an internal e-mail address.
+async function shopifyLinkOk(u){
+  var cur=S&&S.user,shop=String(u&&u.app_metadata&&u.app_metadata.shopify_shop||"");
+  if(cur&&cur.id&&cur.id===u.id)return true;
+  var m="Open Clicktide for the Shopify store "+shop+"?";
+  if(cur&&cur.email)m+="\n\nThis signs "+cur.email+" out on this device.";
+  m+="\n\nIf you didn't just open Clicktide from your Shopify admin, choose Cancel.";
+  var ok=await confirmModal({title:"Open Clicktide?",message:m,okText:"Open Clicktide",cancelText:"Cancel"});
+  if(ok)rememberAuthIntent(u.email,"shopify");
+  return ok;
+}
+function goFinishSetup(){
+  var shop=shopifyStoreOf(null);
+  if(shop&&shopifyPaysInShopify(null)){window.location.href=shopifyPlanUrl(shop);return;}
+  resumeOnboarding();
+}
 function isShopifyBilling(){
   try{
+    if(shopifyAccountShop())return true;
     if(typeof bizLock==="undefined"||!bizLock)return false;
     if(bizLock.billing_provider==="shopify")return true;
     if(bizLock.billing_provider==="stripe"||bizLock.stripe_subscription_id)return false;
@@ -1821,15 +1867,20 @@ function isShopifyBilling(){
   }catch(e){return false;}
 }
 function isShopifyBiz(){
-  try{return !!((typeof platConn!=="undefined"&&platConn.shopify&&platConn.shopify.merchant_id)||(typeof bizLock!=="undefined"&&bizLock&&bizLock.billing_provider==="shopify"));}catch(e){return false;}
+  try{return !!((typeof platConn!=="undefined"&&platConn.shopify&&platConn.shopify.merchant_id)||(typeof bizLock!=="undefined"&&bizLock&&bizLock.billing_provider==="shopify")||shopifyStoreOf(null));}catch(e){return false;}
 }
 // Shopify stores never fund the wallet through Stripe. Once billed through Shopify, postcards,
 // gifts and texts past the plan's limit go on the Shopify bill (usage charges); before that
 // they're paused.
 function shopifyBilledNow(){try{return !!(typeof bizLock!=="undefined"&&bizLock&&bizLock.billing_provider==="shopify"&&["active","trialing","past_due"].includes(String(bizLock.stripe_subscription_status||"").toLowerCase()));}catch(e){return false;}}
+/*ct-shopify-billing-copy-3*/
+// Same rule as clicktide_shopify_usage_allowed's plan check: Shopify bills postcards and gifts
+// only while the paid plan runs (not in the free trial). A development store is refused by
+// the backend too; sendPhysicalGift words that refusal for Shopify stores.
+function shopifyUsageChargeable(){try{return !!(typeof bizLock!=="undefined"&&bizLock&&bizLock.billing_provider==="shopify"&&["active","past_due"].includes(String(bizLock.stripe_subscription_status||"").toLowerCase()));}catch(e){return false;}}
 // Wallet page, Shopify-billed stores: postcards, gifts and extra texts go on the Shopify bill
 // (wallet balance doesn't move), so show what's been billed there this cycle.
-function shopifyUsageLine(u,bal){
+/*ct-shopify-billing-copy*/function shopifyUsageLine(u,bal){
   // Prepaid money left from before the switch is spent first; a remainder smaller than any
   // charge can be refunded by support (back-office refund).
   var left=Number(bal||0)>0.004?'<div style="font-size:12px;color:rgba(240,244,255,.55);margin-bottom:12px">$'+Number(bal).toFixed(2)+' prepaid balance left. It\'s used first for postcards and gifts; to get it refunded instead, contact support@goclicktide.com.</div>':"";
@@ -1844,7 +1895,7 @@ function shopifyUsageLine(u,bal){
     : "Billed through Shopify this cycle: <b style=\"color:#0F1115\">$"+billed.toFixed(2)+"</b>"+(lim?" of your $"+lim.toFixed(0)+" limit":"")+(end?" (cycle ends "+end+")":"")+(pend>0.004?". $"+pend.toFixed(2)+" of it is still being sent to Shopify.":"");
   return '<div style="font-size:12px;color:rgba(240,244,255,.55);margin-bottom:12px">'+txt+'</div>'+left;
 }
-function shopifyWalletNote(){
+/*ct-shopify-billing-copy-2*/function shopifyWalletNote(){
   if(shopifyBilledNow())ctToast("No top-up needed: postcards, gifts and texts beyond your plan's limit are added to your Shopify bill as you use them.","info");
   else ctToast("Postcards, gifts and texts beyond your plan's limit start once your Clicktide plan is active in Shopify. Emails and your plan's included texts keep sending.","info");
 }
@@ -1925,6 +1976,8 @@ async function finishShopifyInstall(){
 // management go to Shopify's hosted plan page instead of Stripe.
 async function shopifyBillingUrl(){
   try{var b=await loadBiz()||{};
+    var _ss=shopifyStoreOf(b);
+    if(_ss&&shopifyPaysInShopify(b)&&!(b.billing_provider==="shopify"&&ctIsShopDomain(b.shopify_shop_domain)))return shopifyPlanUrl(_ss);
     if(b.billing_provider==="shopify"&&/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(String(b.shopify_shop_domain||""))){
       return "https://admin.shopify.com/store/"+encodeURIComponent(String(b.shopify_shop_domain).replace(/\.myshopify\.com$/,""))+"/charges/"+SHOPIFY_APP_HANDLE+"/pricing_plans";
     }}catch(e){}
@@ -2129,6 +2182,9 @@ async function goDashboardOrResume(){
   const biz=await loadBiz().catch(function(){return null;});
   hydrateOnboardingFromBiz(biz);
   if(hasPaidAccess(biz)){clearOnboardingProgress();if(biz&&biz.onboarding_complete!==true)setBizFields({onboarding_complete:true});go("dash");return;}
+  // Shopify stores (and a store link waiting to be confirmed) use the dashboard; their plan is
+  // chosen in Shopify, and the dashboard runs the store-link confirmation.
+  if(shopifyStoreOf(biz)||pendingShopifyClaim()||await loadShopifyStore()){clearOnboardingProgress();go("dash");return;}
   return resumeOnboarding(biz);
 }
 // "Open Dashboard" on the Go-Live / subscribed screen: always open the dashboard.
@@ -2170,6 +2226,18 @@ function ctAuditFlow(){try{var v=JSON.parse(localStorage.getItem("ct_audit")||"n
 
   try{
     const authType=params.get("type")||hashParams.get("type")||"email";
+    // Opened from the Shopify admin: one-time code in the fragment (#ct_sso=…). Clear it from the
+    // address bar at once, then swap it for the store account's session at shopify-sso. The usual
+    // confirmation (shopifyLinkOk) and two-step check still run in finishAuthReturn.
+    const ssoCode=hashParams.get("ct_sso");
+    if(ssoCode){
+      cleanAuthUrl();
+      const sr=await fetch(FN+"/shopify-sso",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:ssoCode})});
+      const sd=await sr.json().catch(function(){return {};});
+      if(!sr.ok||!sd.access_token)throw new Error(sd.error||"This sign-in link expired. Open Clicktide from your Shopify admin again.");
+      await finishAuthReturn(sd.access_token,sd.user||null,"magiclink",{refresh_token:sd.refresh_token||"",expires_in:sd.expires_in||"",expires_at:sd.expires_at||""});
+      return;
+    }
     const hashToken=hashParams.get("access_token");
     if(hashToken){
       cleanAuthUrl();
@@ -3903,7 +3971,7 @@ function gI(name,sz,col){
   return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="'+col+'" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;flex-shrink:0">'+(P[name]||"")+'</svg>';
 }
 function dash(){
-  const nav=[{id:"overview",i:"<i class=ig-chart></i>",l:"Overview"},{id:"customers",i:"<i class=ig-people></i>",l:"Customers"},{id:"intel",i:"",l:"Customer Intelligence"},{id:"campaigns",i:"<i class=ig-chat></i>",l:"Campaigns"},{id:"gifts",i:"<i class=ig-gift></i>",l:"Gifts"},{id:"shipments",i:"<i class=ig-box></i>",l:"Shipments"},{id:"wallet",i:"<i class=ig-card></i>",l:"Wallet"},{id:"studio",i:"<i class=ig-palette></i>",l:"Design Studio"},{id:"emails",i:"<i class=ig-mail></i>",l:"Email Studio"},{id:"settings",i:"<i class=ig-gear></i>",l:"Settings"}];
+  const nav=[{id:"overview",i:"<i class=ig-chart></i>",l:"Overview"},{id:"customers",i:"<i class=ig-people></i>",l:"Customers"},{id:"intel",i:"",l:"Customer Intelligence"},{id:"campaigns",i:"<i class=ig-chat></i>",l:"Campaigns"},{id:"gifts",i:"<i class=ig-gift></i>",l:"Gifts"},{id:"shipments",i:"<i class=ig-box></i>",l:"Shipments"},{id:"wallet",i:"<i class=ig-card></i>",l:isShopifyBilling()?"Usage & billing":"Wallet"},{id:"studio",i:"<i class=ig-palette></i>",l:"Design Studio"},{id:"emails",i:"<i class=ig-mail></i>",l:"Email Studio"},{id:"settings",i:"<i class=ig-gear></i>",l:"Settings"}];
   return`<div class="dash">${ctTheme()}
   <div class="sb"><div class="sb-logo">${(bizLock&&String(bizLock?.plan||"").toLowerCase()==="scale"&&bizLock.logo_url)?`<div style="display:flex;align-items:center;gap:8px;padding:0 2px"><img src="${giftEsc(bizLock.logo_url)}" style="width:26px;height:26px;border-radius:6px;object-fit:contain"/><span style="font-weight:800;font-size:12px;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px">${giftEsc((bizLock.business_name||"").toUpperCase())}</span></div>`:logoH(18)}</div>
   <div class="sb-nav">${nav.map(n=>`<button class="ni ${dpg===n.id?"on":""}" onclick="dGo('${n.id}')">${dIco(n.id)}${n.l}</button>`).join("")}</div>
@@ -3928,6 +3996,7 @@ async function dLoad(){
   try{
     await loadRhythmMap(tok);
     bizLock=await loadBiz()||{};
+    if(!shopifyStoreOf(bizLock))await loadShopifyStore(tok);
     const paid=hasPaidAccess(bizLock);
     if(paid){clearOnboardingProgress();if(justOnboarded||bizLock.onboarding_complete!==true)setBizFields({onboarding_complete:true});}
     const paidBanner=paid?"":billingLockBanner(bizLock);
@@ -3989,7 +4058,7 @@ async function dLoad(){
           moneyHtml='<div class="dc" style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#646A73;margin-bottom:10px">Your customer base · in dollars</div><div style="display:flex;gap:14px;flex-wrap:wrap">'+_mcell("Active base",_protected,"#1E874F","value you’re keeping")+_mcell("At risk",_atRisk,"#C0392B","drifting right now")+_mcell("Recovered · 30d",_recov,"#0B62D6",_recovSub)+'</div></div>';
         }
       }catch(e){moneyHtml="";}
-      el.innerHTML=paidBanner+moneyHtml+(_won>0?wonHtml+revealHtml:revealHtml+wonHtml)+`<div class="sg">${[["Customers",u.length],["Campaigns",c.length],["Gifts Sent",sh.length],["Wallet","$"+bal]].map(([l,v])=>`<div class="sc"><div class="sl">${l}</div><div class="sn" style="color:#0F1115">${v}</div></div>`).join("")}</div>
+      el.innerHTML=paidBanner+moneyHtml+(_won>0?wonHtml+revealHtml:revealHtml+wonHtml)+`<div class="sg">${[["Customers",u.length],["Campaigns",c.length],["Gifts Sent",sh.length],(isShopifyBilling()?["Extras billed by","Shopify"]:["Wallet","$"+bal])].map(([l,v])=>`<div class="sc"><div class="sl">${l}</div><div class="sn" style="color:#0F1115">${v}</div></div>`).join("")}</div>
       <div class="dc"><div class="dch"><div class="dct">Campaigns</div><button class="link-btn" onclick="oCM()">+ New →</button></div>${c.length===0?`<div class="empty"><div style="margin-bottom:10px">${gI('bolt',34,'rgba(16,18,21,.22)')}</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No campaigns yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Create your first campaign.</div><button class="btn btn-gold" onclick="oCM()">Create Campaign</button></div>`:c.slice(0,4).map(cc=>`<div class="dr"><div class="di" style="background:rgba(11,98,214,.08)">${cc.campaign_type==="message_only"?"<i class=ig-chat></i>":cc.campaign_type==="digital_gift"?"<i class=ig-card></i>":cc.campaign_type==="survey"?"<i class=ig-star></i>":"<i class=ig-box></i>"}</div><div style="flex:1"><div class="dn">${giftEsc(cc.name)}</div><div class="dsub">${giftEsc(cc.trigger)} · ${giftEsc(cc.gift_name)}</div></div><span class="${cc.status==="active"?"ba":"bp"}">${cc.status==="active"?"● Active":"<i class=ig-pause></i> Paused"}</span></div>`).join("")}</div>
       <div class="dc"><div class="dch"><div class="dct">Recent Shipments</div></div>${sh.length===0?`<div class="empty"><div style="margin-bottom:10px">${gI('box',34,'rgba(16,18,21,.22)')}</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No shipments yet</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Shipments appear when campaigns fire.</div></div>`:sh.map(s=>`<div class="dr"><div class="di" style="background:rgba(77,166,255,.1)"><i class=ig-box></i></div><div style="flex:1"><div class="dn">${giftEsc(s.customer_name)}</div><div class="dsub">${giftEsc(s.gift)}</div></div>${shipPill(shipStep(s.status))}</div>`).join("")}</div>`;
     }
@@ -4022,8 +4091,8 @@ async function dLoad(){
         return out+'</div>';
       };
       var hasPB=c.some(function(x){return String(x.name||"").indexOf("Playbook:")===0;});
-      var pbAuto=!hasPB&&localStorage.getItem("ct_pb_intent")==="1";if(pbAuto){localStorage.removeItem("ct_pb_intent");wbPlaybook();}
-      var pbHtml=hasPB?"":pbAuto?'<div class="dc" style="margin-bottom:14px;border-color:rgba(11,98,214,.2)"><div class="dct"><i class=ig-shield></i> Installing your Win-Back Playbook…</div><div style="font-size:12px;color:rgba(240,244,255,.5);margin-top:4px">Your day-14 text, day-30 postcard and day-45 gift are being set up — one moment.</div></div>':'<div class="dc" style="margin-bottom:14px;border-color:rgba(11,98,214,.2)"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div style="flex:1;min-width:240px"><div class="dct"><i class=ig-shield></i> Win-Back Playbook</div><div style="font-size:12px;color:rgba(240,244,255,.5);margin-top:4px;line-height:1.6">One click installs your full protection: a friendly text at day 14, a postcard at day 30, a small gift at day 45 — pre-written, editable, and it pauses automatically the moment a customer comes back.</div></div><button class="btn btn-gold" style="padding:9px 18px;flex-shrink:0" onclick="wbPlaybook(this)">Install the playbook →</button></div></div>';
+      /*ct-playbook-no-auto-install*/var pbAuto=false;var pbAsked=!hasPB&&localStorage.getItem("ct_pb_intent")==="1";try{localStorage.removeItem("ct_pb_intent");}catch(e){}
+      var pbHtml=hasPB?"":pbAuto?'<div class="dc" style="margin-bottom:14px;border-color:rgba(11,98,214,.2)"><div class="dct"><i class=ig-shield></i> Installing your Win-Back Playbook…</div><div style="font-size:12px;color:rgba(240,244,255,.5);margin-top:4px">Your day-14 text, day-30 postcard and day-45 gift are being set up — one moment.</div></div>':'<div class="dc" style="margin-bottom:14px;border-color:rgba(11,98,214,.2)"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div style="flex:1;min-width:240px"><div class="dct"><i class=ig-shield></i> Win-Back Playbook'+(pbAsked?' <span style="font-size:11px;font-weight:700;color:#0B62D6">\u2014 you picked this earlier</span>':'')+'</div><div style="font-size:12px;color:rgba(240,244,255,.5);margin-top:4px;line-height:1.6">One click installs your full protection: a friendly text at day 14, a postcard at day 30, a small gift at day 45 — pre-written, editable, and it pauses automatically the moment a customer comes back.</div></div><button class="btn btn-gold" style="padding:9px 18px;flex-shrink:0" onclick="wbPlaybook(this)">Install the playbook →</button></div></div>';
       var hasWJ=c.some(function(x){return String(x.name||"").indexOf("Welcome Journey:")===0;});
       var wjHtml=hasWJ?'':'<div class="dc" style="margin-bottom:14px;border-color:rgba(30,135,79,.22)"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div style="flex:1;min-width:240px"><div class="dct"><i class=ig-people></i> New-Customer Welcome Journey</div><div style="font-size:12px;color:rgba(240,244,255,.5);margin-top:4px;line-height:1.6">Turn first-timers into regulars: a warm thank-you at day 2, a friendly nudge at day 12, and a final "come back" at day 30 — the last two only fire while they haven\'t returned yet, so it pauses the moment they come back in. Pre-written and fully editable.</div></div><button class="btn btn-gold" style="padding:9px 18px;flex-shrink:0" onclick="welcomePlaybook(this)">Install the journey →</button></div></div>';
       var isScale=String(bizLock?.plan||"").toLowerCase()==="scale";
@@ -4083,8 +4152,8 @@ async function dLoad(){
       const tx=Array.isArray(txR)?txR:[];
       const bal=tx[0]?.balance||0;
       const shu=(!DEMO&&bizLock&&bizLock.billing_provider==="shopify")?await db.rpc("clicktide_shopify_usage_this_cycle",{},tok).catch(()=>null):null;
-      el.innerHTML=paidBanner+`<div class="g2" style="margin-bottom:16px"><div style="background:rgba(11,98,214,.05);border:1px solid rgba(11,98,214,.14);border-radius:14px;padding:20px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0F1115;margin-bottom:8px">Gift Wallet</div><div style="font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:800;color:#0F1115;margin-bottom:6px">$${Number(bal||0).toFixed(2)}</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:12px">Available for this business only</div>${(bizLock&&bizLock.billing_provider==="shopify")?shopifyUsageLine(shu,bal):""}<button class="btn btn-gold" onclick="oWalletTopup()" style="margin-bottom:10px">Add Funds</button><div style="font-size:12px;color:rgba(240,244,255,.55);line-height:1.6">Funds are charged securely and credited to your wallet after payment is confirmed. Gifts deduct from this business wallet when they are sent.</div></div><div class="dc">${walletStatRows(tx).map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.07)"><span style="font-size:12px;color:rgba(240,244,255,.45)">${l}</span><span style="font-size:13px;font-weight:700">${v}</span></div>`).join("")}</div></div>
-      <div class="dc"><div class="dch"><div class="dct">Transactions</div></div>${tx.length===0?`<div class="empty"><div style="margin-bottom:10px">${gI('card',34,'rgba(16,18,21,.22)')}</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No transactions yet</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Wallet activity will appear here when funds are added or gifts are sent.</div></div>`:tx.map(t=>`<div style="display:grid;grid-template-columns:1fr 70px 80px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07);align-items:center"><div style="font-size:12px;font-weight:600">${giftEsc(t.desc)}</div><div style="font-size:12px;font-weight:700;color:#0F1115;text-align:right">${t.amount>0?"+$"+t.amount:"-$"+Math.abs(t.amount)}</div><div style="font-size:12px;font-weight:600;text-align:right">$${t.balance}</div></div>`).join("")}</div>`;
+      el.innerHTML=paidBanner+`<div class="g2" style="margin-bottom:16px"><div style="background:rgba(11,98,214,.05);border:1px solid rgba(11,98,214,.14);border-radius:14px;padding:20px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0F1115;margin-bottom:8px">${isShopifyBilling()?"Usage &amp; billing":"Gift Wallet"}</div>${isShopifyBilling()?`<div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;color:#0F1115;margin-bottom:8px">Billed through Shopify</div>${shopifyUsageLine(shu,bal)}<div style="font-size:12px;color:rgba(240,244,255,.55);line-height:1.6">Your plan, and postcards, gifts and texts beyond your plan's limit, appear on your Shopify bill. Nothing is charged to a card here.</div>`:`<div style="font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:800;color:#0F1115;margin-bottom:6px">$${Number(bal||0).toFixed(2)}</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:12px">Available for this business only</div>${(bizLock&&bizLock.billing_provider==="shopify")?shopifyUsageLine(shu,bal):""}<button class="btn btn-gold" onclick="oWalletTopup()" style="margin-bottom:10px">Add Funds</button><div style="font-size:12px;color:rgba(240,244,255,.55);line-height:1.6">Funds are charged securely and credited to your wallet after payment is confirmed. Gifts deduct from this business wallet when they are sent.</div>`}</div><div class="dc">${walletStatRows(tx).map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.07)"><span style="font-size:12px;color:rgba(240,244,255,.45)">${l}</span><span style="font-size:13px;font-weight:700">${v}</span></div>`).join("")}</div></div>
+      <div class="dc"><div class="dch"><div class="dct">Transactions</div></div>${tx.length===0?`<div class="empty"><div style="margin-bottom:10px">${gI('card',34,'rgba(16,18,21,.22)')}</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No transactions yet</div><div style="font-size:13px;color:rgba(240,244,255,.45)">${isShopifyBilling()?"Postcards, gifts and extra texts will be listed here as they are sent.":"Wallet activity will appear here when funds are added or gifts are sent."}</div></div>`:tx.map(t=>`<div style="display:grid;grid-template-columns:1fr 70px 80px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07);align-items:center"><div style="font-size:12px;font-weight:600">${giftEsc(t.desc)}</div><div style="font-size:12px;font-weight:700;color:#0F1115;text-align:right">${t.amount>0?"+$"+t.amount:"-$"+Math.abs(t.amount)}</div><div style="font-size:12px;font-weight:600;text-align:right">$${t.balance}</div></div>`).join("")}</div>`;
     }
     else if(dpg==="shipments"){
       await loadGiftCatalog();
@@ -4268,7 +4337,7 @@ async function dLoad(){
           <span style="font-size:10px;font-weight:700;color:#22C55E">Connected</span>
         </div>
         <div class="dc" style="display:flex;align-items:center;gap:9px"><span>${gI('palette',19,'#5A5E66')}</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Dashboard appearance <span style="font-size:9px;background:rgba(77,166,255,.15);color:#4DA6FF;border-radius:100px;padding:2px 8px;margin-left:4px">SCALE</span></div><div style="font-size:11px;color:rgba(240,244,255,.45)">${String(bizLock?.plan||"").toLowerCase()==="scale"?"Your logo in the sidebar, your accent on the buttons, your color on the whole background:":"Put your logo and brand color on the dashboard itself — a Scale feature."}</div></div>${String(bizLock?.plan||"").toLowerCase()==="scale"?`<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0"><input type="color" id="dColInp" value="${giftEsc(bizLock?.dashboard_color||'#FFD166')}" style="width:38px;height:30px;border:none;background:none;cursor:pointer"/><span style="font-size:8px;color:rgba(240,244,255,.4);letter-spacing:.5px">ACCENT</span></div><div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0"><input type="color" id="dBgInp" value="${giftEsc(bizLock?.dashboard_bg||'#080D18')}" style="width:38px;height:30px;border:none;background:none;cursor:pointer"/><span style="font-size:8px;color:rgba(240,244,255,.4);letter-spacing:.5px">THEME</span></div><button class="btn btn-gold" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="saveDCol(this)">Save</button>`:`<button class="btn btn-ghost" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="go('pricing')">Upgrade</button>`}</div>
-        <div class="dc" style="display:flex;align-items:center;gap:9px"><span>${gI('gift',19,'#5A5E66')}</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Physical gift sending</div><div style="font-size:11px;color:rgba(240,244,255,.45)">${bizLock?.gift_auto_send?"Auto-send — gifts ship automatically, paid from your wallet":"Approval required — you review each gift before it ships"}</div></div><button class="btn ${bizLock?.gift_auto_send?"btn-gold":"btn-ghost"}" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="tGiftAuto(this)">${bizLock?.gift_auto_send?"Auto-send: ON":"Auto-send: OFF"}</button></div>
+        <div class="dc" style="display:flex;align-items:center;gap:9px"><span>${gI('gift',19,'#5A5E66')}</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Physical gift sending</div><div style="font-size:11px;color:rgba(240,244,255,.45)">${bizLock?.gift_auto_send?"Auto-send — gifts ship automatically, "+(isShopifyBilling()?"billed through Shopify":"paid from your wallet"):"Approval required — you review each gift before it ships"}</div></div><button class="btn ${bizLock?.gift_auto_send?"btn-gold":"btn-ghost"}" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="tGiftAuto(this)">${bizLock?.gift_auto_send?"Auto-send: ON":"Auto-send: OFF"}</button></div>
         <div class="dc" style="display:flex;align-items:center;gap:9px"><span>${gI('mail',19,'#5A5E66')}</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Email delivery</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Managed by Clicktide for campaign messages</div></div><span style="font-size:10px;color:#FFD166;font-weight:700">Back office</span></div>
         <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:12px;font-weight:800;color:#4DA6FF;width:24px;text-align:center">SMS</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">SMS delivery</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Twilio sends texts only to opted-in customers</div></div><span style="font-size:10px;color:#FFD166;font-weight:700">Back office</span></div>
       `;
@@ -4411,7 +4480,7 @@ function giftAutoModal(){
   ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px";
   ov.onclick=function(e){if(e.target===ov)document.body.removeChild(ov);};
   var rows=[["Matched customers get their gift ordered automatically","No review step. The order goes straight to printing and shipping, with your logo on it."],
-            ["Your gift wallet is charged at that moment","Each gift costs its catalog price (for example, the mug is $6.44). No wallet balance = nothing ships."],
+            (isShopifyBilling()?["It is billed at that moment","Each gift costs its catalog price (for example, the mug is $6.44), added to your Shopify bill as a usage charge."]:["Your gift wallet is charged at that moment","Each gift costs its catalog price (for example, the mug is $6.44). No wallet balance = nothing ships."]),
             ["The guardrails stay on","Auto-send only fires when a mailing address is on file AND the campaign has a specific gift chosen. Anything else still comes to you for review. Customers who recently rated you 1\u20132 stars never get gifts."],
             ["You can turn it off anytime","Takes effect immediately \u2014 gifts go back to waiting for your approval."]];
   var body=rows.map(function(x){return '<div style="border-left:3px solid #E3E7EE;padding-left:12px;margin-bottom:12px"><div style="font-size:13px;font-weight:700;color:#0F1115">'+x[0]+'</div><div style="font-size:11px;color:#646A73;line-height:1.6;margin-top:2px">'+x[1]+'</div></div>';}).join("");
@@ -4420,7 +4489,7 @@ function giftAutoModal(){
   document.getElementById("gaNo").onclick=function(){document.body.removeChild(ov);};
   document.getElementById("gaNext").onclick=function(){
     var box=document.getElementById("gaBox");
-    box.innerHTML='<div style="font-family:Space Grotesk,sans-serif;font-size:18px;font-weight:800;text-align:center;margin-bottom:12px;color:#0F1115">Final confirmation</div><div style="font-size:13px;color:#3A3E45;line-height:1.7;text-align:center;margin-bottom:18px">Starting with the next hourly run, matching gifts will <b style="color:#0F1115">ship automatically</b> and your <b style="color:#0F1115">wallet will be charged</b> \u2014 with no review step.<br/><br/>Turn auto-send ON?</div><div style="display:flex;gap:10px"><button id="gaKeep" style="flex:1;padding:12px;border-radius:100px;border:1px solid rgba(16,18,21,.16);background:#FFFFFF;color:#0F1115;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">Keep approval mode</button><button id="gaYes" style="flex:1;padding:12px;border-radius:100px;border:none;background:#1E874F;color:#FFFFFF;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">Yes \u2014 turn it ON</button></div>';
+    box.innerHTML='<div style="font-family:Space Grotesk,sans-serif;font-size:18px;font-weight:800;text-align:center;margin-bottom:12px;color:#0F1115">Final confirmation</div><div style="font-size:13px;color:#3A3E45;line-height:1.7;text-align:center;margin-bottom:18px">Starting with the next hourly run, matching gifts will <b style="color:#0F1115">ship automatically</b> and '+(isShopifyBilling()?'each one goes on <b style="color:#0F1115">your Shopify bill</b>':'your <b style="color:#0F1115">wallet will be charged</b>')+' \u2014 with no review step.<br/><br/>Turn auto-send ON?</div><div style="display:flex;gap:10px"><button id="gaKeep" style="flex:1;padding:12px;border-radius:100px;border:1px solid rgba(16,18,21,.16);background:#FFFFFF;color:#0F1115;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">Keep approval mode</button><button id="gaYes" style="flex:1;padding:12px;border-radius:100px;border:none;background:#1E874F;color:#FFFFFF;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">Yes \u2014 turn it ON</button></div>';
     document.getElementById("gaKeep").onclick=function(){document.body.removeChild(ov);};
     document.getElementById("gaYes").onclick=function(){document.body.removeChild(ov);doGiftAuto(true);};
   };
@@ -4509,7 +4578,7 @@ async function sendPhysicalGift({campaignId,customerId,customerName,customerEmai
   });
 
   const data=await res.json();
-  if(!res.ok){throw new Error(data.error||"Gift fulfillment failed");}
+  if(!res.ok){throw new Error(isShopifyBilling()&&/insufficient gift wallet/i.test(String(data.error||""))?"Postcards and gifts are billed through Shopify once your paid plan begins. They are not sent during the free trial or on development stores.":(data.error||"Gift fulfillment failed"));}
   return data;
 }
 
@@ -4566,8 +4635,9 @@ function manualGiftChanged(){
   }
   const note=document.getElementById("mgNote");
   if(note){
-    note.textContent=cost>bal?"Add wallet funds before this can ship.":"This will ship once you confirm.";
-    note.style.color=cost>bal?"#FF9F4D":"rgba(240,244,255,.55)";
+    const short=!shopifyUsageChargeable()&&cost>bal;
+    note.textContent=short?(isShopifyBilling()?"Postcards and gifts are billed through Shopify once your paid plan begins. They are not sent during the free trial or on development stores.":"Add wallet funds before this can ship."):"This will ship once you confirm.";
+    note.style.color=short?"#FF9F4D":"rgba(240,244,255,.55)";
   }
   const pv=document.getElementById("mgPreview");
   if(pv)pv.innerHTML=giftShipPreviewHtml(g);
@@ -4597,7 +4667,7 @@ async function oGiftNow(customerId){
     <div class="fg"><label class="fl">Customer</label><input class="fi" id="mgName" value="${giftEsc(c.name||"")}" placeholder="Customer name"/></div>
     <div class="fg"><label class="fl">Email</label><input class="fi" id="mgEmail" type="email" value="${giftEsc(c.email||"")}" placeholder="customer@example.com"/></div>
     <div class="fg"><label class="fl">Gift</label><select class="fi-sel" id="mgGift" data-balance="${balance}" onchange="manualGiftChanged()">${opts}</select><div id="mgPreview" style="margin-top:10px"></div></div>
-    <div style="display:flex;justify-content:space-between;gap:12px;background:#101828;border-radius:10px;padding:11px 12px;margin:-4px 0 14px"><span style="font-size:12px;color:rgba(240,244,255,.5)">Wallet balance: <b style="color:#F0F4FF">$${balance.toFixed(2)}</b></span><span style="font-size:12px;color:rgba(240,244,255,.5)">Gift cost: <b id="mgCost">$0.00</b></span></div>
+    <div style="display:flex;justify-content:space-between;gap:12px;background:#101828;border-radius:10px;padding:11px 12px;margin:-4px 0 14px">${isShopifyBilling()?`<span style="font-size:12px;color:rgba(240,244,255,.5)">Billed through Shopify</span>`:`<span style="font-size:12px;color:rgba(240,244,255,.5)">Wallet balance: <b style="color:#F0F4FF">$${balance.toFixed(2)}</b></span>`}<span style="font-size:12px;color:rgba(240,244,255,.5)">Gift cost: <b id="mgCost">$0.00</b></span></div>
     <div class="fg"><label class="fl">Mailing Address</label><input class="fi" id="mgAddr" value="${giftEsc(c.address||"")}" placeholder="123 Main St"/></div>
     <div class="fg" style="display:flex;gap:8px"><div style="flex:2"><label class="fl">City</label><input class="fi" id="mgCity" value="${giftEsc(c.city||"")}" placeholder="City"/></div><div style="flex:1"><label class="fl">State</label><input class="fi" id="mgState" value="${giftEsc(c.state||"")}" placeholder="NY"/></div><div style="flex:1"><label class="fl">ZIP</label><input class="fi" id="mgZip" value="${giftEsc(c.zip||"")}" placeholder="11542"/></div></div>
     ${logoBanner}
@@ -4619,12 +4689,12 @@ async function sendManualGiftNow(btn){
   if(!name){alert("Add the customer's name first.");return;}
   if(email&&!isEmail(email)){alert("That email doesn't look right — fix it or clear it.");return;}
   if(!shippingAddressComplete(address)){alert("Add a complete mailing address before shipping a gift.");return;}
-  if(cost>balance){alert("Not enough gift wallet funds. Add funds before sending this gift.");return;}
+  if(!shopifyUsageChargeable()&&cost>balance){alert(isShopifyBilling()?"Postcards and gifts are billed through Shopify once your paid plan begins. They are not sent during the free trial or on development stores.":"Not enough gift wallet funds. Add funds before sending this gift.");return;}
   if(btn){btn.disabled=true;btn.textContent="Verifying address...";}
   const verified=await verifyOrOverrideAddress(address);
   if(!verified.valid){alert(verified.error);if(btn){btn.disabled=false;btn.textContent="Send gift now";}return;}
   address=Object.assign({},verified.address,{email:email});
-  if(!await confirmModal({title:"Send this gift?",message:"Send "+gift.n+" to "+name+" now? Your gift wallet will be charged $"+cost.toFixed(2)+".",okText:"Send gift"})){if(btn){btn.disabled=false;btn.textContent="Send gift now";}return;}
+  if(!await confirmModal({title:"Send this gift?",message:"Send "+gift.n+" to "+name+" now? "+(shopifyUsageChargeable()&&cost>balance?"$"+cost.toFixed(2)+" will be added to your Shopify bill.":"Your gift wallet will be charged $"+cost.toFixed(2)+"."),okText:"Send gift"})){if(btn){btn.disabled=false;btn.textContent="Send gift now";}return;}
   if(btn){btn.disabled=true;btn.textContent="Sending...";}
   try{
     const biz=await loadBiz()||{};
@@ -4702,7 +4772,7 @@ async function oGiftCart(){
   document.body.insertAdjacentHTML("beforeend",modal("Send a Gift",`
     <div style="background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:rgba(240,244,255,.65);line-height:1.6">Pick a gift, then choose who gets it — one person or several. Everyone needs a verified mailing address before anything ships. ${gcLogoTip}</div>
     <div class="fg"><label class="fl">1. Choose the gift</label><select class="fi-sel" id="giftCartDefaultGift" onchange="giftCartPreview()">${giftCartGiftOptions(0)}</select><div id="giftCartPreview" style="margin-top:10px"></div></div>
-    <div style="display:flex;justify-content:space-between;gap:12px;background:#101828;border-radius:10px;padding:11px 12px;margin:-4px 0 14px;flex-wrap:wrap"><span style="font-size:12px;color:rgba(240,244,255,.5)">Wallet: <b style="color:#F0F4FF">$${giftCartBalance.toFixed(2)}</b></span><span style="font-size:12px;color:rgba(240,244,255,.5)">Selected: <b id="giftCartCount" style="color:#F0F4FF">0</b></span><span style="font-size:12px;color:rgba(240,244,255,.5)">Total: <b id="giftCartTotal" style="color:#0F1115">$0.00</b></span></div>
+    <div style="display:flex;justify-content:space-between;gap:12px;background:#101828;border-radius:10px;padding:11px 12px;margin:-4px 0 14px;flex-wrap:wrap">${isShopifyBilling()?`<span style="font-size:12px;color:rgba(240,244,255,.5)">Billed through Shopify</span>`:`<span style="font-size:12px;color:rgba(240,244,255,.5)">Wallet: <b style="color:#F0F4FF">$${giftCartBalance.toFixed(2)}</b></span>`}<span style="font-size:12px;color:rgba(240,244,255,.5)">Selected: <b id="giftCartCount" style="color:#F0F4FF">0</b></span><span style="font-size:12px;color:rgba(240,244,255,.5)">Total: <b id="giftCartTotal" style="color:#0F1115">$0.00</b></span></div>
     <input class="fi" id="giftCartSearch" placeholder="Search customers by name or email" oninput="giftCartRender()" style="margin-bottom:8px"/>
     <div id="giftCartChips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
@@ -4779,7 +4849,7 @@ function giftCartRender(){
   }
   if(note){
     if(!giftCartItems.length){note.textContent="Choose customers from the list to build the cart.";note.style.color="rgba(240,244,255,.48)";}
-    else if(total>giftCartBalance){note.textContent="Add wallet funds before this cart can ship.";note.style.color="#FF9F4D";}
+    else if(!shopifyUsageChargeable()&&total>giftCartBalance){note.textContent=isShopifyBilling()?"Postcards and gifts are billed through Shopify once your paid plan begins. They are not sent during the free trial or on development stores.":"Add wallet funds before this cart can ship.";note.style.color="#FF9F4D";}
     else {note.textContent="Ready for final confirmation. Every cart line has a verified shipping address.";note.style.color="rgba(240,244,255,.58)";}
   }
   if(send&&!giftCartSending){
@@ -4855,9 +4925,9 @@ async function sendGiftCart(btn){
   if(!giftCartItems.length){alert("Add gifts to the cart first.");return;}
   const bad=giftCartItems.find(function(item){return !item.verified||!shippingAddressComplete(item.address);});
   if(bad){alert("Every cart line needs a verified full shipping address before sending.");return;}
-  if(total>giftCartBalance){alert("Not enough gift wallet funds for this cart.");return;}
+  if(!shopifyUsageChargeable()&&total>giftCartBalance){alert(isShopifyBilling()?"Postcards and gifts are billed through Shopify once your paid plan begins. They are not sent during the free trial or on development stores.":"Not enough gift wallet funds for this cart.");return;}
   if(!document.getElementById("giftCartConfirm")?.checked){alert("Confirm every recipient, gift, and verified address before sending.");return;}
-  if(!await confirmModal({title:"Send "+giftCartItems.length+" gift"+(giftCartItems.length===1?"":"s")+"?",message:"Your gift wallet will be charged about $"+total.toFixed(2)+".",okText:"Send gifts"}))return;
+  if(!await confirmModal({title:"Send "+giftCartItems.length+" gift"+(giftCartItems.length===1?"":"s")+"?",message:(shopifyUsageChargeable()&&total>giftCartBalance?"About $"+total.toFixed(2)+" will be added to your Shopify bill.":"Your gift wallet will be charged about $"+total.toFixed(2)+"."),okText:"Send gifts"}))return;
   giftCartSending=true;
   if(btn){btn.disabled=true;btn.textContent="Sending 0/"+giftCartItems.length+"...";}
   const batchId="manual-gift-bulk-"+Date.now();
@@ -5375,7 +5445,7 @@ function cModal(){
   const step2=`
   <div style="font-size:16px;font-weight:800;margin-bottom:5px">What should we send?</div>
   <div style="font-size:12px;color:rgba(240,244,255,.5);margin-bottom:16px;line-height:1.5">Pick one or more — you can mix a message with a gift, a code, or a mailed postcard.</div>
-  ${[["digital_gift","<i class=ig-card></i>","Digital Gift","Reward code or discount by email — no shipping, the cheapest gift to send.","sel-e"],["message_only","<i class=ig-chat></i>","Message Only","Personal message, no gift. Free.","sel-b"],["survey","<i class=ig-star></i>","Satisfaction Survey","Rate experience. Smart gift routing.","sel-p"],["physical_gift","<i class=ig-box></i>","Physical Gift","Branded item ships + message.","sel-g"],["postcard","<i class=ig-send></i>","Mailed Postcard","Real postcard mailed to their door. $1.50 from wallet.","sel-b"]].map(([id,ic,lb,dc,sc])=>`<div class="to ${cmTypes.indexOf(id)>=0?sc:""}" onclick="sCT('${id}')"><span style="font-size:22px;flex-shrink:0">${ic}</span><div style="flex:1"><div style="font-size:13px;font-weight:700">${lb}</div><div style="font-size:11px;color:rgba(240,244,255,.45);margin-top:1px">${dc}</div></div><div style="width:18px;height:18px;border-radius:50%;border:2px solid ${cmTypes.indexOf(id)>=0?"#FFD166":"rgba(255,255,255,.2)"};background:${cmTypes.indexOf(id)>=0?"#FFD166":"transparent"};color:#080D18;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${cmTypes.indexOf(id)>=0?"✓":""}</div></div>`).join("")}
+  ${[["digital_gift","<i class=ig-card></i>","Digital Gift","Reward code or discount by email — no shipping, the cheapest gift to send.","sel-e"],["message_only","<i class=ig-chat></i>","Message Only","Personal message, no gift. Free.","sel-b"],["survey","<i class=ig-star></i>","Satisfaction Survey","Rate experience. Smart gift routing.","sel-p"],["physical_gift","<i class=ig-box></i>","Physical Gift","Branded item ships + message.","sel-g"],["postcard","<i class=ig-send></i>","Mailed Postcard","Real postcard mailed to their door. "+(isShopifyBilling()?"$1.50 each, billed through Shopify.":"$1.50 from wallet."),"sel-b"]].map(([id,ic,lb,dc,sc])=>`<div class="to ${cmTypes.indexOf(id)>=0?sc:""}" onclick="sCT('${id}')"><span style="font-size:22px;flex-shrink:0">${ic}</span><div style="flex:1"><div style="font-size:13px;font-weight:700">${lb}</div><div style="font-size:11px;color:rgba(240,244,255,.45);margin-top:1px">${dc}</div></div><div style="width:18px;height:18px;border-radius:50%;border:2px solid ${cmTypes.indexOf(id)>=0?"#FFD166":"rgba(255,255,255,.2)"};background:${cmTypes.indexOf(id)>=0?"#FFD166":"transparent"};color:#080D18;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${cmTypes.indexOf(id)>=0?"✓":""}</div></div>`).join("")}
   ${cmTypes.indexOf("survey")>=0?`
   <div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:12px;padding:14px;margin:14px 0">
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#A78BFA;margin-bottom:10px"><i class=ig-star></i> Smart Gift Routing</div>
@@ -5385,7 +5455,7 @@ function cModal(){
       <div style="background:rgba(192,57,43,.07);border:1px solid rgba(192,57,43,.2);border-radius:8px;padding:10px"><div style="font-weight:700;color:#C0392B;margin-bottom:4px">2 <i class=ig-star></i> Unhappy</div><div style="color:rgba(240,244,255,.6)">Alert you — no gift sent</div></div>
       <div style="background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.15);border-radius:8px;padding:10px"><div style="font-weight:700;color:#FF4D6D;margin-bottom:4px">1 <i class=ig-star></i> Angry</div><div style="color:rgba(240,244,255,.6)">Urgent alert — fix first</div></div>
     </div>
-    <div style="font-size:11px;color:rgba(240,244,255,.4);margin-top:10px">Physical gifts only go to happy customers — saving your wallet for people who will actually appreciate them.</div>
+    <div style="font-size:11px;color:rgba(240,244,255,.4);margin-top:10px">Physical gifts only go to happy customers — saving your gift budget for people who will actually appreciate them.</div>
   </div>
   <div class="fg"><label class="fl">Promo Code for Neutral Customers (3 stars)</label><input class="fi" placeholder="e.g. COMEBACK15" oninput="cmProt.neutralCode=this.value"/></div>
   `:""}
