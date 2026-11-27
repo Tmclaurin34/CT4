@@ -315,6 +315,19 @@ async function ownerAlert(ship: ShipRow, type: string, message: string) {
 // Returns the wallet debit of every canceled, not-yet-refunded shipment of this order.
 // Idempotent (the refund key is derived from the debit key), so a retried event retries
 // only what is still owed. Throws so Printify redelivers when a refund can't be written.
+async function opsAlert(subject: string, text: string) {
+  if (!resendApiKey) return;
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: Deno.env.get("RESEND_FROM_EMAIL") ?? "Clicktide <support@goclicktide.com>",
+      to: [Deno.env.get("OPS_ALERT_EMAIL") ?? "support@goclicktide.com"],
+      subject, text,
+    }),
+  }).catch((e) => console.error("printify-webhook: ops alert failed", e));
+}
+
 async function refundCanceled(orderId: string) {
   const rows = await rest(
     `${shipmentsFor(orderId)}&status=eq.canceled&wallet_refunded_at=is.null&wallet_debit_key=not.is.null&select=id,user_id,gift,campaign,wallet_debit_key,wallet_debit_amount`,
@@ -331,6 +344,15 @@ async function refundCanceled(orderId: string) {
       ship.campaign || null,
       `${ship.wallet_debit_key}:refund`,
     );
+    if (!result.ok && result.reason === "refund_mismatch") {
+      // Terminal: the refund doesn't match its Shopify-billed charge (kind/amount). Retrying can't
+      // fix it, so don't make Printify redeliver forever; flag it for a person instead.
+      console.error(`printify-webhook: refund for shipment ${ship.id} is refund_mismatch (key ${ship.wallet_debit_key}:refund, $${amount}); needs a manual check`);
+      await opsAlert(`Gift refund refused (refund_mismatch) for shipment ${ship.id}`,
+        `Printify canceled shipment ${ship.id} (business ${ship.user_id}), but the $${amount} refund doesn't match its Shopify-billed charge ` +
+        `${ship.wallet_debit_key}. Check the wallet rows for that key and refund by hand if needed.`);
+      continue;
+    }
     if (!result.ok) throw new Error(`refund for shipment ${ship.id} refused: ${result.reason || "unknown"}`);
     await rest(`/rest/v1/shipments?id=eq.${Number(ship.id)}&wallet_refunded_at=is.null`, {
       method: "PATCH",

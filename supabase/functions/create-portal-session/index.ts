@@ -61,11 +61,16 @@ Deno.serve(async (req) => {
   const origin = allowedRedirect(rawOrigin + "/") ? rawOrigin : "https://goclicktide.com";
   const returnUrl = safeUrl(body?.return_url) || `${origin}/?billing=updated`;
   // Only the Stripe customer stripe-webhook linked to this login's business row.
-  const q = await fetch(`${supabaseUrl}/rest/v1/clicktide?user_id=eq.${encodeURIComponent(userId)}&stripe_customer_id=not.is.null&select=stripe_customer_id&order=id.asc&limit=1`, {
+  const q = await fetch(`${supabaseUrl}/rest/v1/clicktide?user_id=eq.${encodeURIComponent(userId)}&stripe_customer_id=not.is.null&select=stripe_customer_id,billing_provider&order=id.asc&limit=1`, {
     headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` },
   }).catch(() => null);
   if (!q || !q.ok) return json({ error: "Couldn't load your billing details right now. Please try again." }, 502);
   const rows = await q.json().catch(() => []);
+  // Shopify App Store rule 1.2: a business billed through Shopify manages its plan in Shopify. The
+  // Stripe portal could otherwise restart or change an old Stripe subscription (double billing).
+  if (Array.isArray(rows) && rows[0]?.billing_provider === "shopify") {
+    return json({ code: "shopify_billing", error: "Your Clicktide plan is billed through Shopify. Manage it in your Shopify admin." }, 409);
+  }
   const customerId = Array.isArray(rows) && rows[0] ? rows[0].stripe_customer_id : "";
   if (!customerId) return json({ error: "No subscription found on this account yet. Start a plan first, then you can manage it here." }, 404);
   const form = new URLSearchParams();

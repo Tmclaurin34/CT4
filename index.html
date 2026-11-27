@@ -926,10 +926,91 @@ function exitDemo(){
   try{history.replaceState({},"",window.location.pathname);}catch(e){}
   scr="land";R();
 }
+// -- Cloudflare Turnstile bot check (package "turnstile", 2026-11-27) ----------------------
+// Forms that reach Supabase Auth (sign-up, log in, resend) or Clicktide's public
+// password-reset / launch-inquiry / check-in functions carry a Turnstile token. The token is
+// ignored until the owner turns the check on (Supabase Auth CAPTCHA + TURNSTILE_SECRET_KEY).
+// The script loads only once a form with a check slot is on screen. If it can't load, the
+// form is still sent (without a token) and the server's answer is shown.
+var CT_TS_KEY="0x4AAAAAAGVfstoxEkbfB9VK";
+var CT_TS_SRC="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=ctTsOnload";
+var ctTs={state:"idle",slots:[],timer:0,lastErr:""};
+function ctTsOff(){return !!window.CT_TS_OFF||(typeof DEMO!=="undefined"&&!!DEMO);}
+function ctTsSlot(id,action){return '<div class="ct-ts" id="'+id+'" data-ts-action="'+action+'" style="margin:0 0 12px"></div>';}
+function ctTsBody(o,t){if(t)o.gotrue_meta_security={captcha_token:t};return o;}
+function ctTsLoad(){
+  if(ctTs.state!=="idle")return;
+  ctTs.state="loading";
+  window.ctTsOnload=function(){clearTimeout(ctTs.timer);ctTs.state=window.turnstile&&window.turnstile.render?"ready":"failed";ctTsScan();};
+  var fail=function(){if(ctTs.state==="loading")ctTs.state="failed";};
+  ctTs.timer=setTimeout(fail,10000);
+  try{var s=document.createElement("script");s.src=CT_TS_SRC;s.async=true;s.onerror=fail;(document.head||document.body).appendChild(s);}catch(e){fail();}
+}
+function ctTsScan(){
+  if(ctTsOff())return;
+  ctTs.slots=ctTs.slots.filter(function(r){if(r.el.isConnected)return true;try{window.turnstile.remove(r.wid);}catch(e){}return false;});
+  var els=document.querySelectorAll(".ct-ts:not([data-ts-on])");
+  for(var i=0;i<els.length;i++){
+    var el=els[i];
+    if(!(el.offsetWidth||el.offsetHeight||el.getClientRects().length))continue; // hidden panel: rendered once shown
+    if(ctTs.state==="idle"){ctTsLoad();return;}
+    if(ctTs.state==="ready")ctTsMount(el);
+  }
+}
+function ctTsMount(el){
+  el.setAttribute("data-ts-on","1");
+  var r={el:el,wid:null,tok:"",busy:false,err:false};
+  try{
+    r.wid=window.turnstile.render(el,{sitekey:CT_TS_KEY,action:el.getAttribute("data-ts-action")||undefined,size:el.offsetWidth<300?"compact":"flexible","refresh-expired":"auto",
+      callback:function(t){r.tok=String(t||"");r.err=false;r.busy=false;},
+      "expired-callback":function(){r.tok="";},
+      "error-callback":function(){r.tok="";r.err=true;r.busy=false;},
+      "before-interactive-callback":function(){r.busy=true;},
+      "after-interactive-callback":function(){r.busy=false;}});
+  }catch(e){r.err=true;}
+  ctTs.slots.push(r);
+}
+function ctTsRec(id){var el=document.getElementById(id);if(!el)return null;for(var i=0;i<ctTs.slots.length;i++)if(ctTs.slots[i].el===el)return ctTs.slots[i];return null;}
+// The slot's token, or "" when there is none to wait for (script didn't load, widget error,
+// demo mode, no slot). Waits up to 15s for a running check, 2 minutes while it asks the visitor.
+function ctTsToken(id){
+  return new Promise(function(res){
+    if(ctTsOff())return res("");
+    var t0=Date.now();
+    (function poll(){
+      var el=document.getElementById(id),r=ctTsRec(id),w=Date.now()-t0;
+      if(!el||ctTs.state==="failed")return res("");
+      if(r&&r.tok)return res(r.tok);
+      if(r&&r.err&&(r.wid==null||w>3000))return res("");
+      if(!r&&ctTs.state!=="loading")ctTsScan();
+      if(w>(r&&r.busy?120000:15000))return res("");
+      setTimeout(poll,150);
+    })();
+  });
+}
+// Tokens are single-use: every submit is followed by a reset (a fresh check starts at once).
+function ctTsReset(id){var r=ctTsRec(id);if(!r)return;r.tok="";r.err=false;try{window.turnstile.reset(r.wid);}catch(e){}}
+// A refusal from the check (Supabase Auth: captcha_failed; Clicktide functions:
+// turnstile_failed / turnstile_unavailable) as a message for the visitor, else "".
+function ctTsErr(d){
+  d=d||{};var c=String(d.error_code||d.code||""),m=String(d.msg||d.message||d.error||"");
+  if(c==="turnstile_unavailable")return m||"The security check is unavailable right now. Please try again in a minute.";
+  if(c!=="captcha_failed"&&c!=="turnstile_failed"&&!/captcha protection/i.test(m))return "";
+  return ctTs.state==="failed"?"The security check couldn't load. Reload the page (allow challenges.cloudflare.com if you use a blocker), then try again.":"Please complete the security check, then try again.";
+}
+// fetch(...).then(ctTsCheck): records a refusal from the check in ctTs.lastErr ("" otherwise);
+// reads a copy of the body, so the caller can still read the response itself.
+function ctTsCheck(r){ctTs.lastErr="";if(!r||r.ok||!r.clone)return r;return r.clone().json().then(function(d){ctTs.lastErr=ctTsErr(d);return r;},function(){return r;});}
+function ctTsWatch(attrs){
+  var q=false,kick=function(){if(q)return;q=true;setTimeout(function(){q=false;ctTsScan();},0);};
+  try{new MutationObserver(kick).observe(document.documentElement,attrs?{childList:true,subtree:true,attributes:true,attributeFilter:["class"]}:{childList:true,subtree:true});}catch(e){}
+  kick();
+}
+ctTsWatch(false);
 function authRedirectTo(){return window.location.origin+window.location.pathname;}
 const au={
-  async up(e,p,m){rememberAuthIntent(e,"signup");const r=await fetch(`${SU}/auth/v1/signup?redirect_to=${encodeURIComponent(authRedirectTo())}`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e,password:p,data:m})});const d=await r.json();if(!r.ok){const c=d.error_code||d.error;if(c==="user_already_exists"||/already.*regist/i.test(d.msg||""))throw new Error("An account with this email already exists — log in instead, or use Forgot password.");throw new Error(d.msg||d.error_description||(d.error&&d.error.message)||"Sign-up failed — please try again");}var _ids=(d&&d.user&&d.user.identities)||(d&&d.identities);if(!d.access_token&&Array.isArray(_ids)&&_ids.length===0)throw new Error("An account with this email already exists — log in instead, or use Forgot password.");return d;},
-  async in(e,p){const r=await fetch(`${SU}/auth/v1/token?grant_type=password`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:e,password:p})});const d=await r.json();if(!r.ok){const c=d.error_code||d.error;if(c==="email_not_confirmed")throw new Error("Your account exists but the email isn't confirmed yet. Check your inbox and spam for the activation link, or click Resend email below.");throw new Error(d.msg||d.error_description||(d.error&&d.error.message)||"Wrong email or password");}return d;},
+  async up(e,p,m){rememberAuthIntent(e,"signup");const r=await fetch(`${SU}/auth/v1/signup?redirect_to=${encodeURIComponent(authRedirectTo())}`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify(ctTsBody({email:e,password:p,data:m},arguments[3]))});const d=await r.json();if(!r.ok){const _ce=ctTsErr(d);if(_ce)throw new Error(_ce);const c=d.error_code||d.error;if(c==="user_already_exists"||/already.*regist/i.test(d.msg||""))throw new Error("An account with this email already exists — log in instead, or use Forgot password.");throw new Error(d.msg||d.error_description||(d.error&&d.error.message)||"Sign-up failed — please try again");}var _ids=(d&&d.user&&d.user.identities)||(d&&d.identities);if(!d.access_token&&Array.isArray(_ids)&&_ids.length===0)throw new Error("An account with this email already exists — log in instead, or use Forgot password.");return d;},
+  async in(e,p,ct){const r=await fetch(`${SU}/auth/v1/token?grant_type=password`,{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify(ctTsBody({email:e,password:p},ct))});const d=await r.json();if(!r.ok){const _ce=ctTsErr(d);if(_ce)throw new Error(_ce);const c=d.error_code||d.error;if(c==="email_not_confirmed")throw new Error("Your account exists but the email isn't confirmed yet. Check your inbox and spam for the activation link, or click Resend email below.");throw new Error(d.msg||d.error_description||(d.error&&d.error.message)||"Wrong email or password");}return d;},
   async out(t){await fetch(`${SU}/auth/v1/logout`,{method:"POST",headers:{apikey:SK,Authorization:`Bearer ${t}`}});}
 };
 
@@ -1594,7 +1675,7 @@ async function openBillingPortal(){
   }catch(e){ ctToast("Couldn't open billing right now. "+e.message,"warn"); }
 }
 async function createWalletCheckout(amount){
-  if(isShopifyBiz()){shopifyWalletNote();return "";}
+  if(isShopifyBilling()){shopifyWalletNote();return "";}
   if(DEMO){ctToast("Demo mode — wallet top-ups are off. Everything else is live to explore.","info");return "";}
   if(!await requirePaidAction())return "";
   const biz=await loadBiz()||{};
@@ -1725,6 +1806,19 @@ const SHOPIFY_APP_HANDLE="clicktide";
 // A business that came through Shopify (connected store, or billed by Shopify). App Store rules:
 // no other POS connectors for it (1.1.8), and every charge must go through Shopify (1.2), so
 // Stripe-paid extras (gift-wallet top-ups) are off for it (create-checkout-session refuses them too).
+// Who pays through Shopify (App Store rule 1.2): a business billed by Shopify, or a store that
+// came in through Shopify with no Stripe subscription. A website-first business that already
+// pays through Stripe keeps Stripe (plan, wallet top-ups, wallet-funded postcards and gifts)
+// even with a Shopify store connected, until it picks a plan in Shopify. Mirrors
+// create-checkout-session. isShopifyBiz() (any Shopify store) only hides other POS options.
+function isShopifyBilling(){
+  try{
+    if(typeof bizLock==="undefined"||!bizLock)return false;
+    if(bizLock.billing_provider==="shopify")return true;
+    if(bizLock.billing_provider==="stripe"||bizLock.stripe_subscription_id)return false;
+    return !!(typeof platConn!=="undefined"&&platConn.shopify&&platConn.shopify.merchant_id);
+  }catch(e){return false;}
+}
 function isShopifyBiz(){
   try{return !!((typeof platConn!=="undefined"&&platConn.shopify&&platConn.shopify.merchant_id)||(typeof bizLock!=="undefined"&&bizLock&&bizLock.billing_provider==="shopify"));}catch(e){return false;}
 }
@@ -1732,6 +1826,23 @@ function isShopifyBiz(){
 // gifts and texts past the plan's limit go on the Shopify bill (usage charges); before that
 // they're paused.
 function shopifyBilledNow(){try{return !!(typeof bizLock!=="undefined"&&bizLock&&bizLock.billing_provider==="shopify"&&["active","trialing","past_due"].includes(String(bizLock.stripe_subscription_status||"").toLowerCase()));}catch(e){return false;}}
+// Wallet page, Shopify-billed stores: postcards, gifts and extra texts go on the Shopify bill
+// (wallet balance doesn't move), so show what's been billed there this cycle.
+function shopifyUsageLine(u,bal){
+  // Prepaid money left from before the switch is spent first; a remainder smaller than any
+  // charge can be refunded by support (back-office refund).
+  var left=Number(bal||0)>0.004?'<div style="font-size:12px;color:rgba(240,244,255,.55);margin-bottom:12px">$'+Number(bal).toFixed(2)+' prepaid balance left. It\'s used first for postcards and gifts; to get it refunded instead, contact support@goclicktide.com.</div>':"";
+  if(!u||typeof u!=="object"||u.billed==null)return left;
+  var billed=Number(u.billed||0),lim=Number(u.limit||0);
+  var end=u.cycle_end?new Date(u.cycle_end).toLocaleDateString("en-US",{month:"short",day:"numeric"}):"";
+  var pend=Math.max(0,billed-Number(u.reported||0));
+  var txt=u.test_or_dev
+    ? "Test store: postcards, gifts and extra texts aren't billed through Shopify here."
+    : u.trialing
+    ? "Postcards, gifts and extra texts are billed through Shopify once your free trial ends."
+    : "Billed through Shopify this cycle: <b style=\"color:#0F1115\">$"+billed.toFixed(2)+"</b>"+(lim?" of your $"+lim.toFixed(0)+" limit":"")+(end?" (cycle ends "+end+")":"")+(pend>0.004?". $"+pend.toFixed(2)+" of it is still being sent to Shopify.":"");
+  return '<div style="font-size:12px;color:rgba(240,244,255,.55);margin-bottom:12px">'+txt+'</div>'+left;
+}
 function shopifyWalletNote(){
   if(shopifyBilledNow())ctToast("No top-up needed: postcards, gifts and texts beyond your plan's limit are added to your Shopify bill as you use them.","info");
   else ctToast("Postcards, gifts and texts beyond your plan's limit start once your Clicktide plan is active in Shopify. Emails and your plan's included texts keep sending.","info");
@@ -2194,7 +2305,7 @@ function inquire(){
   var pre="";try{pre=(document.getElementById("hE")&&document.getElementById("hE").value.trim())||localStorage.getItem("ct_pref_email")||"";}catch(e){}
   var ov=document.createElement("div");ov.className="ov ct-iq";
   ov.style.cssText="position:fixed;inset:0;background:rgba(8,13,24,.55);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px";
-  ov.innerHTML=`<div class="ct-iq-card" style="background:#fff;border-radius:18px;max-width:440px;width:100%;padding:30px 28px;box-shadow:0 30px 80px rgba(0,0,0,.3);font-family:-apple-system,system-ui,sans-serif"><div style="font-size:13px;font-weight:800;letter-spacing:.12em;color:#2E7CD6;text-transform:uppercase">Launching July 1</div><div style="font-size:23px;font-weight:800;color:#0F1115;margin-top:8px;line-height:1.2">We're putting the finishing touches on Clicktide.</div><div style="font-size:14.5px;color:#33405A;line-height:1.5;margin-top:10px">Leave your email and you'll be first in when we open — plus a founding-business offer.</div><input id="ctIqE" type="email" placeholder="you@business.com" value="${giftEsc(pre||"")}" style="width:100%;margin-top:16px;padding:13px 14px;border:1px solid #d8dee8;border-radius:11px;font-size:15px;box-sizing:border-box"><button id="ctIqB" style="width:100%;margin-top:12px;padding:13px;border:0;border-radius:11px;background:#101215;color:#fff;font-size:15px;font-weight:700;cursor:pointer">Keep me posted →</button><button id="ctIqX" style="width:100%;margin-top:8px;padding:8px;border:0;background:transparent;color:#6B7280;font-size:13px;cursor:pointer">No thanks</button></div>`;
+  ov.innerHTML=`<div class="ct-iq-card" style="background:#fff;border-radius:18px;max-width:440px;width:100%;padding:30px 28px;box-shadow:0 30px 80px rgba(0,0,0,.3);font-family:-apple-system,system-ui,sans-serif"><div style="font-size:13px;font-weight:800;letter-spacing:.12em;color:#2E7CD6;text-transform:uppercase">Launching July 1</div><div style="font-size:23px;font-weight:800;color:#0F1115;margin-top:8px;line-height:1.2">We're putting the finishing touches on Clicktide.</div><div style="font-size:14.5px;color:#33405A;line-height:1.5;margin-top:10px">Leave your email and you'll be first in when we open — plus a founding-business offer.</div><input id="ctIqE" type="email" placeholder="you@business.com" value="${giftEsc(pre||"")}" style="width:100%;margin-top:16px;padding:13px 14px;border:1px solid #d8dee8;border-radius:11px;font-size:15px;box-sizing:border-box"><div style="margin-top:12px">${ctTsSlot("tsIq","launch_inquiry")}</div><button id="ctIqB" style="width:100%;margin-top:12px;padding:13px;border:0;border-radius:11px;background:#101215;color:#fff;font-size:15px;font-weight:700;cursor:pointer">Keep me posted →</button><button id="ctIqX" style="width:100%;margin-top:8px;padding:8px;border:0;background:transparent;color:#6B7280;font-size:13px;cursor:pointer">No thanks</button></div>`;
   document.body.appendChild(ov);
   var close=function(){ov.remove();};
   ov.querySelector("#ctIqX").onclick=close;
@@ -2203,7 +2314,10 @@ function inquire(){
     var inp=ov.querySelector("#ctIqE"),e=inp.value.trim();
     if(!e||e.indexOf("@")<1){inp.style.borderColor="#E24B4A";return;}
     var b=ov.querySelector("#ctIqB");b.textContent="Saving…";b.disabled=true;
-    try{await fetch(FN+"/launch-inquiry",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:e,source:location.pathname+location.search})});}catch(_){}
+    var _tk=await ctTsToken("tsIq"),_ce="";
+    try{var _rr=await fetch(FN+"/launch-inquiry",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:e,source:location.pathname+location.search,turnstile_token:_tk||undefined})});if(!_rr.ok)_ce=ctTsErr(await _rr.json().catch(function(){return {};}));}catch(_){}
+    ctTsReset("tsIq");
+    if(_ce){b.textContent="Keep me posted →";b.disabled=false;ctToast(_ce,"warn");return;}
     try{localStorage.setItem("ct_pref_email",e);}catch(_){}
     ov.querySelector(".ct-iq-card").innerHTML=`<div style="text-align:center;padding:14px 0"><div style="font-size:42px;color:#1E874F">✓</div><div style="font-size:21px;font-weight:800;color:#0F1115;margin-top:6px">You're on the list.</div><div style="font-size:14.5px;color:#33405A;margin-top:8px;line-height:1.5">We'll email you the moment Clicktide opens on July 1.</div><button id="ctIqD" style="margin-top:18px;padding:11px 26px;border:0;border-radius:11px;background:#101215;color:#fff;font-weight:700;cursor:pointer">Done</button></div>`;
     ov.querySelector("#ctIqD").onclick=close;
@@ -2583,7 +2697,7 @@ function authP(mode){
     <div class="fg"><label class="fl">Street Address</label><input class="fi" id="aAddr" placeholder="123 Main St"/></div>
     <div class="fg" style="display:flex;gap:8px"><div style="flex:2"><label class="fl">City</label><input class="fi" id="aCity" placeholder="City"/></div><div style="flex:1"><label class="fl">State</label><input class="fi" id="aState" placeholder="NY"/></div><div style="flex:1"><label class="fl">ZIP</label><input class="fi" id="aZip" placeholder="11542"/></div></div>`:""}
     ${!il?`<div class="fg"><label class="fl">Plan</label><select class="fi-sel" id="aPl"><option value="Local"${obPl==="Local"?" selected":""}>Local -- $79/mo</option><option value="Growth"${obPl==="Growth"?" selected":""}>Growth -- $199/mo ★</option><option value="Scale"${obPl==="Scale"?" selected":""}>Scale -- $449/mo</option></select></div>${legalConsent("aAgree")}`:""}
-    <div class="err" id="aErr"></div>
+    ${ctTsSlot("tsAuth",il?"login":"signup")}<div class="err" id="aErr"></div>
     <button class="btn-full btn-gold" id="aSub" onclick="doAuth('${mode}')" style="margin-bottom:16px">${il?"Log in →":"Create my account →"}</button><div style="text-align:center;margin-top:10px"><button type="button" class="link-btn" onclick="forgotPw()" style="font-size:12px">Forgot password?</button></div>
     <div style="text-align:center;font-size:13px;color:rgba(240,244,255,.45)">${il?"Don't have an account? ":"Already have an account? "}<button class="link-btn" onclick="go('${il?"onboard":"login"}')">${il?"Sign up free":"Log in"}</button></div>
   </div>
@@ -2611,7 +2725,8 @@ async function doAuth(mode){
   btn.textContent=il?"Logging in...":"Creating account...";btn.disabled=true;err.style.display="none";
   try{
     const meta={business_name:n,contact_name:nm,phone:ph,business_phone:bph,business_email:bem,address:addr,city:city,state:state,zip:zip,plan:pl,legal_terms_accepted_at:new Date().toISOString(),legal_terms_version:"2026-06-08",legal_authorized_services:true};
-    const r=il?await au.in(e,p):await au.up(e,p,meta);
+    const _tk=await ctTsToken("tsAuth");
+    const r=await (il?au.in(e,p,_tk):au.up(e,p,meta,_tk)).finally(function(){ctTsReset("tsAuth");});
     if(r.access_token){
       var _fs=((r.user&&r.user.factors)||[]).filter(function(f){return f.status==="verified"&&f.factor_type==="totp";});
       if(_fs.length){
@@ -2842,7 +2957,7 @@ function onboard(){
     "</div><button class='btn-full btn-gold' "+(obImport?"":"disabled style='opacity:.4;cursor:not-allowed'")+" onclick='oNxt()'>"+( obImport==="csv"?"Continue →":obImport==="platform"?"Sync & Continue →":"Skip & Go Live →")+"</button>";
     if(selectedPlan()!=="Local")c+="<div style='margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.07)'><div onclick='smsSetup()' style='display:flex;align-items:center;gap:12px;padding:14px;border:1px solid rgba(77,166,255,.3);border-radius:12px;background:rgba(77,166,255,.06);cursor:pointer'><span style='display:flex'><svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#4DA6FF' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5z'/></svg></span><div style='flex:1'><div style='font-size:13px;font-weight:700'>Turn on text messaging <span style='font-size:10px;color:rgba(240,244,255,.4);font-weight:600'>(optional)</span></div><div style='font-size:11px;color:rgba(240,244,255,.45);margin-top:1px'>Register your business to text customers. Carrier approval takes ~1-2 weeks.</div></div><span style='color:#4DA6FF;font-size:18px'>&rarr;</span></div></div>";
   }
-  else if(obS===1&&obAwaitConfirm)c=`<div style="text-align:center"><div style="margin-bottom:12px;display:flex;justify-content:center"><span class="ic-chip" style="width:52px;height:52px;margin:0 auto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v7H3v-7z"/><path d="M3 18h18"/><path d="M15 7v4M9 21v-3"/></svg></span></div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">Check your email!</h2><p style="color:rgba(240,244,255,.5);font-size:14px;line-height:1.8;margin-bottom:20px">We sent a link to <strong style="color:#F0F4FF">${giftEsc(obE)}</strong>.<br/>Click it to activate your account and pick up right where you left off.</p><button class="btn btn-ghost" style="padding:10px 18px" onclick="resendConfirm(this)">Didn't get it? Resend email</button><div style="margin-top:12px"><a href="javascript:void(0)" onclick="obChangeEmail()" style="font-size:13px;font-weight:600;text-decoration:underline">Wrong email? Change it</a></div><div style="font-size:11px;color:rgba(240,244,255,.35);margin-top:14px">Check spam too — it comes from support@goclicktide.com</div></div>`;
+  else if(obS===1&&obAwaitConfirm)c=`<div style="text-align:center"><div style="margin-bottom:12px;display:flex;justify-content:center"><span class="ic-chip" style="width:52px;height:52px;margin:0 auto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v7H3v-7z"/><path d="M3 18h18"/><path d="M15 7v4M9 21v-3"/></svg></span></div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">Check your email!</h2><p style="color:rgba(240,244,255,.5);font-size:14px;line-height:1.8;margin-bottom:20px">We sent a link to <strong style="color:#F0F4FF">${giftEsc(obE)}</strong>.<br/>Click it to activate your account and pick up right where you left off.</p><div style="max-width:320px;margin:0 auto">${ctTsSlot("tsResend","resend")}</div><button class="btn btn-ghost" style="padding:10px 18px" onclick="resendConfirm(this)">Didn't get it? Resend email</button><div style="margin-top:12px"><a href="javascript:void(0)" onclick="obChangeEmail()" style="font-size:13px;font-weight:600;text-decoration:underline">Wrong email? Change it</a></div><div style="font-size:11px;color:rgba(240,244,255,.35);margin-top:14px">Check spam too — it comes from support@goclicktide.com</div></div>`;
   else if(obS===1)c=`<div style="margin-bottom:10px;display:flex;justify-content:center"><span class="ic-chip" style="width:52px;height:52px;margin:0 auto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"/></svg></span></div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px">${S?"Edit your details":"Create your account"}</h2><p style="color:rgba(240,244,255,.45);font-size:13px;margin-bottom:16px">${S?"Update anything that changed — your edits save straight to your account.":"Create your login — then connect your platform."} Fields marked <span style="color:#FF4D6D">*</span> are required.</p><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin-bottom:8px">Your details</div><div class="fg"><label class="fl">First Name <span style="color:#FF4D6D">*</span></label><input class="fi" id="oFirst" value="${giftEsc((obNm||'').split(' ')[0]||'')}" placeholder="Jane" oninput="obNm=(this.value+' '+(document.getElementById('oLast')?.value||'')).trim()"/></div><div class="fg"><label class="fl">Last Name <span style="color:#FF4D6D">*</span></label><input class="fi" id="oLast" value="${giftEsc((obNm||'').split(' ').slice(1).join(' '))}" placeholder="Smith" oninput="obNm=((document.getElementById('oFirst')?.value||'')+' '+this.value).trim()"/></div><div class="fg"><label class="fl">Personal Email (your login) <span style="color:#FF4D6D">*</span></label><input class="fi" id="oE" value="${giftEsc(S?(S.user?.email||obE):obE)}" type="email" placeholder="you@email.com" oninput="obE=this.value"${S?' disabled style="opacity:.6;cursor:not-allowed"':''}/></div>${S?"":`<div class="fg"><label class="fl">Password <span style="color:#FF4D6D">*</span></label><div style="position:relative"><input class="fi" id="oPw" value="${giftEsc(obPw)}" type="password" placeholder="••••••••" autocomplete="new-password" style="padding-right:52px" oninput="obPw=this.value"/>${pwToggleBtn("oPw")}</div></div>`}<div class="fg"><label class="fl">Personal Phone <span style="color:#FF4D6D">*</span></label><input class="fi" id="oPh" value="${giftEsc(obPh)}" type="tel" placeholder="(555) 555-5555" oninput="obPh=this.value"/></div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.4);margin:14px 0 8px">Business details</div><div class="fg"><label class="fl">Business Name <span style="color:#FF4D6D">*</span></label><input class="fi" id="oN" value="${giftEsc(obN)}" placeholder="${B?.l||"Your Business"}" oninput="obN=this.value"/></div><div class="fg"><label class="fl">Business Phone <span style="color:#FF4D6D">*</span></label><input class="fi" id="oBph" value="${giftEsc(obBph)}" type="tel" placeholder="(555) 555-5555" oninput="obBph=this.value"/></div><div class="fg"><label class="fl">Business Email <span style="color:#FF4D6D">*</span></label><input class="fi" id="oBem" value="${giftEsc(obBem)}" type="email" placeholder="hello@business.com" oninput="obBem=this.value"/></div><div class="fg"><label class="fl">Street Address <span style="color:#FF4D6D">*</span></label><input class="fi" id="oAddr" value="${giftEsc(obAddr)}" placeholder="123 Main St" oninput="obAddr=this.value"/></div><div class="fg"><label class="fl">Apt / Suite / Unit <span style="opacity:.5;text-transform:none">(optional)</span></label><input class="fi" id="oAddr2" value="${giftEsc(obAddr2)}" placeholder="Apt 4B" oninput="obAddr2=this.value"/></div><div class="fg" style="display:flex;gap:8px"><div style="flex:2"><label class="fl">City <span style="color:#FF4D6D">*</span></label><input class="fi" id="oCity" value="${giftEsc(obCity)}" placeholder="City" oninput="obCity=this.value"/></div><div style="flex:1"><label class="fl">State <span style="color:#FF4D6D">*</span></label><input class="fi" id="oState" value="${giftEsc(obState)}" placeholder="NY" oninput="obState=this.value"/></div><div style="flex:1"><label class="fl">ZIP <span style="color:#FF4D6D">*</span></label><input class="fi" id="oZip" value="${giftEsc(obZip)}" placeholder="11542" oninput="obZip=this.value"/></div></div><div class="fg"><label class="fl">Choose Your Plan</label>
 <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:4px">
   ${[{v:"Local",p:"$79/mo",d:"200 customers/mo",f:["Email + postcards included","Welcome Journey + win-back","Promo codes included","Physical gifts from wallet","Square, Clover, Shopify + CSV"]},{v:"Growth",p:"$199/mo",d:"1,000 customers/mo",pop:true,f:["Texting + email included","Promo codes included","Physical gifts from wallet","Retention analytics","Email & Brand Studio"]},{v:"Scale",p:"$449/mo",d:"Unlimited customers",f:["Texting + email included","AI suggestions","White-label (full brand)","Promo codes included","Multi-location (coming)"]}].map(pl=>`
@@ -2855,7 +2970,7 @@ function onboard(){
     <div style="display:flex;flex-wrap:wrap;gap:4px">${pl.f.map(f=>`<span style="font-size:10px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.15);color:#22C55E;padding:2px 7px;border-radius:100px">✓ ${f}</span>`).join("")}</div>
   </div>`).join("")}
 </div>
-	<input type="hidden" id="oPl" value="${selectedPlan()}"/></div>${S?"":legalConsent("oAgree")}<div class="err" id="oErr"></div><button class="btn-full btn-gold" id="oSub" onclick="oSignup()" style="margin-bottom:12px">${S?"Save changes →":"Create account →"}</button>${S?"":`<div style="text-align:center;font-size:12px;color:rgba(240,244,255,.45)">Already have an account? <button class="link-btn" onclick="go('login')">Log in</button></div>`}`;
+	<input type="hidden" id="oPl" value="${selectedPlan()}"/></div>${S?"":legalConsent("oAgree")}${S?"":ctTsSlot("tsOb","signup")}<div class="err" id="oErr"></div><button class="btn-full btn-gold" id="oSub" onclick="oSignup()" style="margin-bottom:12px">${S?"Save changes →":"Create account →"}</button>${S?"":`<div style="text-align:center;font-size:12px;color:rgba(240,244,255,.45)">Already have an account? <button class="link-btn" onclick="go('login')">Log in</button></div>`}`;
   else if(obS===6){const picked=PRINTIFY_CATALOG[obG]||GF[obB]?.[obG]||null;const rows=[`${giftEsc(B?.l||"Business")} account`,`${selectedPlan()} plan`,`${P?.n||"Platform"} connected`,obCampaignSkipped?"Campaign setup skipped":"Campaign setup ready to finish",obCampaignSkipped?"Create one-off gifts or campaigns from the dashboard":`Gift: ${giftEsc(obCustomGift||picked?.n||"--")}`,obCampaignSkipped?"No campaign will send until you create one":`${obT.length} trigger${obT.length!==1?"s":""} selected`];c=`<div style="text-align:center"><div style="margin-bottom:12px;display:flex;justify-content:center"><span class="ic-chip" style="width:52px;height:52px;margin:0 auto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1115" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c3 2 5 6 5 10l-2.5 2.5h-5L7 12c0-4 2-8 5-10z"/><circle cx="12" cy="9" r="1.8"/><path d="M7 15l-2 5 5-2M17 15l2 5-5-2"/></svg></span></div><h2 style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px">You're subscribed!</h2><p style="color:rgba(240,244,255,.45);font-size:14px;line-height:1.7;margin-bottom:20px">${obCampaignSkipped?"No campaign is active yet. You can send one-off gifts or create a campaign whenever you're ready.":"Your plan is active. Open the dashboard to review and launch your first campaign."}</p><ul style="list-style:none;padding:0;background:#101828;border-radius:13px;padding:16px;margin-bottom:20px;text-align:left">${rows.map(i=>`<li style="font-size:12px;color:rgba(240,244,255,.45);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:8px"><span style="color:#22C55E">✓</span>${i}</li>`).join("")}</ul><div style="display:flex;gap:10px"><button class="btn btn-gold" style="flex:1;padding:12px" onclick="openDashboardNow()">Open Dashboard →</button><button class="btn btn-ghost" style="flex:1;padding:12px" onclick="go('login')">Log in</button></div></div>`;}
   var aiHintHtml='';
   if(aiHint||aiHintLoading){aiHintHtml="<div style='background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.2);border-radius:12px;padding:12px 14px;margin-top:12px;display:flex;align-items:flex-start;gap:9px'><div style='font-size:16px;flex-shrink:0'></div><div style='font-size:12px;color:rgba(240,244,255,.7);line-height:1.6'>"+(aiHintLoading?"<span style='color:rgba(240,244,255,.35)'>AI thinking...</span>":giftEsc(aiHint))+"</div></div>";}
@@ -3493,7 +3608,8 @@ async function oSignup(){
   try{
     const meta={business_name:n,contact_name:nm,phone:ph,business_phone:bph,business_email:bem,address:addr,city:city,state:state,zip:zip,plan:chosenPlan,churn_days:obDy||60,business_type:obB||obCat||"other",legal_terms_accepted_at:new Date().toISOString(),legal_terms_version:"2026-06-08",legal_authorized_services:true};
     // 1. Create Supabase account
-    const r=await au.up(e,p,meta);
+    const _tk=await ctTsToken("tsOb");
+    const r=await au.up(e,p,meta,_tk).finally(function(){ctTsReset("tsOb");});
     if(r.access_token){
       saveSession({access_token:r.access_token,refresh_token:r.refresh_token,expires_in:r.expires_in,user:r.user||{email:e}},true);
       localStorage.setItem("ct_churn",String(obDy||60));
@@ -3959,7 +4075,8 @@ async function dLoad(){
       const txR=await db.sel("wallet",scope("order=created_at.desc"),tok).catch(()=>[]);
       const tx=Array.isArray(txR)?txR:[];
       const bal=tx[0]?.balance||0;
-      el.innerHTML=paidBanner+`<div class="g2" style="margin-bottom:16px"><div style="background:rgba(11,98,214,.05);border:1px solid rgba(11,98,214,.14);border-radius:14px;padding:20px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0F1115;margin-bottom:8px">Gift Wallet</div><div style="font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:800;color:#0F1115;margin-bottom:6px">$${Number(bal||0).toFixed(2)}</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:12px">Available for this business only</div><button class="btn btn-gold" onclick="oWalletTopup()" style="margin-bottom:10px">Add Funds</button><div style="font-size:12px;color:rgba(240,244,255,.55);line-height:1.6">Funds are charged securely and credited to your wallet after payment is confirmed. Gifts deduct from this business wallet when they are sent.</div></div><div class="dc">${walletStatRows(tx).map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.07)"><span style="font-size:12px;color:rgba(240,244,255,.45)">${l}</span><span style="font-size:13px;font-weight:700">${v}</span></div>`).join("")}</div></div>
+      const shu=(!DEMO&&bizLock&&bizLock.billing_provider==="shopify")?await db.rpc("clicktide_shopify_usage_this_cycle",{},tok).catch(()=>null):null;
+      el.innerHTML=paidBanner+`<div class="g2" style="margin-bottom:16px"><div style="background:rgba(11,98,214,.05);border:1px solid rgba(11,98,214,.14);border-radius:14px;padding:20px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0F1115;margin-bottom:8px">Gift Wallet</div><div style="font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:800;color:#0F1115;margin-bottom:6px">$${Number(bal||0).toFixed(2)}</div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:12px">Available for this business only</div>${(bizLock&&bizLock.billing_provider==="shopify")?shopifyUsageLine(shu,bal):""}<button class="btn btn-gold" onclick="oWalletTopup()" style="margin-bottom:10px">Add Funds</button><div style="font-size:12px;color:rgba(240,244,255,.55);line-height:1.6">Funds are charged securely and credited to your wallet after payment is confirmed. Gifts deduct from this business wallet when they are sent.</div></div><div class="dc">${walletStatRows(tx).map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.07)"><span style="font-size:12px;color:rgba(240,244,255,.45)">${l}</span><span style="font-size:13px;font-weight:700">${v}</span></div>`).join("")}</div></div>
       <div class="dc"><div class="dch"><div class="dct">Transactions</div></div>${tx.length===0?`<div class="empty"><div style="margin-bottom:10px">${gI('card',34,'rgba(16,18,21,.22)')}</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No transactions yet</div><div style="font-size:13px;color:rgba(240,244,255,.45)">Wallet activity will appear here when funds are added or gifts are sent.</div></div>`:tx.map(t=>`<div style="display:grid;grid-template-columns:1fr 70px 80px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07);align-items:center"><div style="font-size:12px;font-weight:600">${giftEsc(t.desc)}</div><div style="font-size:12px;font-weight:700;color:#0F1115;text-align:right">${t.amount>0?"+$"+t.amount:"-$"+Math.abs(t.amount)}</div><div style="font-size:12px;font-weight:600;text-align:right">$${t.balance}</div></div>`).join("")}</div>`;
     }
     else if(dpg==="shipments"){
@@ -5031,7 +5148,7 @@ function shipmentsPage(sh){
 }
 
 function oWalletTopup(){
-  if(isShopifyBiz()){shopifyWalletNote();return;}
+  if(isShopifyBilling()){shopifyWalletNote();return;}
   document.body.insertAdjacentHTML("beforeend",modal("Add gift wallet funds",`<div style="font-size:13px;color:rgba(240,244,255,.62);line-height:1.65;margin-bottom:14px">Add prepaid funds for this business. Your card is charged securely, then Clicktide credits the wallet after payment is confirmed.</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">${[100,250,500].map(v=>`<button class="btn btn-ghost" onclick="document.getElementById('walletTopupAmount').value='${v}'">$${v}</button>`).join("")}</div><div class="fg"><label class="fl">Amount <span style="text-transform:none;font-weight:600;color:rgba(240,244,255,.4)">(minimum $25)</span></label><input class="fi" id="walletTopupAmount" type="number" min="25" max="5000" step="1" value="250"><div style="font-size:11px;color:rgba(240,244,255,.45);margin-top:6px">Minimum $25 · maximum $5,000.</div></div><button class="btn-full btn-gold" onclick="startWalletTopup()">Continue to secure checkout</button><div id="walletTopupErr" style="display:none;color:#FF6B6B;font-size:12px;margin-top:10px"></div>`));
 }
 async function startWalletTopup(){
@@ -5276,6 +5393,7 @@ function forgotPw(){
   document.body.insertAdjacentHTML("beforeend",modal("Reset your password",
     '<div style="font-size:13px;color:#6B6F76;line-height:1.6;margin-bottom:14px">Enter your account email and we’ll send a reset link from support@goclicktide.com.</div>'
     +'<div class="fg"><label class="fl">Account email</label><input class="fi" id="fpEmail" type="email" autocomplete="email" value="'+giftEsc(pre)+'" placeholder="you@email.com"/></div>'
+    +ctTsSlot("tsFp","password_reset")
     +'<div id="fpMsg" style="display:none;font-size:12px;margin:0 0 12px;line-height:1.5"></div>'
     +'<button class="btn-full btn-gold" id="fpBtn" onclick="forgotPwSend(this)">Send reset link</button>'));
   setTimeout(function(){var i=document.getElementById("fpEmail");if(i)i.focus();},80);
@@ -5286,7 +5404,9 @@ async function forgotPwSend(btn){
   if(!e||e.indexOf("@")<1){if(msg){msg.style.color="#C0392B";msg.textContent="Enter a valid email address.";msg.style.display="block";}return;}
   btn.disabled=true;btn.textContent="Sending…";
   rememberAuthIntent(e,"recovery");
-  try{await fetch(FN+"/password-reset",{method:"POST",headers:{"Content-Type":"application/json",apikey:SK},body:JSON.stringify({email:e})});}catch(_){}
+  try{await fetch(FN+"/password-reset",{method:"POST",headers:{"Content-Type":"application/json",apikey:SK},body:JSON.stringify({email:e,turnstile_token:(await ctTsToken("tsFp"))||undefined})}).then(ctTsCheck);}catch(_){ctTs.lastErr="";}
+  ctTsReset("tsFp");
+  if(ctTs.lastErr){if(msg){msg.style.color="#C0392B";msg.textContent=ctTs.lastErr;msg.style.display="block";}btn.disabled=false;btn.textContent="Send reset link";return;}
   if(msg){msg.style.color="#1E874F";msg.innerHTML="Sent. If an account exists for <b>"+giftEsc(e)+"</b>, a reset link is on its way — check your inbox and spam.";msg.style.display="block";}
   btn.disabled=false;btn.textContent="Close";btn.setAttribute("onclick","this.closest('.ov').remove()");
 }
@@ -5295,8 +5415,10 @@ async function resendConfirm(btn){
   if(!e||e.indexOf("@")<0){alert("Enter your email first.");return;}
   if(btn){btn.disabled=true;btn.textContent="Sending...";}
   try{
+    var _tk=await ctTsToken("tsResend");
     rememberAuthIntent(e,"signup");
-    await fetch(SU+"/auth/v1/resend?redirect_to="+encodeURIComponent(authRedirectTo()),{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({type:"signup",email:e})});
+    await fetch(SU+"/auth/v1/resend?redirect_to="+encodeURIComponent(authRedirectTo()),{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify(ctTsBody({type:"signup",email:e},_tk))}).then(ctTsCheck).finally(function(){ctTsReset("tsResend");});
+    if(ctTs.lastErr){if(btn){btn.disabled=false;btn.textContent="Didn't get it? Resend email";}ctToast(ctTs.lastErr,"warn");return;}
     if(btn)btn.textContent="Sent ✓ — check spam too";
   }catch(_){if(btn){btn.disabled=false;btn.textContent="Didn't get it? Resend email";}}
 }

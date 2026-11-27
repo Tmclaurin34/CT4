@@ -54,6 +54,78 @@ async function sha256Hex(s: string) {
 
 const TOO_MANY = { ok: false, error: "Too many reset requests. Please wait a few minutes and try again." };
 
+// ---- Cloudflare Turnstile (package "turnstile", 2026-11-27) -----------------------------
+// DORMANT until the owner sets the TURNSTILE_SECRET_KEY edge secret: with no secret the check
+// is skipped (logged once per instance), so nothing changes before then. With a secret, the
+// request needs a token (body field turnstile_token) that Cloudflare's siteverify accepts,
+// solved on one of Clicktide's own hostnames, for this form's action. Single-use: siteverify
+// refuses a replayed token (timeout-or-duplicate).
+// "unavailable" = siteverify could not give an answer (network error, timeout, non-JSON
+// reply, or Cloudflare says our secret is missing/invalid or it had an internal error). Each
+// function decides what that means (see TURNSTILE_FAIL_OPEN below).
+const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+const TURNSTILE_HOSTS = ["goclicktide.com", "www.goclicktide.com", "clicktide-app.pages.dev"];
+const TURNSTILE_REFUSED = { ok: false, error: "Please complete the check", code: "turnstile_failed" };
+const TURNSTILE_DOWN = { ok: false, error: "The security check is unavailable right now. Please try again in a minute.", code: "turnstile_unavailable" };
+let turnstileOffLogged = false;
+
+function turnstileHostOk(host: unknown) {
+  const h = String(host || "").toLowerCase();
+  // the Pages project's own preview aliases (preview.clicktide-app.pages.dev, <hash>.…)
+  return TURNSTILE_HOSTS.includes(h) || h.endsWith(".clicktide-app.pages.dev");
+}
+
+async function turnstileCheck(req: Request, token: unknown, action: string): Promise<"ok" | "skipped" | "rejected" | "unavailable"> {
+  const secret = (Deno.env.get("TURNSTILE_SECRET_KEY") ?? "").trim();
+  if (!secret) {
+    if (!turnstileOffLogged) { turnstileOffLogged = true; console.log("turnstile: TURNSTILE_SECRET_KEY is not set; check skipped"); }
+    return "skipped";
+  }
+  const t = typeof token === "string" ? token.trim() : "";
+  if (!t || t.length > 2048) return "rejected";
+  const form = new URLSearchParams({ secret, response: t });
+  const ip = (req.headers.get("cf-connecting-ip") || "").trim();
+  if (ip) form.set("remoteip", ip);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 5000);
+  let d: { success?: unknown; hostname?: unknown; action?: unknown; "error-codes"?: unknown } | null = null;
+  try {
+    const r = await fetch(TURNSTILE_VERIFY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: form.toString(),
+      signal: ctrl.signal,
+    });
+    d = await r.json();
+  } catch (e) {
+    console.error("turnstile: siteverify unreachable", e instanceof Error ? e.name : String(e));
+    return "unavailable";
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!d || typeof d !== "object" || typeof d.success !== "boolean") return "unavailable";
+  const codes = Array.isArray(d["error-codes"]) ? (d["error-codes"] as unknown[]).map(String) : [];
+  if (d.success !== true) {
+    // A missing or wrong secret is a configuration error, not an outage: refuse the request so
+    // the owner sees it at once (a fail-open function would otherwise run with no bot check).
+    if (codes.some((c) => c === "missing-input-secret" || c === "invalid-input-secret")) {
+      console.error("turnstile: secret misconfigured:", codes.join(","));
+      return "rejected";
+    }
+    if (codes.some((c) => c === "internal-error")) {
+      console.error("turnstile: siteverify internal error:", codes.join(","));
+      return "unavailable";
+    }
+    return "rejected";
+  }
+  if (!turnstileHostOk(d.hostname)) { console.warn("turnstile: token from an unexpected hostname"); return "rejected"; }
+  if (action && d.action !== action) { console.warn("turnstile: token for a different action"); return "rejected"; }
+  return "ok";
+}
+// password-reset fails CLOSED when siteverify can't answer: it sends email, and the admin
+// generate_link call it makes is exempt from Supabase Auth's own CAPTCHA.
+const TURNSTILE_ACTION = "password_reset";
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -62,11 +134,17 @@ Deno.serve(async (req) => {
 
   let email = "";
   let redirectTo = "https://goclicktide.com";
+  let turnstileToken: unknown = "";
   try {
     const body = await req.json();
+    turnstileToken = body?.turnstile_token;
     email = String(body.email || "").trim().toLowerCase();
     if (body.redirect_to && /^https:\/\/(www\.)?goclicktide\.com(\/|$)/.test(String(body.redirect_to))) redirectTo = String(body.redirect_to);
   } catch { /* ignore */ }
+
+  const ts = await turnstileCheck(req, turnstileToken, TURNSTILE_ACTION);
+  if (ts === "rejected") return json(TURNSTILE_REFUSED, 400);
+  if (ts === "unavailable") return json(TURNSTILE_DOWN, 503);
 
   // Always return ok — never leak whether the account exists.
   if (!email || email.length > 254 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ ok: true });
