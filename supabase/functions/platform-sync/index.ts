@@ -8,7 +8,7 @@
 // for their own connections (JWT). First sync backfills 365 days, paginated.
 
 import { aggregateAuditOrders, sufficiency, validateFacts } from "./audit.js";
-import { GQL_PAGE, LOGICAL_PAGE, mapShopifyOrder, ORDERS_QUERY, ordersSearch, readOrdersResponse, SHOPIFY_API_VERSION, throttleWaitMs } from "./shopify.js";
+import { GQL_PAGE, LOGICAL_PAGE, mapShopifyOrder, ORDERS_QUERY, ordersSearch, readOrdersResponse, SHOPIFY_API_VERSION, shopifyOrderWindow, throttleWaitMs } from "./shopify.js";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -20,7 +20,7 @@ const MAX_PAGES = 10; // per connection per run; caps runtime on huge merchants
 // Fetch options. Nightly sync uses the defaults; the free POS audit asks for a
 // deeper read-only history pull bounded by a wall-clock deadline, and collects
 // honest counters (orders that can't be tied to a person, truncation).
-type FetchStats = { raw: number; anonymous: number; truncated: boolean };
+type FetchStats = { raw: number; anonymous: number; truncated: boolean; window_days?: number };
 type FetchOpts = { maxPages: number; deadline: number; stats: FetchStats; onPage?: (n: number) => void };
 const defaultOpts = (): FetchOpts => ({ maxPages: MAX_PAGES, deadline: Infinity, stats: { raw: 0, anonymous: 0, truncated: false } });
 function pageGuard(o: FetchOpts, page: number) {
@@ -39,7 +39,7 @@ const cors = {
 
 type Conn = {
   id: string; user_id: string; platform: string; merchant_id: string;
-  shop_domain?: string; access_token: string; last_synced_at?: string;
+  shop_domain?: string; access_token: string; last_synced_at?: string; scope?: string | null;
 };
 type Addr = { address?: string; city?: string; state?: string; zip?: string };
 type Order = { email?: string; phone?: string; name?: string; amount: number; at: string; addr?: Addr; id?: string; void?: boolean };
@@ -192,7 +192,12 @@ async function shopifyOrders(c: Conn, since: string, op: FetchOpts = defaultOpts
   // orders (as with REST), fetched in requests of up to 100. See shopify.js.
   const domain = c.shop_domain || c.merchant_id;
   const url = `https://${domain}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`;
-  const q = ordersSearch(since);
+  // Without Shopify's approved read_all_orders scope only the last 60 days of
+  // orders are visible. Ask for exactly that window and report it, so the audit
+  // says "last 60 days" instead of implying a full year was read.
+  const window = shopifyOrderWindow(since, c.scope);
+  if (window.limited) op.stats.window_days = window.days;
+  const q = ordersSearch(window.since);
   const raw: Record<string, unknown>[] = [];
   let cursor = "";
   let more = true;
@@ -410,6 +415,7 @@ function auditLimitations(imp: AuditImport, report: Record<string, unknown> = {}
   const out: string[] = [];
   if (imp.source === "csv") out.push("Built from the CSV you uploaded. Names, emails and phone numbers stayed in your browser — only per-customer visit counts, spend and dates were sent.");
   else out.push(`Built from up to the last ${imp.window_days} days of completed orders in your ${imp.platform} account.`);
+  if (imp.platform === "shopify" && imp.window_days && imp.window_days < AUDIT_DAYS) out.push(`Shopify only lets Clicktide read your last ${imp.window_days} days of orders until it approves full order-history access, so customers who order less often than that may not show a rhythm yet. The report will deepen automatically once access is approved.`);
   if (imp.anonymous_orders > 0) out.push(`${imp.anonymous_orders.toLocaleString("en-US")} order${imp.anonymous_orders === 1 ? " had" : "s had"} no customer email or phone attached (walk-ins, cash, guest checkouts), so they can't be tied to a person and aren't counted.`);
   if (imp.truncated && !imp.recent_history_missing) out.push("Your account has more history than the free audit reads in one pass, so the oldest orders in the window weren't included. A full sync runs after you subscribe.");
   if (imp.rejected_rows) out.push(`${imp.rejected_rows.toLocaleString("en-US")} CSV row${imp.rejected_rows === 1 ? " was" : "s were"} skipped because a date or amount couldn't be read.`);
@@ -479,7 +485,7 @@ async function runPosAudit(auditId: string, conn: Conn, fetcher: (c: Conn, s: st
     await finishAudit(auditId, conn.user_id, {
       source: "pos", platform: conn.platform, orders_read: opts.stats.raw, orders_used: agg.orders,
       anonymous_orders: opts.stats.anonymous + agg.anonymous, customers: agg.customers,
-      truncated: opts.stats.truncated, recent_history_missing: recentMissing, window_days: AUDIT_DAYS,
+      truncated: opts.stats.truncated, recent_history_missing: recentMissing, window_days: opts.stats.window_days || AUDIT_DAYS,
     });
   } catch (e) {
     console.error("pos audit failed", auditId, e);
@@ -526,7 +532,7 @@ async function handleAudit(req: Request, body: Record<string, unknown>, fetchers
     const running = await rest(`/rest/v1/pos_audits?user_id=eq.${userId}&status=eq.running&updated_at=gte.${fresh}&select=id&order=created_at.desc&limit=1`);
     if (Array.isArray(running) && running[0]) return json({ ok: true, audit_id: running[0].id, reused: true });
     if (await auditsToday(userId) >= AUDITS_PER_DAY) return json({ error: "You've run the free audit several times today. Try again tomorrow." }, 429);
-    const conns = await rest(`/rest/v1/platform_connections?user_id=eq.${userId}&platform=eq.${platform}&is_active=eq.true&select=id,user_id,platform,merchant_id,shop_domain,access_token,last_synced_at&order=updated_at.desc.nullslast&limit=1`) as Conn[];
+    const conns = await rest(`/rest/v1/platform_connections?user_id=eq.${userId}&platform=eq.${platform}&is_active=eq.true&select=id,user_id,platform,merchant_id,shop_domain,access_token,last_synced_at,scope&order=updated_at.desc.nullslast&limit=1`) as Conn[];
     const conn = conns?.[0];
     if (!conn || !conn.access_token) return json({ error: "not_connected" }, 409);
     const auditId = await createAudit(userId, "pos", platform, body.attribution);
@@ -635,7 +641,7 @@ Deno.serve(async (req) => {
   let connFilter = "is_active=eq.true&user_id=not.is.null";
   if (userId) connFilter += `&user_id=eq.${encodeURIComponent(userId)}`;
   const conns = await rest(
-    `/rest/v1/platform_connections?${connFilter}&select=id,user_id,platform,merchant_id,shop_domain,access_token,last_synced_at&limit=500`,
+    `/rest/v1/platform_connections?${connFilter}&select=id,user_id,platform,merchant_id,shop_domain,access_token,last_synced_at,scope&limit=500`,
   ) as Conn[];
 
   const results: Record<string, unknown>[] = [];

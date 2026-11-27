@@ -33,4 +33,10 @@ seq(readOrdersResponse(200, { errors: [{ extensions: { code: "ACCESS_DENIED" } }
 seq(readOrdersResponse(200, { errors: [{ message: "not approved to use the phoneNumber field" }], data: { orders: { nodes: [], pageInfo: {} } } }).fieldErrors, 1, "partial field errors tolerated");
 seq(throttleWaitMs({ cost: { throttleStatus: { currentlyAvailable: 200, restoreRate: 100 } } }, 1000), 8000, "throttle wait");
 seq(throttleWaitMs({ cost: { throttleStatus: { currentlyAvailable: 1000, restoreRate: 100 } } }, 500), 0, "no wait when bucket full");
+var nowT = Date.parse("2026-11-26T00:00:00Z");
+var w = shopifyOrderWindow("2025-11-26T00:00:00Z", "read_orders,read_customers", nowT);
+seq([w.limited, w.days, w.since], [true, 60, "2026-09-27T00:00:00.000Z"], "no read_all_orders: clamp to 60 days and report it");
+seq(shopifyOrderWindow("2025-11-26T00:00:00Z", "read_orders, read_all_orders", nowT).limited, false, "read_all_orders: full window");
+seq(shopifyOrderWindow("2026-11-20T00:00:00Z", "read_orders", nowT).limited, false, "nightly incremental within 60 days unaffected");
+seq(shopifyOrderWindow("2025-11-26T00:00:00Z", null, nowT).limited, true, "unknown scope treated as 60 days");
 print("SHOPIFY MAPPING TESTS: " + sp + " passed, " + sf + " failed");
