@@ -98,7 +98,7 @@ ok(!sufficiency(null).ok, "missing report = insufficient");
 // --- phone normalization parity with index.ts ----------------------------
 eq(normalizePhone("3472223344"), "+13472223344", "10-digit phone");
 eq(normalizePhone("1-347-222-3344"), "+13472223344", "11-digit phone");
-eq(normalizePhone("+44 20 7946 0000"), "+44 20 7946 0000", "+intl kept as-is (same as sync)");
+eq(normalizePhone("+44 20 7946 0000"), "+442079460000", "+intl compacted to digits-only E.164 (WP3, same as sync)");
 eq(normalizePhone("12345"), "", "short phone dropped");
 
 print("audit tests: " + pass + " passed, " + fail + " failed");
