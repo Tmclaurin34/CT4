@@ -8,7 +8,7 @@ set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
 REF=hmihfncvahsdlmefyxyg
 RC=0
-for T in retention_engine_test.sql retention_phase3_test.sql; do
+for T in retention_engine_test.sql retention_phase3_test.sql retention_phase4_test.sql; do
   BODY=$(python3 -c "import json,sys;print(json.dumps({'query':open(sys.argv[1]).read()}))" "$DIR/$T")
   OUT=$(curl -s -X POST "https://api.supabase.com/v1/projects/$REF/database/query" \
     -H "Authorization: Bearer $(cat ~/.supabase_pat)" -H 'content-type: application/json' --data-binary "$BODY")

@@ -847,6 +847,7 @@ function demoRpc(fn,body){
   if(!DEMO_DATA)buildDemoData();
   if(fn==="clicktide_winback_stats")return Object.assign({},DEMO_DATA.winback);
   if(fn==="clicktide_customers")return demoCustomersResponse(body||{});
+  if(fn==="clicktide_customer_intelligence")return demoIntelResponse(body||{});
   return null;
 }
 // Mirror of the clicktide_customers RPC over the sample set: filter/segment/score/paginate.
@@ -3792,6 +3793,7 @@ function dIco(id){
   var P={
     overview:'<rect x="3" y="3" width="7.5" height="8.5" rx="1.4"/><rect x="13.5" y="3" width="7.5" height="5" rx="1.4"/><rect x="13.5" y="11" width="7.5" height="10" rx="1.4"/><rect x="3" y="14.5" width="7.5" height="6.5" rx="1.4"/>',
     customers:'<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c.7-3.2 3-4.8 5.5-4.8s4.8 1.6 5.5 4.8"/><path d="M16 5.3a3 3 0 0 1 0 5.6"/><path d="M17.6 20c-.3-1.9-1.2-3.3-2.6-4.1"/>',
+    intel:'<path d="M3 20h18"/><path d="M6 16l4-5 3 3 5-7"/><circle cx="18" cy="7" r="1.6"/>',
     campaigns:'<path d="M13 3 4.5 13.5H10l-1 7.5 9-11H12.5z"/>',
     gifts:'<polyline points="20 12 20 21 4 21 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="21" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>',
     shipments:'<path d="M3 7.5 12 3l9 4.5v9L12 21 3 16.5z"/><path d="M3 7.5 12 12l9-4.5"/><path d="M12 12v9"/>',
@@ -3829,7 +3831,7 @@ function gI(name,sz,col){
   return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="'+col+'" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;flex-shrink:0">'+(P[name]||"")+'</svg>';
 }
 function dash(){
-  const nav=[{id:"overview",i:"<i class=ig-chart></i>",l:"Overview"},{id:"customers",i:"<i class=ig-people></i>",l:"Customers"},{id:"campaigns",i:"<i class=ig-chat></i>",l:"Campaigns"},{id:"gifts",i:"<i class=ig-gift></i>",l:"Gifts"},{id:"shipments",i:"<i class=ig-box></i>",l:"Shipments"},{id:"wallet",i:"<i class=ig-card></i>",l:"Wallet"},{id:"studio",i:"<i class=ig-palette></i>",l:"Design Studio"},{id:"emails",i:"<i class=ig-mail></i>",l:"Email Studio"},{id:"settings",i:"<i class=ig-gear></i>",l:"Settings"}];
+  const nav=[{id:"overview",i:"<i class=ig-chart></i>",l:"Overview"},{id:"customers",i:"<i class=ig-people></i>",l:"Customers"},{id:"intel",i:"",l:"Customer Intelligence"},{id:"campaigns",i:"<i class=ig-chat></i>",l:"Campaigns"},{id:"gifts",i:"<i class=ig-gift></i>",l:"Gifts"},{id:"shipments",i:"<i class=ig-box></i>",l:"Shipments"},{id:"wallet",i:"<i class=ig-card></i>",l:"Wallet"},{id:"studio",i:"<i class=ig-palette></i>",l:"Design Studio"},{id:"emails",i:"<i class=ig-mail></i>",l:"Email Studio"},{id:"settings",i:"<i class=ig-gear></i>",l:"Settings"}];
   return`<div class="dash">${ctTheme()}
   <div class="sb"><div class="sb-logo">${(bizLock&&String(bizLock?.plan||"").toLowerCase()==="scale"&&bizLock.logo_url)?`<div style="display:flex;align-items:center;gap:8px;padding:0 2px"><img src="${bizLock.logo_url}" style="width:26px;height:26px;border-radius:6px;object-fit:contain"/><span style="font-weight:800;font-size:12px;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px">${(bizLock.business_name||"").toUpperCase()}</span></div>`:logoH(18)}</div>
   <div class="sb-nav">${nav.map(n=>`<button class="ni ${dpg===n.id?"on":""}" onclick="dGo('${n.id}')">${dIco(n.id)}${n.l}</button>`).join("")}</div>
@@ -3986,6 +3988,11 @@ async function dLoad(){
       var _active=c.filter(function(x){return x.status==="active";}).length,_paused=c.length-_active;
       var countHtml=c.length?'<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:7px"><span style="color:#1E874F;font-size:12px">●</span><span style="font-size:24px;font-weight:900;color:#0F1115;line-height:1">'+_active+'</span><span style="font-size:13px;color:#646A73;font-weight:600">active campaign'+(_active===1?"":"s")+'</span></div>'+(_paused>0?'<span style="font-size:11.5px;font-weight:700;color:#646A73;background:rgba(16,18,21,.05);border:1px solid rgba(16,18,21,.08);border-radius:100px;padding:3px 11px"><i class=ig-pause></i> '+_paused+' paused</span>':'')+'</div>':'';
       el.innerHTML=paidBanner+countHtml+pbHtml+wjHtml+aiSugHtml+libHtml+(c.length===0?`<div class="empty"><div style="margin-bottom:10px">${gI('bolt',34,'rgba(16,18,21,.22)')}</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No campaigns yet</div><div style="font-size:13px;color:rgba(240,244,255,.45);margin-bottom:16px">Create your first campaign.</div><button class="btn btn-gold" onclick="oCM()">Create Campaign</button></div>`:c.map(cc=>`<div class="dc" style="margin-bottom:11px"><div style="display:flex;align-items:flex-start;gap:12px"><div class="di" style="background:rgba(11,98,214,.08);width:40px;height:40px;font-size:18px;flex-shrink:0">${cc.campaign_type==="message_only"?"<i class=ig-chat></i>":cc.campaign_type==="digital_gift"?"<i class=ig-card></i>":cc.campaign_type==="survey"?"<i class=ig-star></i>":"<i class=ig-box></i>"}</div><div style="flex:1"><div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><div style="font-size:13px;font-weight:700">${giftEsc(cc.name)}</div><span class="${cc.status==="active"?"ba":"bp"}">${cc.status==="active"?"● Active":"<i class=ig-pause></i> Paused"}</span></div><div style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:6px">Trigger: ${giftEsc(cc.trigger)} · ${giftEsc(cc.gift_name)}</div>${evChips(cc.id)}${cc.message?`<div style="font-size:11px;color:rgba(240,244,255,.45);background:#101828;border-radius:8px;padding:8px 10px;line-height:1.6;font-style:italic;white-space:pre-wrap">"${giftEsc(cc.message)}"</div>`:""}${cc.sms_message&&cc.sms_message!==cc.message?`<div style="font-size:11px;color:rgba(240,244,255,.45);background:#101828;border-radius:8px;padding:8px 10px;line-height:1.6;font-style:italic;margin-top:6px;white-space:pre-wrap"><i class=ig-phone></i> Text version: "${giftEsc(cc.sms_message)}"</div>`:""}</div><div style="display:flex;gap:7px;flex-shrink:0"><button class="btn btn-ghost" style="padding:6px 11px;font-size:11px" onclick="oEditCM('${cc.id}')">Edit</button><button class="btn btn-ghost" style="padding:6px 11px;font-size:11px" onclick="tCmp('${cc.id}','${cc.status}')">${cc.status==="active"?"Pause":"Resume"}</button><button class="btn" style="background:rgba(255,77,109,.1);color:#FF4D6D;border:1px solid rgba(255,77,109,.2);padding:6px 11px;font-size:11px" onclick="dCmp('${cc.id}')">Delete</button></div></div></div>`).join(""));
+    }
+    else if(dpg==="intel"){
+      if(!window._inQ)window._inQ={status:"all",q:"",sort:"priority",limit:50,offset:0};
+      window._inRows=[];
+      await inLoad(el,true);
     }
     else if(dpg==="customers"){
       // Server-side filtered + scored (RPC clicktide_customers). The database does
@@ -4893,6 +4900,142 @@ function cuSetChurn(v){if(!window._cuQ)return;var n=parseInt(v)||60;window._cuQ.
 function cuSearchDebounced(){clearTimeout(window._cuTmr);window._cuTmr=setTimeout(function(){cuLoad(null,true);},300);}
 function cuDateApply(){cuLoad(null,true);}
 function cuClearDates(){var f=document.getElementById("cuFrom"),t=document.getElementById("cuTo");if(f)f.value="";if(t)t.value="";if(window._cuQ){window._cuQ.from=null;window._cuQ.to=null;}cuLoad(null,true);}
+// ---- Customer Intelligence page (retention engine phase 4) ------------------
+// Everything comes from the rhythm engine via RPC clicktide_customer_intelligence:
+// each customer's usual gap, how sure Clicktide is, status, the plain reason and a
+// suggested next action. Server-side filter/sort/paginate, so it scales like Customers.
+var IN_ST={healthy:["Healthy","#1E874F","#E9F7EF"],drifting:["Drifting","#9A6B00","#FFF4D6"],at_risk:["At risk","#C0392B","#FBECEC"],recovered:["Recovered","#1E874F","#E9F7EF"],no_history:["No history","#646A73","#F1F2F4"]};
+var IN_CONF={high:"High",medium:"Medium",low:"Low",insufficient:"Estimate"};
+async function inLoad(el,reset){
+  var q=window._inQ;if(!q)return;
+  var si=document.getElementById("inSearch");if(si)q.q=(si.value||"").trim();
+  if(reset){q.offset=0;window._inRows=[];}else{q.offset=(window._inRows||[]).length;}
+  var seq=(window._inSeq=(window._inSeq||0)+1);
+  var tok=(S&&S.token)||null;
+  var d=await db.rpc("clicktide_customer_intelligence",{p_status:q.status,p_q:q.q||"",p_sort:q.sort,p_limit:q.limit,p_offset:q.offset},tok).catch(function(){return null;});
+  if(seq!==window._inSeq)return;
+  if(el){
+    if(!d||d.error){el.innerHTML='<div class="empty"><div style="font-size:14px;font-weight:700;color:#C0392B;margin-bottom:6px">Couldn\'t load customer intelligence</div><div style="font-size:13px;color:#646A73;margin-bottom:14px">Check your connection and try again.</div><button class="btn btn-ghost" onclick="dLoad()">Retry</button></div>';return;}
+    if(!d.counts||!Number(d.counts.all)){el.innerHTML='<div class="empty"><div style="margin-bottom:10px">'+gI("people",34,"rgba(16,18,21,.22)")+'</div><div style="font-size:15px;font-weight:700;margin-bottom:5px">No visit history yet</div><div style="font-size:13px;color:#646A73;max-width:420px;margin:0 auto">Once your POS syncs or customers check in, Clicktide learns each customer\'s own visit rhythm and shows who is healthy, drifting, at risk or back again here.</div></div>';return;}
+    inShell(el);
+  }
+  if(!d||d.error)return;
+  window._inData=d;
+  var rows=Array.isArray(d.rows)?d.rows:[];
+  window._inRows=reset?rows:(window._inRows||[]).concat(rows);
+  inRenderTop();inRenderChips();inRenderTable();
+}
+function inShell(el){
+  var q=window._inQ||{};
+  var sorts=[["priority","Most urgent first"],["overdue","Most overdue"],["spend","Highest spend"],["recent","Recently changed"]];
+  var sortSel='<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#646A73;white-space:nowrap">Sort <select id="inSort" onchange="inSetSort(this.value)" style="padding:7px 9px;border:1px solid rgba(16,18,21,.14);border-radius:9px;font-size:12px;background:#FFFFFF;color:#0F1115;font-weight:600;cursor:pointer">'+sorts.map(function(s){return '<option value="'+s[0]+'"'+(s[0]===q.sort?" selected":"")+'>'+s[1]+'</option>';}).join("")+'</select></label>';
+  el.innerHTML='<div id="inTop"></div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:4px 0 10px"><input id="inSearch" value="'+giftEsc(q.q||"")+'" oninput="inSearchDebounced()" placeholder="Search name, email, or phone" style="flex:1;min-width:200px;padding:9px 12px;border:1px solid rgba(16,18,21,.14);border-radius:10px;font-size:13px;background:#FFFFFF;color:#0F1115;outline:none"/>'+sortSel+'<button class="link-btn" onclick="inHelp()" style="font-size:11.5px;white-space:nowrap">How does this work?</button></div>'
+    +'<div id="inChips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div><div class="dc" style="overflow-x:auto;padding:0" id="inTable"></div>';
+}
+function inAgo(ts){if(!ts)return"";var m=Math.round((Date.now()-Date.parse(ts))/60000);if(!isFinite(m))return"";if(m<60)return m<=1?"just now":m+" min ago";var h=Math.round(m/60);if(h<48)return h+"h ago";return Math.round(h/24)+" days ago";}
+function inRenderTop(){
+  var box=document.getElementById("inTop");if(!box)return;
+  var d=window._inData||{},k=d.counts||{},cur=(window._inQ&&window._inQ.status)||"all";
+  function card(st,hint){var m=IN_ST[st],n=Number(k[st]||0),on=cur===st;
+    return '<button onclick="inSetStatus(\''+st+'\')" title="'+hint+'" style="flex:1;min-width:130px;text-align:left;background:#FFFFFF;border:'+(on?"2px solid "+m[1]:"1px solid rgba(16,18,21,.10)")+';border-radius:12px;padding:'+(on?"11px 12px":"12px 13px")+';cursor:pointer">'
+      +'<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:#3A3F47"><span style="width:8px;height:8px;border-radius:50%;background:'+m[1]+'"></span>'+m[0]+'</div>'
+      +'<div style="font-family:\'Space Grotesk\',sans-serif;font-size:26px;font-weight:800;color:'+(n===0?"#9AA3AD":"#0F1115")+';line-height:1.1;margin-top:4px">'+n.toLocaleString()+'</div></button>';}
+  var stake=Number(k.spend_at_stake||0),rec=Number(d.recovered_30d||0);
+  var conf='How sure Clicktide is: <b>'+Number(k.conf_high||0)+'</b> high · <b>'+Number(k.conf_medium||0)+'</b> medium · <b>'+Number(k.conf_low||0)+'</b> low · <b>'+Number(k.conf_insufficient||0)+'</b> one-visit customers (estimated from your business\'s typical gap)';
+  box.innerHTML='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">'
+    +card("healthy","Visiting on their usual rhythm")+card("drifting","Past their own usual gap")+card("at_risk","Far past their usual gap")+card("recovered","Came back after drifting")+'</div>'
+    +'<div style="display:flex;gap:8px 18px;flex-wrap:wrap;font-size:12.5px;color:#3A3F47;margin-bottom:6px">'
+    +'<span><b style="color:#0F1115">$'+Math.round(stake).toLocaleString()+'</b> historical spend from customers drifting or at risk</span>'
+    +'<span><b style="color:#1E874F">'+rec.toLocaleString()+'</b> came back in the last 30 days</span>'
+    +(d.updated_at?'<span style="color:#9AA3AD">Updated '+inAgo(d.updated_at)+'</span>':'')+'</div>'
+    +'<div style="font-size:11.5px;color:#646A73;margin-bottom:14px">'+conf+'</div>';
+}
+function inRenderChips(){
+  var box=document.getElementById("inChips");if(!box)return;
+  var k=(window._inData&&window._inData.counts)||{},cur=(window._inQ&&window._inQ.status)||"all";
+  function chip(f,label,col){var on=cur===f,n=k[f];col=col||"#0F1115";return '<button onclick="inSetStatus(\''+f+'\')" style="border:1px solid '+(on?col:"rgba(16,18,21,.14)")+';background:'+(on?col:"#FFFFFF")+';color:'+(on?"#FFFFFF":"#3A3F47")+';border-radius:100px;padding:6px 13px;font-size:12px;font-weight:700;cursor:pointer">'+label+(n==null?"":' <span style="opacity:.7">'+Number(n).toLocaleString()+'</span>')+'</button>';}
+  box.innerHTML=chip("all","All")+chip("at_risk","At risk")+chip("drifting","Drifting")+chip("recovered","Recovered")+chip("healthy","Healthy")+(Number(k.no_history||0)?chip("no_history","No history"):"")+'<span style="width:1px;background:rgba(16,18,21,.12);margin:2px 4px"></span>'+chip("needs_contact","Drifting, can’t reach","#C0392B");
+}
+function inVsUsual(r){
+  var v=r.days_vs_usual;if(v==null)return '<span style="color:#9AA3AD">—</span>';v=Number(v);
+  if(r.status==="drifting"||r.status==="at_risk")return '<span style="color:'+(r.status==="at_risk"?"#C0392B":"#9A6B00")+';font-weight:700">'+(v>0?v+" day"+(v===1?"":"s")+" overdue":"Due now")+'</span>';
+  if(v<0)return '<span style="color:#646A73">Due in '+(-v)+' day'+(v===-1?"":"s")+'</span>';
+  if(v===0)return '<span style="color:#646A73">Due today</span>';
+  return '<span style="color:#646A73">'+v+' day'+(v===1?"":"s")+' past usual</span>';
+}
+function inRow(r){
+  var m=IN_ST[r.status]||IN_ST.no_history;
+  var _g=Number(r.expected_interval);var gap=r.expected_interval!=null?'Every '+(_g<10?Math.round(_g*10)/10:Math.round(_g))+' day'+(_g===1?'':'s'):'—';
+  var gapSub=r.confidence==="insufficient"?'estimated':(r.visits_observed?Number(r.visits_observed)+' visits':'');
+  var last=r.days_since!=null?(Number(r.days_since)===0?"Today":Number(r.days_since)+" days ago"):"—";
+  var conf=IN_CONF[r.confidence]||r.confidence||"—";
+  var unreach=(r.status==="drifting"||r.status==="at_risk")&&!r.can_email&&!r.can_text;
+  var act=unreach?'<span onclick="oFixContact(\''+giftEsc(r.id)+'\')" style="color:#C0392B;cursor:pointer;font-weight:700">'+giftEsc(r.next_action)+' →</span>':giftEsc(r.next_action||"");
+  return '<div style="padding:11px 14px;border-bottom:1px solid rgba(16,18,21,.06)">'
+    +'<div style="display:grid;grid-template-columns:minmax(120px,1.5fr) 92px 100px 86px 120px 70px 76px;column-gap:8px;align-items:center;min-width:690px;font-size:12.5px;color:#0F1115">'
+    +'<span style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+giftEsc(r.email||r.phone||"")+'">'+giftEsc(r.name||"Customer")+(r.seasonal_hint?' <span title="Visits look seasonal" style="font-size:10px;color:#646A73;font-weight:600">seasonal</span>':'')+'</span>'
+    +'<span><span style="display:inline-block;background:'+m[2]+';color:'+m[1]+';border-radius:100px;padding:3px 9px;font-size:11px;font-weight:700">'+m[0]+'</span></span>'
+    +'<span>'+gap+(gapSub?'<div style="font-size:10.5px;color:#9AA3AD">'+gapSub+'</div>':'')+'</span>'
+    +'<span>'+last+'</span>'
+    +'<span>'+inVsUsual(r)+'</span>'
+    +'<span style="font-weight:600">$'+Math.round(Number(r.spend||0)).toLocaleString()+'</span>'
+    +'<span style="color:#3A3F47">'+conf+'</span></div>'
+    +'<div style="min-width:690px;font-size:12px;margin-top:5px;line-height:1.45"><span style="font-weight:700;color:#0F1115">Next: '+act+'</span>'+(r.reason?'<span style="color:#646A73"> · '+giftEsc(r.reason)+'</span>':'')+'</div>'
+    +'</div>';
+}
+function inRenderTable(){
+  var box=document.getElementById("inTable");if(!box)return;
+  var d=window._inData||{},q=window._inQ||{},rows=window._inRows||[];
+  var total=Number(d.total||0),loaded=rows.length;
+  var header='<div style="display:grid;grid-template-columns:minmax(120px,1.5fr) 92px 100px 86px 120px 70px 76px;column-gap:8px;min-width:690px;padding:10px 14px;border-bottom:1px solid rgba(16,18,21,.08);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#9AA3AD"><span>Customer</span><span>Status</span><span>Usual gap</span><span>Last visit</span><span>Vs. usual</span><span>Spent</span><span>Confidence</span></div>';
+  var count='<div style="padding:9px 14px;font-size:11px;color:#646A73;border-bottom:1px solid rgba(16,18,21,.05)">'+total.toLocaleString()+' customer'+(total===1?"":"s")+'</div>';
+  var body=total===0?'<div style="padding:26px;text-align:center;font-size:13px;color:#646A73">No customers here right now.</div>':rows.map(inRow).join("");
+  var more="";
+  if(loaded<total){var next=Math.min(q.limit||50,total-loaded);more='<div style="padding:12px 14px;text-align:center;border-top:1px solid rgba(16,18,21,.05)"><button class="btn btn-ghost" onclick="inLoad(null,false)" style="font-size:12px">Load '+next.toLocaleString()+' more</button><div style="font-size:11px;color:#9AA3AD;margin-top:6px">Showing '+loaded.toLocaleString()+' of '+total.toLocaleString()+'</div></div>';}
+  box.innerHTML=count+header+body+more;
+}
+function inSetStatus(s){if(!window._inQ)return;window._inQ.status=(window._inQ.status===s&&s!=="all")?"all":s;inLoad(null,true);}
+function inSetSort(s){if(!window._inQ)return;window._inQ.sort=s;inLoad(null,true);}
+function inSearchDebounced(){clearTimeout(window._inTmr);window._inTmr=setTimeout(function(){inLoad(null,true);},300);}
+function inHelp(){
+  var h='<div class="mo" onclick="if(event.target===this)this.remove()" style="position:fixed;inset:0;background:rgba(8,13,24,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px"><div style="background:#FFFFFF;color:#0F1115;border-radius:16px;max-width:520px;width:100%;padding:22px 22px 18px;font-size:13.5px;line-height:1.55;max-height:85vh;overflow:auto">'
+    +'<div style="font-size:17px;font-weight:800;margin-bottom:10px">How Customer Intelligence works</div>'
+    +'<p style="margin:0 0 8px">Clicktide looks at the gaps between each customer\'s own past visits and takes the typical one, ignoring one-off long breaks like a holiday. There\'s no single timer for everyone.</p>'
+    +'<p style="margin:0 0 8px"><b>Drifting</b> means past their usual gap: sooner for steady regulars, later for customers who are naturally irregular. <b>At risk</b> means far past it. <b>Recovered</b> means they came back after drifting.</p>'
+    +'<p style="margin:0 0 8px"><b>Confidence</b> grows with visit history. One-visit customers have no personal rhythm yet, so they\'re compared with your business\'s typical gap and marked as an estimate. Win-back campaigns skip them unless you turn that on.</p>'
+    +'<p style="margin:0 0 14px">This is the same engine your win-back campaigns, Monday Drift Report and AI suggestions use. It updates after every POS sync and at least once a night.</p>'
+    +'<button class="btn btn-gold" onclick="this.closest(\'.mo\').remove()">Got it</button></div></div>';
+  document.body.insertAdjacentHTML("beforeend",h);
+}
+// Demo mirror: a small version of the rhythm engine over the sample customers.
+function demoIntelResponse(q){
+  var all=DEMO_DATA.customers.map(function(c){
+    var v=Number(c.visits||c.order_count||0),last=Math.floor((Date.now()-Date.parse(c.last_visit_at||0))/86400000),first=Math.floor((Date.now()-Date.parse(c.first_order_at||0))/86400000);
+    return {c:c,v:v,last:last,exp:(v>=2&&first-last>=v-1)?(first-last)/(v-1):null};
+  });
+  var obs=all.filter(function(x){return x.exp!=null;}).map(function(x){return x.exp;}).sort(function(a,b){return a-b;});
+  var med=obs.length?obs[Math.floor(obs.length/2)]:30;
+  var big=all.map(function(x){return Number(x.c.total_spent||0);}).sort(function(a,b){return a-b;})[Math.floor(all.length*0.75)]||0;
+  var rows=all.map(function(x){
+    var c=x.c,conf=x.exp==null?"insufficient":x.v>=8?"high":x.v>=4?"medium":"low",exp=x.exp!=null?x.exp:med;
+    var tol=conf==="low"||conf==="insufficient"?0.75:0.5,drift=Math.max(exp*(1+tol),exp+3),risk=Math.max(drift+exp,drift*1.6,drift+7);
+    var st=x.last>=risk?"at_risk":x.last>=drift?"drifting":"healthy";
+    if(c.name==="Derek Reyes")st="recovered";
+    var canE=!!c.email,canT=!!c.phone&&!!c.sms_consent,spend=Number(c.total_spent||0);
+    var why=st==="recovered"?"Came back after a win-back message.":conf==="insufficient"?"Not enough visit history yet, so this uses your business's typical gap of "+Math.round(med)+" days.":"Usually visits every "+Math.round(exp)+" days ("+x.v+" visits). Last visit "+x.last+" days ago"+(x.last>exp?", "+(Math.round(x.last/exp*10)/10)+"× their usual gap.":".");
+    var act=(st==="drifting"||st==="at_risk")&&!canE&&!canT?"Add an email or phone so Clicktide can reach them":st==="at_risk"&&spend>=big?"High-value and well past their rhythm: send a gift or postcard":st==="at_risk"?"Well past their rhythm: send a win-back offer":st==="drifting"&&conf==="insufficient"?"Only one visit so far: a friendly welcome-back note":st==="drifting"?"Just past their rhythm: a quick check-in message":st==="recovered"?"Back again: say thanks, no win-back needed":"On rhythm: no action needed";
+    return {id:c.id,name:c.name,email:c.email,phone:c.phone,status:st,status_since:c.last_visit_at,confidence:conf,expected_interval:Math.round(exp*10)/10,visits_observed:x.v,visits:x.v,spend:spend,days_since:x.last,days_vs_usual:Math.round(x.last-exp),can_email:canE,can_text:canT,reason:why,next_action:act,_p:{at_risk:1,drifting:2,recovered:3,healthy:4}[st]||5};
+  });
+  var k={all:rows.length,healthy:0,drifting:0,at_risk:0,recovered:0,no_history:0,needs_contact:0,spend_at_stake:0,conf_high:0,conf_medium:0,conf_low:0,conf_insufficient:0};
+  rows.forEach(function(r){k[r.status]++;k["conf_"+r.confidence]++;if(r.status==="drifting"||r.status==="at_risk"){k.spend_at_stake+=r.spend;if(!r.can_email&&!r.can_text)k.needs_contact++;}});
+  var s=q.p_status||"all",qq=String(q.p_q||"").toLowerCase().trim();
+  var f=rows.filter(function(r){return (s==="all"||(s==="needs_contact"?((r.status==="drifting"||r.status==="at_risk")&&!r.can_email&&!r.can_text):r.status===s))&&(!qq||(String(r.name)+" "+String(r.email||"")+" "+String(r.phone||"")).toLowerCase().indexOf(qq)>=0);});
+  var so=q.p_sort||"priority";
+  f.sort(function(a,b){return so==="overdue"?b.days_vs_usual-a.days_vs_usual:so==="spend"?b.spend-a.spend:so==="recent"?Date.parse(b.status_since)-Date.parse(a.status_since):(a._p-b._p)||(b.spend-a.spend);});
+  var off=Number(q.p_offset)||0,lim=Number(q.p_limit)||50;
+  return {engine:"rhythm",updated_at:new Date(Date.now()-3600000).toISOString(),counts:k,recovered_30d:1,total:f.length,rows:f.slice(off,off+lim)};
+}
 // -- Shipments: live batch order tracking (assembly line + per-recipient) -----
 // Status comes straight from the shipments table, kept current by printify-webhook:
 // processing -> in_production -> shipped -> delivered (+ canceled). A bulk send
