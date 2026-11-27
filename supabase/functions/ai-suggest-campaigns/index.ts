@@ -16,7 +16,7 @@ const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 
 const JOB = "ai-suggest-campaigns";
 const RUN_BUDGET_MS = 90000; // no new business after this; one AI call can still take AI_TIMEOUT_MS
-const AI_TIMEOUT_MS = 40000;
+const AI_TIMEOUT_MS = 60000;
 const ON_DEMAND_PER_DAY = 6; // owner-triggered refreshes per business per day; each is a paid AI call
 const PAGE_SIZE = 1000; // PostgREST max-rows here: a bigger page silently comes back cut to this
 
@@ -294,7 +294,10 @@ Respond with ONLY a JSON array, no other text:
     headers: { "Content-Type": "application/json", "x-api-key": anthropicKey, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
       model: "claude-haiku-5-5",
-      max_tokens: 1500,
+      // Haiku 5.5 thinks before answering (adaptive thinking is on by default), and the
+      // thinking counts toward max_tokens: 1500 cut the JSON off mid-list for real
+      // businesses, so the stale suggestion was never replaced. Give it room.
+      max_tokens: 16000,
       messages: [{ role: "user", content: prompt }],
     }),
   }, AI_TIMEOUT_MS);
