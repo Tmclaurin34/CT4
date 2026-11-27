@@ -41,7 +41,7 @@ type Conn = {
   shop_domain?: string; access_token: string; last_synced_at?: string;
 };
 type Addr = { address?: string; city?: string; state?: string; zip?: string };
-type Order = { email?: string; phone?: string; name?: string; amount: number; at: string; addr?: Addr };
+type Order = { email?: string; phone?: string; name?: string; amount: number; at: string; addr?: Addr; id?: string; void?: boolean };
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
@@ -181,7 +181,7 @@ async function squareOrders(c: Conn, since: string, o: FetchOpts = defaultOpts()
     }
     if (!who.email && !who.phone) { o.stats.anonymous++; continue; }
     const om = ord as Record<string, never>;
-    out.push({ email: who.email, phone: who.phone, name: who.name, addr: who.addr, amount: (((om.total_money as Record<string, number>)?.amount) || 0) / 100, at: (om.closed_at as string) || (om.created_at as string) });
+    out.push({ id: String((om.id as string) || "") || undefined, email: who.email, phone: who.phone, name: who.name, addr: who.addr, amount: (((om.total_money as Record<string, number>)?.amount) || 0) / 100, at: (om.closed_at as string) || (om.created_at as string) });
   }
   return out;
 }
@@ -213,6 +213,9 @@ async function shopifyOrders(c: Conn, since: string, op: FetchOpts = defaultOpts
       addr: cleanAddr(sa.address1, sa.address2, sa.city, sa.province_code || sa.province, sa.zip, sa.country_code || sa.country),
       amount: Number((o as Record<string, string>).total_price) || 0,
       at: (o as Record<string, string>).created_at,
+      id: String((o as Record<string, string>).id || "") || undefined,
+      // Cancelled / refunded orders aren't visits (kept out of the visit history).
+      void: !!(o as Record<string, string>).cancelled_at || ["refunded", "voided"].includes(String((o as Record<string, string>).financial_status || "")),
     };
   });
   const kept = mapped.filter((x: Order) => x.email || x.phone);
@@ -243,6 +246,7 @@ async function cloverOrders(c: Conn, since: string, op: FetchOpts = defaultOpts(
         name: [cu.firstName, cu.lastName].filter(Boolean).join(" "),
         addr: cleanAddr(a.address1, a.address2, a.city, a.state, a.zip, a.country),
         amount: (o.total || 0) / 100, at: new Date(o.createdTime).toISOString(),
+        id: o.id ? String(o.id) : undefined,
       });
     }
     op.onPage?.(op.stats.raw);
@@ -275,6 +279,7 @@ async function stripeOrders(c: Conn, since: string, op: FetchOpts = defaultOpts(
         email: (bd as Record<string, string>).email, phone: (bd as Record<string, string>).phone, name: (bd as Record<string, string>).name,
         addr: cleanAddr(a.line1, a.line2, a.city, a.state, a.postal_code, a.country),
         amount: (ch.amount || 0) / 100, at: new Date((ch.created || 0) * 1000).toISOString(),
+        id: ch.id ? String(ch.id) : undefined,
       });
     }
     op.onPage?.(op.stats.raw);
@@ -286,7 +291,23 @@ async function stripeOrders(c: Conn, since: string, op: FetchOpts = defaultOpts(
 }
 
 // ---- upsert one customer's new activity ----
-async function applyOrder(userId: string, o: Order, own: Set<string>): Promise<{ res: "updated" | "created" | "skipped"; addrAdded: boolean }> {
+// Retention engine visit history. Returns "duplicate" when this POS transaction was
+// already counted (re-synced order), so the caller must not count it again.
+async function recordVisit(userId: string, customerId: string | number, o: Order, source: string): Promise<string> {
+  if (o.void) return "void";
+  try {
+    const r = await rest("/rest/v1/rpc/clicktide_record_visit", {
+      method: "POST",
+      body: JSON.stringify({ p_user: userId, p_customer: Number(customerId), p_at: o.at, p_amount: o.amount, p_source: source, p_txn_id: o.id || null }),
+    });
+    return String(r || "");
+  } catch (e) {
+    console.error("record_visit failed", e); // never block the sync on the visit ledger
+    return "error";
+  }
+}
+
+async function applyOrder(userId: string, o: Order, own: Set<string>, source = "pos"): Promise<{ res: "updated" | "created" | "skipped"; addrAdded: boolean }> {
   const email = (o.email || "").trim().toLowerCase();
   const rawPhone = normalizePhone(o.phone);
   const phone = isJunkPhone(rawPhone, own) ? "" : rawPhone; // never match or store junk/own numbers
@@ -297,6 +318,9 @@ async function applyOrder(userId: string, o: Order, own: Set<string>): Promise<{
   const rows = await rest(`/rest/v1/customers?user_id=eq.${userId}&or=(${ors.join(",")})&select=id,name,email,phone,visits,total_spent,last_visit_at,first_order_at,address,city,state,zip&limit=1`);
   const ex = Array.isArray(rows) ? rows[0] : null;
   if (ex) {
+    // A POS transaction we've already counted (re-synced across a window boundary)
+    // must not add another visit or more spend.
+    if ((await recordVisit(userId, ex.id, o, source)) === "duplicate") return { res: "skipped", addrAdded: false };
     const newer = !ex.last_visit_at || Date.parse(o.at) > Date.parse(ex.last_visit_at);
     const hasAddr = !!(ex.address && ex.city && ex.state && ex.zip);
     const addAddr = !hasAddr && o.addr ? o.addr : null;
@@ -319,14 +343,16 @@ async function applyOrder(userId: string, o: Order, own: Set<string>): Promise<{
     });
     return { res: "updated", addrAdded: !!addAddr };
   }
-  await rest("/rest/v1/customers", {
-    method: "POST", headers: { Prefer: "return=minimal" },
+  const created = await rest("/rest/v1/customers?select=id", {
+    method: "POST", headers: { Prefer: "return=representation" },
     body: JSON.stringify({
       user_id: userId, name: o.name || email || "Customer", email: email || null, phone: phone || null,
       visits: 1, total_spent: o.amount, last_order_amount: o.amount, status: "active", last_visit_at: o.at, last_order_at: o.at, first_order_at: o.at, sms_consent: false,
       ...(o.addr ? o.addr : {}),
     }),
   });
+  const newId = Array.isArray(created) ? created[0]?.id : null;
+  if (newId) await recordVisit(userId, newId, o, source);
   return { res: "created", addrAdded: !!o.addr };
 }
 
@@ -613,7 +639,7 @@ Deno.serve(async (req) => {
       let updated = 0, created = 0, capped = 0, addresses = 0;
       for (const o of orders) {
         try {
-          const r = await applyOrder(c.user_id, o, own);
+          const r = await applyOrder(c.user_id, o, own, c.platform);
           if (r.res === "updated") updated++;
           if (r.res === "created") created++;
           if (r.addrAdded) addresses++;
@@ -636,5 +662,12 @@ Deno.serve(async (req) => {
       results.push({ platform: c.platform, error: e instanceof Error ? e.message : String(e) });
     }
   }
-  return json({ ok: true, connections: conns.length, results });
+  // Retention engine (shadow mode): re-evaluate each synced business's customers.
+  const synced = [...new Set(conns.filter((c) => !auditOnly.has(c.user_id)).map((c) => c.user_id))];
+  const rhythm: Record<string, unknown>[] = [];
+  for (const u of synced) {
+    try { rhythm.push(await rest("/rest/v1/rpc/clicktide_refresh_rhythm", { method: "POST", body: JSON.stringify({ p_user: u }) })); }
+    catch (e) { rhythm.push({ user_id: u, error: e instanceof Error ? e.message : String(e) }); }
+  }
+  return json({ ok: true, connections: conns.length, results, rhythm });
 });
