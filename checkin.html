@@ -71,6 +71,7 @@ var WL=false;
 })();
 
 function fail(msg){var e=document.getElementById("err");e.textContent=msg;e.style.display="block";}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];});}
 
 function go(ev){
   ev.preventDefault();
@@ -88,11 +89,11 @@ function go(ev){
     consent_transactional:tx
   })}).then(function(r){return r.json().then(function(d){return{s:r.status,d:d};});}).then(function(x){
     if(x.d&&x.d.ok){
-      var who=x.d.first_name||"there";
+      var who=esc(x.d.first_name||"there");
       document.getElementById("card").innerHTML=
         '<div class="done"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.5 2.5 5-5.5"/></svg></div>'+
         '<h1>'+(x.d.already?"Already checked in!":"You\'re checked in, "+who+"!")+'</h1>'+
-        '<div class="sub">'+(x.d.already?"We counted your visit earlier today.":"Thanks for coming back to "+(x.d.business_name||"us")+". See you next time!")+'</div>'+
+        '<div class="sub">'+(x.d.already?"We counted your visit earlier today.":"Thanks for coming back to "+esc(x.d.business_name||"us")+". See you next time!")+'</div>'+
         (WL?'':'<div class="power">Powered by <b>CLICKTIDE</b> · goclicktide.com</div>');
       return;
     }

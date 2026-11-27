@@ -1,12 +1,22 @@
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
 const printifyToken = Deno.env.get("PRINTIFY_API_TOKEN") || "";
 const printifyShopId = Deno.env.get("PRINTIFY_SHOP_ID") || "";
-const syncSecret = Deno.env.get("SYNC_PRINTIFY_CATALOG_KEY") || "";
+
+// Tags printify-design-proof puts on per-business proof products. Those products live in
+// the same Printify shop but must never become shared catalog rows.
+const PROOF_TAG = "ct-proof";
+const OWNER_TAG_PREFIX = "ct-user-";
+// printify-create-starter-products tags shared catalog products. A product only becomes a
+// NEW catalog row with this tag; an untagged shop product can only refresh a row that is
+// already in gift_catalog. Untagged legacy proofs that no brand_products row points at any
+// more (a regenerated or abandoned proof) therefore never reach the shared catalog.
+const CATALOG_TAG = "ct-catalog";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-clicktide-cron-key",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
@@ -46,10 +56,25 @@ function json(body: unknown, status = 200) {
   });
 }
 
+function parseJson(text: string) {
+  try {
+    return text ? JSON.parse(text) : null;
+  } catch {
+    return null;
+  }
+}
+
 function dollarsFromCents(value: unknown) {
   const amount = Number(value || 0);
   if (!Number.isFinite(amount) || amount <= 0) return 0;
   return Math.round((amount / 100) * 100) / 100;
+}
+
+function safeEqual(a: string, b: string) {
+  if (!a || !b || a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return mismatch === 0;
 }
 
 async function supabaseFetch(path: string, init: RequestInit = {}) {
@@ -61,8 +86,7 @@ async function supabaseFetch(path: string, init: RequestInit = {}) {
       ...(init.headers || {}),
     },
   });
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  const data = parseJson(await response.text());
   if (!response.ok) {
     const message = data?.message || data?.error || response.statusText;
     throw new AppError(message, response.status);
@@ -70,29 +94,49 @@ async function supabaseFetch(path: string, init: RequestInit = {}) {
   return data;
 }
 
-async function authedUser(req: Request) {
-  const authorization = req.headers.get("authorization") || "";
-  if (!authorization.toLowerCase().startsWith("bearer ")) return null;
-  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-    headers: {
-      apikey: serviceRoleKey,
-      Authorization: authorization,
-    },
-  });
-  if (!response.ok) return null;
-  return await response.json();
+async function expectedCronKey() {
+  try {
+    const data = await supabaseFetch("/rest/v1/rpc/clicktide_internal_key", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    return String(data || "");
+  } catch {
+    return "";
+  }
 }
 
-async function requireCatalogManager(req: Request) {
-  const user = await authedUser(req);
-  if (!user?.id) throw new AppError("Login is required", 401);
-  const rows = await supabaseFetch(
-    `/rest/v1/clicktide_staff?select=role,is_active&user_id=eq.${encodeURIComponent(user.id)}&is_active=eq.true&role=in.(admin,support)`,
-  );
-  if (!Array.isArray(rows) || !rows.length) {
-    throw new AppError("Only Clicktide admins and support can sync the gift catalog", 403);
+// Staff check through clicktide_is_staff with the CALLER's own token, so the database's
+// staff rules (including any MFA requirement) decide, not this function.
+async function isStaff(req: Request, roles: string[]) {
+  const authorization = req.headers.get("authorization") || "";
+  if (!/^bearer\s+\S+/i.test(authorization)) return false;
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/rpc/clicktide_is_staff`, {
+      method: "POST",
+      headers: { apikey: anonKey || serviceRoleKey, Authorization: authorization, "Content-Type": "application/json" },
+      body: JSON.stringify({ required_roles: roles }),
+    });
+    if (!response.ok) return false;
+    return (await response.json()) === true;
+  } catch {
+    return false;
   }
-  return user;
+}
+
+// Cron key (scripts, pg_cron) or an admin/support staff session.
+async function requireCatalogManager(req: Request) {
+  const cronKey = req.headers.get("x-clicktide-cron-key") || "";
+  if (cronKey && safeEqual(cronKey, await expectedCronKey())) return "cron";
+  const authorization = req.headers.get("authorization") || "";
+  if (!/^bearer\s+\S+/i.test(authorization)) throw new AppError("Login is required", 401);
+  if (await isStaff(req, ["admin", "support"])) return "staff";
+  const session = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    headers: { apikey: serviceRoleKey, Authorization: authorization },
+  }).catch(() => null);
+  if (!session || !session.ok) throw new AppError("Login is required", 401);
+  throw new AppError("Only Clicktide admins and support can sync the gift catalog", 403);
 }
 
 async function printify(path: string) {
@@ -102,8 +146,7 @@ async function printify(path: string) {
       "Content-Type": "application/json",
     },
   });
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  const data = parseJson(await response.text());
   if (!response.ok) {
     const message = data?.errors?.reason || data?.message || data?.error || response.statusText;
     throw new AppError(message, response.status);
@@ -124,6 +167,36 @@ function categoryFor(product: PrintifyProduct) {
 function imageFor(product: PrintifyProduct) {
   const images = product.images || [];
   return images.find((image) => image.is_default)?.src || images[0]?.src || "";
+}
+
+function isTaggedCatalog(product: PrintifyProduct) {
+  return Array.isArray(product.tags) && product.tags.some((tag) => String(tag) === CATALOG_TAG);
+}
+
+// Printify product ids that already have a gift_catalog row (curated by staff).
+async function listedProductIds() {
+  const rows = await supabaseFetch("/rest/v1/gift_catalog?printify_product_id=not.is.null&select=printify_product_id");
+  return new Set((Array.isArray(rows) ? rows : []).map((row: Record<string, unknown>) => String(row.printify_product_id)));
+}
+
+function isTaggedProof(product: PrintifyProduct) {
+  const tags = Array.isArray(product.tags) ? product.tags.map((tag) => String(tag)) : [];
+  return tags.includes(PROOF_TAG) || tags.some((tag) => tag.startsWith(OWNER_TAG_PREFIX));
+}
+
+// Per-business proofs: tagged ones, plus older untagged ones a business references in brand_products.
+async function proofProductIds(products: PrintifyProduct[]) {
+  const ids = products.map((product) => String(product.id || "")).filter((id) => /^[A-Za-z0-9_-]{1,64}$/.test(id));
+  const found = new Set<string>();
+  for (let i = 0; i < ids.length; i += 50) {
+    const chunk = ids.slice(i, i + 50);
+    const rows = await supabaseFetch(
+      `/rest/v1/brand_products?printify_product_id=in.(${chunk.join(",")})&select=printify_product_id`,
+    );
+    for (const row of Array.isArray(rows) ? rows : []) found.add(String(row.printify_product_id));
+  }
+  for (const product of products) if (isTaggedProof(product)) found.add(String(product.id || ""));
+  return found;
 }
 
 function catalogRows(products: PrintifyProduct[]) {
@@ -160,7 +233,7 @@ async function upsertCatalogRow(row: Record<string, unknown>) {
   );
 
   if (Array.isArray(existing) && existing[0]?.id) {
-    await supabaseFetch(`/rest/v1/gift_catalog?id=eq.${existing[0].id}`, {
+    await supabaseFetch(`/rest/v1/gift_catalog?id=eq.${encodeURIComponent(String(existing[0].id))}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
       body: JSON.stringify({ ...row, updated_at: new Date().toISOString() }),
@@ -184,33 +257,51 @@ Deno.serve(async (req) => {
     if (!serviceRoleKey) throw new AppError("Supabase service role is not configured", 500);
     if (!printifyToken || !printifyShopId) throw new AppError("Printify is not configured", 500);
 
-    const providedSyncSecret = req.headers.get("x-clicktide-sync-key") || "";
-    const hasSyncSecret = Boolean(syncSecret && providedSyncSecret === syncSecret);
-    if (!hasSyncSecret) await requireCatalogManager(req);
+    const caller = await requireCatalogManager(req);
+    const params = new URL(req.url).searchParams;
+    const dryRun = params.get("dry_run") === "1";
 
     const response = await printify(`/shops/${printifyShopId}/products.json`);
-    const products = Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : [];
-    const rows = catalogRows(products);
+    const products = (Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : []) as PrintifyProduct[];
+    const proofs = await proofProductIds(products);
+    const listed = await listedProductIds();
+    const notProofs = products.filter((product) => !proofs.has(String(product.id || "")));
+    const catalogProducts = notProofs.filter((product) => isTaggedCatalog(product) || listed.has(String(product.id || "")));
+    const skippedUntagged = notProofs.length - catalogProducts.length;
+    const rows = catalogRows(catalogProducts);
 
     let created = 0;
     let updated = 0;
-    for (const row of rows) {
-      const result = await upsertCatalogRow(row);
-      if (result === "created") created += 1;
-      else updated += 1;
+    if (!dryRun) {
+      for (const row of rows) {
+        const result = await upsertCatalogRow(row);
+        if (result === "created") created += 1;
+        else updated += 1;
+      }
     }
 
     const payload: Record<string, unknown> = {
       ok: true,
-      imported: rows.length,
+      imported: dryRun ? 0 : rows.length,
       created,
       updated,
+      skipped_business_proofs: proofs.size,
+      skipped_untagged: skippedUntagged,
       message: rows.length
-        ? "Gift catalog synced from Printify."
-        : "No active Printify shop products were found. Add products in Printify, then sync again.",
+        ? (dryRun ? "Dry run: nothing was written." : "Gift catalog synced from Printify.")
+        : `No catalog products were found in the Printify shop. New shop products are imported only when tagged "${CATALOG_TAG}".`,
     };
+    if (dryRun) {
+      payload.dry_run = true;
+      payload.would_import = rows.map((row) => ({
+        printify_product_id: row.printify_product_id,
+        printify_variant_id: row.printify_variant_id,
+        name: row.name,
+        estimated_cost: row.estimated_cost,
+      }));
+    }
 
-    if (hasSyncSecret && new URL(req.url).searchParams.get("debug") === "1") {
+    if (caller === "cron" && params.get("debug") === "1") {
       const shops = await printify("/shops.json");
       payload.debug = {
         configured_shop_id: printifyShopId,

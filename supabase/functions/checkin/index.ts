@@ -35,13 +35,40 @@ async function rest(path: string, init: RequestInit = {}) {
   return data;
 }
 
+// US numbers only, returned as +1XXXXXXXXXX. The result is built from digits alone,
+// so nothing the visitor typed can reach a database filter.
 function normalizePhone(value: string) {
-  const trimmed = (value || "").trim();
-  if (trimmed.startsWith("+")) return trimmed;
-  const digits = trimmed.replace(/\D/g, "");
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
-  return "";
+  const digits = String(value || "").replace(/\D/g, "");
+  const ten = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  return /^[2-9]\d{2}[2-9]\d{6}$/.test(ten) ? `+1${ten}` : "";
+}
+
+function clientIp(req: Request) {
+  const cf = req.headers.get("cf-connecting-ip");
+  if (cf) return cf.trim();
+  const real = req.headers.get("x-real-ip");
+  if (real) return real.trim();
+  return (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "unknown";
+}
+
+// Fails open: check-in at the counter must keep working if the limiter is unreachable.
+async function underLimit(bucket: string, windowSeconds: number, max: number) {
+  try {
+    const r = await fetch(`${supabaseUrl}/rest/v1/rpc/clicktide_rate_limit_hit`, {
+      method: "POST",
+      headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_bucket: bucket, p_window_seconds: windowSeconds, p_max: max }),
+    });
+    if (!r.ok) return true;
+    return (await r.json()) === true;
+  } catch {
+    return true;
+  }
+}
+
+// The page inserts first_name into HTML, so only plain characters go back.
+function safeFirstName(name: string) {
+  return String(name || "").trim().split(/\s+/)[0].replace(/[<>&"'`\\]/g, "").slice(0, 40);
 }
 
 // Obviously-fake / placeholder numbers that must never identify a customer
@@ -64,9 +91,23 @@ async function businessInfo(userId: string) {
   );
   if (!Array.isArray(rows) || !rows[0]) return null;
   return {
-    name: String(rows[0].business_name || "this business"),
+    // Owner-editable and shown on public pages that use innerHTML: never let it form a tag.
+    name: String(rows[0].business_name || "this business").replace(/[<>]/g, ""),
     whiteLabel: String(rows[0].plan || "").toLowerCase() === "scale",
   };
+}
+
+// Retention engine visit history: a counted check-in is a visit (same-day check-ins
+// merge into one). Never blocks the check-in itself.
+async function recordCheckinVisit(userId: string, customerId: unknown, at: string) {
+  try {
+    await rest("/rest/v1/rpc/clicktide_record_visit", {
+      method: "POST",
+      body: JSON.stringify({ p_user: userId, p_customer: Number(customerId), p_at: at, p_amount: 0, p_source: "checkin", p_txn_id: null }),
+    });
+  } catch (e) {
+    console.error("record_visit (checkin) failed", e);
+  }
 }
 
 Deno.serve(async (req) => {
@@ -75,9 +116,12 @@ Deno.serve(async (req) => {
 
   const url = new URL(req.url);
 
+  const ip = clientIp(req);
+
   if (req.method === "GET") {
     const b = url.searchParams.get("b") || "";
     if (!UUID.test(b)) return json({ error: "Invalid link" }, 400);
+    if (!(await underLimit(`checkin:get:ip:${ip}`, 3600, 120))) return json({ error: "Too many requests — please try again shortly." }, 429);
     const info = await businessInfo(b);
     if (!info) return json({ error: "Business not found" }, 404);
     return json({ business_name: info.name, white_label: info.whiteLabel });
@@ -85,7 +129,7 @@ Deno.serve(async (req) => {
 
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
-  let body: { b?: string; name?: string; phone?: string; consent?: boolean };
+  let body: { b?: string; name?: string; phone?: string; consent?: boolean; consent_marketing?: boolean; consent_transactional?: boolean };
   try {
     body = await req.json();
   } catch {
@@ -94,19 +138,31 @@ Deno.serve(async (req) => {
 
   const b = String(body.b || "");
   if (!UUID.test(b)) return json({ error: "Invalid link" }, 400);
+  // One visitor can't flood a business's list; one business can't be flooded by many.
+  if (!(await underLimit(`checkin:post:ip:${ip}`, 3600, 30)) || !(await underLimit(`checkin:post:biz:${b}`, 3600, 400))) {
+    return json({ error: "Too many check-ins right now — please try again shortly." }, 429);
+  }
   const info = await businessInfo(b);
   if (!info) return json({ error: "Business not found" }, 404);
   const bizName = info.name;
 
   const phone = normalizePhone(String(body.phone || ""));
   if (!phone || isJunkPhone(phone)) return json({ error: "Please enter a valid phone number" }, 400);
-  const name = String(body.name || "").trim().slice(0, 80);
-  const consent = body.consent === true;
-  const digits = phone.replace(/\D/g, "").slice(-10);
+  // Names typed on this public page end up in the owner's dashboard; angle brackets
+  // are never part of a real name and would only carry HTML.
+  const name = String(body.name || "").replace(/[<>]/g, "").trim().slice(0, 80);
+  // Marketing texts need the marketing box. Older pages only send `consent`.
+  const marketing = typeof body.consent_marketing === "boolean" ? body.consent_marketing : body.consent === true;
+  const service = body.consent_transactional === true;
+  const digits = phone.slice(-10); // exactly 10 digits, validated above
+  // Only echo back what the visitor typed — never the stored name, so a phone
+  // number can't be used to look up who a business's customers are.
+  const firstName = safeFirstName(name);
+  const now = new Date().toISOString();
 
   try {
     const rows = await rest(
-      `/rest/v1/customers?user_id=eq.${encodeURIComponent(b)}&or=(phone.eq.${encodeURIComponent(phone)},phone.like.*${digits})&select=id,name,visits,last_visit_at,sms_consent&limit=1`,
+      `/rest/v1/customers?user_id=eq.${b}&or=(phone.eq.%2B1${digits},phone.like.*${digits})&select=id,visits,last_visit_at,sms_consent,sms_service_consent&limit=1`,
     );
     const existing = Array.isArray(rows) ? rows[0] : null;
 
@@ -114,28 +170,33 @@ Deno.serve(async (req) => {
       // Double-scan guard: one visit per 2 hours.
       const last = existing.last_visit_at ? Date.parse(existing.last_visit_at) : 0;
       if (last && Date.now() - last < 2 * 60 * 60 * 1000) {
-        return json({ ok: true, already: true, first_name: String(existing.name || "there").split(/\s+/)[0], business_name: bizName });
+        return json({ ok: true, already: true, first_name: firstName, business_name: bizName });
       }
       const fields: Record<string, unknown> = {
         visits: (Number(existing.visits) || 0) + 1,
-        last_visit_at: new Date().toISOString(),
+        last_visit_at: now,
       };
-      if (consent && !existing.sms_consent) {
+      if (marketing && !existing.sms_consent) {
         fields.sms_consent = true;
-        fields.sms_consent_at = new Date().toISOString();
+        fields.sms_consent_at = now;
       }
-      await rest(`/rest/v1/customers?id=eq.${existing.id}`, {
+      if (service && !existing.sms_service_consent) {
+        fields.sms_service_consent = true;
+        fields.sms_service_consent_at = now;
+      }
+      await rest(`/rest/v1/customers?id=eq.${encodeURIComponent(String(existing.id))}`, {
         method: "PATCH",
         headers: { Prefer: "return=minimal" },
         body: JSON.stringify(fields),
       });
-      return json({ ok: true, first_name: String(existing.name || "there").split(/\s+/)[0], business_name: bizName });
+      await recordCheckinVisit(b, existing.id, now);
+      return json({ ok: true, first_name: firstName, business_name: bizName });
     }
 
     if (!name) return json({ error: "first_visit_needs_name" }, 422);
-    await rest("/rest/v1/customers", {
+    const created = await rest("/rest/v1/customers?select=id", {
       method: "POST",
-      headers: { Prefer: "return=minimal" },
+      headers: { Prefer: "return=representation" },
       body: JSON.stringify({
         user_id: b,
         name,
@@ -143,12 +204,16 @@ Deno.serve(async (req) => {
         visits: 1,
         total_spent: 0,
         status: "active",
-        last_visit_at: new Date().toISOString(),
-        sms_consent: consent,
-        sms_consent_at: consent ? new Date().toISOString() : null,
+        last_visit_at: now,
+        sms_consent: marketing,
+        sms_consent_at: marketing ? now : null,
+        sms_service_consent: service,
+        sms_service_consent_at: service ? now : null,
       }),
     });
-    return json({ ok: true, created: true, first_name: name.split(/\s+/)[0], business_name: bizName });
+    const newId = Array.isArray(created) ? created[0]?.id : null;
+    if (newId) await recordCheckinVisit(b, newId, now);
+    return json({ ok: true, created: true, first_name: firstName, business_name: bizName });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes("PLAN_CUSTOMER_LIMIT_REACHED")) {

@@ -4,6 +4,13 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Same allowance and price as campaign-runner — change both together.
+const PLAN_SMS_LIMITS: Record<string, number> = { local: 0, growth: 1500, scale: 5000 };
+const SMS_OVERAGE_PRICE = 0.05;
+const MAX_SEGMENTS = 6; // Twilio bills every segment; overage is charged per text
+const MANUAL_PER_BUSINESS_PER_DAY = 200;
+const MANUAL_PER_CUSTOMER_PER_DAY = 10;
+
 type SmsBody = {
   message?: string;
   customer_id?: string;
@@ -130,6 +137,55 @@ function smsWindowOpen(state?: string, at: Date = new Date()): boolean {
   }
 }
 
+// GSM-7 texts take 160 characters (153 per part once split); one character outside the
+// GSM set turns the whole text into UCS-2: 70 UTF-16 units, 67 per part.
+const GSM7 = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
+const GSM7_EXT = "^{}\\[~]|€\f";
+function smsSegments(text: string) {
+  let units = 0;
+  for (const ch of text) {
+    if (GSM7.includes(ch)) units += 1;
+    else if (GSM7_EXT.includes(ch)) units += 2;
+    else return text.length <= 70 ? 1 : Math.ceil(text.length / 67);
+  }
+  return units <= 160 ? 1 : Math.ceil(units / 153);
+}
+
+function fetchT(url: string, init: RequestInit = {}, ms = 15000): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...init, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
+
+// The shared limiter (as in checkin), but failing CLOSED: every text costs money.
+// "unavailable" (the limiter itself can't answer) is told apart from a real refusal.
+async function underLimit(supabaseUrl: string, serviceRoleKey: string, bucket: string, windowSeconds: number, max: number): Promise<"ok" | "limited" | "unavailable"> {
+  try {
+    const r = await fetchT(`${supabaseUrl}/rest/v1/rpc/clicktide_rate_limit_hit`, {
+      method: "POST",
+      headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_bucket: bucket, p_window_seconds: windowSeconds, p_max: max }),
+    });
+    if (!r.ok) return "unavailable";
+    const v = await r.json();
+    return v === true ? "ok" : v === false ? "limited" : "unavailable";
+  } catch {
+    return "unavailable";
+  }
+}
+
+// The ledger's atomic entry point (contract C1): locks the wallet, refuses an overdraft.
+async function walletApply(supabaseUrl: string, serviceRoleKey: string, userId: string, delta: number, kind: string, description: string, key: string) {
+  const data = await supabaseRest(supabaseUrl, serviceRoleKey, "/rest/v1/rpc/clicktide_wallet_apply", {
+    method: "POST",
+    body: JSON.stringify({
+      p_user: userId, p_delta: delta, p_kind: kind, p_description: description,
+      p_reference: "manual", p_idempotency_key: key,
+    }),
+  });
+  return (data && typeof data === "object" ? data : {}) as { ok?: boolean; duplicate?: boolean; reason?: string };
+}
+
 async function getUser(supabaseUrl: string, serviceRoleKey: string, authHeader: string) {
   const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
     headers: {
@@ -237,7 +293,7 @@ Deno.serve(async (req) => {
     const bizRows = await supabaseRest(
       supabaseUrl,
       serviceRoleKey,
-      `/rest/v1/clicktide?user_id=eq.${encodeURIComponent(user.id)}&select=plan,stripe_subscription_status,state&limit=1`,
+      `/rest/v1/clicktide?user_id=eq.${encodeURIComponent(user.id)}&select=plan,stripe_subscription_status,state&order=id.asc&limit=1`,
     ) as Array<{ plan?: string; stripe_subscription_status?: string; state?: string }>;
     const biz = Array.isArray(bizRows) ? bizRows[0] : null;
     if (!["active", "trialing"].includes(String(biz?.stripe_subscription_status || "").toLowerCase())) {
@@ -263,20 +319,90 @@ Deno.serve(async (req) => {
     }
 
     const message = body.message.trim().slice(0, 1500);
+    const segments = smsSegments(message);
+    if (segments > MAX_SEGMENTS) {
+      return json({
+        error: `That text would go out as ${segments} message parts; keep it to ${MAX_SEGMENTS} or fewer (about ${MAX_SEGMENTS * 153} plain characters, or ${MAX_SEGMENTS * 67} with emoji).`,
+        code: "message_too_long",
+      }, 400);
+    }
+
+    let limit = await underLimit(supabaseUrl, serviceRoleKey, `sms:manual:biz:${user.id}`, 86400, MANUAL_PER_BUSINESS_PER_DAY);
+    if (limit === "ok") limit = await underLimit(supabaseUrl, serviceRoleKey, `sms:manual:cust:${customer.id}`, 86400, MANUAL_PER_CUSTOMER_PER_DAY);
+    if (limit === "unavailable") {
+      return json({ error: "Texting is briefly unavailable. Please try again in a few minutes.", code: "rate_limit_unavailable" }, 503);
+    }
+    if (limit === "limited") {
+      return json({ error: "Today's texting limit is reached. Try again tomorrow.", code: "rate_limited" }, 429);
+    }
+
+    // The plan's monthly allowance, counted on the server; past it, each text is paid for
+    // from the wallet BEFORE it is sent. Any doubt (counter or ledger unreachable): no text.
+    const allowance = PLAN_SMS_LIMITS[String(biz?.plan || "").toLowerCase()] ?? 0;
+    let used = 0;
+    try {
+      used = Number(await supabaseRest(supabaseUrl, serviceRoleKey, "/rest/v1/rpc/clicktide_sms_usage", {
+        method: "POST",
+        body: JSON.stringify({ p_user: user.id }),
+      })) || 0;
+    } catch {
+      return json({ error: "Texting is briefly unavailable. Please try again in a few minutes.", code: "usage_unavailable" }, 503);
+    }
+    let overageKey = "";
+    if (used >= allowance) {
+      overageKey = `manual:${customer.id}:sms:${crypto.randomUUID()}`;
+      const charge = () => walletApply(supabaseUrl, serviceRoleKey, user.id, -SMS_OVERAGE_PRICE, "sms_overage", "SMS overage (plan limit reached)", overageKey);
+      let debit;
+      try {
+        // A charge that timed out may have committed: the same key again returns
+        // duplicate:true (already paid) instead of charging twice.
+        debit = await charge().catch(() => charge());
+      } catch {
+        return json({ error: "Texting is briefly unavailable. Please try again in a few minutes.", code: "wallet_unavailable" }, 503);
+      }
+      if (!debit.ok) {
+        return json({
+          error: `This month's included texts are used up. Add funds to your wallet to keep texting ($${SMS_OVERAGE_PRICE.toFixed(2)} per text).`,
+          code: "sms_budget",
+        }, 402);
+      }
+    }
+    const refundOverage = async () => {
+      if (!overageKey) return;
+      const refund = () => walletApply(supabaseUrl, serviceRoleKey, user.id, SMS_OVERAGE_PRICE, "sms_overage_refund", "Refund: SMS overage (text not sent)", `${overageKey}:refund`);
+      await refund().catch(() => refund())
+        .catch(() => globalThis.console?.error(`sms overage refund failed for ${overageKey}`));
+    };
+
     const form = new URLSearchParams({
       To: toPhone,
       MessagingServiceSid: messagingServiceSid,
       Body: message,
     });
 
-    const twilioResponse = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${btoa(`${accountSid}:${authToken}`)}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: form,
-    });
+    let twilioResponse;
+    try {
+      twilioResponse = await fetchT(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${btoa(`${accountSid}:${authToken}`)}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: form,
+      });
+    } catch (e) {
+      // No answer from Twilio: it may still have sent the text, so the charge stands
+      // (no refund) and the owner is told to check before sending again.
+      const why = e instanceof Error && e.name === "AbortError" ? "timeout" : "network error";
+      await recordSms(supabaseUrl, serviceRoleKey, {
+        user_id: user.id, campaign_id: null, customer_id: customer.id, to_phone: toPhone, body: message,
+        status: "failed", provider: "twilio", error: `Twilio request failed (${why}); delivery unknown`,
+      }).catch(() => {});
+      return json({
+        error: "We couldn't confirm whether the text went out. Check the conversation before sending it again.",
+        code: "twilio_unconfirmed",
+      }, 502);
+    }
 
     const twilioData = await twilioResponse.json().catch(() => ({}));
     const logFields = {
@@ -296,6 +422,7 @@ Deno.serve(async (req) => {
     const logged = await recordSms(supabaseUrl, serviceRoleKey, logFields).then(() => true).catch(() => false);
 
     if (!twilioResponse.ok) {
+      await refundOverage();
       return json({ error: twilioData.message || "Twilio SMS failed", details: twilioData }, twilioResponse.status);
     }
 

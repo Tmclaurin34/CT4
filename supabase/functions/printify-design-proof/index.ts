@@ -2,6 +2,11 @@
 // product at a chosen x/y/scale/angle; we create (or update) one branded product
 // per business+product and return the REAL Printify mockup. JWT-gated.
 //
+// Only a product this business owns is ever updated: it must carry the business's
+// ownership tag (or be an untagged legacy proof that only this business references),
+// and it must never be a shared gift_catalog product. Anything else gets a fresh
+// product instead.
+//
 // POST { target_key, x, y, scale, angle, image_base64? | logo_url? }
 //   -> { ok, mockup_url, product_id, target_key }
 
@@ -9,6 +14,13 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxy
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const printifyToken = Deno.env.get("PRINTIFY_API_TOKEN") ?? "";
 const printifyShopId = Deno.env.get("PRINTIFY_SHOP_ID") ?? "";
+
+const PROOF_TAG = "ct-proof";
+const CATALOG_TAG = "ct-catalog";
+const OWNER_TAG_PREFIX = "ct-user-";
+const MAX_IMAGE_BASE64 = 10_000_000;
+const PROOFS_PER_USER_PER_HOUR = 30;
+const PRODUCT_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -26,13 +38,28 @@ const clamp = (v: unknown, lo: number, hi: number, dflt: number) => {
   return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : dflt;
 };
 
+class PrintifyError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+function parseJson(text: string) {
+  try {
+    return text ? JSON.parse(text) : null;
+  } catch {
+    return null;
+  }
+}
+
 async function rest(path: string, init: RequestInit = {}) {
   const r = await fetch(`${supabaseUrl}${path}`, {
     ...init,
     headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, "Content-Type": "application/json", ...(init.headers || {}) },
   });
-  const t = await r.text();
-  const data = t ? JSON.parse(t) : null;
+  const data = parseJson(await r.text());
   if (!r.ok) throw new Error(data?.message || data?.error || r.statusText);
   return data;
 }
@@ -46,15 +73,73 @@ async function authedUserId(req: Request): Promise<string> {
   return String(user?.id || "");
 }
 
+// Fails open: a proof costs no money, and Brand Studio must keep working if the limiter is down.
+async function underLimit(bucket: string, windowSeconds: number, max: number) {
+  try {
+    const r = await fetch(`${supabaseUrl}/rest/v1/rpc/clicktide_rate_limit_hit`, {
+      method: "POST",
+      headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_bucket: bucket, p_window_seconds: windowSeconds, p_max: max }),
+    });
+    if (!r.ok) return true;
+    return (await r.json()) === true;
+  } catch {
+    return true;
+  }
+}
+
 async function printify(path: string, init: RequestInit = {}) {
   const r = await fetch(`https://api.printify.com/v1${path}`, {
     ...init,
     headers: { Authorization: `Bearer ${printifyToken}`, "Content-Type": "application/json", ...(init.headers || {}) },
   });
-  const text = await r.text();
-  const data = text ? JSON.parse(text) : null;
-  if (!r.ok) throw new Error(`${path}: ${data?.errors?.reason || data?.message || data?.error || r.statusText}`);
+  const data = parseJson(await r.text());
+  if (!r.ok) throw new PrintifyError(`${path}: ${data?.errors?.reason || data?.message || data?.error || r.statusText}`, r.status);
   return data;
+}
+
+// A logo_url is only handed to Printify when it is the public logos bucket or a fixed
+// goclicktide.com asset (the site has no user content today, but an open path would let
+// any future page or redirect there become a print file).
+const SITE_LOGO_PATHS = new Set(["/clicktide-logo-transparent.png"]);
+function allowedLogoUrl(raw: unknown) {
+  try {
+    const url = new URL(String(raw || ""));
+    if (url.protocol !== "https:" || url.username || url.password) return "";
+    if (url.host === new URL(supabaseUrl).host && url.pathname.startsWith("/storage/v1/object/public/logos/")) return url.href;
+    if ((url.host === "goclicktide.com" || url.host === "www.goclicktide.com") && !url.search && SITE_LOGO_PATHS.has(url.pathname)) return url.href;
+  } catch {
+    // not a URL
+  }
+  return "";
+}
+
+// Returns existingId when this business may update that Printify product, else null
+// (the caller then creates a new product for the business).
+async function ownedProductId(userId: string, existingId: unknown): Promise<string | null> {
+  const id = String(existingId || "");
+  if (!PRODUCT_ID_RE.test(id)) return null;
+  const [inCatalog, otherOwners] = await Promise.all([
+    rest(`/rest/v1/gift_catalog?printify_product_id=eq.${encodeURIComponent(id)}&select=id&limit=1`),
+    rest(`/rest/v1/brand_products?printify_product_id=eq.${encodeURIComponent(id)}&user_id=neq.${encodeURIComponent(userId)}&select=user_id&limit=1`),
+  ]);
+  if ((Array.isArray(inCatalog) && inCatalog.length) || (Array.isArray(otherOwners) && otherOwners.length)) {
+    console.warn(`printify-design-proof: business ${userId} referenced product ${id}, which it does not own; creating a new proof instead`);
+    return null;
+  }
+  let product: { tags?: unknown };
+  try {
+    product = await printify(`/shops/${printifyShopId}/products/${encodeURIComponent(id)}.json`);
+  } catch (e) {
+    if (e instanceof PrintifyError && e.status === 404) return null; // deleted in Printify: start over
+    throw e;
+  }
+  const rawTags = product?.tags;
+  const tags = Array.isArray(rawTags) ? rawTags.map((t) => String(t)) : [];
+  if (tags.includes(CATALOG_TAG)) return null;
+  const owners = tags.filter((t) => t.startsWith(OWNER_TAG_PREFIX));
+  if (owners.length && !owners.includes(`${OWNER_TAG_PREFIX}${userId}`)) return null;
+  return id;
 }
 
 type Target = { title: string; desc: string; match: RegExp; avoid?: RegExp; prefer?: RegExp; price: number };
@@ -87,10 +172,23 @@ Deno.serve(async (req) => {
 
   let body: { target_key?: string; x?: number; y?: number; scale?: number; angle?: number; image_base64?: string; logo_url?: string };
   try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+  if (!body || typeof body !== "object") return json({ error: "Invalid JSON" }, 400);
 
-  const target = body.target_key ? TARGETS[body.target_key] : null;
+  const targetKey = typeof body.target_key === "string" && Object.prototype.hasOwnProperty.call(TARGETS, body.target_key)
+    ? body.target_key
+    : "";
+  const target = targetKey ? TARGETS[targetKey] : null;
   if (!target) return json({ error: "Unknown product" }, 400);
-  if (!body.image_base64 && !body.logo_url) return json({ error: "A logo (image_base64 or logo_url) is required" }, 400);
+
+  const imageBase64 = typeof body.image_base64 === "string" ? body.image_base64.trim() : "";
+  const logoUrl = imageBase64 ? "" : allowedLogoUrl(body.logo_url);
+  if (!imageBase64 && !body.logo_url) return json({ error: "A logo (image_base64 or logo_url) is required" }, 400);
+  if (imageBase64.length > MAX_IMAGE_BASE64) return json({ error: "That logo file is too large. Try a smaller PNG or JPG." }, 413);
+  if (!imageBase64 && !logoUrl) return json({ error: "Upload your logo in Brand Studio first, then try again." }, 400);
+
+  if (!(await underLimit(`proof:user:${userId}`, 3600, PROOFS_PER_USER_PER_HOUR))) {
+    return json({ error: "Too many previews right now — please wait a few minutes and try again." }, 429);
+  }
 
   const x = clamp(body.x, 0, 1, 0.5);
   const y = clamp(body.y, 0, 1, 0.5);
@@ -102,9 +200,9 @@ Deno.serve(async (req) => {
     const upload = await printify("/uploads/images.json", {
       method: "POST",
       body: JSON.stringify(
-        body.image_base64
-          ? { file_name: "logo.png", contents: body.image_base64 }
-          : { file_name: "logo.png", url: body.logo_url },
+        imageBase64
+          ? { file_name: "logo.png", contents: imageBase64 }
+          : { file_name: "logo.png", url: logoUrl },
       ),
     });
     const imageId = upload.id;
@@ -130,6 +228,7 @@ Deno.serve(async (req) => {
     const payload = {
       title: target.title,
       description: target.desc,
+      tags: [PROOF_TAG, `${OWNER_TAG_PREFIX}${userId}`],
       blueprint_id: blueprint.id,
       print_provider_id: provider.id,
       variants: variants.map((v) => ({ id: v.id, price: target.price, is_enabled: enabledIds.includes(v.id) })),
@@ -139,16 +238,20 @@ Deno.serve(async (req) => {
       }],
     };
 
-    // 3. Reuse one product per business+product: update if it exists, else create.
+    // 3. Reuse this business's own product for this target: update it if it is
+    //    provably theirs, else create a new one.
     const existingRows = await rest(
-      `/rest/v1/brand_products?user_id=eq.${encodeURIComponent(userId)}&target_key=eq.${encodeURIComponent(body.target_key!)}&select=printify_product_id&limit=1`,
+      `/rest/v1/brand_products?user_id=eq.${encodeURIComponent(userId)}&target_key=eq.${encodeURIComponent(targetKey)}&select=printify_product_id&limit=1`,
     );
-    const existingId = Array.isArray(existingRows) && existingRows[0] ? existingRows[0].printify_product_id : null;
+    const existingId = await ownedProductId(
+      userId,
+      Array.isArray(existingRows) && existingRows[0] ? existingRows[0].printify_product_id : null,
+    );
 
     let productId: string;
     if (existingId) {
-      await printify(`/shops/${printifyShopId}/products/${existingId}.json`, { method: "PUT", body: JSON.stringify(payload) });
-      productId = String(existingId);
+      await printify(`/shops/${printifyShopId}/products/${encodeURIComponent(existingId)}.json`, { method: "PUT", body: JSON.stringify(payload) });
+      productId = existingId;
     } else {
       const product = await printify(`/shops/${printifyShopId}/products.json`, { method: "POST", body: JSON.stringify(payload) });
       productId = String(product.id);
@@ -157,7 +260,7 @@ Deno.serve(async (req) => {
     // 4. Printify renders mockups async — poll the product a few times for them.
     let mockupUrl = "";
     for (let i = 0; i < 5; i++) {
-      const p = await printify(`/shops/${printifyShopId}/products/${productId}.json`) as { images?: Array<{ src?: string; is_default?: boolean; position?: string }> };
+      const p = await printify(`/shops/${printifyShopId}/products/${encodeURIComponent(productId)}.json`) as { images?: Array<{ src?: string; is_default?: boolean; position?: string }> };
       mockupUrl = pickMockup(p.images || []);
       if (mockupUrl) break;
       await sleep(1500);
@@ -167,11 +270,12 @@ Deno.serve(async (req) => {
     await rest("/rest/v1/brand_products", {
       method: "POST",
       headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-      body: JSON.stringify({ user_id: userId, target_key: body.target_key, printify_product_id: productId, x, y, scale, angle, mockup_url: mockupUrl, updated_at: new Date().toISOString() }),
+      body: JSON.stringify({ user_id: userId, target_key: targetKey, printify_product_id: productId, x, y, scale, angle, mockup_url: mockupUrl, updated_at: new Date().toISOString() }),
     });
 
-    return json({ ok: true, mockup_url: mockupUrl, product_id: productId, target_key: body.target_key, generating: !mockupUrl });
+    return json({ ok: true, mockup_url: mockupUrl, product_id: productId, target_key: targetKey, generating: !mockupUrl });
   } catch (e) {
+    console.error("printify-design-proof error:", e);
     return json({ error: e instanceof Error ? e.message : "Proof generation failed" }, 500);
   }
 });

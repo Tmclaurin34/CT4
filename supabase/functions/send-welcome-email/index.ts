@@ -1,6 +1,9 @@
 // Welcome + onboarding email for newly activated businesses (Square-style layout).
-// Idempotent (clicktide.welcome_email_sent). Called by the app right after
-// email confirmation; the cron key + user_id path exists for admin testing.
+// Idempotent (clicktide.welcome_email_sent, claimed atomically before sending). Called
+// by the app right after email confirmation; the cron key + user_id path exists for
+// admin testing. Always goes to the owner's login email (clicktide.email, which the
+// browser can't change). welcome_email_sent itself is browser-writable, so a per-user
+// daily cap stops an account from re-arming it to burn the shared Resend quota.
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -34,6 +37,21 @@ async function expectedCronKey() {
     return String(await rest("/rest/v1/rpc/clicktide_internal_key", { method: "POST", body: "{}" }) || "");
   } catch {
     return "";
+  }
+}
+
+// Fails closed: a pass sends an email.
+async function underLimit(bucket: string, windowSeconds: number, max: number) {
+  try {
+    const r = await fetch(`${supabaseUrl}/rest/v1/rpc/clicktide_rate_limit_hit`, {
+      method: "POST",
+      headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_bucket: bucket, p_window_seconds: windowSeconds, p_max: max }),
+    });
+    if (!r.ok) return false;
+    return (await r.json()) === true;
+  } catch {
+    return false;
   }
 }
 
@@ -114,24 +132,42 @@ Deno.serve(async (req) => {
     if (biz.welcome_email_sent) return json({ ok: true, already: true });
     if (!biz.email) return json({ error: "No email on the profile" }, 400);
 
-    const r = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: resendFrom,
-        to: [biz.email],
-        subject: `Welcome to Clicktide — ${String(biz.business_name || "your business")}'s customers are about to start coming back`,
-        html: welcomeHtml(String(biz.contact_name || ""), String(biz.business_name || "")),
-      }),
-    });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(data?.message || "Resend failed");
+    if (!(await underLimit(`welcome:${userId}`, 86400, 3))) {
+      return json({ error: "Too many welcome emails for this account today." }, 429);
+    }
+    // Claim the send first: two calls at once (signup page + login) can't both send.
+    const claimed = await rest(
+      `/rest/v1/clicktide?user_id=eq.${encodeURIComponent(userId)}&welcome_email_sent=not.is.true`,
+      { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ welcome_email_sent: true }) },
+    );
+    if (!Array.isArray(claimed) || !claimed.length) return json({ ok: true, already: true });
 
-    await rest(`/rest/v1/clicktide?user_id=eq.${encodeURIComponent(userId)}`, {
-      method: "PATCH",
-      headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({ welcome_email_sent: true }),
-    });
+    let r: Response | null = null;
+    let data: { id?: string; message?: string } = {};
+    try {
+      r = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: resendFrom,
+          to: [biz.email],
+          subject: `Welcome to Clicktide — ${String(biz.business_name || "your business").replace(/\s+/g, " ").trim()}'s customers are about to start coming back`,
+          html: welcomeHtml(String(biz.contact_name || ""), String(biz.business_name || "")),
+        }),
+      });
+      data = await r.json().catch(() => ({}));
+    } catch (e) {
+      data = { message: e instanceof Error ? e.message : String(e) };
+    }
+    if (!r?.ok) {
+      // Release the claim so the next login can try again.
+      await rest(`/rest/v1/clicktide?user_id=eq.${encodeURIComponent(userId)}`, {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ welcome_email_sent: false }),
+      }).catch(() => {});
+      throw new Error(data?.message || "Resend failed");
+    }
     return json({ ok: true, email_id: data.id || null });
   } catch (e) {
     console.error("welcome email error:", e);

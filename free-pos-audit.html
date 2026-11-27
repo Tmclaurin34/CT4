@@ -1,0 +1,1234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Free POS Audit — How Much Revenue Are You Losing to Customers Who Never Come Back? | Clicktide</title>
+<meta name="description" content="Connect your POS and get a free customer retention report: who's drifting away based on their own visit rhythm, what they've historically spent, and how to bring them back. No credit card required."/>
+<link rel="canonical" href="https://goclicktide.com/free-pos-audit"/>
+<link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+<link rel="apple-touch-icon" href="apple-touch-icon.png"/>
+<meta name="theme-color" content="#EAF3FC"/>
+<meta property="og:type" content="website"/>
+<meta property="og:url" content="https://goclicktide.com/free-pos-audit"/>
+<meta property="og:title" content="Free POS Audit: find the customers who stopped coming back"/>
+<meta property="og:description" content="Connect your POS. Get a free retention report in minutes. No credit card required."/>
+<meta property="og:image" content="https://goclicktide.com/og-image.png"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Is the POS audit really free?","acceptedAnswer":{"@type":"Answer","text":"Yes. The audit and report are free and need no credit card. You only pay if you choose a Clicktide plan afterwards."}},
+{"@type":"Question","name":"Can Clicktide move money or change anything in my POS?","acceptedAnswer":{"@type":"Answer","text":"No. Clicktide only reads order history and customer contact records. It never takes payments, issues refunds, changes prices or products, or edits anything in your POS."}},
+{"@type":"Question","name":"Will Clicktide message my customers during the audit?","acceptedAnswer":{"@type":"Answer","text":"No. The free audit never sends texts, emails, postcards or gifts. Campaigns only run after you subscribe and turn them on, and texts only go to customers who have opted in."}},
+{"@type": "Question", "name": "How does Clicktide decide a customer is drifting?", "acceptedAnswer": {"@type": "Answer", "text": "Clicktide looks at the gaps between each customer's own past visits and takes the typical one (the median), ignoring one-off long breaks like a holiday. A customer is marked drifting once they're past that usual gap — sooner for steady regulars, later for customers whose visits are naturally irregular — and at risk when they're far past it. Customers with only one visit don't have a personal rhythm yet, so they're compared with your business's typical gap and labelled as estimates. It's the same engine Clicktide's dashboard and win-back campaigns use."}},
+{"@type":"Question","name":"How do I disconnect?","acceptedAnswer":{"@type":"Answer","text":"From the report page, click Disconnect and delete my data, or revoke Clicktide from your POS's own app settings. Access ends immediately."}}
+]}
+</script>
+<style>
+:root{--ink:#0F1115;--ink2:#3A3E46;--mut:#5A5E66;--mut2:#8A8E96;--line:rgba(16,18,21,.09);--card:#FFFFFF;--blue:#2776C4;--blue2:#4DA6FF;--sky:#EAF3FC;--green:#17A35A;--greenbg:#E9F7EF;--red:#C8323C;--redbg:#FDECEE;--r:18px}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{background:#FBFCFE}
+body{min-height:100vh}
+body{font-family:'DM Sans',Inter,system-ui,sans-serif;color:var(--ink);background:linear-gradient(180deg,#E3EFFB 0%,#F4F8FC 520px,#FBFCFE 100%);-webkit-font-smoothing:antialiased;line-height:1.55}
+a{color:var(--blue)}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+.narrow{max-width:720px;margin:0 auto}
+h1,h2,h3{font-family:'Inter Tight',Inter,sans-serif;font-weight:600;letter-spacing:-.02em;margin:0;color:#101215}
+h1{font-size:clamp(34px,6vw,60px);line-height:.95;font-weight:600}
+h2{font-size:clamp(24px,3.6vw,34px);line-height:1.3;font-weight:600;letter-spacing:-.01em}
+h3{font-size:17px;font-weight:600}
+p{margin:0}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:16px 0}
+.logo{display:flex;align-items:center;gap:9px;text-decoration:none}
+.logo-text{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.logo-text .w{color:#0F1115}.logo-text .b{color:#4DA6FF}
+.logo svg{display:block}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:999px;padding:15px 26px;font:600 15px 'DM Sans',Inter,sans-serif;cursor:pointer;text-decoration:none;transition:transform .12s,box-shadow .12s,background .12s;min-height:48px}
+.btn:focus-visible,.pos:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--blue2);outline-offset:2px}
+.btn-dark{background:var(--ink);color:#fff;box-shadow:0 8px 24px rgba(15,17,21,.18)}
+.btn-dark:hover{transform:translateY(-1px);box-shadow:0 12px 28px rgba(15,17,21,.22)}
+.btn-ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn-sm{padding:10px 16px;min-height:40px;font-size:13.5px}
+.btn[disabled]{opacity:.55;cursor:not-allowed;transform:none}
+.pill{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.75);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:12.5px;font-weight:600;color:var(--ink2)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(23,163,90,.18)}
+.hero{text-align:center;padding-top:44px;padding-bottom:34px}
+.hero .sub{font-size:clamp(16px,2.2vw,19px);color:var(--mut);max-width:640px;margin:18px auto 26px}
+.reassure{display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:center;margin-top:16px;font-size:13px;color:var(--mut);font-weight:500}
+.reassure span{display:inline-flex;align-items:center;gap:6px}
+.ck{color:var(--green);font-weight:800}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 10px 30px rgba(16,18,21,.05)}
+section.blk{padding:56px 0}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);margin-bottom:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:860px){.grid4{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr}}
+@media(max-width:700px){.grid3{grid-template-columns:1fr}}
+@media(max-width:560px){.grid3,.grid2,.grid4{grid-template-columns:1fr}}
+.feat{padding:22px}
+.feat p{color:var(--mut);font-size:14.5px;margin-top:6px}
+.ico{width:38px;height:38px;border-radius:11px;background:var(--sky);display:flex;align-items:center;justify-content:center;margin-bottom:12px;color:var(--blue)}
+.steps{counter-reset:s;display:grid;gap:12px}
+.step{display:flex;gap:14px;align-items:flex-start;padding:16px 18px}
+.step b{flex:0 0 30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px}
+.mock{padding:22px;text-align:left}
+.mock .kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.kpi{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}
+.kpi .n{font-family:'Inter Tight',Inter,sans-serif;font-size:26px;font-weight:700;letter-spacing:-.02em}
+.kpi .l{font-size:12.5px;color:var(--mut);margin-top:2px}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--sky);color:var(--blue)}
+.tag.ill{background:#F1F2F4;color:var(--mut)}
+.trust{padding:26px}
+.trust li{margin:0 0 10px;padding-left:4px}
+.trust ul{padding-left:20px;margin:12px 0 0;color:var(--ink2);font-size:14.5px}
+details{border-bottom:1px solid var(--line);padding:16px 0}
+summary{cursor:pointer;font-weight:700;list-style:none;display:flex;justify-content:space-between;gap:10px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-weight:800;color:var(--mut2)}
+details[open] summary::after{content:"\2212"}
+details p{color:var(--mut);margin-top:8px;font-size:14.5px}
+.foot{padding:36px 0 50px;color:var(--mut2);font-size:13px;text-align:center}
+.foot a{color:var(--mut);margin:0 8px}
+/* flow panels */
+.flow{padding-top:28px;padding-bottom:60px}
+.panel{max-width:560px;margin:0 auto;padding:30px}
+.panel h2{font-size:26px}
+.panel .lead{color:var(--mut);margin:8px 0 20px}
+label.fl{display:block;font-size:13px;font-weight:600;margin:0 0 6px;color:var(--ink2)}
+input.fi,select.fi{width:100%;padding:13px 14px;border-radius:12px;border:1px solid rgba(16,18,21,.16);font:15px 'DM Sans',Inter,sans-serif;background:#fff;color:var(--ink)}
+select.fi{appearance:none;-webkit-appearance:none;padding-right:40px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235A5E66' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 16px center;cursor:pointer}
+#csvMap .fg{margin-bottom:10px}
+.fg{margin-bottom:14px}
+.err{background:var(--redbg);color:var(--red);border-radius:10px;padding:10px 12px;font-size:13.5px;margin:0 0 14px;display:none}
+.note{font-size:12.5px;color:var(--mut);margin-top:12px}
+.consent{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;color:var(--mut);margin:6px 0 16px}
+.consent input{margin-top:3px;width:16px;height:16px;flex:0 0 16px}
+.posgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 14px}
+@media(max-width:420px){.posgrid{grid-template-columns:1fr}}
+.pos{display:flex;align-items:center;gap:10px;padding:14px;border:1.5px solid var(--line);border-radius:14px;background:#fff;cursor:pointer;font:600 15px 'DM Sans',Inter,sans-serif;color:var(--ink);text-align:left;min-height:56px}
+.pos:hover{border-color:var(--blue2)}
+.pos .lg{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font:800 13px Inter,sans-serif;flex:0 0 30px}
+.pos small{display:block;font-weight:500;color:var(--mut2);font-size:11.5px}
+.perm{background:#F6F9FD;border:1px solid var(--line);border-radius:14px;padding:16px;font-size:13.5px;color:var(--ink2)}
+.perm ul{margin:8px 0 0;padding-left:18px}
+.perm li{margin-bottom:4px}
+.stage{display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);font-size:15px}
+.stage:last-child{border-bottom:0}
+.sdot{width:24px;height:24px;border-radius:50%;flex:0 0 24px;display:flex;align-items:center;justify-content:center;border:2px solid #D5D9DF;color:#fff;font-size:13px;font-weight:800}
+.stage.done .sdot{background:var(--green);border-color:var(--green)}
+.stage.now .sdot{border-color:var(--blue);border-top-color:transparent;animation:spin .9s linear infinite}
+.stage.fail .sdot{background:var(--red);border-color:var(--red)}
+.stage .det{margin-left:auto;font-size:12.5px;color:var(--mut)}
+.stage.wait{color:var(--mut2)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.stage.now .sdot{animation:none;border-top-color:var(--blue)}}
+/* report */
+.rep{padding-top:24px;padding-bottom:60px}
+.rephead{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:flex-end;margin-bottom:18px}
+.big{padding:20px}
+.big .n{font-family:'Inter Tight',Inter,sans-serif;font-size:clamp(28px,4vw,38px);font-weight:700;letter-spacing:-.03em;line-height:1.05}
+.big .l{font-size:13.5px;color:var(--mut);margin-top:6px}
+.big.alert .n{color:var(--red)}
+.measure{padding:20px}
+.measure .k{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.measure .n{font-family:'Inter Tight',Inter,sans-serif;font-size:30px;font-weight:700;margin:6px 0;letter-spacing:-.02em}
+.measure p{font-size:13.5px;color:var(--mut)}
+.measure.recovered .n{color:var(--green)}
+.bar{height:12px;border-radius:999px;background:#EEF1F5;overflow:hidden;display:flex;margin:10px 0 6px}
+.bar i{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--mut)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend b{width:10px;height:10px;border-radius:3px;display:inline-block}
+.recs li{margin-bottom:10px}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:stretch}
+@media(max-width:860px){.plans{grid-template-columns:1fr;row-gap:22px}.plan.rec{order:-1}}
+.plan{padding:24px;display:flex;flex-direction:column;position:relative;border:1.5px solid var(--line)}
+.plan.rec{border:2px solid var(--ink);box-shadow:0 18px 40px rgba(15,17,21,.12)}
+.plan .badge{position:absolute;top:-12px;left:24px;background:var(--ink);color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px}
+.plan .pr{font-family:'Inter Tight',Inter,sans-serif;font-size:34px;font-weight:700;letter-spacing:-.03em;margin:8px 0 2px}
+.plan .pr small{font-size:14px;font-weight:600;color:var(--mut)}
+.plan ul{padding-left:18px;margin:14px 0 18px;font-size:14px;color:var(--ink2);flex:1}
+.plan li{margin-bottom:6px}
+.muted{color:var(--mut)}
+.small{font-size:13px}
+.hide{display:none!important}
+.sticky-cta{position:fixed;left:12px;right:12px;bottom:12px;z-index:20;display:none}
+@media(max-width:640px){.sticky-cta.on{display:block}}
+h2[tabindex="-1"]:focus,h2[tabindex="-1"]:focus-visible{outline:none}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* hero v2 */
+.hero{text-align:left}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:40px;align-items:center}
+.hero-copy{display:grid;gap:18px;justify-items:start}
+.hero-copy h1{margin:0}
+.hero .sub{margin:0;max-width:560px}
+.btn-lg{font-size:16px;padding:17px 30px}
+.cta-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px}
+.cta-note{font-size:13.5px;color:var(--mut);font-weight:500}
+.hero .reassure{justify-content:flex-start;margin:0}
+.works{font-size:13.5px;color:var(--mut)}
+.works b{color:var(--ink2);font-weight:600}
+.ex{padding:20px;display:grid;gap:10px;text-align:left}
+.ex-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.ex-k{font-family:'Inter Tight',Inter,sans-serif;font-weight:600;font-size:17px}
+.ex-biz{font-size:12.5px;color:var(--mut)}
+.ex-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ex-kpis div{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid}
+.ex-kpis b{font:700 24px 'Inter Tight',Inter,sans-serif;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.ex-kpis span{font-size:12px;color:var(--mut);line-height:1.3}
+.ex-kpis .red b{color:var(--red)}
+.ex-sub{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin-top:4px}
+.ex .bar{margin:0}
+.ex-three{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ex-three div{background:#F4F7FB;border-radius:10px;padding:9px 10px;display:grid;gap:2px;align-content:start}
+.ex-three span{font-size:11.5px;color:var(--mut);line-height:1.3}
+.ex-three b{font:700 17px 'Inter Tight',Inter,sans-serif;font-variant-numeric:tabular-nums}
+.ex-three .g b{color:var(--green)}
+.ex .note{margin:0}
+@media(max-width:900px){.hero-grid{grid-template-columns:1fr;gap:28px}}
+@media(max-width:480px){.ex-kpis b{font-size:20px}.ex-three{grid-template-columns:1fr}.ex-three div{grid-template-columns:1fr auto;align-items:center}}
+
+/* flow v2 */
+.stepper{list-style:none;margin:0 auto 18px;padding:0;max-width:560px;display:flex;gap:8px;justify-content:space-between}
+.stepper li{flex:1;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--mut2);border-top:3px solid #DCE3EC;padding-top:8px;min-width:0}
+.stepper li span{width:22px;height:22px;flex:0 0 22px;border-radius:50%;display:grid;place-items:center;font-size:12px;background:#E6EBF2;color:var(--mut)}
+.stepper li.now{color:var(--ink);border-top-color:var(--ink)}
+.stepper li.now span{background:var(--ink);color:#fff}
+.stepper li.done{color:var(--green);border-top-color:var(--green)}
+.stepper li.done span{background:var(--green);color:#fff}
+@media(max-width:420px){.stepper li{font-size:11.5px;gap:6px}}
+.pw{position:relative}
+.pw .fi{padding-right:64px}
+.pwt{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:none;font:600 13px 'DM Sans',Inter,sans-serif;color:var(--blue);cursor:pointer;padding:8px}
+.shopbox{background:#F6F9FD;border:1px solid var(--line);border-radius:14px;padding:14px;margin:0 0 14px}
+.shoprow{display:flex;gap:8px}
+.shoprow .fi{flex:1;min-width:0}
+.pos[disabled]{opacity:.6;cursor:wait}
+
+/* report v2 */
+.next3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 22px}
+.next3>div{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.next3 b{flex:0 0 26px;height:26px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-size:13px}
+.next3 span{font-size:13.5px;color:var(--mut);line-height:1.45}
+.next3 strong{display:block;color:var(--ink);font-size:14.5px;margin-bottom:2px}
+@media(max-width:760px){.next3{grid-template-columns:1fr}}
+.plan .trial{font-size:13px;font-weight:600;color:var(--green);margin-top:2px}
+
+/* visuals v3 */
+.prob{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:36px;align-items:center}
+.prob-copy h2{margin-top:2px}
+.xlist{list-style:none;padding:0;margin:18px 0 0;display:grid;gap:12px;color:var(--ink2);font-size:15.5px}
+.xlist li{padding-left:22px;position:relative}
+.xlist li::before{content:"";position:absolute;left:2px;top:9px;width:8px;height:8px;border-radius:50%;background:var(--red)}
+.xlist b{color:var(--ink)}
+.rcard{margin:0;padding:18px 18px 14px;display:grid;gap:8px}
+.rhead{display:flex;justify-content:space-between;align-items:flex-start}
+.rhead b{display:block;font-family:'Inter Tight',Inter,sans-serif;font-weight:600;font-size:16px}
+.rhead span{font-size:12.5px;color:var(--mut)}
+.rhythm{width:100%;height:auto;display:block}
+.rhythm .axis{stroke:#D5DBE3;stroke-width:2}
+.rhythm .rv{fill:var(--green)}
+.rhythm .rexp{fill:none;stroke:#9AA2AD;stroke-width:2;stroke-dasharray:3 3}
+.rhythm .gapband{fill:rgba(200,50,60,.07)}
+.rhythm .rflag{stroke:var(--red);stroke-width:2}
+.rhythm .rflagdot{fill:var(--red)}
+.rhythm .rt{font:600 13px 'DM Sans',Inter,sans-serif;fill:var(--ink2)}
+.rhythm .rred{fill:var(--red)}
+.rhythm .rsm{font-weight:500;font-size:12px;fill:var(--mut)}
+.rhythm .rm{font:500 11.5px 'DM Sans',Inter,sans-serif;fill:var(--mut2)}
+@media(max-width:860px){.prob{grid-template-columns:1fr;gap:22px}}
+.howhead{display:flex;flex-wrap:wrap;gap:16px 24px;align-items:flex-end;justify-content:space-between}
+.flow{list-style:none;padding:0;margin:26px 0 0;display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.fstep{position:relative;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 16px;display:grid;gap:6px;align-content:start}
+.fstep:not(:last-child)::after{content:"";position:absolute;right:-12px;top:36px;width:10px;height:10px;border-top:2px solid #B9C2CE;border-right:2px solid #B9C2CE;transform:rotate(45deg);z-index:1}
+.fic{width:44px;height:44px;border-radius:12px;background:var(--sky);color:var(--blue);display:grid;place-items:center}
+.fnum{font-size:11.5px;font-weight:700;letter-spacing:.1em;color:var(--mut2);margin-top:4px}
+.fnum::before{content:"STEP "}
+.fstep h3{font-size:15.5px}
+.fstep p{font-size:13.5px;color:var(--mut);line-height:1.45}
+@media(max-width:960px){.flow{grid-template-columns:1fr;gap:10px}.fstep::after{display:none}.fstep{grid-template-columns:44px 1fr;column-gap:14px}.fstep .fic{grid-row:span 3}.fnum{margin-top:0}}
+.auto{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:center}
+.auto-copy .xlist li::before{background:var(--green)}
+.mocks{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:end}
+.phone{background:#F4F6F9;border:1px solid var(--line);border-radius:26px;padding:16px 14px 14px;box-shadow:0 18px 40px rgba(16,18,21,.10);display:grid;gap:12px}
+.ph-top{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--mut)}
+.ph-top b{display:block;color:var(--ink);font-size:13px}
+.ph-av{width:32px;height:32px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:700}
+.bubble{background:#E9EDF2;border-radius:16px 16px 16px 4px;padding:11px 13px;font-size:13.5px;line-height:1.45;color:var(--ink)}
+.ph-meta{font-size:11px;color:var(--mut2);text-align:center}
+.postcard{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px;box-shadow:0 18px 40px rgba(16,18,21,.10);transform:rotate(2deg);display:grid;gap:8px;min-height:190px;align-content:start;position:relative;overflow:hidden}
+.postcard::before{content:"";position:absolute;inset:0 0 auto;height:6px;background:linear-gradient(90deg,#BAE6FD,#4DA6FF)}
+.pc-k{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--mut2);margin-top:4px}
+.pc-h{font:600 20px 'Inter Tight',Inter,sans-serif;letter-spacing:-.01em}
+.pc-b{font-size:13px;color:var(--ink2);line-height:1.45}
+.pc-f{font-size:12px;font-weight:600;color:var(--mut);margin-top:auto}
+.mock-note{grid-column:1/-1;margin:0;text-align:center}
+@media(max-width:860px){.auto{grid-template-columns:1fr;gap:24px}}
+@media(max-width:460px){.mocks{grid-template-columns:1fr}.postcard{transform:none;aspect-ratio:auto}}
+.tic{width:38px;height:38px;border-radius:11px;background:var(--sky);color:var(--blue);display:grid;place-items:center;margin-bottom:10px}
+.works{display:flex;flex-wrap:wrap;gap:6px 6px;align-items:center}
+.works span{margin-right:4px}
+.works b{background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12.5px}
+
+.rlegend{display:none;list-style:none;margin:0;padding:0;gap:6px;font-size:13px;color:var(--ink2)}
+.rlegend li{display:flex;align-items:center;gap:8px}
+.rlegend i{width:10px;height:10px;border-radius:50%;flex:0 0 10px}
+.lg-v{background:var(--green)}.lg-f{background:var(--red)}.lg-g{background:rgba(200,50,60,.18);border-radius:3px!important}
+@media(max-width:560px){.rhythm text{display:none}.rlegend{display:grid}.rhythm{margin:-18px 0 -24px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="nav" aria-label="Main">
+    <a class="logo" href="/" aria-label="Clicktide home">
+      <svg width="32" height="32" viewBox="0 0 44 44" aria-hidden="true"><defs><linearGradient id="lg"><stop offset="0%" stop-color="#BAE6FD"/><stop offset="100%" stop-color="#4DA6FF"/></linearGradient><filter id="gw"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g transform="translate(22,22)" filter="url(#gw)"><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(0)" opacity=".9"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(51.4)" opacity=".9"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(102.8)" opacity=".9"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(154.2)" opacity=".9"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(205.6)" opacity=".9"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(257)" opacity=".9"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate(308.4)" opacity=".9"/><circle cx="0" cy="0" r="4.5" fill="#080D18"/></g></svg>
+      <span class="logo-text"><span class="w">CLICK</span><span class="b">TIDE</span></span>
+    </a>
+    <div id="navR"><a class="btn btn-ghost btn-sm" href="#" id="navLogin">Log in</a></div>
+  </nav>
+</div>
+
+<main id="main">
+<!-- ============================== LANDING ============================== -->
+<div id="vLanding">
+  <header class="wrap hero">
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <span class="pill"><span class="dot"></span>Free POS audit · No credit card</span>
+        <h1 id="heroH">How much revenue are you losing from customers who never come back?</h1>
+        <p class="sub" id="heroS">Connect your POS and get a free customer retention report. See who's drifting away based on their own visit habits, what they've historically spent, and how automated win-back campaigns can bring them back.</p>
+        <div class="cta-row"><button class="btn btn-dark btn-lg" data-cta="hero" id="heroCta">Get my free report &rarr;</button><span class="cta-note">About 5 minutes · free</span></div>
+        <div class="reassure">
+          <span><span class="ck">&#10003;</span>Clicktide only reads your sales data</span>
+          <span><span class="ck">&#10003;</span>No credit card for the report</span>
+          <span><span class="ck">&#10003;</span>Nothing is sent to your customers</span>
+        </div>
+        <div class="works"><span>Works with</span><b>Square</b><b>Shopify</b><b>Clover</b><b>Stripe</b><b>CSV export</b></div>
+      </div>
+      <div class="card ex" aria-label="Example report from a sample café">
+        <div class="ex-head"><div><div class="ex-k">Customer Retention Report</div><div class="ex-biz">Sample café · 12,558 orders</div></div><span class="tag ill">Example</span></div>
+        <div class="ex-kpis">
+          <div><b>593</b><span>customers analyzed</span></div>
+          <div class="red"><b>376</b><span>drifting away</span></div>
+          <div><b>124</b><span>high-priority win-backs</span></div>
+        </div>
+        <div class="ex-sub">How far they've drifted</div>
+        <div class="bar" role="img" aria-label="103 drifting, 15 at risk, 258 long gone"><i style="width:27.4%;background:#F2B84B"></i><i style="width:4%;background:#E07A3F"></i><i style="width:68.6%;background:#C8323C"></i></div>
+        <div class="legend"><span><b style="background:#F2B84B"></b>Drifting · 103</span><span><b style="background:#E07A3F"></b>At risk · 15</span><span><b style="background:#C8323C"></b>Long gone · 258</span></div>
+        <div class="ex-sub">Three numbers, never blended</div>
+        <div class="ex-three">
+          <div><span>Past spending of drifting customers</span><b>$83,580</b></div>
+          <div><span>Estimate if 1 in 5 return for 3 months</span><b>$3,686</b></div>
+          <div class="g"><span>Actually recovered</span><b>$0 so far</b></div>
+        </div>
+        <p class="note">Built by Clicktide's real analysis from a fictional café's sample data. Your report uses your own orders.</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="blk" aria-labelledby="hProblem" style="padding-top:28px">
+    <div class="wrap prob">
+      <div class="prob-copy">
+        <div class="eyebrow">The problem</div>
+        <h2 id="hProblem">Your customers may be disappearing without you noticing.</h2>
+        <ul class="xlist">
+          <li><b>Regulars quietly stop coming.</b> No complaint, no goodbye.</li>
+          <li><b>Nobody knows who needs attention.</b> Your team sees today's line, not the regular who hasn't been in for five weeks.</li>
+          <li><b>Repeat business leaks away.</b> Your POS already records who bought, when and how much.</li>
+        </ul>
+      </div>
+      <figure class="card rcard">
+        <div class="rhead"><div><b>Maya, a regular</b><span>Illustrative example</span></div><span class="tag ill">Example</span></div>
+        <svg class="rhythm" viewBox="0 0 560 200" role="img" aria-labelledby="rhT rhD">
+  <title id="rhT">One regular customer's visits</title>
+  <desc id="rhD">Maya visited about every two weeks from January to mid-April. Three weeks after her last visit she was past her usual rhythm; twelve weeks later she still had not returned.</desc>
+  <rect x="300" y="74" width="236" height="72" rx="10" class="gapband"/>
+  <line x1="24" y1="110" x2="536" y2="110" class="axis"/>
+  <circle cx="24" cy="110" r="7" class="rv"/><circle cx="63" cy="110" r="7" class="rv"/><circle cx="103" cy="110" r="7" class="rv"/><circle cx="142" cy="110" r="7" class="rv"/><circle cx="182" cy="110" r="7" class="rv"/><circle cx="221" cy="110" r="7" class="rv"/><circle cx="260" cy="110" r="7" class="rv"/><circle cx="300" cy="110" r="7" class="rv"/>
+  <circle cx="339" cy="110" r="7" class="rexp"/>
+  <line x1="359" y1="62" x2="359" y2="128" class="rflag"/>
+  <circle cx="359" cy="110" r="5" class="rflagdot"/>
+  <text x="24" y="86" class="rt">Visits about every 2 weeks</text>
+  <text x="367" y="50" class="rt rred">3 weeks past her rhythm</text>
+  <text x="367" y="66" class="rt rsm">Clicktide reaches out</text>
+  <text x="530" y="138" text-anchor="end" class="rt rsm">Today: 12 weeks gone</text>
+  <text x="24" y="182" class="rm">Jan</text><text x="109" y="182" class="rm">Feb</text><text x="194" y="182" class="rm">Mar</text><text x="280" y="182" class="rm">Apr</text><text x="365" y="182" class="rm">May</text><text x="450" y="182" class="rm">Jun</text>
+</svg>
+        <ul class="rlegend" aria-hidden="true"><li><i class="lg-v"></i>Visits about every 2 weeks</li><li><i class="lg-f"></i>3 weeks past her rhythm: Clicktide reaches out</li><li><i class="lg-g"></i>Today: 12 weeks gone</li></ul>
+        <figcaption class="note">Clicktide learns each customer's own rhythm. A steady weekly regular is flagged after about a week and a half without a visit; a monthly one isn't flagged until they're well past a month.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="blk" aria-labelledby="hSol" style="background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+    <div class="wrap">
+      <div class="eyebrow">The solution</div>
+      <h2 id="hSol" style="max-width:640px">Clicktide finds your retention opportunities.</h2>
+      <div class="grid4" style="margin-top:26px">
+        <div class="card feat"><div class="ico" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></div><h3>Analyzes purchase history</h3><p>Up to a year of completed orders, read through your POS's official connection.</p></div>
+        <div class="card feat"><div class="ico" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><h3>Learns each customer's rhythm</h3><p>A weekly regular and a quarterly customer drift on different clocks. Clicktide learns each one's own.</p></div>
+        <div class="card feat"><div class="ico" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9L2 18a2 2 0 001.7 3h16.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg></div><h3>Flags who's drifting</h3><p>Customers well past their normal visit interval — sorted by how long they've been gone.</p></div>
+        <div class="card feat"><div class="ico" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div><h3>Shows what they're worth</h3><p>Historical spend and average order value of the customers you're losing, so you know who to prioritize.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="blk" aria-labelledby="hHow">
+    <div class="wrap">
+      <div class="howhead">
+        <div><div class="eyebrow">How it works</div><h2 id="hHow">Your free report in about five minutes.</h2><p class="muted" style="margin-top:8px">No spreadsheets, no sales call, and nothing reaches your customers.</p></div>
+        <button class="btn btn-dark" data-cta="how">Connect my POS — free</button>
+      </div>
+      <ol class="flow"><li class="fstep"><span class="fic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M7 20h10M12 16v4"/></svg></span><span class="fnum">1</span><h3>Select your POS</h3><p>Square, Shopify, Clover or Stripe, or a CSV export.</p></li><li class="fstep"><span class="fic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><span class="fnum">2</span><h3>Connect securely</h3><p>Log in on your POS's own site. Clicktide never sees your password.</p></li><li class="fstep"><span class="fic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></span><span class="fnum">3</span><h3>Clicktide analyzes</h3><p>Watch real progress as each customer's rhythm is learned.</p></li><li class="fstep"><span class="fic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/></svg></span><span class="fnum">4</span><h3>Get your free report</h3><p>Who's drifting, what they've spent, who to win back first.</p></li><li class="fstep"><span class="fic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg></span><span class="fnum">5</span><h3>Win them back, if you choose</h3><p>Messages, rewards, postcards and gifts, only after you subscribe and approve.</p></li></ol>
+    </div>
+  </section>
+
+  <section class="blk" aria-labelledby="hAuto" style="background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+    <div class="wrap auto">
+      <div class="auto-copy">
+        <div class="eyebrow">After the report</div>
+        <h2 id="hAuto">What if your business brought customers back automatically?</h2>
+        <ul class="xlist">
+          <li><b>A nudge at the right moment.</b> When a regular passes their own normal interval, Clicktide sends a personal note in your business's name, by email or by text to customers who opted in.</li>
+          <li><b>Rewards, postcards and gifts.</b> Free digital reward codes for most customers; mailed postcards or a branded gift for your best ones, from a wallet you control.</li>
+          <li><b>Measured by real returns.</b> Recovered revenue counts only when a contacted customer actually comes back and buys.</li>
+        </ul>
+      </div>
+      <div class="mocks" aria-label="Examples of what Clicktide can send">
+        <div class="phone">
+          <div class="ph-top"><span class="ph-av">H</span><div><b>Harbor Street Café</b><span>Text message</span></div></div>
+          <div class="bubble">Hi Maya, we haven't seen you at Harbor Street Café in a while and we miss you! Here's $5 off your next visit: <b>MAYA5</b>. Reply STOP to opt out.</div>
+          <div class="ph-meta">Sent only to customers who opted in to texts</div>
+        </div>
+        <div class="postcard">
+          <div class="pc-k">Mailed postcard</div>
+          <div class="pc-h">We miss you, Maya!</div>
+          <div class="pc-b">It's been a while since your last latte. Bring this card in for <b>$5 off</b>.</div>
+          <div class="pc-f">Harbor Street Café</div>
+        </div>
+        <p class="note mock-note">Examples. Nothing is sent during the free audit.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="blk" aria-labelledby="hTrust">
+    <div class="wrap">
+      <div class="eyebrow">Security &amp; privacy</div>
+      <h2 id="hTrust" style="max-width:700px">Clicktide only reads your sales data. It never moves money.</h2>
+      <p class="muted" style="margin-top:10px;max-width:680px">You connect through your POS company's own login page, so Clicktide never sees your password. Square, Shopify and Stripe connections ask only for read permissions. With every POS, Clicktide only ever reads orders and customers.</p>
+      <div class="grid3" style="margin-top:22px">
+        <div class="card trust"><span class="tic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span><h3>What Clicktide reads</h3><ul>
+          <li>Completed orders: date and total</li>
+          <li>The customer on each order (name, email, phone), only to recognize repeat visits</li>
+          <li>Your business name and locations</li></ul></div>
+        <div class="card trust"><span class="tic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></span><h3>What Clicktide never does</h3><ul>
+          <li>Take payments, issue refunds or move money</li>
+          <li>Change prices, products, inventory or settings</li>
+          <li>Message your customers during the free audit</li>
+          <li>Sell or share your customer data</li></ul></div>
+        <div class="card trust"><span class="tic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span><h3>What happens to the data</h3><ul>
+          <li>Your report shows totals only — no customer names, emails or phone numbers</li>
+          <li>Only you can open your report, while signed in</li>
+          <li>The audit keeps no customer contact details: it works from visit counts, totals and dates, then deletes those once your report is built</li>
+          <li>Sent over encrypted connections</li></ul></div>
+      </div>
+      <div class="card trust" style="margin-top:16px"><span class="tic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></span><h3>Disconnecting takes one click</h3>
+        <p class="muted small" style="margin-top:6px">On your report, <em>Disconnect and delete my data</em> deletes Clicktide's stored access key for your POS, your report, and any customer records in your free account. To remove the app from your POS too, uninstall Clicktide in your POS's app settings — the steps are shown on your report.</p></div>
+    </div>
+  </section>
+
+  <section class="blk" aria-labelledby="hFaq" style="padding-top:10px">
+    <div class="wrap narrow">
+      <h2 id="hFaq">Questions</h2>
+      <details><summary>Is it really free?</summary><p>Yes. The audit and the report are free, with no credit card. If you then want Clicktide to win customers back, every plan starts with a 30-day free trial.</p></details>
+      <details><summary>What happens after the report?</summary><p>Nothing, unless you choose a plan. Plans are $79, $199 or $449 a month, each with a 30-day free trial. Checkout asks for a card, and if you cancel before day 30 you aren't charged. Your POS stays connected, so you don't have to set anything up again.</p></details>
+      <details><summary>Which POS systems work?</summary><p>Square, Shopify, Clover and Stripe connect directly. Using something else — Toast, Mindbody, Lightspeed, a spreadsheet? Upload a CSV export of your orders instead; names and contact details never leave your browser.</p></details>
+      <details><summary>How does Clicktide decide a customer is "drifting"?</summary><p>Clicktide looks at the gaps between each customer's own past visits and takes the typical one (the median), ignoring one-off long breaks like a holiday. A customer is marked drifting once they're past that usual gap — sooner for steady regulars, later for customers whose visits are naturally irregular — and at risk when they're far past it. Customers with only one visit don't have a personal rhythm yet, so they're compared with your business's typical gap and labelled as estimates. It's the same engine Clicktide's dashboard and win-back campaigns use.</p></details>
+      <details><summary>Is the "historical spend" number money I'll get back?</summary><p>No. It's what those customers spent with you before they drifted — a measure of what's at stake, not a promise. The report keeps historical spend, an illustrative estimate, and actual recovered revenue as three separate numbers.</p></details>
+      <details><summary>Will you contact my customers?</summary><p>Not during the audit — nothing is sent. After subscribing, campaigns only run once you turn them on; texts only go to customers who've opted in, and every email has a working unsubscribe.</p></details>
+      <details><summary>What if I don't have much history?</summary><p>The report tells you plainly when there isn't enough data — for example, too few repeat customers to learn visit rhythms — rather than guessing.</p></details>
+      <details><summary>How long does it take?</summary><p>Usually two to five minutes, depending on how many orders your POS holds. You'll see real progress as it runs.</p></details>
+      <details><summary>Can I delete my data?</summary><p>Yes. Your report has a <em>Disconnect and delete my data</em> button that deletes Clicktide's stored access to your POS, your report, and any customer records in your free account.</p></details>
+      <div style="text-align:center;margin-top:36px"><button class="btn btn-dark btn-lg" data-cta="faq">See your free retention report &rarr;</button><p class="note">Free · no credit card · nothing sent to your customers</p></div>
+    </div>
+  </section>
+</div>
+
+<!-- ============================== FLOW ============================== -->
+<div id="vFlow" class="wrap flow hide">
+  <ol class="stepper" id="stepper" aria-label="Free audit progress"><li data-s="1"><span>1</span>Create account</li><li data-s="2"><span>2</span>Connect your POS</li><li data-s="3"><span>3</span>Get your report</li></ol>
+  <!-- account -->
+  <div id="pAccount" class="card panel hide" role="region" aria-labelledby="hAcc">
+    <h2 id="hAcc">Create your free account</h2>
+    <p class="lead">So your report is private to you. No credit card.</p>
+    <div class="err" id="accErr" role="alert"></div>
+    <form id="fSignup" novalidate>
+      <div class="fg"><label class="fl" for="sBiz">Business name</label><input class="fi" id="sBiz" autocomplete="organization" required maxlength="120"/></div>
+      <div class="fg"><label class="fl" for="sName">Your name</label><input class="fi" id="sName" autocomplete="name" required maxlength="120"/></div>
+      <div class="fg"><label class="fl" for="sEmail">Work email</label><input class="fi" id="sEmail" type="email" autocomplete="email" required maxlength="200"/></div>
+      <div class="fg"><label class="fl" for="sPw">Password (8+ characters)</label><div class="pw"><input class="fi" id="sPw" type="password" autocomplete="new-password" required minlength="8"/><button type="button" class="pwt" data-pw="sPw" aria-label="Show password">Show</button></div></div>
+      <label class="consent"><input type="checkbox" id="sTerms"/><span>I agree to Clicktide's <a href="/terms" target="_blank" rel="noopener">Terms</a> and <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>, and authorize Clicktide to read my POS sales data to prepare this report.</span></label>
+      <button class="btn btn-dark" style="width:100%" type="submit" id="sBtn">Create free account &rarr;</button>
+    </form>
+    <p class="note" style="text-align:center">Already have a Clicktide account? <a href="#" id="toLogin">Log in</a></p>
+  </div>
+
+  <div id="pLogin" class="card panel hide" role="region" aria-labelledby="hLogin">
+    <h2 id="hLogin">Log in</h2>
+    <p class="lead">We'll bring you straight back to your free audit.</p>
+    <div class="err" id="logErr" role="alert"></div>
+    <form id="fLogin" novalidate>
+      <div class="fg"><label class="fl" for="lEmail">Email</label><input class="fi" id="lEmail" type="email" autocomplete="email" required/></div>
+      <div class="fg"><label class="fl" for="lPw">Password</label><div class="pw"><input class="fi" id="lPw" type="password" autocomplete="current-password" required/><button type="button" class="pwt" data-pw="lPw" aria-label="Show password">Show</button></div></div>
+      <button class="btn btn-dark" style="width:100%" type="submit" id="lBtn">Log in &rarr;</button>
+    </form>
+    <p class="note" style="text-align:center">New here? <a href="#" id="toSignup">Create a free account</a> · <a href="#" id="toForgot">Forgot password?</a></p>
+  </div>
+
+  <div id="pForgot" class="card panel hide" role="region" aria-labelledby="hForgot">
+    <h2 id="hForgot">Reset your password</h2>
+    <p class="lead">Enter your account email and we'll send a reset link from support@goclicktide.com. It brings you back here to finish your free audit.</p>
+    <div class="err" id="fpErr" role="alert"></div>
+    <form id="fForgot" novalidate>
+      <div class="fg"><label class="fl" for="fpEmail">Account email</label><input class="fi" id="fpEmail" type="email" autocomplete="email" required/></div>
+      <button class="btn btn-dark" style="width:100%" type="submit" id="fpBtn">Send reset link &rarr;</button>
+    </form>
+    <p class="note" id="fpMsg" role="status" style="color:var(--green)"></p>
+    <p class="note" style="text-align:center"><a href="#" id="backLogin">Back to log in</a></p>
+  </div>
+
+  <div id="pReset" class="card panel hide" role="region" aria-labelledby="hReset">
+    <h2 id="hReset">Choose a new password</h2>
+    <p class="lead">Then we'll take you straight back to your free audit.</p>
+    <div class="err" id="rsErr" role="alert"></div>
+    <form id="fReset" novalidate>
+      <div class="fg"><label class="fl" for="rsPw">New password (8+ characters)</label><div class="pw"><input class="fi" id="rsPw" type="password" autocomplete="new-password" required minlength="8"/><button type="button" class="pwt" data-pw="rsPw" aria-label="Show password">Show</button></div></div>
+      <button class="btn btn-dark" style="width:100%" type="submit" id="rsBtn">Save new password &rarr;</button>
+    </form>
+  </div>
+
+  <div id="pConfirm" class="card panel hide" role="region" aria-labelledby="hConf">
+    <h2 id="hConf">Check your email</h2>
+    <p class="lead">We sent a confirmation link to <b id="confEmail"></b>. Click it and you'll come straight back here to connect your POS.</p>
+    <p class="note">Can't find it? Check spam or promotions. The link opens your free audit.</p>
+    <button class="btn btn-ghost btn-sm" id="resendBtn" style="margin-top:14px">Resend the email</button>
+    <span class="note" id="resendMsg" role="status"></span>
+  </div>
+
+  <!-- connect -->
+  <div id="pConnect" class="card panel hide" role="region" aria-labelledby="hConn">
+    <h2 id="hConn">Select your POS</h2>
+    <p class="lead">You'll log in on your POS company's own site, approve access, and come straight back here. Clicktide never sees your password.</p>
+    <div class="err" id="conErr" role="alert"></div>
+    <div class="posgrid" id="posGrid"></div>
+    <div id="shopBox" class="shopbox hide">
+      <label class="fl" for="shopDomain">Your Shopify store address</label>
+      <div class="shoprow"><input class="fi" id="shopDomain" placeholder="mystore.myshopify.com" autocomplete="off" inputmode="url" spellcheck="false"/><button class="btn btn-dark btn-sm" type="button" id="shopGo">Continue &rarr;</button></div>
+      <p class="note" style="margin-top:6px">Find it in Shopify admin under Settings → Domains. It ends in .myshopify.com.</p>
+    </div>
+    <div class="perm">
+      <b>What you're approving</b>
+      <ul>
+        <li>Clicktide reads completed orders and the customer on each order (name, email, phone)</li>
+        <li>Square, Shopify and Stripe connect with read-only permissions</li>
+        <li>Clicktide never moves money, issues refunds or changes anything in your POS</li>
+        <li>Nothing is sent to your customers</li>
+        <li>Disconnect anytime from your report page</li>
+      </ul>
+    </div>
+    <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:16px">
+      <b>Use another system?</b>
+      <p class="muted small" style="margin-top:4px">Toast, Mindbody, Lightspeed or anything else: export your orders as a CSV. It's read in your browser — names, emails and phones never leave your computer; only visit counts, totals and dates are sent.</p>
+      <label class="btn btn-ghost btn-sm" style="margin-top:10px" for="csvFile">Upload a CSV export</label>
+      <input type="file" id="csvFile" accept=".csv,text/csv" class="sr"/>
+      <div id="csvMap" class="hide" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- progress -->
+  <div id="pProgress" class="card panel hide" role="region" aria-labelledby="hProg" aria-live="polite">
+    <h2 id="hProg">Analyzing your business</h2>
+    <p class="lead" id="progLead">This usually takes two to five minutes. You can keep this tab open.</p>
+    <div id="stages"></div>
+    <div class="err" id="progErr" role="alert"></div>
+    <div id="progActions" class="hide" style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap"></div>
+  </div>
+</div>
+
+<!-- ============================== REPORT ============================== -->
+<div id="vReport" class="wrap rep hide"></div>
+</main>
+
+<div class="sticky-cta" id="sticky"><button class="btn btn-dark" data-cta="sticky" style="width:100%">Get my free report &rarr;</button></div>
+
+<footer class="wrap foot">
+  <div><a href="/">Home</a><a href="/customer-retention">Customer retention guide</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="mailto:support@goclicktide.com">support@goclicktide.com</a></div>
+  <div style="margin-top:10px">&copy; Clicktide</div>
+</footer>
+
+<script>
+(function(){
+"use strict";
+var SU="https://hmihfncvahsdlmefyxyg.supabase.co";
+var SK="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtaWhmbmN2YWhzZGxtZWZ5eHlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1OTgzNDksImV4cCI6MjA5NjE3NDM0OX0.GP-4tYnKlNP9iSklJyXCSatz3I7gtQQJz7xOUQdXKWk";
+var FN=SU+"/functions/v1";
+var LEGAL_VERSION="2026-06-08";
+// Same public app ids the main app uses (index.html).
+var SQ_APP_ID="sq0idp-lOwkDlbKD4OacOyioAOkZQ";
+var SH_CLIENT_ID="1e876d10b4e052fe9897dd45bd859eca";
+var CL_APP_ID="1YSBHCR5VTYZE";
+var ST_CLIENT_ID="ca_Ug1GQfGHiUMO3TeLjwyBv2YnQ9XlfMTV";
+var PRICE={Local:"price_1TjhtKGWBWEX8wHsjfvhyPBa",Growth:"price_1Tjhv8GWBWEX8wHsQ3nBFXDm",Scale:"price_1TjhwWGWBWEX8wHsAtmldOt9"};
+// Only providers the audit importer (platform-sync) can actually read.
+var POS=[
+  {id:"square",name:"Square",bg:"#111",lt:"Sq"},
+  {id:"shopify",name:"Shopify",bg:"#5E8E3E",lt:"S"},
+  {id:"clover",name:"Clover",bg:"#1F8A3B",lt:"C"},
+  {id:"stripe",name:"Stripe",bg:"#635BFF",lt:"St"}
+];
+var DEMO=false,DEMO_LAST_URL="";
+var POS_NAME={square:"Square",shopify:"Shopify",clover:"Clover",stripe:"Stripe",csv:"CSV upload"};
+var POS_REVOKE={square:"Square Dashboard → Apps → Clicktide → Revoke",shopify:"Shopify admin → Settings → Apps → Clicktide → Uninstall",clover:"Clover Dashboard → Apps → Clicktide → Uninstall",stripe:"Stripe Dashboard → Settings → Connected accounts/apps → Clicktide → Disconnect"};
+
+var $=function(id){return document.getElementById(id);};
+var esc=function(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];});};
+var money=function(n){n=Number(n)||0;var whole=n>=100||n===Math.round(n);return "$"+n.toLocaleString("en-US",{maximumFractionDigits:whole?0:2,minimumFractionDigits:whole?0:2});};
+var num=function(n){return (Number(n)||0).toLocaleString("en-US");};
+var params=new URLSearchParams(location.search);
+var hashP=new URLSearchParams((location.hash||"").replace(/^#/,""));
+
+// ---------------- attribution (first-party only) ----------------
+function sid(){var s=sessionStorage.getItem("ct_fa_sid")||localStorage.getItem("ct_fa_sid");if(!s){var a=new Uint8Array(12);crypto.getRandomValues(a);s=Array.from(a,function(b){return b.toString(16).padStart(2,"0");}).join("");}try{sessionStorage.setItem("ct_fa_sid",s);localStorage.setItem("ct_fa_sid",s);}catch(e){}return s;}
+var SESSION=sid();
+var ATTR=(function(){
+  var stored={};try{stored=JSON.parse(localStorage.getItem("ct_fa_attr")||"{}");}catch(e){}
+  var fresh={};["utm_source","utm_medium","utm_campaign","utm_content","utm_term"].forEach(function(k){var v=params.get(k);if(v)fresh[k]=v.slice(0,120);});
+  var v=params.get("v");if(v&&/^[a-z0-9_-]{1,20}$/i.test(v))fresh.variant=v;
+  var out=Object.keys(fresh).length?fresh:stored; // first-touch, unless a new ad click arrives
+  out.session_id=SESSION;out.landing="/free-pos-audit";
+  try{localStorage.setItem("ct_fa_attr",JSON.stringify(out));}catch(e){}
+  return out;
+})();
+function track(event,extra){
+  extra=extra||{};
+  var body={session_id:SESSION,event:event,variant:ATTR.variant||null,platform:extra.platform||null,audit_id:extra.audit_id||null,path:location.pathname,
+    utm:{utm_source:ATTR.utm_source,utm_medium:ATTR.utm_medium,utm_campaign:ATTR.utm_campaign,utm_content:ATTR.utm_content,utm_term:ATTR.utm_term}};
+  var tok=S&&S.token;
+  try{fetch(SU+"/rest/v1/funnel_events",{method:"POST",keepalive:true,headers:{apikey:SK,Authorization:"Bearer "+(tok||SK),"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify(body)}).catch(function(){});}catch(e){}
+}
+
+// ---------------- ad-variant headlines ----------------
+var VARIANTS={
+  "2":{h:"Your regular customers have stopped coming. Would you know?",s:"Clicktide identifies customers who are drifting away based on their individual visit habits. Connect your POS and get a free customer retention report."},
+  "3":{h:"What if your business could automatically bring customers back?",s:"See which customers are drifting, then let Clicktide win them back with personal messages, postcards, rewards and gifts. Start with a free report from your POS."}
+};
+if(VARIANTS[ATTR.variant]){$("heroH").textContent=VARIANTS[ATTR.variant].h;$("heroS").textContent=VARIANTS[ATTR.variant].s;}
+
+// ---------------- session (same storage keys as the main app) ----------------
+var S=null;
+function sessStore(){return localStorage.getItem("ct_stay")==="0"?sessionStorage:localStorage;}
+function saveSession(d){
+  if(!localStorage.getItem("ct_stay"))localStorage.setItem("ct_stay","1");
+  var st=sessStore();
+  S={token:d.access_token,user:d.user||(S&&S.user)||null};
+  st.setItem("ct",d.access_token);
+  if(d.user)st.setItem("cu",JSON.stringify(d.user));
+  if(d.refresh_token)st.setItem("ct_rt",d.refresh_token);
+  var exp=d.expires_at?Number(d.expires_at):(d.expires_in?Math.floor(Date.now()/1000)+Number(d.expires_in):0);
+  if(exp)st.setItem("ct_exp",String(exp));
+}
+function loadSession(){try{var st=sessStore(),t=st.getItem("ct"),u=st.getItem("cu");if(t&&u)S={token:t,user:JSON.parse(u)};}catch(e){S=null;}}
+async function refreshIfNeeded(){
+  if(!S)return false;
+  var st=sessStore(),exp=Number(st.getItem("ct_exp")||0);
+  if(exp&&Date.now()/1000<exp-120)return true;
+  var r=await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+S.token}});
+  if(r.ok)return true;
+  var rt=st.getItem("ct_rt");if(!rt){S=null;return false;}
+  var rr=await fetch(SU+"/auth/v1/token?grant_type=refresh_token",{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({refresh_token:rt})});
+  var d=await rr.json().catch(function(){return{};});
+  if(!rr.ok||!d.access_token){S=null;["ct","cu","ct_rt","ct_exp"].forEach(function(k){st.removeItem(k);});return false;}
+  saveSession(d);return true;
+}
+function H(){return{apikey:SK,Authorization:"Bearer "+S.token,"Content-Type":"application/json"};}
+async function rest(path,init){
+  init=init||{};
+  var r=await fetch(SU+path,Object.assign({},init,{headers:Object.assign(H(),init.headers||{})}));
+  var t=await r.text();var d=null;try{d=t?JSON.parse(t):null;}catch(e){}
+  if(!r.ok)throw new Error((d&&(d.message||d.error))||("Request failed ("+r.status+")"));
+  return d;
+}
+async function fnCall(name,body){
+  var r=await fetch(FN+"/"+name,{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+S.token},body:JSON.stringify(body)});
+  var d=await r.json().catch(function(){return{};});
+  return {ok:r.ok,status:r.status,data:d};
+}
+// Business profile row — same fields the app's ensureBizProfile writes. `plan` is
+// never sent: billing columns are server-only; selected_plan is the owner's pick.
+async function ensureBiz(extra){
+  var ex=await rest("/rest/v1/clicktide?user_id=eq."+S.user.id+"&select=id,business_name,stripe_subscription_status,churn_days&limit=1");
+  if(Array.isArray(ex)&&ex[0])return ex[0];
+  var m=(S.user&&S.user.user_metadata)||{};extra=extra||{};
+  var row={user_id:S.user.id,email:S.user.email||"",business_name:extra.business_name||m.business_name||"",contact_name:extra.contact_name||m.contact_name||"",
+    selected_plan:"Growth",churn_days:60,legal_terms_accepted_at:m.legal_terms_accepted_at||new Date().toISOString(),legal_terms_version:m.legal_terms_version||LEGAL_VERSION,legal_authorized_services:true};
+  var d;
+  try{d=await rest("/rest/v1/clicktide",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify(row)});}
+  catch(e){
+    // Another tab created the row first (one business row per user).
+    var again=await rest("/rest/v1/clicktide?user_id=eq."+S.user.id+"&select=id,business_name,stripe_subscription_status,churn_days&limit=1");
+    if(Array.isArray(again)&&again[0])return again[0];
+    throw e;
+  }
+  return Array.isArray(d)?d[0]:d;
+}
+
+// ---------------- views ----------------
+var PANELS=["pAccount","pLogin","pForgot","pReset","pConfirm","pConnect","pProgress"];
+function show(view,panel){
+  $("vLanding").classList.toggle("hide",view!=="landing");
+  $("vFlow").classList.toggle("hide",view!=="flow");
+  $("vReport").classList.toggle("hide",view!=="report");
+  if(typeof syncSticky==="function")syncSticky();
+  PANELS.forEach(function(p){$(p).classList.toggle("hide",p!==panel);});
+  var stepOf={pAccount:1,pLogin:1,pForgot:1,pReset:1,pConfirm:1,pConnect:2,pProgress:3};
+  var cur=stepOf[panel]||0;
+  document.querySelectorAll("#stepper li").forEach(function(li){var n=Number(li.dataset.s);li.className=n<cur?"done":n===cur?"now":"";if(n===cur)li.setAttribute("aria-current","step");else li.removeAttribute("aria-current");});
+  window.scrollTo({top:0,behavior:"instant"in window?"instant":"auto"});
+  var f=panel&&$(panel)&&$(panel).querySelector("h2");if(f){f.setAttribute("tabindex","-1");f.focus({preventScroll:true});}
+}
+function err(id,msg){var e=$(id);if(!msg){e.style.display="none";e.textContent="";return;}e.textContent=msg;e.style.display="block";}
+function markAuditFlow(){try{localStorage.setItem("ct_audit",JSON.stringify({at:Date.now()}));}catch(e){}}
+function clearAuditFlow(){try{localStorage.removeItem("ct_audit");}catch(e){}}
+// Login-CSRF guard, shared with the main app (same storage key): a session that arrives in a
+// link is taken silently only for an email this browser asked a link for; otherwise the
+// visitor first confirms which account they are about to use.
+var AUTH_INTENT_KEY="ct_auth_intent";
+function rememberAuthIntent(email,flow){var rec=JSON.stringify({email:String(email||"").trim().toLowerCase(),flow:flow||"",at:Date.now()});[sessionStorage,localStorage].forEach(function(st){try{st.setItem(AUTH_INTENT_KEY,rec);}catch(e){}});}
+function hasAuthIntent(email){email=String(email||"").trim().toLowerCase();if(!email)return false;return [sessionStorage,localStorage].some(function(st){try{var r=JSON.parse(st.getItem(AUTH_INTENT_KEY)||"null");return !!(r&&r.email===email&&Date.now()-Number(r.at)<2*86400000);}catch(e){return false;}});}
+function clearAuthIntent(){[sessionStorage,localStorage].forEach(function(st){try{st.removeItem(AUTH_INTENT_KEY);}catch(e){}});}
+function acceptLinkSession(u){
+  var email=String(u&&u.email||"").trim().toLowerCase(),cur=S&&S.user;
+  if((cur&&cur.id&&cur.id===u.id)||hasAuthIntent(email)){clearAuthIntent();return true;}
+  var ok=confirm("You're about to sign in as "+(email||"another account")+" — continue?"+(cur&&cur.email?"\n\nThis signs "+cur.email+" out on this device.":"")+"\n\nIf you didn't just ask Clicktide for a sign-in or confirmation link, choose Cancel.");
+  if(ok)clearAuthIntent();
+  return ok;
+}
+function setNav(){
+  var n=$("navR");
+  if(S&&S.user){n.innerHTML='<a class="btn btn-ghost btn-sm" href="/">Open dashboard</a>';}
+  else{n.innerHTML='<a class="btn btn-ghost btn-sm" href="#" id="navLogin">Log in</a>';$("navLogin").onclick=function(e){e.preventDefault();markAuditFlow();show("flow","pLogin");};}
+}
+
+// ---------------- CTA → account → connect ----------------
+async function startFlow(src){
+  track("cta_click",{});
+  markAuditFlow();
+  if(S&&await refreshIfNeeded()){await goConnect();return;}
+  show("flow","pAccount");track("signup_started");
+}
+document.querySelectorAll("[data-cta]").forEach(function(b){b.addEventListener("click",function(){
+  if(b.dataset.cta==="sticky"&&!$("vReport").classList.contains("hide")){var pl=$("plans");if(pl)pl.scrollIntoView({behavior:"smooth"});return;}
+  startFlow(b.dataset.cta);});});
+var stickyPast=false,plansSeen=false;
+function syncSticky(){
+  var land=!$("vLanding").classList.contains("hide"),rep=!$("vReport").classList.contains("hide")&&!!$("plans");
+  $("sticky").classList.toggle("on",(land&&stickyPast)||(rep&&!plansSeen));
+  $("sticky").querySelector("button").innerHTML=rep?"Start my 30-day free trial &rarr;":"Get my free report &rarr;";
+}
+if("IntersectionObserver"in window){new IntersectionObserver(function(es){stickyPast=!es[0].isIntersecting&&es[0].boundingClientRect.top<0;syncSticky();}).observe($("heroCta"));}else stickyPast=true;
+document.querySelectorAll("[data-pw]").forEach(function(b){b.onclick=function(){var i=$(b.dataset.pw),show=i.type==="password";i.type=show?"text":"password";b.textContent=show?"Hide":"Show";b.setAttribute("aria-label",show?"Hide password":"Show password");};});
+$("toLogin").onclick=function(e){e.preventDefault();show("flow","pLogin");};
+$("shopGo").onclick=function(){choosePos("shopify",false);};
+$("shopDomain").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();choosePos("shopify",false);}});
+$("toSignup").onclick=function(e){e.preventDefault();show("flow","pAccount");};
+$("toForgot").onclick=function(e){e.preventDefault();markAuditFlow();$("fpEmail").value=$("lEmail").value||"";$("fpMsg").textContent="";err("fpErr");show("flow","pForgot");};
+$("backLogin").onclick=function(e){e.preventDefault();show("flow","pLogin");};
+$("fForgot").addEventListener("submit",async function(e){
+  e.preventDefault();err("fpErr");$("fpMsg").textContent="";
+  var em=$("fpEmail").value.trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em))return err("fpErr","Please enter a valid email address.");
+  var b=$("fpBtn");b.disabled=true;b.textContent="Sending…";
+  // Same reset service the main app uses; the link returns to this page.
+  rememberAuthIntent(em,"recovery");
+  try{await fetch(FN+"/password-reset",{method:"POST",headers:{"Content-Type":"application/json",apikey:SK},body:JSON.stringify({email:em,redirect_to:"https://goclicktide.com/free-pos-audit"})});}catch(x){}
+  $("fpMsg").textContent="Sent. If an account exists for "+em+", a reset link is on its way — check your inbox and spam.";
+  b.disabled=false;b.innerHTML="Send again &rarr;";
+});
+var RECOVERY_TOKEN="";
+$("fReset").addEventListener("submit",async function(e){
+  e.preventDefault();err("rsErr");
+  var pw=$("rsPw").value;if(pw.length<8)return err("rsErr","Password must be at least 8 characters.");
+  var b=$("rsBtn");b.disabled=true;b.textContent="Saving…";
+  try{
+    var r=await fetch(SU+"/auth/v1/user",{method:"PUT",headers:{apikey:SK,Authorization:"Bearer "+RECOVERY_TOKEN,"Content-Type":"application/json"},body:JSON.stringify({password:pw})});
+    var d=await r.json().catch(function(){return{};});
+    if(!r.ok)throw new Error(d.msg||d.message||d.error_description||"Couldn't update your password — the link may have expired. Request a new one.");
+    setNav();try{await ensureBiz({});}catch(x){}
+    await afterLogin();
+  }catch(ex){err("rsErr",ex.message);b.disabled=false;b.innerHTML="Save new password &rarr;";}
+});
+
+$("fSignup").addEventListener("submit",async function(e){
+  e.preventDefault();err("accErr");
+  var biz=$("sBiz").value.trim(),name=$("sName").value.trim(),email=$("sEmail").value.trim().toLowerCase(),pw=$("sPw").value;
+  if(!biz||!name)return err("accErr","Please enter your business name and your name.");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return err("accErr","Please enter a valid email address.");
+  if(pw.length<8)return err("accErr","Password must be at least 8 characters.");
+  if(!$("sTerms").checked)return err("accErr","Please accept the Terms and Privacy Policy to continue.");
+  var b=$("sBtn");b.disabled=true;b.textContent="Creating your account…";
+  try{
+    var meta={business_name:biz,contact_name:name,plan:"Growth",churn_days:60,signup_source:"free_pos_audit",legal_terms_accepted_at:new Date().toISOString(),legal_terms_version:LEGAL_VERSION,legal_authorized_services:true};
+    rememberAuthIntent(email,"signup");
+    var r=await fetch(SU+"/auth/v1/signup?redirect_to="+encodeURIComponent(location.origin+"/free-pos-audit?step=connect"),{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:email,password:pw,data:meta})});
+    var d=await r.json().catch(function(){return{};});
+    if(!r.ok){var c=d.error_code||d.error;if(c==="user_already_exists"||/already.*regist/i.test(d.msg||""))throw new Error("An account with this email already exists — log in instead.");throw new Error(d.msg||d.error_description||"Sign-up failed — please try again.");}
+    // Supabase returns an obfuscated user (no identities) for an email that already exists.
+    if(d.user&&Array.isArray(d.user.identities)&&d.user.identities.length===0&&!d.access_token)throw new Error("An account with this email already exists — log in instead.");
+    track("signup_completed");
+    if(d.access_token){saveSession(d);await ensureBiz({business_name:biz,contact_name:name});await goConnect();return;}
+    try{localStorage.setItem("ct_fa_email",email);}catch(x){}
+    $("confEmail").textContent=email;show("flow","pConfirm");
+  }catch(ex){
+    if(/already exists/.test(ex.message)){$("lEmail").value=email;show("flow","pLogin");err("logErr","You already have a Clicktide account with "+email+". Log in to continue, or use Forgot password.");return;}
+    err("accErr",ex.message);
+  }
+  finally{b.disabled=false;b.innerHTML="Create free account &rarr;";}
+});
+$("resendBtn").onclick=async function(){
+  var email=$("confEmail").textContent;$("resendMsg").textContent=" Sending…";rememberAuthIntent(email,"signup");
+  try{var r=await fetch(SU+"/auth/v1/resend",{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({type:"signup",email:email,options:{emailRedirectTo:location.origin+"/free-pos-audit?step=connect"}})});$("resendMsg").textContent=r.ok?" Sent — check your inbox.":" Couldn't resend — wait a minute and try again.";}catch(e){$("resendMsg").textContent=" Couldn't resend right now.";}
+};
+$("fLogin").addEventListener("submit",async function(e){
+  e.preventDefault();err("logErr");
+  var b=$("lBtn");b.disabled=true;b.textContent="Logging in…";
+  try{
+    var r=await fetch(SU+"/auth/v1/token?grant_type=password",{method:"POST",headers:{apikey:SK,"Content-Type":"application/json"},body:JSON.stringify({email:$("lEmail").value.trim(),password:$("lPw").value})});
+    var d=await r.json().catch(function(){return{};});
+    if(!r.ok){if((d.error_code||d.error)==="email_not_confirmed")throw new Error("Your email isn't confirmed yet — click the link we emailed you.");throw new Error(d.msg||d.error_description||"Wrong email or password.");}
+    saveSession(d);setNav();await ensureBiz({});await afterLogin();
+  }catch(ex){err("logErr",ex.message);}
+  finally{b.disabled=false;b.innerHTML="Log in &rarr;";}
+});
+
+// A returning user with a finished report goes to it; otherwise to connect.
+async function afterLogin(){
+  var a=await latestAudit();
+  if(a&&(a.status==="complete"||a.status==="insufficient_data")){renderReport(a);return;}
+  if(a&&a.status==="running"){watchAudit(a.id);return;}
+  await goConnect();
+}
+async function latestAudit(){
+  try{var d=await rest("/rest/v1/pos_audits?user_id=eq."+S.user.id+"&select=*&order=created_at.desc&limit=1");return Array.isArray(d)?d[0]:null;}catch(e){return null;}
+}
+
+// ---------------- connect ----------------
+async function goConnect(){
+  show("flow","pConnect");
+  var who=$("conWho");if(!who){who=document.createElement("p");who.id="conWho";who.className="note";var lead=$("pConnect").querySelector(".lead");lead.parentNode.insertBefore(who,lead.nextSibling);}
+  who.textContent=S&&S.user&&S.user.email?"Signed in as "+S.user.email:"";
+  var conns=[];
+  try{conns=await rest("/rest/v1/platform_connections?user_id=eq."+S.user.id+"&is_active=eq.true&select=platform,merchant_name");}catch(e){}
+  var connected={};(conns||[]).forEach(function(c){connected[c.platform]=c.merchant_name||true;});
+  $("posGrid").innerHTML=POS.map(function(p){
+    var on=connected[p.id];
+    return '<button type="button" class="pos" data-pos="'+p.id+'"><span class="lg" style="background:'+p.bg+'" aria-hidden="true">'+p.lt+'</span><span>'+p.name+(on?'<small>Connected — run the audit</small>':'<small>'+(p.id==="clover"?"Reads orders and customers":"Read-only permissions")+'</small>')+'</span></button>';
+  }).join("");
+  $("posGrid").querySelectorAll("[data-pos]").forEach(function(b){b.onclick=function(){choosePos(b.dataset.pos,!!connected[b.dataset.pos]);};});
+}
+function randomState(){var a=new Uint8Array(24);crypto.getRandomValues(a);return Array.from(a,function(b){return b.toString(16).padStart(2,"0");}).join("");}
+// POS connect (contract C3): oauth-start makes the OAuth state for the signed-in owner and
+// returns the provider's consent page; the callback comes back here with a one-time nonce.
+async function oauthStart(platform,meta){
+  if(typeof DEMO!=="undefined"&&DEMO)return "https://demo.invalid/oauth/"+platform; // demo stops before leaving the page
+  var res=await fnCall("oauth-start",Object.assign({platform:platform,flow:"audit"},meta||{}));
+  if(!res.ok||!/^https:\/\//.test(String(res.data&&res.data.url||"")))throw new Error((res.data&&res.data.error)||"please try again in a moment.");
+  sessionStorage.setItem("ct_oauth_state",JSON.stringify(Object.assign({platform:platform,state:"server"},meta||{})));
+  return res.data.url;
+}
+async function choosePos(id,already){
+  err("conErr");track("pos_selected",{platform:id});
+  if(!(await refreshIfNeeded())){show("flow","pLogin");return;}
+  if(already){startAudit(id);return;}
+  markAuditFlow();
+  try{
+    var u;
+    if(id==="square"){
+      u=await oauthStart("square");
+    }else if(id==="shopify"){
+      var box=$("shopBox");
+      if(box.classList.contains("hide")){box.classList.remove("hide");$("shopDomain").focus();return;}
+      var dom=($("shopDomain").value||"").trim().toLowerCase().replace(/https?:\/\//,"").replace(/\/.*$/,"");
+      if(dom&&dom.indexOf(".")<0)dom+=".myshopify.com";
+      if(!dom){$("shopDomain").focus();return;}
+      if(!/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(dom)){err("conErr","Please enter your .myshopify.com domain.");return;}
+      u=await oauthStart("shopify",{shop_domain:dom});
+    }else if(id==="clover"){
+      u=await oauthStart("clover");
+    }else if(id==="stripe"){
+      u=await oauthStart("stripe");
+    }else return;
+    track("connect_started",{platform:id});
+    document.querySelectorAll("#posGrid .pos").forEach(function(x){x.disabled=true;});
+    var tile=document.querySelector('#posGrid [data-pos="'+id+'"] small');if(tile)tile.textContent="Opening "+(POS_NAME[id]||id)+"…";
+    if(DEMO){DEMO_LAST_URL=u;window.__ctDemoAuthUrl=u;setTimeout(function(){startAudit(id);},700);return;} // demo: stop before leaving for the POS login
+    location.href=u;
+  }catch(e){err("conErr","Couldn't start the connection: "+e.message);}
+}
+
+// ---------------- CSV (aggregated in the browser) ----------------
+// CSV-PARSE-START
+function parseCSV(text){
+  var rows=[],row=[],f="",q=false;
+  for(var i=0;i<text.length;i++){var c=text[i];
+    if(q){if(c==='"'){if(text[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;}
+    else if(c==='"')q=true;else if(c===","){row.push(f);f="";}
+    else if(c==="\n"||c==="\r"){if(c==="\r"&&text[i+1]==="\n")i++;row.push(f);f="";if(row.length>1||row[0]!=="")rows.push(row);row=[];}
+    else f+=c;}
+  if(f!==""||row.length){row.push(f);rows.push(row);}
+  return rows;
+}
+// CSV-PARSE-END
+function guess(headers,re){for(var i=0;i<headers.length;i++)if(re.test(headers[i]))return i;return -1;}
+$("csvFile").addEventListener("change",function(){
+  var file=this.files&&this.files[0];if(!file)return;
+  err("conErr");
+  if(file.size>40*1024*1024){err("conErr","That file is over 40 MB — export a shorter date range (the last 12 months is plenty).");return;}
+  track("csv_started");
+  var rd=new FileReader();
+  rd.onload=function(){handleCsvText(String(rd.result||""));};
+  rd.readAsText(file);
+});
+function handleCsvText(text){
+    err("conErr");
+    var rows=parseCSV(text);
+    if(rows.length<2){err("conErr","That file looks empty.");return;}
+    var h=rows[0].map(function(x){return String(x).trim().toLowerCase();});
+    var gi={date:guess(h,/date|time|created|closed/),amount:guess(h,/total|amount|net sales|gross|price|paid/),email:guess(h,/e-?mail/),phone:guess(h,/phone|mobile/),cust:guess(h,/customer( id| name)?$|customer|client|member|name/)};
+    var opt=function(sel){return '<option value="-1">— none —</option>'+h.map(function(x,i){return '<option value="'+i+'"'+(i===sel?" selected":"")+'>'+esc(rows[0][i])+'</option>';}).join("");};
+    var box=$("csvMap");box.classList.remove("hide");
+    box.innerHTML='<p class="small muted">Match your columns. We need a date, an amount, and at least one way to recognize the customer.</p>'
+      +[["date","Order date"],["amount","Order total"],["email","Customer email"],["phone","Customer phone"],["cust","Customer ID or name"]].map(function(x){return '<div class="fg"><label class="fl" for="m_'+x[0]+'">'+x[1]+'</label><select class="fi" id="m_'+x[0]+'">'+opt(gi[x[0]])+'</select></div>';}).join("")
+      +'<button class="btn btn-dark btn-sm" id="csvGo" type="button">Analyze '+num(rows.length-1)+' rows &rarr;</button>';
+    $("csvGo").onclick=function(){runCsv(rows);};
+}
+// CSV-AGG-START (pure; unit-tested by demo/run_demo_tests.sh)
+function normPhone(v){var d=String(v||"").replace(/\D/g,"");if(d.length===11&&d[0]==="1")d=d.slice(1);return d.length===10&&!/^(\d)\1{9}$/.test(d)&&!/^555/.test(d)?d:"";}
+// rows: parsed CSV incl. header row; c: column indexes {date,amount,email,phone,cust} (-1 = none).
+// Email/phone identify a person; the ID/name column is only a fallback for rows with
+// neither, so two different people who share a name are never merged.
+function aggregateCsv(rows,c){
+  var byKey=new Map(),people=[],anon=0,bad=0;
+  for(var i=1;i<rows.length;i++){var r=rows[i];
+    var t=Date.parse(String(r[c.date]||"").trim().replace(/^(\d{4}-\d{2}-\d{2}) (\d)/,"$1T$2"));var amtS=String(r[c.amount]||"").replace(/[^0-9.\-]/g,""),amt=Number(amtS);
+    if(!isFinite(t)||!/\d/.test(amtS)||!isFinite(amt)){bad++;continue;}
+    var keys=[];var em=c.email>=0?String(r[c.email]||"").trim().toLowerCase():"";if(em&&em.indexOf("@")>0)keys.push("e:"+em);
+    var ph=c.phone>=0?normPhone(r[c.phone]):"";if(ph)keys.push("p:"+ph);
+    if(!keys.length){var cu=c.cust>=0?String(r[c.cust]||"").trim().toLowerCase():"";if(cu&&!/^(guest|walk-?in|cash|cash customer|n\/a|none|unknown|-)$/.test(cu))keys.push("c:"+cu);}
+    if(!keys.length){anon++;continue;}
+    var p=null;for(var k=0;k<keys.length&&!p;k++)p=byKey.get(keys[k]);
+    if(!p){p={visits:0,spend:0,first:t,last:t,days:{}};people.push(p);}
+    keys.forEach(function(k){if(!byKey.has(k))byKey.set(k,p);});
+    p.visits++;p.spend+=amt>0?amt:0;if(t<p.first)p.first=t;if(t>p.last)p.last=t;p.days[new Date(t).toISOString().slice(0,10)]=1;
+  }
+  // Only these numbers leave the browser — no names, emails or phones.
+  // Visit dates (no names, emails or phones) let the audit learn each customer's own rhythm.
+  var facts=people.map(function(p){return{visits:p.visits,spend:Math.round(p.spend*100)/100,first_at:new Date(p.first).toISOString(),last_at:new Date(p.last).toISOString(),visit_days:Object.keys(p.days).sort().slice(-2000)};});
+  return {facts:facts,anon:anon,bad:bad};
+}
+// CSV-AGG-END
+async function runCsv(rows){
+  var c={};["date","amount","email","phone","cust"].forEach(function(k){c[k]=Number($("m_"+k).value);});
+  if(c.date<0||c.amount<0){err("conErr","Please pick the date and amount columns.");return;}
+  if(c.email<0&&c.phone<0&&c.cust<0){err("conErr","Pick at least one customer column (email, phone, or customer ID/name).");return;}
+  var agg=aggregateCsv(rows,c),facts=agg.facts,anon=agg.anon,bad=agg.bad;
+  if(!facts.length){err("conErr","We couldn't recognize any customers in that file. Check the column choices.");return;}
+  show("flow","pProgress");renderStages({stage:"importing",progress:{customers:facts.length}},"csv");
+  var res=await fnCall("platform-sync",{mode:"audit_csv",facts:facts,meta:{rows:rows.length-1,anonymous:anon,bad:bad},attribution:ATTR});
+  if(!res.ok||!res.data.audit_id){failProgress(res.data.error||"We couldn't analyze that file.");return;}
+  track("audit_started",{platform:"csv",audit_id:res.data.audit_id});
+  watchAudit(res.data.audit_id);
+}
+
+// ---------------- audit run + real progress ----------------
+async function startAudit(platform){
+  show("flow","pProgress");renderStages({stage:"connecting",progress:{}},platform);
+  if(!(await refreshIfNeeded())){show("flow","pLogin");return;}
+  var res=await fnCall("platform-sync",{mode:"audit_start",platform:platform,attribution:ATTR});
+  if(res.status===409&&res.data.error==="not_connected"){await goConnect();err("conErr","Your "+POS_NAME[platform]+" connection isn't active. Connect it again.");return;}
+  if(!res.ok||!res.data.audit_id){failProgress(res.data.error||"Couldn't start the audit.",platform);return;}
+  if(!res.data.reused)track("audit_started",{platform:platform,audit_id:res.data.audit_id});
+  watchAudit(res.data.audit_id);
+}
+var STAGES=[
+  ["connecting","Connecting to your POS"],
+  ["importing","Importing your customer history"],
+  ["analyzing","Learning visit rhythms · finding drifting customers · calculating value"],
+  ["done","Preparing your report"]
+];
+function renderStages(a,platform){
+  var order=STAGES.map(function(s){return s[0];});
+  var cur=a.stage==="failed"?-1:order.indexOf(a.stage);
+  var p=a.progress||{};
+  $("stages").innerHTML=STAGES.map(function(s,i){
+    var cls=a.stage==="failed"?(i===0?"fail":"wait"):(i<cur||a.stage==="done"?"done":i===cur?"now":"wait");
+    var det="";
+    if(s[0]==="connecting"&&platform)det=POS_NAME[platform]||"";
+    if(s[0]==="importing"&&(i<=cur)){if(p.orders_read!=null)det=num(p.orders_read)+" orders read";else if(p.customers!=null)det=num(p.customers)+" customers";}
+    if(s[0]==="importing"&&i<cur&&p.customers!=null)det=num(p.customers)+" customers found";
+    return '<div class="stage '+cls+'"><span class="sdot" aria-hidden="true">'+(cls==="done"?"&#10003;":cls==="fail"?"!":"")+'</span><span>'+s[1]+'</span><span class="det">'+esc(det)+'</span><span class="sr">'+(cls==="done"?"complete":cls==="now"?"in progress":"waiting")+'</span></div>';
+  }).join("");
+}
+function failProgress(msg,platform){
+  err("progErr",msg);
+  var a=$("progActions");a.classList.remove("hide");
+  a.innerHTML='<button class="btn btn-dark btn-sm" id="retryBtn" type="button">Try again</button><button class="btn btn-ghost btn-sm" id="otherBtn" type="button">Choose another POS or CSV</button>';
+  $("retryBtn").onclick=function(){err("progErr");a.classList.add("hide");platform&&platform!=="csv"?startAudit(platform):goConnect();};
+  $("otherBtn").onclick=function(){err("progErr");a.classList.add("hide");goConnect();};
+}
+var pollT=null;
+function watchAudit(id){
+  show("flow","pProgress");err("progErr");$("progActions").classList.add("hide");
+  var started=Date.now();
+  clearTimeout(pollT);
+  (async function tick(){
+    var a=null;
+    try{var d=await rest("/rest/v1/pos_audits?id=eq."+id+"&select=*");a=d&&d[0];}catch(e){}
+    if(!a){if(Date.now()-started>60000){failProgress("We lost track of this audit. Try again.");return;}pollT=setTimeout(tick,2500);return;}
+    renderStages(a,a.platform);
+    if(a.status==="complete"||a.status==="insufficient_data"){track("audit_completed",{audit_id:a.id,platform:a.platform});setTimeout(function(){renderReport(a);},600);return;}
+    if(a.status==="failed"){track("audit_failed",{audit_id:a.id,platform:a.platform});failProgress(a.error||"The audit didn't finish.",a.platform);return;}
+    // A run that stops reporting progress for 4 minutes has died (e.g. the server restarted).
+    if(Date.now()-Date.parse(a.updated_at)>240000){failProgress("The import stopped responding. Your POS may be slow right now — try again.",a.platform);return;}
+    pollT=setTimeout(tick,2000);
+  })();
+}
+
+// ---------------- report ----------------
+function bucketBar(b){
+  var t=(b.just_past||0)+(b.well_past||0)+(b.long_gone||0);if(!t)return "";
+  var w=function(n){return (100*n/t).toFixed(1)+"%";};
+  return '<div class="bar" role="img" aria-label="'+num(b.just_past)+' drifting, '+num(b.well_past)+' at risk, '+num(b.long_gone)+' long gone"><i style="width:'+w(b.just_past)+';background:#F2B84B"></i><i style="width:'+w(b.well_past)+';background:#E07A3F"></i><i style="width:'+w(b.long_gone)+';background:#C8323C"></i></div>'
+    +'<div class="legend"><span><b style="background:#F2B84B"></b>Drifting · '+num(b.just_past)+'</span><span><b style="background:#E07A3F"></b>At risk · '+num(b.well_past)+'</span><span><b style="background:#C8323C"></b>Long gone (4×+ their usual gap) · '+num(b.long_gone)+'</span></div>';
+}
+function fmtDate(s){try{return new Date(s).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});}catch(e){return "";}}
+async function renderReport(a){
+  var r=a.report||{};var dr=r.drifting||{};var hp=r.high_priority||{};var vip=r.vip||{};var imp=r.import||{};
+  var biz="";try{var b=await ensureBiz({});biz=b&&b.business_name||"";var paid=["active","trialing"].indexOf(String(b&&b.stripe_subscription_status||"").toLowerCase())>=0;}catch(e){}
+  var insufficient=a.status==="insufficient_data";
+  // Illustrative estimate, clearly labelled: 1 in 5 high-priority drifting customers come back
+  // and keep their OWN old routine for 3 months (engine: high_priority.avg_90d_value).
+  // Reports built before that field existed fall back to a single visit each.
+  var estCustomers=Math.round((hp.count||0)*0.2);
+  var has90=hp.avg_90d_value!=null;
+  var perCust=has90?Number(hp.avg_90d_value):Number(hp.avg_order_value||0);
+  var est=estCustomers*perCust;
+  var recommend=(r.customers_analyzed||0)>1000?"Scale":"Growth";
+  var html='';
+  html+='<div class="rephead"><div><div class="eyebrow">Free POS audit · '+esc(POS_NAME[a.platform]||a.platform||"")+' · '+fmtDate(a.completed_at||a.updated_at)+'</div><h2 style="font-size:clamp(26px,4vw,38px)">Your Customer Retention Report</h2>'+(biz?'<p class="muted" style="margin-top:4px">'+esc(biz)+'</p>':'')+'</div>'
+    +(paid?'<a class="btn btn-dark btn-sm" href="/">Open your dashboard &rarr;</a></div>':'<button class="btn btn-dark btn-sm" data-goplans>Start my 30-day free trial &rarr;</button></div>');
+  if(insufficient){
+    html+='<div class="card" style="padding:20px;border-color:#F2B84B;background:#FFFBF1;margin-bottom:16px"><h3>Not enough history for a reliable drift report yet</h3><ul style="margin:10px 0 0;padding-left:18px;color:var(--ink2)">'+(r.insufficient_reasons||[]).map(function(x){return '<li>'+esc(x)+'</li>';}).join("")+'</ul><p class="small muted" style="margin-top:10px">What we could measure is below. You can try a CSV export with more history, or Clicktide will keep learning rhythms automatically once connected.</p><div style="margin-top:12px"><button class="btn btn-ghost btn-sm" id="tryCsv">Try a CSV export instead</button></div></div>';
+  }
+  html+='<div class="grid4">'
+    +'<div class="card big"><div class="n">'+num(r.customers_analyzed)+'</div><div class="l">Customers analyzed</div></div>'
+    +'<div class="card big alert"><div class="n">'+num(dr.count)+'</div><div class="l">Customers identified as drifting</div></div>'
+    +'<div class="card big"><div class="n">'+money(dr.historical_spend)+'</div><div class="l">Historical spend of drifting customers</div></div>'
+    +'<div class="card big"><div class="n">'+num(hp.count)+'</div><div class="l">High-priority win-back customers</div></div>'
+    +'</div>';
+  html+='<section class="blk" style="padding:34px 0 0"><h2 style="font-size:24px">Your retention opportunity — three separate numbers</h2><p class="muted small" style="margin-top:4px">We never blend these together. Only the third is money actually recovered.</p><div class="grid3" style="margin-top:14px">'
+    +'<div class="card measure"><div class="k">1 · Historical spend</div><div class="n">'+money(dr.historical_spend)+'</div><p>What your '+num(dr.count)+' drifting customers spent with you in the period analyzed. A fact about the past — <b>not</b> guaranteed recoverable revenue.</p></div>'
+    +'<div class="card measure"><div class="k">2 · Illustrative estimate</div><div class="n">'+money(est)+'</div><p>'+(has90?'If 1 in 5 of your '+num(hp.count)+' high-priority customers ('+num(estCustomers)+' people) came back and kept their old routine for 3 months — about '+money(perCust)+' each, based on their own order size and visit rhythm.':'If 1 in 5 of your '+num(hp.count)+' high-priority customers came back for just one visit at their average order ('+money(hp.avg_order_value)+').')+' An assumption to size the opportunity — not a prediction or a guarantee.</p></div>'
+    +'<div class="card measure recovered"><div class="k">3 · Actually recovered</div><div class="n">$0 so far</div><p>Counted only when a customer Clicktide contacted really comes back and buys. Starts once you turn on win-back campaigns.</p></div>'
+    +'</div></section>';
+  html+='<section class="blk" style="padding:34px 0 0"><div class="grid2">'
+    +'<div class="card" style="padding:22px"><h3>How far they\'ve drifted</h3><p class="small muted">Measured against each customer\'s own usual gap between visits.</p>'+bucketBar(dr.buckets||{})+'<p class="small muted" style="margin-top:12px">'+num(dr.repeat_count)+' of the drifting customers were repeat customers — people who had a habit and broke it.</p></div>'
+    +'<div class="card" style="padding:22px"><h3>Your customer base</h3><ul style="padding-left:18px;margin:10px 0 0;font-size:14.5px;color:var(--ink2)">'
+      +'<li>'+num(r.repeat_customers)+' repeat customers · '+num(r.one_time_customers)+' one-time</li>'
+      +(r.median_visit_gap_days?'<li>Typical regular returns every <b>'+num(r.median_visit_gap_days)+' days</b></li>':'')
+      +'<li>Average order value '+money(r.avg_order_value)+'</li>'
+      +'<li>'+num(vip.count)+' VIP customers — <b>'+num(vip.drifting)+' of them drifting</b></li>'
+      +'<li>'+num(r.active_count)+' customers still on rhythm · '+num(r.new_count)+' new</li>'
+      +(r.history_first_order?'<li>History analyzed: '+fmtDate(r.history_first_order)+' – '+fmtDate(r.history_last_order)+'</li>':'')
+      +(r.confidence?'<li>Rhythm confidence: '+num(r.confidence.high)+' high · '+num(r.confidence.medium)+' medium · '+num(r.confidence.low)+' low · '+num(r.confidence.insufficient)+' one-visit (estimated)</li>':'')
+    +'</ul></div></div></section>';
+  var recs=[];
+  if(hp.count)recs.push('<b>Start with your '+num(hp.count)+' high-priority customers.</b> They\'re high-value regulars who\'ve passed their normal visit interval — the best return on a personal touch.');
+  if(dr.buckets&&dr.buckets.just_past)recs.push('<b>Reach the '+num(dr.buckets.just_past)+' who are only just past their rhythm now.</b> A quick, friendly note works best before the habit fully breaks.');
+  recs.push('<b>Use digital reward codes for most win-backs.</b> They cost nothing to send and only cost you when redeemed.');
+  if(vip.drifting)recs.push('<b>Consider a mailed postcard or small gift for your '+num(vip.drifting)+' drifting VIPs.</b> Physical mail stands out where email gets ignored.');
+  recs.push('<b>Contact customers who have exceeded their normal visit interval — automatically.</b> Clicktide watches every customer\'s rhythm daily so no one slips through again.');
+  html+='<section class="blk" style="padding:34px 0 0"><div class="grid2" style="align-items:start"><div class="card" style="padding:22px"><h3>What Clicktide recommends</h3><ul class="recs" style="padding-left:18px;margin:12px 0 0;font-size:14.5px;color:var(--ink2)">'+recs.map(function(x){return '<li>'+x+'</li>';}).join("")+'</ul></div>'
+    +'<div class="card" style="padding:22px"><h3>How Clicktide brings them back</h3><ol style="padding-left:18px;margin:12px 0 0;font-size:14.5px;color:var(--ink2)"><li style="margin-bottom:8px">Learns each customer\'s rhythm from your POS, every day.</li><li style="margin-bottom:8px">When someone drifts, sends a personal message in your business\'s name — email, or text if they\'ve opted in.</li><li style="margin-bottom:8px">Adds a reward code, postcard or gift for the customers worth it, within the budget you set.</li><li>Counts recovered revenue only when they actually return.</li></ol><p class="small muted" style="margin-top:12px">Nothing is sent until you subscribe and turn campaigns on. Texts only go to customers who opted in; every email has a working unsubscribe; gifts only spend wallet funds you add.</p></div></div></section>';
+  html+='<section class="blk" style="padding:34px 0 0"><details class="card" style="padding:4px 22px"><summary>About this report — data and limits</summary><ul style="padding-left:18px;color:var(--mut);font-size:13.5px">'+(r.limitations||[]).map(function(x){return '<li style="margin-bottom:6px">'+esc(x)+'</li>';}).join("")+'<li>This page shows totals only — no customer names, emails or phone numbers. Only you can open it while signed in.</li></ul></details></section>';
+  if(!paid){
+    html+='<section class="blk" id="plans" style="padding:44px 0 0"><div style="text-align:center;max-width:640px;margin:0 auto 22px"><h2>You\'ve found the customers drifting away. Now let Clicktide bring them back automatically.</h2><p class="muted" style="margin-top:8px">Every plan starts with a <b>30-day free trial</b>. Checkout asks for a card; cancel before day 30 and you pay nothing. Your POS stays connected, so there\'s nothing to set up again.</p></div>'
+      +'<div class="next3"><div><b>1</b><span><strong>Pick a win-back campaign</strong>Start from Clicktide\'s ready-made win-back and welcome campaigns, or write your own.</span></div><div><b>2</b><span><strong>You decide what goes out</strong>Nothing sends until you turn a campaign on. Texts only go to customers who opted in.</span></div><div><b>3</b><span><strong>See who actually comes back</strong>Recovered revenue counts only real return visits from customers Clicktide contacted.</span></div></div>'
+      +'<div class="plans">'
+      +plan("Local",79,"Small businesses",["Up to 200 customers","Email + 10 mailed postcards/mo included","Win-Back Playbook + library campaigns","Digital reward codes","Recovered-revenue tracking","Monday Drift Report"],recommend)
+      +plan("Growth",199,"Growing businesses",["Up to 1,000 customers","Everything in Local","1,500 texts/mo + 30 postcards/mo included","Retention analytics","Email & Brand Studio","Gift auto-send"],recommend)
+      +plan("Scale",449,"Larger businesses",["Unlimited customers","Everything in Growth","5,000 texts/mo + 75 postcards/mo included","AI campaign suggestions","White-label branding"],recommend)
+      +'</div>'+((r.customers_analyzed||0)>1000?'<p class="small muted" style="text-align:center;margin-top:12px">You have '+num(r.customers_analyzed)+' customers — more than Growth\'s 1,000, so Scale covers all of them.</p>':'')+'<div class="err" id="payErr" role="alert" style="max-width:560px;margin:14px auto 0"></div></section>';
+  }else{
+    html+='<section class="blk" style="padding:34px 0 0;text-align:center"><a class="btn btn-dark" href="/">Open your dashboard &rarr;</a></section>';
+  }
+  html+='<section class="blk" style="padding:40px 0 0"><div class="card" style="padding:20px"><h3>Your data, your call</h3><p class="small muted" style="margin-top:6px">'+(POS_REVOKE[a.platform]?'This deletes Clicktide\'s stored access key for your POS, this report, and any customer records in your free account. To remove the app from '+esc(POS_NAME[a.platform])+' too: '+esc(POS_REVOKE[a.platform])+'.':'This report came from a file you uploaded — no POS is connected. Deleting removes this report and any customer records imported to your free account.')+'</p><button class="btn btn-ghost btn-sm" id="delBtn" style="margin-top:12px;color:var(--red)">'+(POS_REVOKE[a.platform]?'Disconnect and delete my data':'Delete my data')+'</button> <span class="small" id="delMsg" role="status"></span></div></section>';
+  $("vReport").innerHTML=html;
+  show("report",null);
+  document.querySelectorAll("[data-goplans]").forEach(function(b){b.onclick=function(){var p=$("plans");if(p)p.scrollIntoView({behavior:"smooth"});else location.href="/";};});
+  document.querySelectorAll("[data-plan]").forEach(function(b){b.onclick=function(){checkout(b.dataset.plan,a.id,biz);};});
+  if($("tryCsv"))$("tryCsv").onclick=function(){goConnect();};
+  $("delBtn").onclick=function(){deleteData(a.platform);};
+  if(!a.report_viewed_at)fnCall("platform-sync",{mode:"audit_viewed",audit_id:a.id}).catch(function(){});
+  track("report_viewed",{audit_id:a.id,platform:a.platform});
+  var pl=$("plans");
+  plansSeen=false;syncSticky();
+  if(pl&&"IntersectionObserver"in window){var tracked=false;new IntersectionObserver(function(es){var vis=es.some(function(e){return e.isIntersecting;});if(vis&&!tracked){tracked=true;track("pricing_viewed",{audit_id:a.id});}plansSeen=vis;syncSticky();},{threshold:.15}).observe(pl);}
+  clearAuditFlow();
+  try{history.replaceState({},"",location.pathname+"?report="+a.id);}catch(e){}
+}
+function plan(name,price,best,feats,rec){
+  var isRec=name===rec;
+  return '<div class="card plan'+(isRec?" rec":"")+'">'+(isRec?'<span class="badge">Recommended</span>':'')+'<h3>'+name+'</h3><div class="small muted">Best for '+best.toLowerCase()+'</div><div class="pr">$'+price+'<small>/month</small></div><div class="trial">30 days free, then $'+price+'/month</div><ul>'+feats.map(function(f){return '<li>'+esc(f)+'</li>';}).join("")+'</ul><button class="btn '+(isRec?"btn-dark":"btn-ghost")+'" data-plan="'+name+'" style="width:100%">Start free trial</button></div>';
+}
+async function checkout(planName,auditId,biz){
+  err("payErr");
+  var btn=document.querySelector('[data-plan="'+planName+'"]');if(btn){btn.disabled=true;btn.textContent="Opening secure checkout…";}
+  track("checkout_started",{audit_id:auditId});
+  try{
+    if(!(await refreshIfNeeded()))throw new Error("Please log in again.");
+    var r=await fetch(FN+"/create-checkout-session",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+S.token},body:JSON.stringify({
+      plan:planName,price_id:PRICE[planName],campaign_mode:"setup",email:S.user.email,business_name:biz||"",user_id:S.user.id,
+      success_url:location.origin+"/?session=success&plan="+encodeURIComponent(planName)+"&campaign=setup&biz="+encodeURIComponent(biz||""),
+      cancel_url:location.origin+"/free-pos-audit?report="+encodeURIComponent(auditId)})});
+    var d=await r.json().catch(function(){return{};});
+    if(!r.ok||!(d.url||d.checkout_url))throw new Error(d.error||"Checkout isn't available right now.");
+    location.href=d.url||d.checkout_url;
+  }catch(e){err("payErr",e.message);if(btn){btn.disabled=false;btn.textContent="Choose "+planName;}}
+}
+async function deleteData(platform){
+  if(!confirm("Disconnect your POS and permanently delete this report and any customer records imported to your free account?\n\nThis can't be undone."))return;
+  $("delMsg").textContent=" Deleting…";
+  var res=await fnCall("platform-sync",{mode:"audit_delete"});
+  if(res.ok&&res.data.ok){$("vReport").innerHTML='<div class="card panel" style="margin-top:30px"><h2>Done — disconnected and deleted</h2><p class="lead">Clicktide no longer has access to your POS, and your audit data is gone. '+(POS_REVOKE[platform]?'To remove the app from your POS too: '+esc(POS_REVOKE[platform])+'.':'')+'</p><a class="btn btn-ghost btn-sm" href="/">Back to Clicktide</a></div>';}
+  else $("delMsg").textContent=" "+(res.data.error||"Couldn't delete right now — email support@goclicktide.com.");
+}
+
+// ---------------- boot ----------------
+(async function boot(){
+  loadSession();
+  // DEMO MODE — preview hosts only (never goclicktide.com, never real data). Runs the
+  // real page code end to end; the server calls are answered with the report that
+  // Clicktide's real engine produced from the demo café file (demo/demo-report.json).
+  if((params.get("demo")==="1"||params.get("sample_report")==="1")&&/(\.pages\.dev|localhost|127\.0\.0\.1)$/.test(location.hostname)){
+    var DEMO_REPORT=null,demoStart=0,demoCustomers=0,demoPlatform="csv";
+    try{DEMO_REPORT=await (await fetch("/demo/demo-report.json",{cache:"no-store"})).json();}catch(e){}
+    S={token:SK,user:{id:"00000000-0000-0000-0000-000000000000",email:"owner@harborstreetcafe.example"}};
+    track=function(){};
+    refreshIfNeeded=async function(){return true;};
+    ensureBiz=async function(){return{business_name:"Harbor Street Café (demo)"};};
+    latestAudit=async function(){return null;};
+    fnCall=async function(name,body){
+      if(body&&body.mode==="audit_csv"){demoPlatform="csv";demoStart=Date.now();demoCustomers=(body.facts||[]).length;return{ok:true,status:200,data:{audit_id:"demo"}};}
+      if(body&&body.mode==="audit_start"){demoPlatform=body.platform||"square";demoStart=Date.now();demoCustomers=DEMO_REPORT?DEMO_REPORT.customers_analyzed:0;return{ok:true,status:200,data:{audit_id:"demo"}};}
+      return{ok:true,status:200,data:{ok:true}};
+    };
+    rest=async function(path){
+      if(path.indexOf("platform_connections")>=0)return [];
+      if(path.indexOf("pos_audits")>=0){
+        var t=Date.now()-demoStart,now=new Date().toISOString();
+        var base={id:"demo",platform:demoPlatform,source:demoPlatform==="csv"?"csv":"pos",updated_at:now,report_viewed_at:"demo"};
+        if(t<1800)return [Object.assign(base,{status:"running",stage:"importing",progress:{customers:demoCustomers}})];
+        if(t<4200)return [Object.assign(base,{status:"running",stage:"analyzing",progress:{customers:demoCustomers}})];
+        return [Object.assign(base,{status:"complete",stage:"done",completed_at:now,report:DEMO_REPORT})];
+      }
+      return [];
+    };
+    DEMO=true;
+    checkout=async function(planName){err("payErr","Demo mode: this opens secure Stripe checkout for the "+planName+" plan with a 30-day free trial. The POS stays connected.");};
+    deleteData=async function(){$("delMsg").textContent=" Demo mode: this disconnects the POS and deletes the report and imported data.";};
+    var bar=document.createElement("div");
+    bar.setAttribute("role","note");
+    bar.style.cssText="position:sticky;top:0;z-index:30;background:#101215;color:#fff;font-size:13px;text-align:center;padding:8px 12px";
+    bar.innerHTML="Demo mode — fictional café, nothing is saved or sent. The report is what Clicktide's real engine produced from this sample file.";
+    document.body.insertBefore(bar,document.body.firstChild);
+    var tryBtn=document.createElement("button");
+    tryBtn.type="button";tryBtn.className="btn btn-dark btn-sm";tryBtn.style.marginTop="10px";tryBtn.textContent="Use the demo café's POS export";
+    tryBtn.onclick=async function(){tryBtn.disabled=true;tryBtn.textContent="Reading 12,558 orders…";handleCsvText(await (await fetch("/demo/demo-cafe-orders.csv")).text());tryBtn.remove();};
+    $("csvMap").parentNode.insertBefore(tryBtn,$("csvMap"));
+    if(params.get("sample_report")==="1"&&DEMO_REPORT){renderReport({id:"demo",platform:"csv",status:"complete",completed_at:new Date().toISOString(),report_viewed_at:"demo",report:DEMO_REPORT});return;}
+    setNav();if(!$("vLanding").classList.contains("hide"))show("landing",null);return;
+  }
+  // Email-confirmation link that returned straight here (#access_token=…).
+  var ht=hashP.get("access_token");
+  if(ht&&hashP.get("type")==="recovery"){
+    try{
+      var ru=await (await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+ht}})).json();
+      if(ru&&ru.id&&!acceptLinkSession(ru)){var resetDeclined=true;ru=null;}
+      if(ru&&ru.id){RECOVERY_TOKEN=ht;saveSession({access_token:ht,refresh_token:hashP.get("refresh_token")||"",expires_in:hashP.get("expires_in")||"",expires_at:hashP.get("expires_at")||"",user:ru});}
+    }catch(e){}
+    history.replaceState({},"",location.pathname);
+    if(RECOVERY_TOKEN){show("flow","pReset");return;}
+    show("flow","pForgot");err("fpErr",resetDeclined?"Reset cancelled — request a new link if you meant to reset your password.":"That reset link has expired or was already used. Request a new one.");return;
+  }
+  if(hashP.get("error_description")||hashP.get("error_code")){
+    history.replaceState({},"",location.pathname);
+    show("flow","pForgot");err("fpErr","That link has expired or was already used. Request a new one below.");return;
+  }
+  if(ht){
+    try{
+      var u=await (await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+ht}})).json();
+      if(u&&u.id&&acceptLinkSession(u)){saveSession({access_token:ht,refresh_token:hashP.get("refresh_token")||"",expires_in:hashP.get("expires_in")||"",expires_at:hashP.get("expires_at")||"",user:u});
+        fetch(FN+"/send-welcome-email",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+ht},body:"{}"}).catch(function(){});}
+    }catch(e){}
+    history.replaceState({},"",location.pathname+location.search);
+  }
+  if(S)await refreshIfNeeded().catch(function(){});
+  setNav();
+  var ctPlatform=params.get("ct_platform"),ctError=params.get("ct_error"),step=params.get("step"),rep=params.get("report");
+  if(params.get("ct_oauth")==="pending"){
+    var pend=params.get("ct_pending")||"";
+    history.replaceState({},"",location.pathname);
+    if(!S){markAuditFlow();show("flow","pLogin");err("logErr","Your session ended before the connection finished. Log in, then connect your POS again.");return;}
+    var cr=await fnCall("oauth-confirm",{pending:pend});
+    if(!cr.ok||!cr.data||!cr.data.ok){await goConnect();err("conErr",((cr.data&&cr.data.error)||"The connection didn't complete.")+" You can try again — nothing was changed in your POS.");track("connect_failed");return;}
+    sessionStorage.removeItem("ct_oauth_state");
+    track("connect_completed",{platform:cr.data.platform});
+    try{await ensureBiz({});}catch(e){}
+    startAudit(cr.data.platform);return;
+  }
+  if(ctPlatform&&!POS.some(function(p){return p.id===ctPlatform;}))ctPlatform=null;
+  if(ctError){
+    if(!S){show("flow","pLogin");return;}
+    await goConnect();err("conErr","The connection didn't complete: "+ctError+". You can try again — nothing was changed in your POS.");
+    track("connect_failed");history.replaceState({},"",location.pathname);return;
+  }
+  if(ctPlatform&&S){
+    sessionStorage.removeItem("ct_oauth_state");
+    track("connect_completed",{platform:ctPlatform});
+    history.replaceState({},"",location.pathname);
+    try{await ensureBiz({});}catch(e){}
+    startAudit(ctPlatform);return;
+  }
+  if(rep&&S){
+    try{var d=await rest("/rest/v1/pos_audits?id=eq."+encodeURIComponent(rep)+"&select=*");if(d&&d[0]){d[0].status==="running"?watchAudit(d[0].id):d[0].status==="failed"?(await goConnect()):renderReport(d[0]);return;}}catch(e){}
+  }
+  if(step==="connect"){
+    if(S){try{await ensureBiz({});}catch(e){}await afterLogin();}
+    else{markAuditFlow();show("flow","pLogin");}
+    return;
+  }
+  if(rep&&!S){markAuditFlow();show("flow","pLogin");return;}
+  // A visitor who already clicked a button while the page was starting up keeps their place.
+  if(!$("vLanding").classList.contains("hide"))show("landing",null);
+  track("landing_view");
+})();
+})();
+</script>
+</body>
+</html>
