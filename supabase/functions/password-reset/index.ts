@@ -148,6 +148,9 @@ Deno.serve(async (req) => {
 
   // Always return ok — never leak whether the account exists.
   if (!email || email.length > 254 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ ok: true });
+  // Accounts Clicktide made for a Shopify store sign in from the Shopify admin only; their
+  // internal address receives no mail, so nothing is sent (same generic answer).
+  if (email.endsWith("@shopify-users.goclicktide.com")) return json({ ok: true });
   if (!serviceRoleKey || !resendApiKey) return json({ ok: true });
 
   // Counted for every address, registered or not, so the limit itself reveals nothing.
