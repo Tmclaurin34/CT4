@@ -112,6 +112,39 @@ async function runOne(ev: Ev) {
   }
 }
 
+// Usage billed through Shopify that is still unreported an hour later is money not yet billed:
+// email support, at most once every 6 hours, so it can't quietly become free.
+async function usageOverdueAlert() {
+  try {
+    const v = await rpc("clicktide_shopify_usage_overdue", {}) as { rows?: number; amount?: number; oldest?: string } | null;
+    if (!v || !Number(v.rows)) return v;
+    const send = await rpc("clicktide_rate_limit_hit", { p_bucket: "shopify-usage-overdue-alert", p_window_seconds: 21600, p_max: 1 }).catch(() => false);
+    if (send === true) {
+      await notifySupport(`Shopify usage not reported: ${v.rows} charge(s), $${v.amount}`,
+        `${v.rows} usage charge(s) totalling $${v.amount} (oldest ${v.oldest}) have not been accepted by Shopify's App Events API.\n` +
+        "Check the wallet rows where shopify_usage is true and shopify_usage_reported_at is null (shopify_usage_error says why), " +
+        "and the Dev Dashboard logs. Failed rows keep retrying, backing off to once every 6 hours.");
+    }
+    return v;
+  } catch (e) { console.error("usage overdue check failed", e); return null; }
+}
+
+// Where Shopify tells us what it billed (legacy AppUsagePricing balanceUsed), compare it with
+// what we reported this cycle. App Pricing exposes no such figure to the Admin API, so for
+// App Pricing stores this is the manual monthly check in docs/shopify-usage-billing.md.
+async function usageMismatchAlert() {
+  try {
+    const m = await rpc("clicktide_shopify_usage_mismatches", {}) as unknown[];
+    if (!Array.isArray(m) || !m.length) return [];
+    const send = await rpc("clicktide_rate_limit_hit", { p_bucket: "shopify-usage-mismatch-alert", p_window_seconds: 86400, p_max: 1 }).catch(() => false);
+    if (send === true) {
+      await notifySupport(`Shopify usage mismatch on ${m.length} store(s)`,
+        "What Shopify reports as billed this cycle differs from what Clicktide reported:\n" + JSON.stringify(m, null, 2));
+    }
+    return m;
+  } catch (e) { console.error("usage mismatch check failed", e); return null; }
+}
+
 // Nightly (pg_cron, x-clicktide-cron-key): retry unfinished events, then
 // re-read every installed shop's subscription (App Pricing sends no webhooks).
 async function cronRun() {
@@ -125,7 +158,9 @@ async function cronRun() {
   }
   let usage: unknown;
   try { usage = await reportUsage(); } catch (e) { usage = { error: e instanceof Error ? e.message : String(e) }; }
-  return { retried: (pending || []).length, billing, usage };
+  const overdue = await usageOverdueAlert();
+  const mismatches = await usageMismatchAlert();
+  return { retried: (pending || []).length, billing, usage, overdue, mismatches };
 }
 
 Deno.serve(async (req) => {
@@ -141,8 +176,11 @@ Deno.serve(async (req) => {
     let job = "";
     try { job = String((await req.clone().json())?.job || ""); } catch { /* empty body */ }
     if (job === "usage") {
-      try { return json({ ok: true, usage: await reportUsage() }); }
-      catch (e) { return json({ ok: false, error: e instanceof Error ? e.message : String(e) }, 502); }
+      let usage: unknown, err = "";
+      try { usage = await reportUsage(); } catch (e) { err = e instanceof Error ? e.message : String(e); }
+      const overdue = await usageOverdueAlert();
+      const mismatches = await usageMismatchAlert();
+      return json({ ok: !err, usage, overdue, mismatches, ...(err ? { error: err } : {}) }, err ? 502 : 200);
     }
     return json({ ok: true, ...(await cronRun()) });
   }
