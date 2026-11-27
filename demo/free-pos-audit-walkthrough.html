@@ -53,7 +53,8 @@ header.intro .lede{font-size:18px;color:var(--ink2);max-width:62ch}
 .step p{color:var(--ink2);max-width:52ch}
 .step .note{font-size:13.5px;color:var(--mut)}
 .shot{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:8px;box-shadow:0 18px 40px rgba(16,18,21,.10)}
-.shot img{display:block;width:100%;height:auto;border-radius:15px;aspect-ratio:480/600;max-width:100%}
+.shot img{display:block;width:100%;height:auto;border-radius:15px;max-width:100%}
+.shot.phone{max-width:240px;justify-self:center}
 .key{background:var(--sky);border-radius:16px;padding:16px 18px;display:grid;gap:6px}
 .key b{font-family:var(--display);font-size:15px}
 .key p{font-size:14.5px}
@@ -81,8 +82,8 @@ footer{border-top:1px solid var(--line);margin-top:24px;padding-block:24px 40px;
 
   <header class="intro">
     <h1>Free POS Audit: what a business owner sees</h1>
-    <p class="lede">A business owner clicks our ad, connects their point-of-sale system read-only, and gets a free report showing which regular customers have stopped coming back and what those customers used to spend. Then they can subscribe so Clicktide wins them back automatically.</p>
-    <div class="facts"><span>Free, no credit card</span><span>Read-only POS connection</span><span>Nothing is sent to their customers</span><span>Report in about 5 minutes</span></div>
+    <p class="lede">A business owner clicks our ad, connects their point-of-sale system, and gets a free report showing which regular customers have stopped coming back and what those customers used to spend. Then they can start a 30-day free trial so Clicktide wins them back automatically.</p>
+    <div class="facts"><span>Free report, no credit card</span><span>Clicktide only reads sales data</span><span>Nothing is sent to their customers</span><span>Report in about 5 minutes</span><span>30-day free trial on every plan</span></div>
     <div class="links">
       <div class="link">
         <b>Try the clickable demo (sample café, nothing saved)</b>
@@ -100,75 +101,59 @@ footer{border-top:1px solid var(--line);margin-top:24px;padding-block:24px 40px;
   <section class="stage" aria-labelledby="s1"><span class="k">Stage 1 · The ad page</span><h2 id="s1">They land from the ad</h2></section>
 
   <div class="step">
-    <div class="txt"><span class="num">1</span><h3>The offer</h3><p>The headline asks how much revenue they lose to customers who never come back. One button: get my free report. Each ad gets its own matching headline.</p></div>
-    <figure class="shot"><img src="walkthrough/01-ad-landing-page.jpg" alt="Landing page headline: How much revenue are you losing from customers who never come back? with a Get my free report button" loading="lazy" width="480" height="600"></figure>
+    <div class="txt"><span class="num">1</span><h3>The offer, with an example report</h3><p>The headline asks how much revenue they lose to customers who never come back. Beside it, an example report built from a sample café shows exactly what they'll get. Each ad gets its own matching headline.</p></div>
+    <figure class="shot"><img src="walkthrough2/01-hero-and-example-report.jpg" alt="Landing page headline with a Get my free report button and an example report showing 593 customers, 304 drifting, 81 high-priority" loading="lazy" width="478" height="598"></figure>
   </div>
   <div class="step">
-    <div class="txt"><span class="num">2</span><h3>The problem, and an example report</h3><p>Regulars quietly stop coming and nobody notices. A sample report shows what they'll get, clearly labelled as an example.</p></div>
-    <figure class="shot"><img src="walkthrough/02-the-problem.jpg" alt="The problem section with an example report: 2,450 customers analyzed, 318 drifting, $42,600 historical spend, 86 high-priority" loading="lazy" width="480" height="600"></figure>
+    <div class="txt"><span class="num">2</span><h3>The problem, and how Clicktide finds it</h3><p>Regulars quietly stop coming and nobody notices. Clicktide reads purchase history, learns each customer's own rhythm, flags who's drifting and shows what they're worth.</p></div>
+    <figure class="shot"><img src="walkthrough2/02-problem-and-solution.jpg" alt="Problem cards and four solution cards" loading="lazy" width="800" height="1000"></figure>
   </div>
   <div class="step">
     <div class="txt"><span class="num">3</span><h3>How it works</h3><p>Five plain steps: select your POS, connect securely, Clicktide analyzes, receive the report, then turn on win-backs only if you choose.</p></div>
-    <figure class="shot"><img src="walkthrough/03-how-it-works.jpg" alt="Five numbered steps explaining how the free audit works" loading="lazy" width="480" height="600"></figure>
+    <figure class="shot"><img src="walkthrough2/03-how-it-works.jpg" alt="Five numbered steps explaining the free audit" loading="lazy" width="478" height="598"></figure>
   </div>
   <div class="step">
-    <div class="txt"><span class="num">4</span><h3>Trust: read-only</h3><p>Exactly what Clicktide reads, and what it can never do: move money, change their POS, message their customers during the audit, or sell their data.</p></div>
-    <figure class="shot"><img src="walkthrough/04-security-read-only.jpg" alt="Security section: Your POS connection is read-only, listing what Clicktide reads and what it can never do" loading="lazy" width="480" height="600"></figure>
+    <div class="txt"><span class="num">4</span><h3>Security and privacy</h3><p>What Clicktide reads, what it never does, and what happens to the data. Disconnecting is one click and deletes the stored access key, the report and any customer records.</p></div>
+    <figure class="shot"><img src="walkthrough2/04-security-and-privacy.jpg" alt="Security section: Clicktide only reads your sales data, it never moves money" loading="lazy" width="478" height="598"></figure>
   </div>
-
   <section class="stage" aria-labelledby="s2"><span class="k">Stage 2 · Connect</span><h2 id="s2">They sign up free and connect their POS</h2></section>
 
   <div class="step">
-    <div class="txt"><span class="num">5</span><h3>Free account</h3><p>Business name, their name, email, password. No credit card. The account keeps their report private.</p></div>
-    <figure class="shot"><img src="walkthrough/05-free-signup.jpg" alt="Create your free account form with business name, name, email and password fields" loading="lazy" width="480" height="600"></figure>
+    <div class="txt"><span class="num">5</span><h3>Free account</h3><p>A progress bar shows the three steps. Business name, name, email and password, with a Show button on the password. No credit card. If the email already has an account, they go straight to log-in with it filled in.</p></div>
+    <figure class="shot"><img src="walkthrough2/05-free-signup.jpg" alt="Create your free account form with a three-step progress bar" loading="lazy" width="478" height="598"></figure>
   </div>
   <div class="step">
-    <div class="txt"><span class="num">6</span><h3>Pick their POS</h3><p>Square, Shopify, Clover or Stripe. They log in on their POS company's own site and approve read-only access. The screen spells out what they're approving.</p></div>
-    <figure class="shot"><img src="walkthrough/06-select-your-pos.jpg" alt="Select your POS screen with Square, Shopify, Clover and Stripe buttons and a list of read-only permissions" loading="lazy" width="480" height="600"></figure>
+    <div class="txt"><span class="num">6</span><h3>Pick their POS</h3><p>Square, Shopify, Clover or Stripe. They log in on their POS company's own site and come straight back. Shopify owners type their store address right on the page. Any other system can upload a CSV export instead.</p></div>
+    <figure class="shot"><img src="walkthrough2/06-connect-your-pos.jpg" alt="Select your POS screen with the Shopify store address field and a list of what they are approving" loading="lazy" width="800" height="1000"></figure>
   </div>
-  <div class="step">
-    <div class="txt"><span class="num">7</span><h3>Any other system: upload a CSV</h3><p>Toast, Mindbody or anything else can upload an order export. Columns are matched automatically. Names, emails and phone numbers stay on their computer; only visit counts, totals and dates are sent.</p></div>
-    <figure class="shot"><img src="walkthrough/07-csv-match-columns.jpg" alt="CSV upload with column dropdowns for order date, total, customer email, phone and name" loading="lazy" width="480" height="600"></figure>
-  </div>
-
   <section class="stage" aria-labelledby="s3"><span class="k">Stage 3 · The free report</span><h2 id="s3">Clicktide analyzes their history and shows the opportunity</h2></section>
 
   <div class="step">
-    <div class="txt"><span class="num">8</span><h3>Real progress</h3><p>Each step ticks off as it actually happens, with real counts, not a fake loading bar.</p></div>
-    <figure class="shot"><img src="walkthrough/08-analyzing-progress.jpg" alt="Analyzing your business screen with progress steps and 593 customers found" loading="lazy" width="480" height="600"></figure>
+    <div class="txt"><span class="num">7</span><h3>Real progress</h3><p>Each step ticks off as it actually happens, with real counts, not a fake loading bar.</p></div>
+    <figure class="shot"><img src="walkthrough2/07-analyzing-progress.jpg" alt="Analyzing your business screen with 593 customers found" loading="lazy" width="478" height="598"></figure>
   </div>
   <div class="step">
-    <div class="txt"><span class="num">9</span><h3>Their headline numbers</h3><p>From the sample café's 12,558 orders:</p>
-      <div class="nums"><div><strong>593</strong>customers analyzed</div><div><strong>304</strong>drifting away</div><div><strong>81</strong>high-priority win-backs</div></div>
-      <p class="note">"Drifting" is judged against each customer's own visit rhythm. A weekly regular gone three weeks counts; a monthly customer gone three weeks doesn't.</p></div>
-    <figure class="shot"><img src="walkthrough/09-report-headline-numbers.jpg" alt="Customer Retention Report: 593 customers analyzed, 304 drifting, $64,198 historical spend, 81 high-priority" loading="lazy" width="480" height="600"></figure>
+    <div class="txt"><span class="num">8</span><h3>Their report: three numbers, never blended</h3><p>From the sample café's 12,558 orders:</p><div class="key"><b>What makes this honest</b><p>Past spending is a fact, the estimate is a labelled assumption, and recovered revenue only counts real return visits.</p><div class="nums"><div><strong>$64,198</strong>past spending of drifting customers</div><div><strong>$2,633</strong>estimate: 1 in 5 come back for 3 months</div><div class="g"><strong>$0 so far</strong>actually recovered</div></div></div></div>
+    <figure class="shot"><img src="walkthrough2/08-report-and-three-numbers.jpg" alt="Report with 593 customers, 304 drifting, $64,198 historical spend, 81 high-priority, and three separate numbers" loading="lazy" width="478" height="598"></figure>
   </div>
   <div class="step">
-    <div class="txt"><span class="num">10</span><h3>Three numbers, never blended</h3>
-      <div class="key"><b>What makes this honest</b><p>Past spending is a fact, the estimate is an assumption, and recovered revenue only counts real return visits.</p>
-        <div class="nums"><div><strong>$64,198</strong>past spending of drifting customers</div><div><strong>$2,633</strong>estimate: 1 in 5 come back for 3 months</div><div class="g"><strong>$0 so far</strong>actually recovered</div></div></div></div>
-    <figure class="shot"><img src="walkthrough/10-three-separate-numbers.jpg" alt="Three separate numbers: historical spend $64,198, illustrative estimate $2,633, actually recovered $0 so far" loading="lazy" width="480" height="600"></figure>
+    <div class="txt"><span class="num">9</span><h3>How far they've drifted, and what to do</h3><p>Who's just past their usual rhythm, who's long gone, a snapshot of their customer base, and recommendations built from their own numbers.</p></div>
+    <figure class="shot"><img src="walkthrough2/09-drift-base-recommendations.jpg" alt="Drift bar, customer base summary and five recommendations" loading="lazy" width="478" height="598"></figure>
   </div>
-  <div class="step">
-    <div class="txt"><span class="num">11</span><h3>How far they've drifted</h3><p>Who's just past their usual rhythm and still easy to win back, who's well past, and who's long gone. Plus a snapshot of their customer base.</p></div>
-    <figure class="shot"><img src="walkthrough/11-drift-and-customer-base.jpg" alt="Drift bar showing just past, well past and long gone customers, and a customer base summary" loading="lazy" width="480" height="600"></figure>
-  </div>
-  <div class="step">
-    <div class="txt"><span class="num">12</span><h3>What to do about it</h3><p>Recommendations built from their own numbers: start with the high-priority customers, catch the ones just past their rhythm, use free reward codes, and save postcards or gifts for VIPs.</p></div>
-    <figure class="shot"><img src="walkthrough/12-recommendations.jpg" alt="What Clicktide recommends: five specific recommendations based on the report" loading="lazy" width="480" height="600"></figure>
-  </div>
-
-  <section class="stage" aria-labelledby="s4"><span class="k">Stage 4 · Subscribe</span><h2 id="s4">They choose a plan, or walk away with their data deleted</h2></section>
+  <section class="stage" aria-labelledby="s4"><span class="k">Stage 4 · Free trial</span><h2 id="s4">They start a 30-day free trial, or walk away with their data deleted</h2></section>
 
   <div class="step">
-    <div class="txt"><span class="num">13</span><h3>Choose a plan</h3><p>Local $79, Growth $199 (recommended) or Scale $449 a month. Secure Stripe checkout, and their POS connection carries over with no re-importing.</p></div>
-    <figure class="shot"><img src="walkthrough/13-choose-a-plan.jpg" alt="Plans section with the Growth plan at $199 a month marked Recommended" loading="lazy" width="480" height="600"></figure>
+    <div class="txt"><span class="num">10</span><h3>Start a 30-day free trial</h3><p>Every plan starts with 30 days free: Local $79, Growth $199 (recommended, shown first) or Scale $449 a month after that. Three short steps explain what happens next. Their POS stays connected.</p></div>
+    <figure class="shot"><img src="walkthrough2/10-free-trial-plans.jpg" alt="Plans section with Growth recommended: 30 days free, then $199 a month" loading="lazy" width="478" height="598"></figure>
   </div>
   <div class="step">
-    <div class="txt"><span class="num">14</span><h3>Their data, their call</h3><p>One button disconnects their POS and deletes the report and any imported customer records.</p></div>
-    <figure class="shot"><img src="walkthrough/14-your-data-your-call.jpg" alt="Your data, your call box with a Delete my data button" loading="lazy" width="480" height="600"></figure>
+    <div class="txt"><span class="num">11</span><h3>Their data, their call</h3><p>One button deletes Clicktide's stored access key for their POS, the report and any customer records, and shows how to remove the app in their POS too.</p></div>
+    <figure class="shot"><img src="walkthrough2/11-your-data-your-call.jpg" alt="Your data, your call box with a Disconnect and delete my data button" loading="lazy" width="478" height="598"></figure>
   </div>
-
+  <div class="step">
+    <div class="txt"><span class="num">12</span><h3>On a phone</h3><p>Everything works on a phone. On the report, a button stays at the bottom of the screen and jumps to the free-trial plans.</p></div>
+    <figure class="shot phone"><img src="walkthrough2/12-phone-report.jpg" alt="Phone view of the report with a Start my 30-day free trial button at the bottom" loading="lazy" width="276" height="598"></figure>
+  </div>
   <footer>
     <p>Screens from the sample "Harbor Street Café," a fictional business with 12,558 orders. The report numbers come from Clicktide's real analysis of that sample file.</p>
     <p>Clicktide · goclicktide.com</p>

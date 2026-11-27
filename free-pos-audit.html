@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Free POS Audit — How Much Revenue Are You Losing to Customers Who Never Come Back? | Clicktide</title>
-<meta name="description" content="Connect your POS read-only and get a free customer retention report: who's drifting away based on their own visit rhythm, what they've historically spent, and how to bring them back. No credit card required."/>
+<meta name="description" content="Connect your POS and get a free customer retention report: who's drifting away based on their own visit rhythm, what they've historically spent, and how to bring them back. No credit card required."/>
 <link rel="canonical" href="https://goclicktide.com/free-pos-audit"/>
 <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
 <link rel="apple-touch-icon" href="apple-touch-icon.png"/>
@@ -12,7 +12,7 @@
 <meta property="og:type" content="website"/>
 <meta property="og:url" content="https://goclicktide.com/free-pos-audit"/>
 <meta property="og:title" content="Free POS Audit: find the customers who stopped coming back"/>
-<meta property="og:description" content="Connect your POS read-only. Get a free retention report in minutes. No credit card required."/>
+<meta property="og:description" content="Connect your POS. Get a free retention report in minutes. No credit card required."/>
 <meta property="og:image" content="https://goclicktide.com/og-image.png"/>
 <meta name="twitter:card" content="summary_large_image"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -21,7 +21,7 @@
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
 {"@type":"Question","name":"Is the POS audit really free?","acceptedAnswer":{"@type":"Answer","text":"Yes. The audit and report are free and need no credit card. You only pay if you choose a Clicktide plan afterwards."}},
-{"@type":"Question","name":"Can Clicktide move money or change anything in my POS?","acceptedAnswer":{"@type":"Answer","text":"No. The connection is read-only. Clicktide can read order history and customer contact records; it cannot take payments, issue refunds, change prices or products, or edit anything in your POS."}},
+{"@type":"Question","name":"Can Clicktide move money or change anything in my POS?","acceptedAnswer":{"@type":"Answer","text":"No. Clicktide only reads order history and customer contact records. It never takes payments, issues refunds, changes prices or products, or edits anything in your POS."}},
 {"@type":"Question","name":"Will Clicktide message my customers during the audit?","acceptedAnswer":{"@type":"Answer","text":"No. The free audit never sends texts, emails, postcards or gifts. Campaigns only run after you subscribe and turn them on, and texts only go to customers who have opted in."}},
 {"@type":"Question","name":"How do I disconnect?","acceptedAnswer":{"@type":"Answer","text":"From the report page, click Disconnect and delete my data, or revoke Clicktide from your POS's own app settings. Access ends immediately."}}
 ]}
@@ -30,6 +30,8 @@
 :root{--ink:#0F1115;--ink2:#3A3E46;--mut:#5A5E66;--mut2:#8A8E96;--line:rgba(16,18,21,.09);--card:#FFFFFF;--blue:#2776C4;--blue2:#4DA6FF;--sky:#EAF3FC;--green:#17A35A;--greenbg:#E9F7EF;--red:#C8323C;--redbg:#FDECEE;--r:18px}
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
+html{background:#FBFCFE}
+body{min-height:100vh}
 body{font-family:'DM Sans',Inter,system-ui,sans-serif;color:var(--ink);background:linear-gradient(180deg,#E3EFFB 0%,#F4F8FC 520px,#FBFCFE 100%);-webkit-font-smoothing:antialiased;line-height:1.55}
 a{color:var(--blue)}
 .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
@@ -64,7 +66,8 @@ section.blk{padding:56px 0}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
 .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-@media(max-width:860px){.grid3,.grid4{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr}}
+@media(max-width:860px){.grid4{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr}}
+@media(max-width:700px){.grid3{grid-template-columns:1fr}}
 @media(max-width:560px){.grid3,.grid2,.grid4{grid-template-columns:1fr}}
 .feat{padding:22px}
 .feat p{color:var(--mut);font-size:14.5px;margin-top:6px}
@@ -283,7 +286,7 @@ h2[tabindex="-1"]:focus,h2[tabindex="-1"]:focus-visible{outline:none}
       <div class="eyebrow">The solution</div>
       <h2 id="hSol" style="max-width:640px">Clicktide finds your retention opportunities.</h2>
       <div class="grid4" style="margin-top:26px">
-        <div class="card feat"><div class="ico" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></div><h3>Analyzes purchase history</h3><p>Up to a year of completed orders, read through your POS's official read-only connection.</p></div>
+        <div class="card feat"><div class="ico" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></div><h3>Analyzes purchase history</h3><p>Up to a year of completed orders, read through your POS's official connection.</p></div>
         <div class="card feat"><div class="ico" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><h3>Learns each customer's rhythm</h3><p>A weekly regular and a quarterly customer drift on different clocks. Clicktide learns each one's own.</p></div>
         <div class="card feat"><div class="ico" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9L2 18a2 2 0 001.7 3h16.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg></div><h3>Flags who's drifting</h3><p>Customers well past their normal visit interval — sorted by how long they've been gone.</p></div>
         <div class="card feat"><div class="ico" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div><h3>Shows what they're worth</h3><p>Historical spend and average order value of the customers you're losing, so you know who to prioritize.</p></div>
@@ -301,7 +304,7 @@ h2[tabindex="-1"]:focus,h2[tabindex="-1"]:focus-visible{outline:none}
       </div>
       <ol class="steps" style="list-style:none;padding:0;margin:0">
         <li class="card step"><b>1</b><div><h3>Select your POS</h3><p class="muted small">Square, Shopify, Clover or Stripe — or upload a CSV export from any system.</p></div></li>
-        <li class="card step"><b>2</b><div><h3>Connect securely</h3><p class="muted small">You log in on your POS's own site and approve read-only access. Clicktide never sees your password.</p></div></li>
+        <li class="card step"><b>2</b><div><h3>Connect securely</h3><p class="muted small">You log in on your POS's own site and approve access. Clicktide never sees your password, and it only reads your data.</p></div></li>
         <li class="card step"><b>3</b><div><h3>Clicktide analyzes your data</h3><p class="muted small">Watch real progress as orders are imported and each customer's rhythm is learned.</p></div></li>
         <li class="card step"><b>4</b><div><h3>Receive your free report</h3><p class="muted small">Who's drifting, what they've spent, and your highest-priority win-backs.</p></div></li>
         <li class="card step"><b>5</b><div><h3>Turn on automated win-backs — if you choose</h3><p class="muted small">Personal messages, digital rewards, postcards and gifts, sent only after you subscribe and approve.</p></div></li>
@@ -324,7 +327,7 @@ h2[tabindex="-1"]:focus,h2[tabindex="-1"]:focus-visible{outline:none}
   <section class="blk" aria-labelledby="hTrust">
     <div class="wrap">
       <div class="eyebrow">Security &amp; privacy</div>
-      <h2 id="hTrust" style="max-width:700px">Clicktide only reads your sales data. It can't move money.</h2>
+      <h2 id="hTrust" style="max-width:700px">Clicktide only reads your sales data. It never moves money.</h2>
       <p class="muted" style="margin-top:10px;max-width:680px">You connect through your POS company's own login page, so Clicktide never sees your password. Square, Shopify and Stripe connections ask only for read permissions. With every POS, Clicktide only ever reads orders and customers.</p>
       <div class="grid3" style="margin-top:22px">
         <div class="card trust"><h3>What Clicktide reads</h3><ul>
@@ -377,7 +380,7 @@ h2[tabindex="-1"]:focus,h2[tabindex="-1"]:focus-visible{outline:none}
       <div class="fg"><label class="fl" for="sName">Your name</label><input class="fi" id="sName" autocomplete="name" required maxlength="120"/></div>
       <div class="fg"><label class="fl" for="sEmail">Work email</label><input class="fi" id="sEmail" type="email" autocomplete="email" required maxlength="200"/></div>
       <div class="fg"><label class="fl" for="sPw">Password (8+ characters)</label><div class="pw"><input class="fi" id="sPw" type="password" autocomplete="new-password" required minlength="8"/><button type="button" class="pwt" data-pw="sPw" aria-label="Show password">Show</button></div></div>
-      <label class="consent"><input type="checkbox" id="sTerms"/><span>I agree to Clicktide's <a href="/terms" target="_blank" rel="noopener">Terms</a> and <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>, and authorize Clicktide to connect to my POS read-only to prepare this report.</span></label>
+      <label class="consent"><input type="checkbox" id="sTerms"/><span>I agree to Clicktide's <a href="/terms" target="_blank" rel="noopener">Terms</a> and <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>, and authorize Clicktide to read my POS sales data to prepare this report.</span></label>
       <button class="btn btn-dark" style="width:100%" type="submit" id="sBtn">Create free account &rarr;</button>
     </form>
     <p class="note" style="text-align:center">Already have a Clicktide account? <a href="#" id="toLogin">Log in</a></p>
