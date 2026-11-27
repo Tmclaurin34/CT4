@@ -28,7 +28,8 @@ Paste the "For the reviewer" section into the submission's testing-instructions 
   - The fastest way to see real behaviour is a store with backdated order history. We test on a store with 60 customers and 331 orders over 10 months: regulars, lapsed customers and returners.
   - We're happy to give you access to that store if it helps.
 - **Customers:** each customer's learned rhythm (for example "usually every 21 days") and status (healthy / drifting / at risk / back).
-- **Campaigns:** turn on the Win-Back Playbook. Nothing is sent until the merchant activates a campaign. Texts only go to customers who opted in, and only between 9am and 8pm in the business's time zone.
+- **Campaigns:** turn on the Win-Back Playbook. Nothing is sent until the merchant activates a campaign. Texts only go to customers who opted in, and only between 9am and 8pm in the customer's time zone.
+- **Postcards and gifts on a development store:** these are physical items mailed at real cost, billed to the merchant as Shopify usage charges. On development stores and test charges Clicktide never bills usage, so postcard and gift sends are refused there ("not enough funds"). Email and opted-in text campaigns work fully. The wallet page shows "Test store: postcards, gifts and extra texts aren't billed through Shopify here."
 
 ### 4. Open from the Shopify admin
 - Apps → Clicktide opens Clicktide's embedded page with the store's current numbers. No reinstall, and no permissions screen again.
