@@ -278,3 +278,105 @@ async function reportUsageLeased(limit: number) {
   }
   return out;
 }
+
+// ---- Shopify sign-in (non-embedded app, App Store 2.3.x and "seamless sign up") ----
+// A store installed from Shopify gets its own Clicktide account, created here (no password,
+// no e-mail round trip). Opening the app from the Shopify admin then signs that account in
+// with a one-time link. Accounts that were made on the website and linked to a store by the
+// owner (claim flow) are never signed in this way: those owners log in themselves.
+export const APP_BASE_URL = Deno.env.get("APP_BASE_URL") ?? "https://goclicktide.com";
+const PROVISION_EMAIL_DOMAIN = Deno.env.get("SHOPIFY_ACCOUNT_EMAIL_DOMAIN") ?? "shopify.goclicktide.com";
+
+async function authAdmin(path: string, init: RequestInit = {}) {
+  const r = await fetch(`${SUPA}/auth/v1/admin${path}`, {
+    ...init,
+    headers: { apikey: SRK, Authorization: `Bearer ${SRK}`, "Content-Type": "application/json", ...(init.headers || {}) },
+  });
+  const d = await r.json().catch(() => ({}));
+  return { ok: r.ok, status: r.status, data: d as Record<string, any> };
+}
+
+function randHex(n: number) {
+  return Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// The Clicktide account Clicktide created for exactly this store?
+export async function provisionedFor(userId: string, shop: string): Promise<boolean> {
+  const u = await authAdmin(`/users/${encodeURIComponent(userId)}`);
+  return u.ok && String(u.data?.app_metadata?.shopify_shop || "").toLowerCase() === shop.toLowerCase();
+}
+
+// One-time sign-in link for a store-provisioned account: goclicktide.com verifies the
+// token_hash with /auth/v1/verify (type magiclink). Nothing is e-mailed.
+export async function signInUrlFor(userId: string, shop: string): Promise<string | null> {
+  const u = await authAdmin(`/users/${encodeURIComponent(userId)}`);
+  const email = String(u.data?.email || "");
+  if (!u.ok || !email || String(u.data?.app_metadata?.shopify_shop || "").toLowerCase() !== shop.toLowerCase()) return null;
+  const g = await authAdmin("/generate_link", { method: "POST", body: JSON.stringify({ type: "magiclink", email }) });
+  const hashed = String(g.data?.hashed_token || g.data?.properties?.hashed_token || "");
+  if (!g.ok || !hashed) { console.error("shopify sign-in link failed", shop, g.status, JSON.stringify(g.data).slice(0, 200)); return null; }
+  const url = new URL(APP_BASE_URL);
+  url.searchParams.set("token_hash", hashed);
+  url.searchParams.set("type", "magiclink");
+  url.searchParams.set("ct_platform", "shopify");
+  url.searchParams.set("ct_shop", shop);
+  return url.toString();
+}
+
+async function shopProfile(shop: string, token: string) {
+  try {
+    const r = await fetch(`https://${shop}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, {
+      method: "POST", headers: { "X-Shopify-Access-Token": token, "Content-Type": "application/json" },
+      body: JSON.stringify({ query: "{ shop { name contactEmail email ianaTimezone } }" }),
+    });
+    const s = (await r.json().catch(() => ({})))?.data?.shop;
+    if (s) return { name: String(s.name || "").replace(/[<>]/g, "").slice(0, 120), email: String(s.contactEmail || s.email || "").slice(0, 200), tz: String(s.ianaTimezone || "") };
+  } catch (e) { console.error("shop profile lookup failed", shop, e); }
+  return { name: "", email: "", tz: "" };
+}
+
+export type ClaimResult =
+  | { ok: true; userId: string; shop: string; created: boolean }
+  | { ok: false; reason: "expired" | "website_account" | "failed"; shop?: string };
+
+// Install from Shopify finished (claim token in hand): attach the store to the Clicktide
+// account Clicktide made for it before (reinstall), or make that account now. A store owned
+// by a website account is left for its owner to claim after logging in.
+export async function provisionForClaim(claim: string): Promise<ClaimResult> {
+  const hash = await sha256Hex(claim);
+  const info = await rpc("clicktide_shopify_claim_info", { p_token_hash: hash }) as Record<string, any>;
+  if (!info?.ok) return { ok: false, reason: "expired" };
+  const shop = String(info.shop_domain || "").toLowerCase();
+  const owner = info.owner ? String(info.owner) : "";
+  if (owner) {
+    if (!(await provisionedFor(owner, shop))) return { ok: false, reason: "website_account", shop };
+    const r = await rpc("clicktide_shopify_claim", { p_token_hash: hash, p_user: owner }) as Record<string, any>;
+    return r?.ok ? { ok: true, userId: owner, shop, created: false } : { ok: false, reason: "failed", shop };
+  }
+  // New store: create its account and business profile, then claim.
+  const rows = await rest(`/rest/v1/shopify_install_claims?token_hash=eq.${hash}&select=connection_id&limit=1`) as Array<{ connection_id: string }>;
+  const conn = rows?.[0] ? (await rest(`/rest/v1/platform_connections?id=eq.${rows[0].connection_id}&select=access_token,merchant_name&limit=1`) as Array<{ access_token: string; merchant_name: string }>)?.[0] : null;
+  const prof = conn?.access_token ? await shopProfile(shop, conn.access_token) : { name: "", email: "", tz: "" };
+  const name = prof.name || conn?.merchant_name || shop.replace(/\.myshopify\.com$/, "");
+  const email = `${shop.replace(/\.myshopify\.com$/, "").slice(0, 40)}.${randHex(4)}@${PROVISION_EMAIL_DOMAIN}`;
+  const cu = await authAdmin("/users", {
+    method: "POST",
+    body: JSON.stringify({ email, email_confirm: true, app_metadata: { shopify_shop: shop, signup: "shopify" }, user_metadata: { business_name: name } }),
+  });
+  const userId = String(cu.data?.id || "");
+  if (!cu.ok || !userId) { console.error("shopify account create failed", shop, cu.status, JSON.stringify(cu.data).slice(0, 200)); return { ok: false, reason: "failed", shop }; }
+  try {
+    await rest("/rest/v1/clicktide", {
+      method: "POST", headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ user_id: userId, business_name: name, email: prof.email || email, business_email: prof.email || null, onboarding_complete: true, business_type: "other", churn_days: 60 }),
+    });
+    const r = await rpc("clicktide_shopify_claim", { p_token_hash: hash, p_user: userId }) as Record<string, any>;
+    if (!r?.ok) throw new Error(`claim ${r?.error || "failed"}`);
+    return { ok: true, userId, shop, created: true };
+  } catch (e) {
+    console.error("shopify account setup failed; removing the half-made account", shop, e);
+    await rest(`/rest/v1/clicktide?user_id=eq.${userId}`, { method: "DELETE" }).catch(() => {});
+    await authAdmin(`/users/${userId}`, { method: "DELETE" }).catch(() => {});
+    return { ok: false, reason: "failed", shop };
+  }
+}

@@ -5,8 +5,12 @@
 //    user yet, so the connection is saved unclaimed with a one-time claim token; the
 //    merchant signs in / signs up and shopify-claim attaches it to their business.
 import { freshTimestamp, SHOPIFY_API_VERSION, tokenFields } from "../_shared/shopify.js";
+import { BILLING_ENABLED, provisionForClaim, reconcileBilling, signInUrlFor } from "../_shared/shopify_server.ts";
 
 const APP_BASE_URL = Deno.env.get("APP_BASE_URL") ?? "https://goclicktide.com";
+// Secret SHOPIFY_AUTO_ACCOUNTS=true turns on account-per-store sign-in (needs the matching
+// goclicktide.com release). Off: the old claim link (log in / sign up, then confirm).
+const AUTO_ACCOUNTS = (Deno.env.get("SHOPIFY_AUTO_ACCOUNTS") ?? "") === "true";
 
 const SUPA = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
 const SRK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -166,6 +170,19 @@ async function saveUnclaimed(fields: Record<string, unknown>, shop: string, shop
     body: JSON.stringify({ token_hash: await sha256Hex(claim), connection_id: connId, shop_domain: shop }),
   });
   if (!c.ok) return fail(null, "Could not finish installing Clicktide. Please open it again from your Shopify admin.");
+  // Non-embedded app: give the store its own Clicktide account and sign the merchant straight
+  // in (no second sign-up). A store that belongs to an account made on the website falls back
+  // to the claim link, which that owner finishes after logging in.
+  if (AUTO_ACCOUNTS) {
+    try {
+      const p = await provisionForClaim(claim);
+      if (p.ok) {
+        if (BILLING_ENABLED) { try { await reconcileBilling(shop); } catch (e) { console.error("billing after install", shop, e); } }
+        const signIn = await signInUrlFor(p.userId, shop);
+        if (signIn) return Response.redirect(signIn, 302);
+      } else if (p.reason !== "website_account") console.error("shopify auto account failed", shop, p.reason);
+    } catch (e) { console.error("shopify auto account error", shop, e); }
+  }
   return redirect(APP_BASE_URL, { ct_platform: "shopify", ct_shopify_claim: claim, ct_shop: shop, ct_name: encodeURIComponent(shopName) });
 }
 
