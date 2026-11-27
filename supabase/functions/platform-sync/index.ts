@@ -388,7 +388,7 @@ async function shopifyOrders(c: Conn, since: string, op: FetchOpts = defaultOpts
   return kept;
 }
 
-async function cloverOrders(c: Conn, since: string): Promise<Order[]> {
+async function cloverOrders(c: Conn, since: string, op: FetchOpts = defaultOpts()): Promise<Order[]> {
   const ts = Date.parse(since);
   const out: Order[] = [];
   for (let page = 0; pageGuard(op, page); page++) {
@@ -398,17 +398,20 @@ async function cloverOrders(c: Conn, since: string): Promise<Order[]> {
     if (!r.ok) throw new ProviderError("clover", "orders", r.status);
     const orders = arr(obj(await r.json()).elements).map(obj);
     if (!orders.length) break;
+    op.stats.raw += orders.length;
     for (const o of orders) {
       const m = cloverOrder(o);
       if (!m) { op.stats.anonymous++; continue; }
       out.push(m);
     }
+    op.onPage?.(op.stats.raw);
+    lastPage(op, page, orders.length === 100);
     if (orders.length < 100) break;
   }
   return out;
 }
 
-async function stripeOrders(c: Conn, since: string): Promise<Order[]> {
+async function stripeOrders(c: Conn, since: string, op: FetchOpts = defaultOpts()): Promise<Order[]> {
   if (!stripePlatformKey) return [];
   if (!trustedStripeAccount(c)) throw new ProviderError("stripe", "account", 403);
   const ts = Math.floor(Date.parse(since) / 1000);
@@ -428,6 +431,8 @@ async function stripeOrders(c: Conn, since: string): Promise<Order[]> {
       if (!m.email && !m.phone) { op.stats.anonymous++; continue; }
       out.push(m);
     }
+    op.onPage?.(op.stats.raw);
+    lastPage(op, page, !!data.has_more && !!charges.length);
     if (!data.has_more || !charges.length) break;
     after = str(charges[charges.length - 1].id);
   }
