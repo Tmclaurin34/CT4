@@ -301,6 +301,19 @@ function randHex(n: number) {
   return Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// shop/redact: remove a store account's brand logo files (storage logos/u/<uid>/). True when none remain.
+export async function removeLogos(userId: string): Promise<boolean> {
+  const h = { apikey: SRK, Authorization: `Bearer ${SRK}`, "Content-Type": "application/json" };
+  const prefix = `u/${userId}/`;
+  const l = await fetch(`${SUPA}/storage/v1/object/list/logos`, { method: "POST", headers: h, body: JSON.stringify({ prefix, limit: 1000 }) });
+  if (!l.ok) return false;
+  const items = (await l.json().catch(() => [])) as Array<{ name?: string; id?: string | null }>;
+  const files = (Array.isArray(items) ? items : []).filter((x) => x?.name && x.id).map((x) => prefix + x.name);
+  if (!files.length) return true;
+  const d = await fetch(`${SUPA}/storage/v1/object/logos`, { method: "DELETE", headers: h, body: JSON.stringify({ prefixes: files }) });
+  return d.ok;
+}
+
 // shop/redact: remove a store account's login after its data was erased in SQL.
 export async function deleteAuthUser(userId: string): Promise<boolean> {
   const r = await authAdmin(`/users/${encodeURIComponent(userId)}`, { method: "DELETE" });
