@@ -1,4 +1,5 @@
-import { freshTimestamp, isShopDomain, SHOPIFY_API_VERSION, verifyQueryHmac } from "../_shared/shopify.js";
+import { freshTimestamp, isShopDomain, planSelectionUrl, SHOPIFY_API_VERSION, verifyQueryHmac } from "../_shared/shopify.js";
+import { APP_HANDLE, BILLING_ENABLED, reconcileBilling } from "../_shared/shopify_server.ts";
 
 const APP_BASE_URL = Deno.env.get("APP_BASE_URL") ?? "https://goclicktide.com";
 
@@ -11,16 +12,36 @@ async function srest(path: string, init: RequestInit = {}) {
   return { ok: r.ok, data: t ? JSON.parse(t) : null };
 }
 
-// Map the OAuth state back to the user and store the connection (token included)
-// so the nightly platform-sync can pull their customers and orders later.
-// Returns false when the install can't be tied to a signed-in Clicktide business.
-async function persistConnection(state: string, platform: string, fields: Record<string, unknown>): Promise<boolean> {
+// Map the OAuth state back to its origin and store the connection (token included)
+// so the nightly platform-sync can pull orders later.
+//  - state created by a signed-in business (Connect Shopify in Clicktide): saved to that business.
+//  - state created by shopify-app (install started from Shopify, review rule 2.3.2):
+//    saved unclaimed (user_id null) with a one-time claim token; the merchant
+//    signs in / signs up and shopify-claim attaches it to their business.
+// Returns null when the state is unknown or expired.
+type Saved = { kind: "user"; userId: string } | { kind: "claim"; claim: string };
+async function persistConnection(state: string, platform: string, fields: Record<string, unknown>): Promise<Saved | null> {
   try {
-    if (!state || !SRK) return false;
-    const { ok, data } = await srest(`/rest/v1/oauth_states?state=eq.${encodeURIComponent(state)}&platform=eq.${platform}&expires_at=gt.${new Date().toISOString()}&select=user_id&limit=1`);
-    const userId = ok && Array.isArray(data) && data[0]?.user_id;
-    if (!userId) return false;
-    srest(`/rest/v1/oauth_states?state=eq.${encodeURIComponent(state)}`, { method: "DELETE" }).catch(() => {});
+    if (!state || !SRK) return null;
+    const { ok, data } = await srest(`/rest/v1/oauth_states?state=eq.${encodeURIComponent(state)}&platform=eq.${platform}&expires_at=gt.${new Date().toISOString()}&select=user_id,metadata&limit=1`);
+    const st = ok && Array.isArray(data) ? data[0] : null;
+    if (!st) return null;
+    await srest(`/rest/v1/oauth_states?state=eq.${encodeURIComponent(state)}`, { method: "DELETE" }); // single use
+    const userId = st.user_id as string | null;
+    if (!userId) {
+      // Shopify-initiated: the state must have been minted for this very shop.
+      if (st.metadata?.initiated !== "shopify" || String(st.metadata?.shop || "") !== String(fields.shop_domain || "")) return null;
+      const ins = await srest("/rest/v1/platform_connections?select=id", {
+        method: "POST", headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ user_id: null, platform, is_active: true, updated_at: new Date().toISOString(), connected_at: new Date().toISOString(), ...fields }),
+      });
+      const connId = ins.ok && Array.isArray(ins.data) ? ins.data[0]?.id : null;
+      if (!connId) return null;
+      const claim = Array.from(crypto.getRandomValues(new Uint8Array(32))).map((b) => b.toString(16).padStart(2, "0")).join("");
+      const hash = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(claim)))).map((b) => b.toString(16).padStart(2, "0")).join("");
+      const c = await srest("/rest/v1/shopify_install_claims", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ token_hash: hash, connection_id: connId, shop_domain: fields.shop_domain }) });
+      return c.ok ? { kind: "claim", claim } : null;
+    }
     const row = { user_id: userId, platform, is_active: true, updated_at: new Date().toISOString(), ...fields };
     const ex = await srest(`/rest/v1/platform_connections?user_id=eq.${userId}&platform=eq.${platform}&select=id&limit=1`);
     if (ex.ok && Array.isArray(ex.data) && ex.data[0]?.id) {
@@ -28,8 +49,8 @@ async function persistConnection(state: string, platform: string, fields: Record
     } else {
       await srest("/rest/v1/platform_connections", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ ...row, connected_at: new Date().toISOString() }) });
     }
-    return true;
-  } catch (e) { console.error("persist connection failed:", e); return false; }
+    return { kind: "user", userId };
+  } catch (e) { console.error("persist connection failed:", e); return null; }
 }
 
 
@@ -94,8 +115,21 @@ Deno.serve(async (req: Request) => {
     scope: tokenJson.scope || null,
     raw_response: { shop },
   });
-  // Installs must start from Clicktide (so we know which business they belong to).
-  if (!saved) return redirect(APP_BASE_URL, {ct_error: "We couldn't link this Shopify store to your Clicktide account. Log in to Clicktide and click Connect Shopify from there."});
+  if (!saved) return redirect(APP_BASE_URL, {ct_error: "That Shopify link has expired. Open Clicktide from your Shopify admin (Apps) to try again."});
+
+  // Installed from Shopify: send the merchant to sign in / sign up, carrying the
+  // one-time claim (the dashboard POSTs it to shopify-claim after login).
+  if (saved.kind === "claim") {
+    return redirect(APP_BASE_URL, { ct_platform: "shopify", ct_shopify_claim: saved.claim, ct_shop: shop, ct_name: encodeURIComponent(shopName) });
+  }
+
+  // Shopify billing (flag-gated): no live plan yet -> Shopify's hosted plan page.
+  if (BILLING_ENABLED) {
+    try {
+      const b = await reconcileBilling(shop);
+      if (!["active", "trialing", "past_due"].includes(String(b.entitlement?.status))) return Response.redirect(planSelectionUrl(shop, APP_HANDLE), 302);
+    } catch (e) { console.error("billing check after install failed", shop, e); }
+  }
 
   return redirect(APP_BASE_URL, {
     ct_platform: "shopify",
