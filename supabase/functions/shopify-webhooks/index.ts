@@ -1,155 +1,173 @@
-// Shopify webhooks for the public app: the three mandatory privacy (compliance)
-// topics, app/uninstalled, and app_subscriptions/update (Shopify billing).
+// Shopify webhooks: mandatory compliance topics (customers/data_request,
+// customers/redact, shop/redact) plus app/uninstalled and
+// app_subscriptions/update. One endpoint for all of them.
 //
-// Every request is verified with X-Shopify-Hmac-Sha256 (HMAC of the raw body with
-// the app's client secret) before anything is read. Each webhook id is recorded
-// once (Shopify retries reuse it), so a retry never runs a deletion twice.
-// The database work lives in service-role-only functions from migration
-// 20261128090000_shopify_public_app.sql; this file only routes.
+// - Every request's X-Shopify-Hmac-Sha256 is checked against the raw body bytes
+//   with SHOPIFY_CLIENT_SECRET before anything is parsed; a bad signature gets
+//   401 (what Shopify's review expects).
+// - Shopify waits only 5 seconds, so the event is recorded (deduped by
+//   X-Shopify-Webhook-Id) and 200 is returned; the work runs right after in the
+//   background. Anything that fails is retried by the nightly cron call
+//   (POST with x-clicktide-cron-key), well inside Shopify's 30-day deadline.
+// - Redaction is done in SQL (clicktide_shopify_redact_customer / _shop), then
+//   the stored payload is wiped so no shopper PII stays in the event log.
+// - Billing writes only happen when SHOPIFY_BILLING_ENABLED=true (see
+//   _shared/shopify_server.ts); until then they are dry runs.
 //
-// Deploy with verify_jwt = false (Shopify doesn't send a Supabase JWT); the HMAC
-// check is the authentication.
-import {
-  compliancePayload, entitlementFromSubscriptions, HANDLED_TOPICS, isShopDomain,
-  SHOPIFY_API_VERSION, SUBSCRIPTION_QUERY, verifyWebhookHmac,
-} from "../_shared/shopify.js";
+// Deploy with verify_jwt = false (Shopify sends no Supabase JWT).
+import { compliancePayload, HANDLED_TOPICS, isShopDomain, verifyWebhookHmac } from "../_shared/shopify.js";
+import { reconcileBilling, rest, rpc, SRK } from "../_shared/shopify_server.ts";
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
-const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const clientSecret = Deno.env.get("SHOPIFY_CLIENT_SECRET") ?? "";
-const resendKey = Deno.env.get("RESEND_API_KEY") ?? "";
-const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") ?? "Clicktide <support@goclicktide.com>";
-const SUPPORT_EMAIL = "support@goclicktide.com";
+const SECRET = Deno.env.get("SHOPIFY_CLIENT_SECRET") ?? "";
+const RESEND = Deno.env.get("RESEND_API_KEY") ?? "";
+const RESEND_FROM = Deno.env.get("RESEND_FROM_EMAIL") ?? "Clicktide <support@goclicktide.com>";
+const SUPPORT_TO = Deno.env.get("OPS_ALERT_EMAIL") ?? "support@goclicktide.com";
+const MAX_ATTEMPTS = 8;
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
-function reply(status: number, body: Record<string, unknown> = { ok: status < 300 }) {
+function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
-async function rest(path: string, init: RequestInit = {}) {
-  const r = await fetch(`${supabaseUrl}${path}`, {
-    ...init,
-    headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, "Content-Type": "application/json", ...(init.headers || {}) },
-  });
-  const t = await r.text();
-  const data = t ? JSON.parse(t) : null;
-  if (!r.ok) throw new Error(data?.message || data?.error || r.statusText);
-  return data;
-}
-const rpc = (fn: string, args: Record<string, unknown>) => rest(`/rest/v1/rpc/${fn}`, { method: "POST", body: JSON.stringify(args) });
+type Ev = { id: number; topic: string; shop_domain: string; payload: Record<string, unknown> | null; attempts: number; due_by?: string };
 
 async function notifySupport(subject: string, text: string) {
-  if (!resendKey) return;
-  await fetch("https://api.resend.com/emails", {
+  if (!RESEND) { console.warn("no RESEND_API_KEY; support not emailed:", subject); return false; }
+  const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
-    headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: fromEmail, to: [SUPPORT_EMAIL], subject, text }),
-  }).catch(() => {});
+    headers: { Authorization: `Bearer ${RESEND}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: RESEND_FROM, to: [SUPPORT_TO], subject, text }),
+  }).catch(() => null);
+  return !!r?.ok;
 }
 
-// Reads the shop's current app subscription with its stored token and applies it.
-async function syncBilling(shop: string) {
-  const conns = await rest(`/rest/v1/platform_connections?platform=eq.shopify&shop_domain=ilike.${encodeURIComponent(shop)}&is_active=eq.true&access_token=neq.&select=access_token&limit=1`);
-  const token = Array.isArray(conns) && conns[0]?.access_token;
-  if (!token) return { skipped: "no active connection" };
-  const r = await fetch(`https://${shop}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, {
-    method: "POST",
-    headers: { "X-Shopify-Access-Token": token, "Content-Type": "application/json" },
-    body: JSON.stringify({ query: SUBSCRIPTION_QUERY }),
-  });
-  if (!r.ok) throw new Error(`shopify billing query ${r.status}`);
-  const d = await r.json();
-  const subs = d?.data?.currentAppInstallation?.activeSubscriptions || [];
-  const devStore = !!d?.data?.shop?.plan?.partnerDevelopment;
-  const e = entitlementFromSubscriptions(subs, { devStore });
-  return await rpc("clicktide_shopify_apply_entitlement", {
-    p_shop: shop, p_plan: e.plan, p_status: e.status, p_period_end: e.period_end, p_sub_id: e.sub_id, p_raw_status: e.raw_status,
-  });
-}
-
-async function process(eventId: number, topic: string, shop: string, body: Record<string, unknown>) {
-  let result: unknown = null;
-  let status = "processed";
-  try {
-    const p = compliancePayload(topic, body);
-    if (topic === "customers/redact") {
+async function process(ev: Ev) {
+  // deno-lint-ignore no-explicit-any
+  const p = (ev.payload || {}) as Record<string, any>;
+  // deno-lint-ignore no-explicit-any
+  const cu = (p.customer || {}) as Record<string, any>;
+  let result: unknown;
+  let scrub = false;
+  switch (ev.topic) {
+    case "customers/redact":
       result = await rpc("clicktide_shopify_redact_customer", {
-        p_shop: shop, p_email: p.customer?.email ?? null, p_phone: p.customer?.phone ?? null, p_order_ids: p.orders ?? [],
+        p_shop: ev.shop_domain, p_email: cu.email || "", p_phone: cu.phone || "", p_order_ids: p.orders || [],
       });
-    } else if (topic === "shop/redact") {
-      result = await rpc("clicktide_shopify_redact_shop", { p_shop: shop });
-    } else if (topic === "customers/data_request") {
-      const data = await rpc("clicktide_shopify_customer_data", { p_shop: shop, p_email: p.customer?.email ?? null, p_phone: p.customer?.phone ?? null });
-      const n = Array.isArray(data) ? data.length : 0;
-      result = { records_found: n };
-      // The data itself stays in the database (never emailed); support sends it to the merchant.
-      await notifySupport(
-        `Shopify data request from ${shop} (event ${eventId})`,
-        `Shopify forwarded a customer data request for ${shop}.\n` +
-        `Matching Clicktide customer records: ${n}.\n` +
-        `Shopify data request id: ${p.data_request_id ?? "n/a"}.\n\n` +
-        `Export with: select public.clicktide_shopify_customer_data('${shop}', <email>, <phone>);\n` +
-        `then send it to the merchant within 30 days. Event row: shopify_webhook_events.id = ${eventId}.`,
+      scrub = true;
+      break;
+    case "shop/redact":
+      result = await rpc("clicktide_shopify_redact_shop", { p_shop: ev.shop_domain });
+      scrub = true;
+      break;
+    case "customers/data_request": {
+      // Shopify asks the app to give the merchant this shopper's data. The data
+      // itself is never emailed: support exports it with
+      // clicktide_shopify_customer_data(shop, email, phone) and sends it to the
+      // merchant; the identifiers are kept in the event row until then.
+      const rows = await rpc("clicktide_shopify_customer_data", { p_shop: ev.shop_domain, p_email: cu.email || "", p_phone: cu.phone || "" });
+      const n = Array.isArray(rows) ? rows.length : 0;
+      const sent = await notifySupport(
+        `Shopify data request #${ev.id} from ${ev.shop_domain} (due ${String(ev.due_by || "").slice(0, 10)})`,
+        `A Shopify merchant (${ev.shop_domain}) asked for one shopper's data (Shopify data_request ${p.data_request_id || "?"}).\n` +
+          `Clicktide holds ${n} matching customer record(s).\n\n` +
+          `To fulfil, in the Supabase SQL editor run\n  select payload from shopify_webhook_events where id = ${ev.id};\n` +
+          `  select clicktide_shopify_customer_data('${ev.shop_domain}', '<email>', '<phone>');\n` +
+          `send the result to the store owner, then run\n  update shopify_webhook_events set payload = null, result = result || '{"fulfilled":true}' where id = ${ev.id};\n` +
+          `Deadline: 30 days from receipt.`,
       );
-    } else if (topic === "app/uninstalled") {
-      await rest(`/rest/v1/platform_connections?platform=eq.shopify&shop_domain=ilike.${encodeURIComponent(shop)}`, {
-        method: "PATCH", headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({ is_active: false, access_token: "", updated_at: new Date().toISOString() }),
-      });
-      result = { deactivated: true };
-    } else if (topic === "app_subscriptions/update") {
-      result = await syncBilling(shop);
-    } else {
-      status = "ignored";
+      result = { matching_records: n, support_notified: sent };
+      if (!sent) throw new Error("support notification failed"); // retried by cron
+      break;
     }
-  } catch (e) {
-    status = "failed";
-    result = { error: e instanceof Error ? e.message : String(e) };
-    console.error("shopify webhook failed", topic, shop, e);
+    case "app/uninstalled":
+      // The token is dead the moment the app is uninstalled: stop syncing now.
+      // Data stays until shop/redact (48h later) so a quick reinstall loses nothing.
+      await rest(`/rest/v1/platform_connections?platform=eq.shopify&shop_domain=ilike.${encodeURIComponent(ev.shop_domain)}`, {
+        method: "PATCH", headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ is_active: false, access_token: "", refresh_token: null, updated_at: new Date().toISOString() }),
+      });
+      result = { deactivated: true, billing: await reconcileBilling(ev.shop_domain) };
+      scrub = true;
+      break;
+    case "app_subscriptions/update":
+      result = await reconcileBilling(ev.shop_domain); // re-read the truth; never trust webhook order
+      scrub = true;
+      break;
   }
-  // Redact topics: once handled, the copy of the shopper's identifiers is removed.
-  const scrub = status === "processed" && (topic === "customers/redact" || topic === "shop/redact");
-  await rest(`/rest/v1/shopify_webhook_events?id=eq.${eventId}`, {
+  await rest(`/rest/v1/shopify_webhook_events?id=eq.${ev.id}`, {
     method: "PATCH", headers: { Prefer: "return=minimal" },
-    body: JSON.stringify({ status, result, processed_at: new Date().toISOString(), ...(scrub ? { payload: null } : {}) }),
-  }).catch(() => {});
+    body: JSON.stringify({ status: "processed", processed_at: new Date().toISOString(), attempts: ev.attempts + 1, result, ...(scrub ? { payload: null } : {}) }),
+  });
+}
+
+async function runOne(ev: Ev) {
+  try { await process(ev); }
+  catch (e) {
+    console.error("shopify webhook processing failed", ev.id, ev.topic, e);
+    await rest(`/rest/v1/shopify_webhook_events?id=eq.${ev.id}`, {
+      method: "PATCH", headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ status: "failed", attempts: ev.attempts + 1, result: { error: e instanceof Error ? e.message : String(e) } }),
+    }).catch(() => {});
+  }
+}
+
+// Nightly (pg_cron, x-clicktide-cron-key): retry unfinished events, then
+// re-read every installed shop's subscription (App Pricing sends no webhooks).
+async function cronRun() {
+  const pending = await rest(`/rest/v1/shopify_webhook_events?status=in.(received,failed)&attempts=lt.${MAX_ATTEMPTS}&received_at=lt.${new Date(Date.now() - 5 * 60000).toISOString()}&select=id,topic,shop_domain,payload,attempts,due_by&order=id&limit=100`) as Ev[];
+  for (const ev of pending || []) await runOne(ev);
+  const shops = await rest(`/rest/v1/platform_connections?platform=eq.shopify&is_active=eq.true&user_id=not.is.null&select=shop_domain&limit=1000`) as { shop_domain: string }[];
+  const billing: unknown[] = [];
+  for (const s of [...new Set((shops || []).map((x) => x.shop_domain).filter(Boolean))]) {
+    try { billing.push({ shop: s, ...(await reconcileBilling(s)) }); }
+    catch (e) { billing.push({ shop: s, error: e instanceof Error ? e.message : String(e) }); }
+  }
+  return { retried: (pending || []).length, billing };
 }
 
 Deno.serve(async (req) => {
-  if (req.method !== "POST") return reply(405, { error: "Method not allowed" });
-  if (!clientSecret || !serviceRoleKey) return reply(500, { error: "Server is not configured" });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  if (!SECRET || !SRK) return json({ error: "Server is not configured" }, 500);
+
+  const cronKey = req.headers.get("x-clicktide-cron-key") || "";
+  if (cronKey) {
+    let expected = "";
+    try { expected = String(await rpc("clicktide_internal_key", {}) || ""); } catch { /* */ }
+    if (!expected || cronKey !== expected) return json({ error: "Not authorized" }, 401);
+    return json({ ok: true, ...(await cronRun()) });
+  }
 
   const raw = new Uint8Array(await req.arrayBuffer());
-  const ok = await verifyWebhookHmac(raw, req.headers.get("x-shopify-hmac-sha256"), clientSecret, crypto.subtle);
-  if (!ok) return reply(401, { error: "Invalid signature" });
+  const valid = await verifyWebhookHmac(raw, req.headers.get("x-shopify-hmac-sha256") || "", SECRET, crypto.subtle);
+  if (!valid) return json({ error: "invalid hmac" }, 401);
 
-  const topic = String(req.headers.get("x-shopify-topic") || "");
-  const shop = String(req.headers.get("x-shopify-shop-domain") || "").toLowerCase();
-  const webhookId = String(req.headers.get("x-shopify-webhook-id") || "") || null;
-  if (!isShopDomain(shop)) return reply(400, { error: "Bad shop domain" });
-  if (!HANDLED_TOPICS.includes(topic)) return reply(200, { ok: true, ignored: topic });
-
+  const topic = (req.headers.get("x-shopify-topic") || "").toLowerCase();
   let body: Record<string, unknown> = {};
-  try { body = JSON.parse(new TextDecoder().decode(raw)); } catch { return reply(400, { error: "Bad JSON" }); }
+  try { body = JSON.parse(new TextDecoder().decode(raw) || "{}"); } catch { return json({ error: "bad json" }, 400); }
+  const shop = String(req.headers.get("x-shopify-shop-domain") || body.shop_domain || "").toLowerCase();
+  if (!isShopDomain(shop)) return json({ error: "bad shop" }, 400);
+  if (!HANDLED_TOPICS.includes(topic)) return json({ ok: true, ignored: topic });
 
-  // Record once. A retry of a webhook we already took returns 200 without re-running it.
-  let eventId: number | null = null;
+  const isCompliance = topic.startsWith("customers/") || topic === "shop/redact";
+  let ev: Ev | null = null;
   try {
     const rows = await rest("/rest/v1/shopify_webhook_events?on_conflict=webhook_id", {
       method: "POST", headers: { Prefer: "return=representation,resolution=ignore-duplicates" },
-      body: JSON.stringify({ webhook_id: webhookId, topic, shop_domain: shop, payload: compliancePayload(topic, body), attempts: 1 }),
+      body: JSON.stringify({
+        webhook_id: req.headers.get("x-shopify-webhook-id") || null, topic, shop_domain: shop,
+        payload: isCompliance ? compliancePayload(topic, body) : null,
+      }),
     });
-    eventId = Array.isArray(rows) && rows[0]?.id ? Number(rows[0].id) : null;
+    ev = Array.isArray(rows) && rows[0] ? rows[0] : null;
   } catch (e) {
-    console.error("could not record webhook", e);
-    return reply(500, { error: "Could not record webhook" }); // Shopify will retry
+    console.error("could not record shopify webhook", topic, shop, e);
+    return json({ error: "temporarily unavailable" }, 500); // Shopify retries
   }
-  if (!eventId) return reply(200, { ok: true, duplicate: true });
+  if (!ev) return json({ ok: true, duplicate: true });
 
-  // Acknowledge fast (Shopify expects a quick 2xx); do the work in the background.
-  const job = process(eventId, topic, shop, body);
+  const job = runOne(ev);
   if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(job);
   else await job;
-  return reply(200, { ok: true });
+  return json({ ok: true });
 });
