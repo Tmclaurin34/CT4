@@ -16,7 +16,7 @@
 //
 // Deploy with verify_jwt = false (Shopify sends no Supabase JWT).
 import { compliancePayload, HANDLED_TOPICS, isShopDomain, SHOPIFY_API_VERSION, verifyWebhookHmac } from "../_shared/shopify.js";
-import { deleteAuthUser, freshShopifyToken, reconcileBilling, reportUsage, rest, rpc, type ShopConn, SRK } from "../_shared/shopify_server.ts";
+import { deleteAuthUser, freshShopifyToken, reconcileBilling, removeLogos, reportUsage, rest, rpc, type ShopConn, SRK } from "../_shared/shopify_server.ts";
 
 const SECRET = Deno.env.get("SHOPIFY_CLIENT_SECRET") ?? "";
 const RESEND = Deno.env.get("RESEND_API_KEY") ?? "";
@@ -96,6 +96,7 @@ async function process(ev: Ev) {
         const gone = await rpc("clicktide_shopify_redact_store_accounts", { p_shop: ev.shop_domain }) as string[];
         let deleted = 0;
         for (const id of Array.isArray(gone) ? gone : []) {
+          if (!(await removeLogos(String(id)))) throw new Error(`could not remove store account ${id} logo files; will retry`);
           if (!(await deleteAuthUser(String(id)))) throw new Error(`could not delete store account ${id}; will retry`);
           deleted++;
         }
