@@ -8,13 +8,15 @@ Paste the "For the reviewer" section into the submission's testing-instructions 
 
 **What Clicktide does:** Clicktide reads a store's orders, read-only. It learns how often each customer normally reorders, and it shows which customers have gone quiet compared with their own rhythm. The merchant can then turn on win-back messages: email, opted-in SMS, a mailed postcard or a small gift. Clicktide counts recovered revenue only when a customer actually orders again.
 
-**Clicktide runs on its own site (goclicktide.com), not embedded in the Shopify admin.** Installing from Shopify signs the merchant in or up at goclicktide.com, then connects the store.
+**Clicktide is embedded in the Shopify admin** (App Bridge, session tokens, Shopify-managed install). The admin page shows each store's drifting customers; the full dashboard (campaigns, customer history) opens at goclicktide.com from a button on that page.
 
-### 1. Install
-1. Install Clicktide from the listing on your development store.
-2. Approve the access request: read orders and read customers, with read-only access to full order history.
-3. You land on goclicktide.com. **Create a Clicktide account** (any email you can receive mail at). If you already have one, log in.
-4. Clicktide asks **"Connect this Shopify store? Connect the Shopify store _your-store_.myshopify.com to _your business_?"** Click **Connect store**. This confirmation stops a link from attaching a store to the wrong account.
+### 1. Install and connect
+1. Install Clicktide from the listing on your development store and approve read-only access to orders and customers. Shopify opens Clicktide inside the admin right away.
+2. On a store that isn't linked yet, Clicktide shows **"Finish connecting Clicktide"**. Click **Connect my Clicktide account**. A new tab opens at goclicktide.com.
+3. Log in with the test account below, or create a Clicktide account. Clicktide asks **"Connect the Shopify store _your-store_.myshopify.com to _business_?"**. Click **Connect store**. (This confirmation stops a link from attaching a store to the wrong account.)
+4. Back in the Shopify admin, click **I've connected it, refresh**. Clicktide now shows your customers, who is on rhythm and who is drifting.
+
+**Test account:** _(fill in before submitting: email and password of a dedicated Clicktide owner account with no 2FA, per rule 4.5.5)_
 
 ### 2. Choose a plan (Shopify billing)
 - Clicktide bills through Shopify. Pick **Local, Growth or Scale** on Shopify's plan page; each has a **30-day free trial**.
@@ -29,14 +31,14 @@ Paste the "For the reviewer" section into the submission's testing-instructions 
 - **Campaigns:** turn on the Win-Back Playbook. Nothing is sent until the merchant activates a campaign. Texts only go to customers who opted in, and only between 9am and 8pm in the business's time zone.
 
 ### 4. Open from the Shopify admin
-- Apps → Clicktide opens the Clicktide dashboard directly. No reinstall, and no OAuth screen again.
+- Apps → Clicktide opens Clicktide's embedded page with the store's current numbers. No reinstall, and no permissions screen again.
 
 ### 5. Uninstall and privacy
 - Uninstalling stops syncing immediately: the token is wiped and the connection deactivated.
 - `shop/redact` (sent 48 hours later) deletes the store's customers and order history from Clicktide.
 - `customers/redact` deletes that shopper.
 - `customers/data_request` is fulfilled to the merchant by our support team within 30 days.
-- Privacy policy: https://goclicktide.com/privacy.html (see the Shopify section). Support: support@goclicktide.com.
+- Privacy policy: https://goclicktide.com/privacy (see the Shopify section). Support: support@goclicktide.com.
 
 ### Scopes
 | Scope | Why |

@@ -2,7 +2,7 @@
 # Embedded app (App Store 2.2.2): the admin loads goclicktide.com/shopify-app/ with App Bridge.
 # Webhook subscriptions can only be set from this file.
 client_id = "1e876d10b4e052fe9897dd45bd859eca"
-name = "clicktide 3"
+name = "Clicktide"
 application_url = "https://goclicktide.com/shopify-app/"
 embedded = true
 
