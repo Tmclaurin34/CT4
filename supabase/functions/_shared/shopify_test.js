@@ -110,6 +110,19 @@ mkToken(goodP, "sec").then(function (tok) {
   });
 }).then(null, function (e) { fail++; print("FAIL: async session " + e); pending--; });
 
+// usage billing events
+var uNow = Date.parse("2026-11-27T12:00:00Z");
+eq(usageEventFor({ id: 7, amount: -1.5, transaction_type: "postcard_debit", created_at: "2026-11-27T10:00:00Z" }, "81761337561", uNow),
+  { shop_id: "gid://shopify/Shop/81761337561", event_handle: "postcard", timestamp: "2026-11-27T10:00:00Z", idempotency_key: "ct-wallet-7", attributes: { value: 1 } }, "postcard debit -> 1 postcard");
+eq(usageEventFor({ id: 8, amount: 1.5, transaction_type: "postcard_refund", created_at: "2026-11-27T10:00:00Z" }, "81761337561", uNow).attributes.value, -1, "postcard refund -> -1");
+eq(usageEventFor({ id: 9, amount: -0.05, transaction_type: "sms_overage", created_at: "2026-11-27T10:00:00Z" }, "gid://shopify/Shop/5", uNow).event_handle, "extra_text", "sms overage -> extra_text meter, gid kept");
+eq(usageEventFor({ id: 10, amount: -12.99, transaction_type: "gift_debit", created_at: "2026-11-27T10:00:00Z" }, "5", uNow).attributes.value, "12.99", "gift -> quoted fractional dollars");
+eq(usageEventFor({ id: 11, amount: -14, transaction_type: "gift_debit", created_at: "2026-11-27T10:00:00Z" }, "5", uNow).attributes.value, 14, "whole-dollar gift -> integer");
+eq(usageEventFor({ id: 12, amount: 9.99, transaction_type: "gift_refund", created_at: "2026-11-27T10:00:00Z" }, "5", uNow).attributes.value, "-9.99", "gift refund -> negative string");
+eq(usageEventFor({ id: 13, amount: 50, transaction_type: "topup", created_at: "2026-11-27T10:00:00Z" }, "5", uNow), null, "top-up is not usage");
+eq(usageEventFor({ id: 14, amount: -1.5, transaction_type: "postcard_debit", created_at: "2026-11-27T13:00:00Z" }, "5", uNow).timestamp, "2026-11-27T12:00:00Z", "future timestamp clamped to now");
+ok(usageEventFor({ id: "123456789012", amount: -1.5, transaction_type: "postcard_debit", created_at: "x" }, "5", uNow).idempotency_key.length <= 64, "idempotency key within 64 chars");
+
 drainMicrotasks && drainMicrotasks();
 if (pending) print("FAIL: async tests did not finish");
 
