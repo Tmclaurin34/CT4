@@ -315,6 +315,30 @@ Deno.serve(async (req) => {
     return json({ error: "Too many checkout attempts — please wait a few minutes and try again." }, 429);
   }
 
+  // Shopify App Store rule 1.2: a business that came through Shopify (billed by Shopify, or
+  // with an active Shopify connection) pays everything through Shopify, so no Stripe checkout:
+  // plan changes go through Shopify (1.2.3) and Stripe-funded wallet top-ups are off for it.
+  // Fails closed like the rest of this function.
+  try {
+    const [biz, shop] = await Promise.all([
+      rest(`/rest/v1/clicktide?user_id=eq.${encodeURIComponent(user.id)}&select=billing_provider&limit=1`),
+      rest(`/rest/v1/platform_connections?user_id=eq.${encodeURIComponent(user.id)}&platform=eq.shopify&is_active=eq.true&select=id&limit=1`),
+    ]);
+    const shopifyBilled = Array.isArray(biz) && biz[0]?.billing_provider === "shopify";
+    const shopifyConnected = Array.isArray(shop) && shop.length > 0;
+    if (shopifyBilled || shopifyConnected) {
+      return json({
+        code: "shopify_billing",
+        error: isWalletTopup
+          ? "Gift-wallet top-ups aren't available for Shopify stores yet."
+          : "Shopify stores choose and change their Clicktide plan in Shopify.",
+      }, 409);
+    }
+  } catch (e) {
+    console.error("create-checkout-session: shopify billing check", e);
+    return json({ error: UNAVAILABLE }, 503);
+  }
+
   const subscriptionPlan = isSubscription ? normalizePlan(body.plan) : "";
   if (isSubscription && !subscriptionPlan) {
     return json({ error: `Unknown or missing plan: ${String(body.plan ?? "(none)").slice(0, 40)}` }, 400);

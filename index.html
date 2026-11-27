@@ -695,7 +695,7 @@ select option{background:#101828}
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Why would I send a gift to someone who stopped coming in?", "acceptedAnswer": {"@type": "Answer", "text": "You're not rewarding the leaving — you're interrupting the forgetting. Most customers don't choose to leave; life gets busy. A gift is never the first touch: a friendly check-in goes at day 14, a postcard at day 30, and a small branded gift only at day 45, when the relationship is genuinely about to die. A few dollars protecting a regular worth hundreds a year is usually the cheapest save in business."}}, {"@type": "Question", "name": "Will this annoy or spam my customers?", "acceptedAnswer": {"@type": "Answer", "text": "Your name is on every message, so the guardrails aren't optional: three win-back touches max, then it stops for good. Any visit stops all future sends automatically. Texts only go to customers with texting consent on file, STOP is honored automatically, and approve-before-send mode means nothing goes out unseen."}}, {"@type": "Question", "name": "What can Clicktide see in my register? Is it safe?", "acceptedAnswer": {"@type": "Answer", "text": "Read-only access through your platform's official connection. We can see visits and sales history so we can spot drifting — we can't move money or change your account, and you can disconnect with one click. Your data is never sold and is deleted on request."}}, {"@type": "Question", "name": "If I connect a register with a year of history, will it blast my old customers?", "acceptedAnswer": {"@type": "Answer", "text": "No. For 48 hours after your first connection nothing sends at all, and campaigns only react to activity that happens after you turn them on — imported history is a baseline, never a trigger. The one deliberate exception: win-back campaigns do read history, because finding the customers who drifted months ago is the whole point — and those flow out gradually, never as one blast."}}, {"@type": "Question", "name": "What does it really cost? Any surprise bills?", "acceptedAnswer": {"@type": "Answer", "text": "Three plans — $79, $199, $449 a month. Email, promo codes, and mailed postcards are included on every plan; texting is included on Growth and Scale. Physical things come from a pay-per-send wallet you control: about $1.50 a postcard, gifts from a few dollars depending on what you pick. You only pay when something physically sends, and nothing physical sends without your standing permission. No contracts, no setup fees, cancel anytime."}}, {"@type": "Question", "name": "What happens after the 30-day free trial?", "acceptedAnswer": {"@type": "Answer", "text": "Nothing is charged for 30 days, and if you cancel during the trial there's no charge at all. If you stay, your plan starts. Either way your customer data is yours — we delete it on request."}}, {"@type": "Question", "name": "How is this different from Mailchimp or email blasts?", "acceptedAnswer": {"@type": "Answer", "text": "Email tools broadcast to everybody and hope. Clicktide watches your register and acts on one person at the right moment — the day Sarah breaks her rhythm, Sarah gets a personal check-in citing her real last visit. Then it goes quiet the moment she returns. It's a win-back engine, not a newsletter."}}, {"@type": "Question", "name": "I'm B2B — a staffing agency, cleaning contracts, an agency. Does it fit?", "acceptedAnswer": {"@type": "Answer", "text": "Yes — your \"customer\" is the client company, and clients have an order rhythm just like regulars. When a client goes quiet for 45–90 days, Clicktide notices and puts your name back on their desk before a competitor settles in. Data comes in through Stripe invoicing automatically or quick manual logging — easy with dozens of clients instead of thousands of customers."}}]}</script>
 </head>
 <body>
-<script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js" integrity="sha384-8E2vEX6CrzCvnhTD2fZ1qYM8/814HwUQP5F3fGZ7HQhjPdrBpUFY2F8ixbfIg8Xr" crossorigin="anonymous"></script>
 <div id="app"><!-- Crawlable static homepage content. The app's R() (called synchronously at boot) replaces #app before first paint, so visitors with JS see the full interactive landing; search engines, link-preview bots and no-JS visitors read this real text immediately instead of an empty shell. Keep it consistent with land(). -->
 <main style="max-width:880px;margin:0 auto;padding:48px 22px;font-family:Inter,-apple-system,Segoe UI,Arial,sans-serif;color:#0F1115;line-height:1.6">
   <header style="text-align:center;margin-bottom:34px">
@@ -762,19 +762,36 @@ select option{background:#101828}
 <script>
 const SU="https://hmihfncvahsdlmefyxyg.supabase.co";
 const SK="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtaWhmbmN2YWhzZGxtZWZ5eHlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1OTgzNDksImV4cCI6MjA5NjE3NDM0OX0.GP-4tYnKlNP9iSklJyXCSatz3I7gtQQJz7xOUQdXKWk";
-const h=(t)=>({apikey:SK,Authorization:`Bearer ${t||SK}`,"Content-Type":"application/json"});
+// A copy of this user's login that the page has since renewed is swapped for the current
+// one (only tokens this page itself replaced, so another account's login is never sent).
+var ctOldTokens=new Set();
+function ctCurTok(t){return (t&&S&&S.token&&ctOldTokens.has(t))?S.token:t;}
+const h=(t)=>({apikey:SK,Authorization:`Bearer ${ctCurTok(t)||SK}`,"Content-Type":"application/json"});
+// Logins last an hour. Every db.* call goes through ctAuthFetch: it uses the current login
+// (pages may hold an older copy), renews it shortly before it expires, and retries once after
+// a 401, so a dashboard left open doesn't show an empty account or the billing paywall.
+// Calls made at the same moment share one renewal.
+var ctRenewing=null;
+function ctRenew(){if(!ctRenewing){ctRenewing=refreshSession().then(function(ok){setTimeout(function(){ctRenewing=null;},0);return ok;},function(){ctRenewing=null;return false;});}return ctRenewing;}
+async function ctAuthFetch(url,mk,tok){
+  var own=!!(S&&S.token&&tok&&tok!==SK);
+  if(own){tok=S.token;var exp=Number(sessStore().getItem("ct_exp")||0);if(exp&&Date.now()/1000>exp-120&&await ctRenew())tok=S.token;}
+  var r=await fetch(url,mk(tok));
+  if(r.status===401&&own&&await ctRenew()){tok=S.token;r=await fetch(url,mk(tok));}
+  return r;
+}
 let DEMO=false; // demo mode: route every db.* call to in-memory sample data (no Supabase/Stripe/senders)
 const db={
-  async sel(t,f,tok){if(DEMO)return demoSel(t,f);const url=SU+'/rest/v1/'+t+'?select=*'+(f?'&'+f:'');const r=await fetch(url,{headers:h(tok)});return r.json();},
+  async sel(t,f,tok){if(DEMO)return demoSel(t,f);const url=SU+'/rest/v1/'+t+'?select=*'+(f?'&'+f:'');const r=await ctAuthFetch(url,function(t){return {headers:h(t)};},tok);return r.json();},
   // Supabase caps a single request at 1000 rows — page through with limit/offset
   // so big customer lists come back complete (up to a safety ceiling).
-  async selAll(t,f,tok){if(DEMO)return demoSel(t,f);var all=[],pg=0,size=1000;while(pg<12){var url=SU+'/rest/v1/'+t+'?select=*'+(f?'&'+f:'')+'&limit='+size+'&offset='+(pg*size);var r=await fetch(url,{headers:h(tok)});var rows=await r.json();if(!Array.isArray(rows)||!rows.length)break;all=all.concat(rows);if(rows.length<size)break;pg++;}return all;},
-  async ins(t,d,tok){if(DEMO)return demoIns(t,d);const r=await fetch(`${SU}/rest/v1/${t}`,{method:"POST",headers:{...h(tok),Prefer:"return=representation"},body:JSON.stringify(d)});return r.json();},
-  async upd(t,id,d,tok){if(DEMO)return demoUpd(t,id,d);await fetch(`${SU}/rest/v1/${t}?id=eq.${id}`,{method:"PATCH",headers:{...h(tok),Prefer:"return=representation"},body:JSON.stringify(d)});},
-  async del(t,id,tok){if(DEMO)return demoDel(t,id);await fetch(`${SU}/rest/v1/${t}?id=eq.${id}`,{method:"DELETE",headers:h(tok)});},
+  async selAll(t,f,tok){if(DEMO)return demoSel(t,f);var all=[],pg=0,size=1000;while(pg<12){var url=SU+'/rest/v1/'+t+'?select=*'+(f?'&'+f:'')+'&limit='+size+'&offset='+(pg*size);var r=await ctAuthFetch(url,function(t){return {headers:h(t)};},tok);var rows=await r.json();if(!Array.isArray(rows)||!rows.length)break;all=all.concat(rows);if(rows.length<size)break;pg++;}return all;},
+  async ins(t,d,tok){if(DEMO)return demoIns(t,d);const r=await ctAuthFetch(`${SU}/rest/v1/${t}`,function(k){return {method:"POST",headers:{...h(k),Prefer:"return=representation"},body:JSON.stringify(d)};},tok);return r.json();},
+  async upd(t,id,d,tok){if(DEMO)return demoUpd(t,id,d);await ctAuthFetch(`${SU}/rest/v1/${t}?id=eq.${id}`,function(k){return {method:"PATCH",headers:{...h(k),Prefer:"return=representation"},body:JSON.stringify(d)};},tok);},
+  async del(t,id,tok){if(DEMO)return demoDel(t,id);await ctAuthFetch(`${SU}/rest/v1/${t}?id=eq.${id}`,function(k){return {method:"DELETE",headers:h(k)};},tok);},
   // Postgres RPC (SECURITY DEFINER fns gated on auth.uid()). Lets the DB do the
   // heavy filtering/scoring so big customer lists never load whole into the browser.
-  async rpc(fn,body,tok){if(DEMO)return demoRpc(fn,body);const r=await fetch(`${SU}/rest/v1/rpc/${fn}`,{method:"POST",headers:h(tok),body:JSON.stringify(body||{})});return r.json();}
+  async rpc(fn,body,tok){if(DEMO)return demoRpc(fn,body);const r=await ctAuthFetch(`${SU}/rest/v1/rpc/${fn}`,function(k){return {method:"POST",headers:h(k),body:JSON.stringify(body||{})};},tok);return r.json();}
 };
 
 // ---- DEMO MODE -------------------------------------------------------------
@@ -922,6 +939,7 @@ function sessStore(){return localStorage.getItem("ct_stay")==="0"?sessionStorage
 function saveSession(d,stay){
   if(typeof stay==="boolean")localStorage.setItem("ct_stay",stay?"1":"0");
   var st=sessStore();
+  if(S&&S.token&&S.token!==d.access_token&&(!d.user||!S.user||d.user.id===S.user.id))ctOldTokens.add(S.token);
   S={token:d.access_token,user:d.user||(S&&S.user)||null};
   st.setItem("ct",d.access_token);
   if(d.user)st.setItem("cu",JSON.stringify(d.user));
@@ -929,7 +947,7 @@ function saveSession(d,stay){
   var exp=d.expires_at?Number(d.expires_at):(d.expires_in?Math.floor(Date.now()/1000)+Number(d.expires_in):0);
   if(exp)st.setItem("ct_exp",String(exp));
 }
-function clearSession(){S=null;[localStorage,sessionStorage].forEach(function(st){["ct","cu","ct_rt","ct_exp"].forEach(function(k){st.removeItem(k);});});}
+function clearSession(){ctOldTokens.clear();S=null;[localStorage,sessionStorage].forEach(function(st){["ct","cu","ct_rt","ct_exp"].forEach(function(k){st.removeItem(k);});});}
 async function refreshSession(){
   var st=sessStore(),rt=st.getItem("ct_rt");
   if(!rt)return false;
@@ -941,6 +959,11 @@ async function refreshSession(){
     return true;
   }catch(e){return false;}
 }
+// Keep an open tab signed in: renew the login a few minutes before it expires (checked every
+// minute and when the tab comes back to the front, since background timers get throttled).
+function ctKeepAlive(){try{if(DEMO||!S||!S.token)return;var exp=Number(sessStore().getItem("ct_exp")||0);if(exp&&Date.now()/1000>exp-300)ctRenew();}catch(e){}}
+setInterval(ctKeepAlive,60000);
+document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")ctKeepAlive();});
 // On page load: confirm the stored token is still alive; if not, refresh it,
 // and if that fails end the stale session so the nav shows the real state.
 async function resumeSession(t){
@@ -1026,6 +1049,12 @@ async function finishAuthReturn(token,user,type,sessionData){
   if(!u||!u.id){
     const r=await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+token}});
     u=await r.json();
+  }
+  // Two-step accounts: a link's session is aal1 and is kept only after the current code verifies.
+  if(u&&u.id){
+    const _ls=await mfaLinkSession(token,u);
+    if(!_ls){scr=S?"dash":"login";R();setTimeout(function(){alert("Log in with your email, password and two-step code to continue.");},80);return;}
+    if(_ls.access_token!==token){token=_ls.access_token;sessionData=Object.assign({},sessionData||{},{refresh_token:_ls.refresh_token||"",expires_in:_ls.expires_in||"",expires_at:_ls.expires_at||""});if(_ls.user)u=_ls.user;}
   }
   if(!u||!u.id)throw new Error("Email confirmed, but Clicktide could not load the account. Please log in.");
   if(!(await acceptLinkSession(u))){scr=S?"dash":"login";R();return;}
@@ -1565,6 +1594,7 @@ async function openBillingPortal(){
   }catch(e){ ctToast("Couldn't open billing right now. "+e.message,"warn"); }
 }
 async function createWalletCheckout(amount){
+  if(isShopifyBiz()){shopifyWalletNote();return "";}
   if(DEMO){ctToast("Demo mode — wallet top-ups are off. Everything else is live to explore.","info");return "";}
   if(!await requirePaidAction())return "";
   const biz=await loadBiz()||{};
@@ -1691,7 +1721,21 @@ async function squareConnect(){return oauthStart("square");}
 // Installing starts on Shopify's side; shopify-app runs OAuth and sends the merchant back
 // here with a one-time claim that attaches the store to this business (finishShopifyInstall).
 const SHOPIFY_CLIENT_ID="1e876d10b4e052fe9897dd45bd859eca";
-const SHOPIFY_APP_HANDLE="clicktide-3";
+const SHOPIFY_APP_HANDLE="clicktide";
+// A business that came through Shopify (connected store, or billed by Shopify). App Store rules:
+// no other POS connectors for it (1.1.8), and every charge must go through Shopify (1.2), so
+// Stripe-paid extras (gift-wallet top-ups) are off for it (create-checkout-session refuses them too).
+function isShopifyBiz(){
+  try{return !!((typeof platConn!=="undefined"&&platConn.shopify&&platConn.shopify.merchant_id)||(typeof bizLock!=="undefined"&&bizLock&&bizLock.billing_provider==="shopify"));}catch(e){return false;}
+}
+// Shopify stores never fund the wallet through Stripe. Once billed through Shopify, postcards,
+// gifts and texts past the plan's limit go on the Shopify bill (usage charges); before that
+// they're paused.
+function shopifyBilledNow(){try{return !!(typeof bizLock!=="undefined"&&bizLock&&bizLock.billing_provider==="shopify"&&["active","trialing","past_due"].includes(String(bizLock.stripe_subscription_status||"").toLowerCase()));}catch(e){return false;}}
+function shopifyWalletNote(){
+  if(shopifyBilledNow())ctToast("No top-up needed: postcards, gifts and texts beyond your plan's limit are added to your Shopify bill as you use them.","info");
+  else ctToast("Postcards, gifts and texts beyond your plan's limit start once your Clicktide plan is active in Shopify. Emails and your plan's included texts keep sending.","info");
+}
 const SHOPIFY_INSTALL_URL="https://admin.shopify.com/oauth/install?client_id="+SHOPIFY_CLIENT_ID;
 async function shopifyConnect(){
   if(DEMO){ctToast("Demo mode — connecting a register is off. Everything else is live to explore.","info");return false;}
@@ -3280,7 +3324,7 @@ function oBiz(id){obB=id;aiHint='';R();getAIHint(0,id);}
 // Grouped platform picker (POS / E-commerce / Payments) as a dropdown menu.
 function pltMenuToggle(){var m=document.getElementById("pltMenu");if(m)m.style.display=m.style.display==="none"?"block":"none";}
 function platformSelect(){
-  var groups=[["Point of Sale",["square","clover","toast","mindbody"]],["E-commerce",["shopify"]],["Payments",["stripe"]],["No register",["manual"]]];
+  var groups=isShopifyBiz()?[["E-commerce",["shopify"]]]:[["Point of Sale",["square","clover","toast","mindbody"]],["E-commerce",["shopify"]],["Payments",["stripe"]],["No register",["manual"]]];
   var cur=PL.find(function(x){return x.id===obP;});
   var row=function(id,sub){var p=PL.find(function(x){return x.id===id;});if(!p)return"";return '<span style="display:flex;align-items:center;gap:11px;min-width:0"><span style="display:flex;flex-shrink:0">'+pLogoIco(p.id)+'</span><span style="min-width:0"><span style="display:block;font-size:13px;font-weight:700;color:#0F1115">'+p.n+'</span>'+(sub?'<span style="display:block;font-size:11px;color:#6B6F76;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.d+'</span>':'')+'</span></span>';};
   var trig='<div class="plt-trigger" onclick="pltMenuToggle()">'+(cur?row(cur.id,true):'<span style="font-size:13px;color:#6B6F76">Choose your platform…</span>')+'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="m6 9 6 6 6-6"/></svg></div>';
@@ -4105,7 +4149,7 @@ async function dLoad(){
         <div class="dc" style="display:flex;align-items:center;gap:9px"><span style="font-size:12px;font-weight:800;color:#4DA6FF;width:24px;text-align:center">SMS</span><div style="flex:1"><div style="font-size:12px;font-weight:700;margin-bottom:2px">SMS delivery</div><div style="font-size:11px;color:rgba(240,244,255,.45)">Twilio sends texts only to opted-in customers</div></div><span style="font-size:10px;color:#FFD166;font-weight:700">Back office</span></div>
       `;
 
-      const platCards=plDefs.map(p=>{
+      const platCards=plDefs.filter(p=>!isShopifyBiz()||p.id==="shopify"||(platConn[p.id]&&platConn[p.id].merchant_id)).map(p=>{
         const conn=platConn[p.id];
         if(conn&&conn.merchant_id){
           return`<div class="dc" style="display:flex;align-items:center;gap:12px;border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.04)">
@@ -4177,6 +4221,7 @@ async function dLoad(){
         ${billingCard}
         ${ownerSmsCard}
         ${bizTextingCard}
+        ${securityCard()}
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.35);margin-bottom:10px">POS & E-commerce</div>
         <div onclick="ctSec()" style="display:inline-flex;align-items:center;gap:7px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:100px;padding:5px 13px;font-size:11px;font-weight:700;color:#22C55E;cursor:pointer;margin-bottom:10px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="1.9" stroke-linecap="round" style="vertical-align:-3px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg> Read-only — Clicktide can never touch your money <span style="text-decoration:underline;font-weight:600;color:rgba(240,244,255,.6)">how?</span></div><div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">${platCards}</div>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.35);margin-bottom:10px">Other integrations</div>
@@ -4986,6 +5031,7 @@ function shipmentsPage(sh){
 }
 
 function oWalletTopup(){
+  if(isShopifyBiz()){shopifyWalletNote();return;}
   document.body.insertAdjacentHTML("beforeend",modal("Add gift wallet funds",`<div style="font-size:13px;color:rgba(240,244,255,.62);line-height:1.65;margin-bottom:14px">Add prepaid funds for this business. Your card is charged securely, then Clicktide credits the wallet after payment is confirmed.</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">${[100,250,500].map(v=>`<button class="btn btn-ghost" onclick="document.getElementById('walletTopupAmount').value='${v}'">$${v}</button>`).join("")}</div><div class="fg"><label class="fl">Amount <span style="text-transform:none;font-weight:600;color:rgba(240,244,255,.4)">(minimum $25)</span></label><input class="fi" id="walletTopupAmount" type="number" min="25" max="5000" step="1" value="250"><div style="font-size:11px;color:rgba(240,244,255,.45);margin-top:6px">Minimum $25 · maximum $5,000.</div></div><button class="btn-full btn-gold" onclick="startWalletTopup()">Continue to secure checkout</button><div id="walletTopupErr" style="display:none;color:#FF6B6B;font-size:12px;margin-top:10px"></div>`));
 }
 async function startWalletTopup(){
@@ -5260,63 +5306,176 @@ async function doPwReset(btn){
   if(p.length<8){if(er){er.textContent="Password must be at least 8 characters.";er.style.display="block";}return;}
   if(btn){btn.disabled=true;btn.textContent="Updating...";}
   try{
-    var r=await fetch(SU+"/auth/v1/user",{method:"PUT",headers:{apikey:SK,Authorization:"Bearer "+window.__rcTok,"Content-Type":"application/json"},body:JSON.stringify({password:p})});
-    var d=await r.json();
-    if(!r.ok)throw new Error(d.message||d.error_description||"Could not update password");
+    var putPw=function(){return fetch(SU+"/auth/v1/user",{method:"PUT",headers:{apikey:SK,Authorization:"Bearer "+window.__rcTok,"Content-Type":"application/json"},body:JSON.stringify({password:p})});};
+    var r=await putPw();
+    var d=await r.json().catch(function(){return {};});
+    // With two-step on, Supabase only takes a new password from an aal2 session: the reset
+    // link's session is stepped up with the owner's code, then the change is sent again.
+    if(!r.ok&&d&&d.error_code==="insufficient_aal"){
+      var up=await mfaStepUp(window.__rcTok,null,"Two-step verification","Your account uses two-step verification. Enter the code from your authenticator app to set the new password.");
+      if(!up)throw new Error("Your two-step code is needed to set a new password.");
+      window.__rcTok=up.access_token;
+      r=await putPw();d=await r.json().catch(function(){return {};});
+    }
+    if(!r.ok)throw new Error(d.msg||d.message||d.error_description||"Could not update password");
     document.querySelector(".ov")?.remove();
     alert("Password updated! Log in with your new password.");
     if(ctAuditFlow()){window.location.replace("/free-pos-audit?step=connect");return;}
     go("login");
   }catch(ex){if(er){er.textContent=ex.message;er.style.display="block";}if(btn){btn.disabled=false;btn.textContent="Update password →";}}
 }
+// -- Owner two-step verification (Supabase Auth TOTP factors) -------------------------
+// It is a login-screen check: doAuth() (password login) and finishAuthReturn() (email links) ask
+// for the code when the account has a verified authenticator. The database does not demand an
+// aal2 token for owner requests, so this is not server-side enforcement.
+function mfaAal(t){try{var p=String(t||"").split(".")[1];if(!p)return "";p=p.replace(/-/g,"+").replace(/_/g,"/");while(p.length%4)p+="=";var c=JSON.parse(atob(p));return String((c&&c.aal)||"");}catch(e){return "";}}
+// GoTrue returns the QR code as raw SVG markup; an <img> needs it as a data: URI.
+function mfaQrSrc(raw){raw=String(raw||"").trim();if(/^data:image\/(svg\+xml|png)[;,]/i.test(raw))return raw;if(/^(<\?xml|<!--|<svg)/i.test(raw)&&/<svg[\s>]/i.test(raw))return "data:image/svg+xml;utf8,"+encodeURIComponent(raw);return "";}
+function mfaErrText(d,fallback){return String((d&&(d.msg||d.message||d.error_description||(typeof d.error==="string"?d.error:"")))||fallback);}
+function mfaTotp(fs){return ((fs||[]).filter(function(x){return x&&x.status==="verified"&&x.factor_type==="totp";})[0])||null;}
+// Auth API call with the signed-in owner's token; an expired token is refreshed once.
+async function mfaFetch(url,init){
+  init=init||{};
+  var hd=function(){var h={apikey:SK,Authorization:"Bearer "+((S&&S.token)||"")};if(init.body)h["Content-Type"]="application/json";return h;};
+  var r=await fetch(url,Object.assign({},init,{headers:hd()}));
+  if(r.status===401&&await refreshSession())r=await fetch(url,Object.assign({},init,{headers:hd()}));
+  var d=await r.json().catch(function(){return {};});
+  return {r:r,d:d||{}};
+}
+// Step a session (the owner's, or a password-reset link's) up to aal2 with the current code.
+// Returns GoTrue's token response, or null when the owner cancels or has no authenticator.
+async function mfaStepUp(token,factorId,title,desc){
+  var hd={apikey:SK,Authorization:"Bearer "+token,"Content-Type":"application/json"};
+  if(!factorId){
+    var u=await fetch(SU+"/auth/v1/user",{headers:hd}).then(function(r){return r.ok?r.json():{};}).catch(function(){return {};});
+    var tf=mfaTotp(u&&u.factors);if(!tf)return null;factorId=tf.id;
+  }
+  var note="";
+  for(var tries=0;tries<3;tries++){
+    var code=await promptModal({title:title||"Two-step verification",label:"6-digit code",desc:note+(desc||"Enter the code from your authenticator app."),placeholder:"123456",inputmode:"numeric",maxlength:6,okText:"Verify",required:true,requiredMsg:"Enter the 6-digit code."});
+    if(code==null)return null;
+    code=String(code).replace(/\s+/g,"");
+    if(!/^\d{6}$/.test(code)){note="Use the 6 digits from the app. ";continue;}
+    var c=await fetch(SU+"/auth/v1/factors/"+encodeURIComponent(factorId)+"/challenge",{method:"POST",headers:hd,body:"{}"});
+    var cd=await c.json().catch(function(){return {};});
+    if(!c.ok||!cd.id)throw new Error(mfaErrText(cd,"Couldn't start the code check — try again."));
+    var v=await fetch(SU+"/auth/v1/factors/"+encodeURIComponent(factorId)+"/verify",{method:"POST",headers:hd,body:JSON.stringify({challenge_id:cd.id,code:code})});
+    var vd=await v.json().catch(function(){return {};});
+    if(v.ok&&vd.access_token)return vd;
+    if(vd.error_code&&vd.error_code!=="mfa_verification_failed")throw new Error(mfaErrText(vd,"Couldn't check the code — try again."));
+    note="That code didn't match — try the newest one. ";
+  }
+  throw new Error("That code didn't match. Wait for a new code in your authenticator app and try again.");
+}
+// A session that arrives in an email link is aal1. For an account with an authenticator it is
+// used only after the current code verifies. Returns the session to keep ({access_token} alone
+// when no code is needed), or null (cancelled, wrong code, or the account couldn't be checked).
+async function mfaLinkSession(token,u){
+  var fs=u&&Array.isArray(u.factors)?u.factors:null;
+  if(!fs){
+    var x=await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+token}}).catch(function(){return null;});
+    if(!x||!x.ok)return null;
+    var ud=await x.json().catch(function(){return null;});
+    if(!ud||!ud.id)return null;
+    fs=Array.isArray(ud.factors)?ud.factors:[];
+  }
+  var tf=mfaTotp(fs);
+  if(!tf||mfaAal(token)==="aal2")return {access_token:token};
+  try{return await mfaStepUp(token,tf.id,"Two-step verification","Your account uses two-step verification. Enter the code from your authenticator app to finish signing in.");}
+  catch(ex){alert(ex.message);return null;}
+}
 function securityCard(){
-  setTimeout(loadMfaStatus,300);
-  return '<div class="dc" style="margin-bottom:24px"><div class="dch"><div class="dct"><i class=ig-lock></i> Security — Two-step verification</div></div><div style="font-size:12px;color:rgba(240,244,255,.5);line-height:1.7;margin-bottom:12px">Add an authenticator app (Google Authenticator, 1Password, Authy). After your password, we\'ll ask for a 6-digit code at login.</div><div id="mfaStatus" style="font-size:12px;color:rgba(240,244,255,.45);margin-bottom:12px">Checking status...</div><button class="btn btn-gold" id="mfaBtn" style="display:none" onclick="mfaEnroll(this)">Enable 2-step verification</button><button class="btn btn-outline" id="mfaOffBtn" style="display:none" onclick="mfaDisable()">Turn off 2-step verification</button></div>';
+  if(DEMO||!S||!S.token)return "";
+  setTimeout(loadMfaStatus,0);
+  return '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(240,244,255,.35);margin-bottom:10px">Security</div>'
+    +'<div class="dc" id="mfaCard" style="margin-bottom:24px"><div class="dch"><div class="dct">Two-step verification</div></div>'
+    +'<div style="font-size:11px;color:rgba(240,244,255,.45);line-height:1.5;margin:2px 0 12px">Adds a second step when you log in to Clicktide. After your email and password, the login screen asks for a 6-digit code from an authenticator app on your phone (Apple Passwords, Google Authenticator, 1Password or Authy). Keep your email account secure too, and if you lose your phone, contact support@goclicktide.com.</div>'
+    +'<div id="mfaStatus" style="font-size:12px;color:rgba(240,244,255,.55);margin-bottom:12px">Checking…</div>'
+    +'<button class="btn btn-gold" id="mfaBtn" style="display:none;padding:9px 18px" onclick="mfaEnroll(this)">Turn on two-step verification</button>'
+    +'<button class="btn btn-outline" id="mfaOffBtn" style="display:none;padding:9px 18px" onclick="mfaDisable(this)">Turn off two-step verification</button></div>';
 }
 async function loadMfaStatus(){
+  if(DEMO||!S||!S.token||!document.getElementById("mfaStatus"))return;
+  var f=null,ok=false;
+  try{var x=await mfaFetch(SU+"/auth/v1/user");ok=x.r.ok;if(ok)f=mfaTotp(x.d.factors);}catch(e){}
   var st=document.getElementById("mfaStatus"),on=document.getElementById("mfaBtn"),off=document.getElementById("mfaOffBtn");
-  if(!st||!S||!S.token)return;
-  try{
-    var r=await fetch(SU+"/auth/v1/user",{headers:{apikey:SK,Authorization:"Bearer "+S.token}});
-    var u=await r.json();
-    var f=(u.factors||[]).filter(function(x){return x.status==="verified"&&x.factor_type==="totp";})[0];
-    window.__mfaFactor=f||null;
-    if(f){st.innerHTML='<span style="color:#22C55E">● 2-step verification is ON</span>';if(off)off.style.display="inline-block";if(on)on.style.display="none";}
-    else{st.innerHTML='<span style="color:#FF9F4D">○ Not enabled</span>';if(on)on.style.display="inline-block";if(off)off.style.display="none";}
-  }catch(e){if(st)st.textContent="Could not check status.";}
+  if(!st)return;
+  if(!ok){st.textContent="Couldn't check two-step verification right now — reload the page to try again.";return;}
+  window.__mfaFactor=f;
+  if(f){st.innerHTML='<span style="color:#1E874F;font-weight:700">On</span> <span style="color:#3A3E45">— logging in with your password also asks for a code from your authenticator app.</span>';if(off)off.style.display="inline-block";if(on)on.style.display="none";}
+  else{st.innerHTML='<span style="color:#0F1115;font-weight:700">Off</span> <span style="color:#3A3E45">— your login needs only your password.</span>';if(on)on.style.display="inline-block";if(off)off.style.display="none";}
 }
 async function mfaEnroll(btn){
-  if(btn){btn.disabled=true;btn.textContent="Setting up...";}
+  if(DEMO||!S||!S.token)return;
+  if(btn){btn.disabled=true;btn.textContent="Setting up…";}
   try{
-    var r=await fetch(SU+"/auth/v1/factors",{method:"POST",headers:{apikey:SK,Authorization:"Bearer "+S.token,"Content-Type":"application/json"},body:JSON.stringify({factor_type:"totp",friendly_name:"Authenticator"})});
-    var d=await r.json();
-    if(!r.ok)throw new Error(d.message||d.msg||"Could not start enrollment");
-    var qr=(d.totp&&d.totp.qr_code)||"";
-    var img=qr.indexOf("data:")===0?qr:"data:image/svg+xml;utf8,"+encodeURIComponent(qr);
-    document.body.insertAdjacentHTML("beforeend",modal("Scan with your authenticator app",'<div style="text-align:center"><img src="'+img+'" style="width:190px;height:190px;background:#fff;border-radius:12px;padding:8px"/><div style="font-size:11px;color:rgba(240,244,255,.45);margin:10px 0 4px">Or enter this secret manually:</div><div style="font-size:11px;font-family:monospace;background:#101828;border-radius:8px;padding:8px;word-break:break-all;margin-bottom:14px">'+((d.totp&&d.totp.secret)||"")+'</div><div class="fg"><label class="fl">6-digit code from the app</label><input class="fi" id="mfaCode" inputmode="numeric" maxlength="6" placeholder="123456"/></div><div id="mfaErr" style="display:none;color:#FF6B6B;font-size:12px;margin-bottom:10px"></div><button class="btn-full btn-gold" onclick="mfaVerify(\''+d.id+'\',this)">Verify &amp; enable →</button></div>'));
+    var me=await mfaFetch(SU+"/auth/v1/user");
+    if(!me.r.ok)throw new Error("Couldn't check your login — log out, log in again, and retry.");
+    var fs=me.d.factors||[];
+    if(mfaTotp(fs)){loadMfaStatus();throw new Error("Two-step verification is already on for this login.");}
+    // A setup that was never finished leaves an unverified factor behind: remove it first.
+    for(var i=0;i<fs.length;i++){if(fs[i]&&fs[i].id&&fs[i].status!=="verified")await mfaFetch(SU+"/auth/v1/factors/"+encodeURIComponent(fs[i].id),{method:"DELETE"}).catch(function(){});}
+    var x=await mfaFetch(SU+"/auth/v1/factors",{method:"POST",body:JSON.stringify({factor_type:"totp",friendly_name:"Clicktide "+new Date().toISOString().slice(0,19).replace("T"," "),issuer:"Clicktide"})});
+    var d=x.d,qr=mfaQrSrc(d.totp&&d.totp.qr_code),secret=String((d.totp&&d.totp.secret)||"");
+    if(!x.r.ok||!d.id||(!qr&&!secret))throw new Error(mfaErrText(d,"Couldn't start two-step setup — try again."));
+    window.__mfaPending=String(d.id);
+    document.body.insertAdjacentHTML("beforeend",modal("Turn on two-step verification",
+      '<div style="font-size:13px;color:#3A3E45;line-height:1.6;margin-bottom:12px"><b>1.</b> Open an authenticator app on your phone (Apple Passwords, Google Authenticator, 1Password or Authy) and scan this code.</div>'
+      +(qr?'<div style="text-align:center;margin-bottom:10px"><img src="'+giftEsc(qr)+'" alt="QR code for your authenticator app" style="width:190px;height:190px;background:#FFFFFF;border:1px solid rgba(15,23,42,.12);border-radius:12px;padding:8px"/></div>':'')
+      +(secret?'<div style="font-size:11px;color:#6B6F76;margin:0 0 4px">Can\'t scan it? Type this key into the app instead:</div><div style="font-size:12px;font-family:monospace;background:#F4F6FA;color:#0F1115;border-radius:8px;padding:8px;word-break:break-all;letter-spacing:1px;margin-bottom:14px">'+giftEsc(secret)+'</div>':'')
+      +'<div style="font-size:13px;color:#3A3E45;line-height:1.6;margin-bottom:8px"><b>2.</b> Type the 6-digit code the app shows.</div>'
+      +'<div class="fg"><label class="fl">6-digit code</label><input class="fi" id="mfaCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456"/></div>'
+      +'<div id="mfaErr" style="display:none;color:#C0392B;font-size:12px;margin-bottom:10px"></div>'
+      +'<button class="btn-full btn-gold" id="mfaGo" onclick="mfaVerify(null,this)">Verify &amp; turn on</button>'));
+    var ci=document.getElementById("mfaCode");
+    if(ci){ci.onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();mfaVerify(null,document.getElementById("mfaGo"));}};setTimeout(function(){try{ci.focus();}catch(_){}},60);}
   }catch(ex){alert(ex.message);}
-  if(btn){btn.disabled=false;btn.textContent="Enable 2-step verification";}
+  if(btn){btn.disabled=false;btn.textContent="Turn on two-step verification";}
 }
 async function mfaVerify(fid,btn){
-  var code=(document.getElementById("mfaCode")?.value||"").trim();
+  fid=String(fid||window.__mfaPending||"");
+  var code=String(document.getElementById("mfaCode")?.value||"").replace(/\s+/g,"");
   var er=document.getElementById("mfaErr");
-  if(code.length!==6){if(er){er.textContent="Enter the 6-digit code.";er.style.display="block";}return;}
-  if(btn){btn.disabled=true;btn.textContent="Verifying...";}
+  var bad=function(m){if(er){er.textContent=m;er.style.display="block";}};
+  if(!fid){bad("This setup has expired — close it and start again.");return;}
+  if(!/^\d{6}$/.test(code)){bad("Enter the 6-digit code from your authenticator app.");return;}
+  if(btn){btn.disabled=true;btn.textContent="Checking…";}
   try{
-    var c=await fetch(SU+"/auth/v1/factors/"+fid+"/challenge",{method:"POST",headers:{apikey:SK,Authorization:"Bearer "+S.token,"Content-Type":"application/json"},body:"{}"});
-    var cd=await c.json();if(!c.ok)throw new Error(cd.message||"Challenge failed");
-    var v=await fetch(SU+"/auth/v1/factors/"+fid+"/verify",{method:"POST",headers:{apikey:SK,Authorization:"Bearer "+S.token,"Content-Type":"application/json"},body:JSON.stringify({challenge_id:cd.id,code:code})});
-    var vd=await v.json();if(!v.ok)throw new Error(vd.message||vd.msg||"Wrong code — try again");
+    var c=await mfaFetch(SU+"/auth/v1/factors/"+encodeURIComponent(fid)+"/challenge",{method:"POST",body:"{}"});
+    if(!c.r.ok||!c.d.id)throw new Error(mfaErrText(c.d,"Couldn't start the code check — try again."));
+    var v=await mfaFetch(SU+"/auth/v1/factors/"+encodeURIComponent(fid)+"/verify",{method:"POST",body:JSON.stringify({challenge_id:c.d.id,code:code})});
+    var vd=v.d;
+    if(!v.r.ok||!vd.access_token)throw new Error(vd.error_code==="mfa_verification_failed"?"That code didn't match — check the time on your phone and try the newest code.":mfaErrText(vd,"That code didn't match — try again."));
+    // The verify response is this session upgraded to aal2: keep it (refresh token included).
     if(vd.access_token)saveSession(vd);
-    document.querySelector(".ov")?.remove();
-    alert("2-step verification is ON ✓ You'll be asked for a code at every login.");
+    window.__mfaPending=null;
+    var ov=btn&&btn.closest?btn.closest(".ov"):null;if(ov)ov.remove();else document.querySelector(".ov")?.remove();
+    alert("Two-step verification is on. When you log in with your password, Clicktide will ask for a code from your app. You may need to log in again on your other devices.");
     loadMfaStatus();
-  }catch(ex){if(er){er.textContent=ex.message;er.style.display="block";}if(btn){btn.disabled=false;btn.textContent="Verify & enable →";}}
+  }catch(ex){bad(ex.message);if(btn){btn.disabled=false;btn.textContent="Verify & turn on";}}
 }
-async function mfaDisable(){
-  var f=window.__mfaFactor;if(!f)return;
-  if(!await confirmModal({title:"Turn off 2-step verification?",message:"Your account will be less protected without it.",okText:"Turn off",danger:true}))return;
-  try{await fetch(SU+"/auth/v1/factors/"+f.id,{method:"DELETE",headers:{apikey:SK,Authorization:"Bearer "+S.token}});loadMfaStatus();}catch(ex){alert(ex.message);}
+async function mfaDisable(btn){
+  var f=window.__mfaFactor;if(DEMO||!f||!S||!S.token)return;
+  if(!await confirmModal({title:"Turn off two-step verification?",message:"Your login will need only your password again.",okText:"Turn off",danger:true}))return;
+  if(btn){btn.disabled=true;btn.textContent="Turning off…";}
+  try{
+    var me=await mfaFetch(SU+"/auth/v1/user");
+    f=me.r.ok?mfaTotp(me.d.factors):f;
+    if(!f){ctToast("Two-step verification is already off.","info");return;}
+    // Removing a verified authenticator needs an aal2 session. A session that started without
+    // the code (or from before two-step was on) is stepped up first.
+    if(mfaAal(S.token)!=="aal2"){
+      var up=await mfaStepUp(S.token,f.id,"Confirm it's you","To turn off two-step verification, enter the current code from your authenticator app.");
+      if(!up)return;
+      saveSession(up);
+    }
+    var x=await mfaFetch(SU+"/auth/v1/factors/"+encodeURIComponent(f.id),{method:"DELETE"});
+    if(!x.r.ok)throw new Error(x.d.error_code==="insufficient_aal"?"Please log out and log in again with your code, then turn it off.":mfaErrText(x.d,"Couldn't turn off two-step verification — try again."));
+    window.__mfaFactor=null;
+    await refreshSession(); // the server downgraded this session; pick up the new token
+    alert("Two-step verification is off.");
+  }catch(ex){alert(ex.message);}
+  finally{if(btn){btn.disabled=false;btn.textContent="Turn off two-step verification";}loadMfaStatus();}
 }
 function sAI(el,i){var t=cmAiOpts[i]||"";cmM=t;cmTi=-1;var ta=document.getElementById("cM");if(ta)ta.value=t;document.querySelectorAll(".tpl").forEach(function(e){e.classList.remove("sel");});if(el)el.classList.add("sel");pcSyncPreview();}
 async function aiWriteMsg(){

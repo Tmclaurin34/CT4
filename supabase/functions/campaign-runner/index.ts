@@ -1,9 +1,14 @@
-// Clicktide campaign engine. v43 — security hardening merged onto the retention-engine v42: complete reads (customers, campaigns and businesses are paged past PostgREST's 1,000-row cap; cooldowns, win-back touch counts and SMS usage come from one SQL aggregate, clicktide_campaign_state), the published "three win-back touches, then nothing until they return" rule, marketing vs. account/service text consent, per-business email opt-outs + signed per-business unsubscribe links, a real postal address in every email, wallet debits through the atomic ledger (clicktide_wallet_apply) BEFORE a postcard or overage text goes out, one live run at a time (job lease) with a run log (engine_runs) that ops-alerts watches, and a timed-out run resumes where it stopped. A provider that gives no clear answer (timeout) makes the touch "unconfirmed": kept paid, never refunded or retried; ledger, Lob and Resend calls carry the touch's idempotency key. A staff-triggered run needs clicktide_is_staff(['admin']) answered with the caller's own token (so the staff-MFA rule applies); gift auto-sends name their gift_catalog row. v42 — win-back runs on the shared retention engine: before each business is evaluated its customers' statuses are refreshed (clicktide_refresh_rhythm) and "inactive/win-back" fires on status drifting/at_risk (a campaign naming "at risk" or "drifting" targets just that status; an explicit day count still overrides). One-visit customers (no personal rhythm) are skipped unless the owner opts in (clicktide.winback_include_estimated). A customer gets a given win-back campaign at most once per drift episode. v26 — reliability: every external call (Resend/Twilio/Lob/Printify/Supabase) now has a hard timeout (fetchT), and the run stops cleanly at a 110s deadline (timed_out flag) so it can never hit the ~150s gateway 504; unreached businesses are picked up next hour (cooldown prevents double-sends). v25 — adds the New-Customer Welcome Journey: "welcome" / "second-visit nudge (day N)" / "win the second visit (day N)" triggers, keyed on first-visit recency + visit count, staged so a brand-new customer is walked through their first weeks (and the journey self-pauses the moment they return). v24 — win-back trigger is cadence-aware: "inactive/win-back" fires on each customer's OWN learned visit rhythm (effChurn), not a flat owner-set timer. Mirrors effChurn() in index.html so dashboard drift flags and actual sends agree. (v20 — backfill-safe: event triggers gated by campaign.created_at; 48h warm-up after first POS connection)
-// SMS quiet hours (2026-11): customer texts leave only inside the business's local send
-// window — 9:00–20:00, Sundays 12:00–20:00 (see smsWindowOpen). A customer who is due a
-// text while the window is closed has the WHOLE touch held, so the email and the text go
-// out together on the first hourly run inside the window instead of the email's
-// cooldown swallowing the text.
+// Clicktide campaign engine. 2026-11-27 (package sms) — recipient-local quiet hours + double opt-in (see the SMS notes below). v43 — security hardening merged onto the retention-engine v42: complete reads (customers, campaigns and businesses are paged past PostgREST's 1,000-row cap; cooldowns, win-back touch counts and SMS usage come from one SQL aggregate, clicktide_campaign_state), the published "three win-back touches, then nothing until they return" rule, marketing vs. account/service text consent, per-business email opt-outs + signed per-business unsubscribe links, a real postal address in every email, wallet debits through the atomic ledger (clicktide_wallet_apply) BEFORE a postcard or overage text goes out, one live run at a time (job lease) with a run log (engine_runs) that ops-alerts watches, and a timed-out run resumes where it stopped. A provider that gives no clear answer (timeout) makes the touch "unconfirmed": kept paid, never refunded or retried; ledger, Lob and Resend calls carry the touch's idempotency key. A staff-triggered run needs clicktide_is_staff(['admin']) answered with the caller's own token (so the staff-MFA rule applies); gift auto-sends name their gift_catalog row. v42 — win-back runs on the shared retention engine: before each business is evaluated its customers' statuses are refreshed (clicktide_refresh_rhythm) and "inactive/win-back" fires on status drifting/at_risk (a campaign naming "at risk" or "drifting" targets just that status; an explicit day count still overrides). One-visit customers (no personal rhythm) are skipped unless the owner opts in (clicktide.winback_include_estimated). A customer gets a given win-back campaign at most once per drift episode. v26 — reliability: every external call (Resend/Twilio/Lob/Printify/Supabase) now has a hard timeout (fetchT), and the run stops cleanly at a 110s deadline (timed_out flag) so it can never hit the ~150s gateway 504; unreached businesses are picked up next hour (cooldown prevents double-sends). v25 — adds the New-Customer Welcome Journey: "welcome" / "second-visit nudge (day N)" / "win the second visit (day N)" triggers, keyed on first-visit recency + visit count, staged so a brand-new customer is walked through their first weeks (and the journey self-pauses the moment they return). v24 — win-back trigger is cadence-aware: "inactive/win-back" fires on each customer's OWN learned visit rhythm (effChurn), not a flat owner-set timer. Mirrors effChurn() in index.html so dashboard drift flags and actual sends agree. (v20 — backfill-safe: event triggers gated by campaign.created_at; 48h warm-up after first POS connection)
+// SMS quiet hours (2026-11; recipient-local since 2026-11-27): customer texts leave only inside the
+// RECIPIENT's send window — 9:00–20:00, Sundays 12:00–20:00 (see smsRecipientWindow). The
+// recipient's zones come from the customer's own state, else their ZIP, else their phone's
+// area code intersected with the business's zones (non-geographic / unlisted codes: the
+// all-US window), else the business's state. A customer who is due a text while their
+// window is closed has the WHOLE touch held, so the email and the text go out together on
+// the first hourly run inside the window instead of the email's cooldown swallowing the
+// text. Double opt-in (2026-11-27): a public check-in's marketing box only creates a PENDING
+// request (sms_consent_requests); the customer is texted marketing only once a YES reply
+// has set sms_consent=true. Pending is never consent here.
 // Hourly via pg_cron (or staff admin). Customer-facing emails ship in a branded
 // shell and cite the customer's real last visit. Physical gifts respect the
 // business's gift_auto_send toggle: ON = order placed automatically through
@@ -744,11 +749,13 @@ async function sendEmail(to: string, subject: string, message: string, businessN
 }
 
 // ── SMS send window (quiet hours) ───────────────────────────────────────────
-// Customer texts go out only 9:00–20:00 in the business's local time, and only
+// Customer texts go out only 9:00–20:00 in the RECIPIENT's local time, and only
 // 12:00–20:00 on Sundays. That sits inside the federal TCPA window (8am–9pm
 // recipient-local) and the stricter state windows (e.g. FL/OK 8am–8pm; TX 9am–9pm
 // Mon–Sat, noon–9pm Sunday). The cron fires every hour around the clock, so this
 // gate — not the schedule — is what keeps texts out of quiet hours.
+// SHARED BLOCK: campaign-runner and send-customer-sms carry this block byte for byte
+// (from this banner to the end of smsWindowOpenFor) — change both together.
 const SMS_WINDOW_START_HOUR = 9; // Monday–Saturday
 const SMS_WINDOW_SUNDAY_START_HOUR = 12;
 const SMS_WINDOW_END_HOUR = 20; // exclusive: the last text can leave at 19:59
@@ -763,8 +770,8 @@ const TZ_HAWAII = "Pacific/Honolulu";
 // Every time zone a state's territory touches. A text needs the window open in ALL
 // of them, so a state split by a time-zone line (FL panhandle, El Paso TX, east TN…)
 // is never texted early or late on its far side — it just gets a slightly shorter day.
-// (tzForState() above is display-only: it guesses Eastern for anything it doesn't
-// list — AK, HI, a blank state… — fine for a "last visit" line, unsafe for this.)
+// (campaign-runner's tzForState() is display-only: it guesses Eastern for anything it
+// doesn't list — AK, HI, a blank state… — fine for a "last visit" line, unsafe for this.)
 const SMS_ZONE_GROUPS: Array<[string, string[]]> = [
   ["CT DE DC GA ME MD MA NH NJ NY NC OH PA RI SC VT VA WV", [TZ_EASTERN]],
   ["FL IN KY MI TN", [TZ_EASTERN, TZ_CENTRAL]],
@@ -798,14 +805,149 @@ const SMS_STATE_NAMES: Record<string, string> = {
   "VERMONT": "VT", "VIRGINIA": "VA", "WASHINGTON": "WA", "WEST VIRGINIA": "WV", "WISCONSIN": "WI", "WYOMING": "WY",
 };
 
-// No usable state on file: text only while the window is open everywhere from the
-// East Coast to Hawaii (roughly 2–8pm Eastern) until the business's state is filled in.
+// No usable location: text only while the window is open everywhere from the East
+// Coast to Hawaii (roughly 2–8pm Eastern).
 const SMS_ZONES_UNKNOWN = [TZ_EASTERN, TZ_CENTRAL, TZ_MOUNTAIN, TZ_PACIFIC, TZ_ALASKA, TZ_HAWAII];
 
-function smsZonesForState(state?: string): string[] {
+const smsHas = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o, k);
+
+// A recognised state / territory code for free-text input ("ny", "N.Y.", "New York",
+// "Washington, D.C."), or "".
+function smsStateCode(state?: string | null): string {
   const raw = String(state || "").toUpperCase().replace(/\./g, "").replace(/[^A-Z]+/g, " ").trim();
-  const code = SMS_STATE_NAMES[raw] || raw.replace(/ /g, "");
-  return SMS_STATE_ZONES[code] || SMS_ZONES_UNKNOWN;
+  const code = (smsHas(SMS_STATE_NAMES, raw) ? SMS_STATE_NAMES[raw] : "") || raw.replace(/ /g, "");
+  return smsHas(SMS_STATE_ZONES, code) ? code : "";
+}
+
+function smsZonesForState(state?: string | null): string[] {
+  const code = smsStateCode(state);
+  return code ? SMS_STATE_ZONES[code] : SMS_ZONES_UNKNOWN;
+}
+
+// ZIP → state by its first three digits (USPS prefix allocation). Military (AA/AE/AP),
+// unassigned prefixes, Wake Island and the freely associated states fall through to the
+// next source.
+const SMS_ZIP3: Array<[number, number, string]> = [
+  [5, 5, "NY"], [6, 7, "PR"], [8, 8, "VI"], [9, 9, "PR"], [10, 27, "MA"], [28, 29, "RI"], [30, 38, "NH"],
+  [39, 49, "ME"], [50, 54, "VT"], [55, 55, "MA"], [56, 59, "VT"], [60, 69, "CT"], [70, 89, "NJ"],
+  [100, 149, "NY"], [150, 196, "PA"], [197, 199, "DE"], [200, 200, "DC"], [201, 201, "VA"], [202, 205, "DC"],
+  [206, 219, "MD"], [220, 246, "VA"], [247, 268, "WV"], [270, 289, "NC"], [290, 299, "SC"], [300, 319, "GA"],
+  [320, 339, "FL"], [341, 342, "FL"], [344, 344, "FL"], [346, 347, "FL"], [349, 349, "FL"], [350, 369, "AL"],
+  [370, 385, "TN"], [386, 397, "MS"], [398, 399, "GA"], [400, 427, "KY"], [430, 459, "OH"], [460, 479, "IN"],
+  [480, 499, "MI"], [500, 528, "IA"], [530, 549, "WI"], [550, 567, "MN"], [569, 569, "DC"], [570, 577, "SD"],
+  [580, 588, "ND"], [590, 599, "MT"], [600, 629, "IL"], [630, 658, "MO"], [660, 679, "KS"], [680, 693, "NE"],
+  [700, 714, "LA"], [716, 729, "AR"], [730, 731, "OK"], [733, 733, "TX"], [734, 749, "OK"], [750, 799, "TX"],
+  [800, 816, "CO"], [820, 831, "WY"], [832, 838, "ID"], [840, 847, "UT"], [850, 865, "AZ"], [870, 884, "NM"],
+  [885, 885, "TX"], [889, 898, "NV"], [900, 961, "CA"], [967, 968, "HI"], [970, 979, "OR"], [980, 994, "WA"],
+  [995, 999, "AK"],
+];
+
+function smsZipState(zip?: string | null): string {
+  const m = /^(\d{5})(?:-?\d{4})?$/.exec(String(zip ?? "").trim());
+  if (!m) return "";
+  const z5 = Number(m[1]);
+  if (z5 === 96799) return "AS"; // American Samoa shares Hawaii's 967 prefix
+  if (z5 === 96898) return ""; // Wake Island (UTC+12) shares Hawaii's 968 prefix
+  if (z5 >= 96910 && z5 <= 96932) return "GU";
+  if (z5 >= 96950 && z5 <= 96952) return "MP";
+  const z3 = Math.floor(z5 / 100);
+  for (const [lo, hi, st] of SMS_ZIP3) if (z3 >= lo && z3 <= hi) return st;
+  return "";
+}
+
+// NANP area code → the US state or territory it serves (NANPA assignments in service
+// or announced as of 2026-11, checked against a public reference list). A number's
+// area code says where it was issued, not where its owner is today (ported and moved
+// numbers), so callers intersect it with the business's zones.
+const SMS_AREA_CODE_GROUPS: Array<[string, string]> = [
+  ["AL", "205 251 256 334 483 659 938"],
+  ["AK", "907"],
+  ["AZ", "480 520 602 623 928"],
+  ["AR", "327 479 501 870"],
+  ["CA", "209 213 279 310 323 341 350 357 369 408 415 424 442 510 530 559 562 619 626 628 650 657 661 669 707 714 738 747 760 805 818 820 831 837 840 858 909 916 925 949 951"],
+  ["CO", "303 719 720 748 970 983"],
+  ["CT", "203 475 860 959"],
+  ["DE", "302"],
+  ["DC", "202 771"],
+  ["FL", "239 305 321 324 352 386 407 448 561 645 656 689 727 728 754 772 786 813 850 863 904 941 954"],
+  ["GA", "229 404 470 478 678 706 762 770 912 943"],
+  ["HI", "808"],
+  ["ID", "208 986"],
+  ["IL", "217 224 309 312 331 447 464 618 630 708 730 773 779 815 847 861 872"],
+  ["IN", "219 260 317 463 574 765 812 930"],
+  ["IA", "319 515 563 641 712"],
+  ["KS", "316 620 785 913"],
+  ["KY", "270 364 502 606 859"],
+  ["LA", "225 318 337 457 504 985"],
+  ["ME", "207"],
+  ["MD", "227 240 301 410 443 667"],
+  ["MA", "339 351 413 508 617 774 781 857 978"],
+  ["MI", "231 248 269 313 517 586 616 679 734 810 906 947 989"],
+  ["MN", "218 320 507 612 651 763 924 952"],
+  ["MS", "228 471 601 662 769"],
+  ["MO", "235 314 417 557 573 636 660 816 975"],
+  ["MT", "406"],
+  ["NE", "308 402 531"],
+  ["NV", "702 725 775"],
+  ["NH", "603"],
+  ["NJ", "201 551 609 640 732 848 856 862 908 973"],
+  ["NM", "505 575"],
+  ["NY", "212 315 329 332 347 363 465 516 518 585 607 624 631 646 680 716 718 838 845 914 917 929 934"],
+  ["NC", "252 336 472 704 743 828 910 919 980 984"],
+  ["ND", "701"],
+  ["OH", "216 220 234 283 326 330 380 419 440 513 567 614 740 937"],
+  ["OK", "405 539 572 580 918"],
+  ["OR", "458 503 541 971"],
+  ["PA", "215 223 267 272 412 445 484 570 582 610 717 724 814 835 878"],
+  ["RI", "401"],
+  ["SC", "803 821 839 843 854 864"],
+  ["SD", "605"],
+  ["TN", "423 615 629 729 731 865 901 931"],
+  ["TX", "210 214 254 281 325 346 361 409 430 432 469 512 621 682 713 726 737 806 817 830 832 903 915 936 940 945 956 972 979"],
+  ["UT", "385 435 801"],
+  ["VT", "802"],
+  ["VA", "276 434 540 571 686 703 757 804 826 948"],
+  ["WA", "206 253 360 425 509 564"],
+  ["WV", "304 681"],
+  ["WI", "262 274 353 414 534 608 715 920"],
+  ["WY", "307"],
+  ["PR", "787 939"],
+  ["VI", "340"],
+  ["GU", "671"],
+  ["MP", "670"],
+  ["AS", "684"],
+];
+const SMS_AREA_CODE_STATE: Record<string, string> = {};
+for (const [st, codes] of SMS_AREA_CODE_GROUPS) {
+  for (const code of codes.split(" ")) SMS_AREA_CODE_STATE[code] = st;
+}
+// Non-geographic area codes: toll-free, personal communications (5XX), Canadian
+// non-geographic (6XX), carrier / government (7XX) and premium (900). They say nothing
+// about where the phone is, so they get the all-US window — as does any code not listed
+// above (Canada, the Caribbean, unassigned).
+const SMS_NON_GEOGRAPHIC = new Set(
+  ("800 833 844 855 866 877 888 822 880 881 882 883 884 885 886 887 889 " +
+    "500 521 522 523 524 525 526 527 528 529 532 533 544 566 577 588 600 622 633 700 710 900").split(" "),
+);
+
+// The 10 digits of a US-format number, or "".
+function smsPhoneTen(phone?: string | null): string {
+  const digits = String(phone ?? "").replace(/\D/g, "");
+  const ten = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  return /^[2-9]\d{2}[2-9]\d{6}$/.test(ten) ? ten : "";
+}
+
+// The state a phone number's area code belongs to, or "" (non-geographic / unlisted).
+function smsAreaCodeState(phone?: string | null): string {
+  const npa = smsPhoneTen(phone).slice(0, 3);
+  if (!npa || SMS_NON_GEOGRAPHIC.has(npa) || !smsHas(SMS_AREA_CODE_STATE, npa)) return "";
+  return SMS_AREA_CODE_STATE[npa];
+}
+
+function smsZoneUnion(a: string[], b: string[]): string[] {
+  const out = a.slice();
+  for (const z of b) if (!out.includes(z)) out.push(z);
+  return out;
 }
 
 const SMS_WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -827,11 +969,53 @@ function smsWindowOpenIn(tz: string, at: Date): boolean {
   return hour >= start && hour < SMS_WINDOW_END_HOUR;
 }
 
-// May a customer text go out right now for a business in this state? Fails closed:
-// if the local time can't be worked out, the window counts as shut.
-function smsWindowOpen(state?: string, at: Date = new Date()): boolean {
+// Is the window open in every zone of this BUSINESS's state? Used for the run summary;
+// customer texts use smsWindowOpenFor(). Fails closed: if the local time can't be
+// worked out, the window counts as shut.
+function smsWindowOpen(state?: string | null, at: Date = new Date()): boolean {
   try {
     return smsZonesForState(state).every((tz) => smsWindowOpenIn(tz, at));
+  } catch {
+    return false;
+  }
+}
+
+type SmsRecipient = { phone?: string | null; state?: string | null; zip?: string | null };
+// by = which evidence placed the recipient: their own state, their ZIP, their phone's
+// area code (intersected with the business's zones), the business alone, or nothing.
+type SmsWindow = { zones: string[]; by: "state" | "zip" | "area_code" | "business" | "unknown" };
+
+// Where the person receiving the text is, best evidence first. A text then needs the
+// window open in EVERY zone listed (the intersection principle, as for a split state):
+//   1. the customer's own state (all of its zones);
+//   2. else the state of the customer's ZIP;
+//   3. else the phone's area code — its state's zones AND the business's zones, since a
+//      ported or moved number may not be where its area code says;
+//   4. a non-geographic (toll-free…) or unlisted area code: the all-US window AND the
+//      business's zones;
+//   5. no usable phone: the business's zones (all-US when its state is unknown too).
+// Pure and cheap; callers compute it once per customer and use it for every decision.
+function smsRecipientWindow(r: SmsRecipient | null | undefined, bizState?: string | null): SmsWindow {
+  const st = smsStateCode(r?.state);
+  if (st) return { zones: SMS_STATE_ZONES[st], by: "state" };
+  const zs = smsZipState(r?.zip);
+  if (zs) return { zones: SMS_STATE_ZONES[zs], by: "zip" };
+  if (smsPhoneTen(r?.phone)) {
+    const biz = smsZonesForState(bizState);
+    const ac = smsAreaCodeState(r?.phone);
+    return ac
+      ? { zones: smsZoneUnion(SMS_STATE_ZONES[ac], biz), by: "area_code" }
+      : { zones: smsZoneUnion(SMS_ZONES_UNKNOWN, biz), by: "unknown" };
+  }
+  const bz = smsStateCode(bizState);
+  return bz ? { zones: SMS_STATE_ZONES[bz], by: "business" } : { zones: SMS_ZONES_UNKNOWN, by: "unknown" };
+}
+
+// May a text go to this recipient right now? A missing or empty window counts as shut,
+// and so does any failure to work out a local time.
+function smsWindowOpenFor(win: SmsWindow | null | undefined, at: Date = new Date()): boolean {
+  try {
+    return !!win && Array.isArray(win.zones) && win.zones.length > 0 && win.zones.every((tz) => smsWindowOpenIn(tz, at));
   } catch {
     return false;
   }
@@ -842,12 +1026,28 @@ function smsWindowOpen(state?: string, at: Date = new Date()): boolean {
 // permanently shut (it fails closed) and quietly hold every text-eligible touch; this
 // turns that into a visible "failed". 2026-06-15 is a Monday and 2026-06-14 a Sunday
 // (Eastern = UTC-4); 2026-01-15 17:00Z is 9am Pacific but only 7am in Hawaii.
+// Per recipient (NY business, Thursday 2026-01-15, Eastern = UTC-5): a California customer
+// opens at 9am Pacific (17:00Z); a 415 number with no address needs Eastern AND Pacific,
+// so it is shut at 8:30pm Eastern (01:30Z) although it is 5:30pm in San Francisco; a Texas
+// customer waits for 9am in El Paso (16:00Z); a toll-free number gets the all-US window
+// (Hawaii is at 7am at 17:00Z); an Arizona ZIP needs Phoenix AND Denver (open at 7:30pm
+// in January, when both are UTC-7).
 function smsWindowSelfCheck(): boolean {
   const ny = (iso: string) => smsWindowOpen("NY", new Date(iso));
+  const to = (r: SmsRecipient, iso: string) => smsWindowOpenFor(smsRecipientWindow(r, "NY"), new Date(iso));
+  const by = (r: SmsRecipient) => smsRecipientWindow(r, "NY").by;
   return !ny("2026-06-15T12:59:59Z") && ny("2026-06-15T13:00:00Z") && // Mon 08:59:59 / 09:00
     ny("2026-06-15T23:59:59Z") && !ny("2026-06-16T00:00:00Z") && // Mon 19:59:59 / 20:00
     !ny("2026-06-14T15:59:59Z") && ny("2026-06-14T16:00:00Z") && // Sun 11:59:59 / 12:00
-    smsWindowOpen("CA", new Date("2026-01-15T17:00:00Z")) && !smsWindowOpen("", new Date("2026-01-15T17:00:00Z"));
+    smsWindowOpen("CA", new Date("2026-01-15T17:00:00Z")) && !smsWindowOpen("", new Date("2026-01-15T17:00:00Z")) &&
+    to({ state: "California" }, "2026-01-15T17:00:00Z") && !to({ state: "ca" }, "2026-01-15T16:59:59Z") &&
+    to({ phone: "+14155550100" }, "2026-01-15T17:00:00Z") && !to({ phone: "+14155550100" }, "2026-01-16T01:30:00Z") &&
+    !to({ state: "TX" }, "2026-01-15T15:59:59Z") && to({ state: "TX" }, "2026-01-15T16:00:00Z") &&
+    !to({ phone: "(800) 555-0100" }, "2026-01-15T17:00:00Z") && to({ phone: "(800) 555-0100" }, "2026-01-15T19:00:00Z") &&
+    to({ zip: "85004" }, "2026-01-16T02:30:00Z") && !to({ zip: "85004" }, "2026-01-16T03:00:00Z") &&
+    by({ state: "N.Y.", zip: "94103", phone: "+14155550100" }) === "state" && by({ zip: "94103-1234" }) === "zip" &&
+    by({ phone: "+14155550100" }) === "area_code" && by({ phone: "+18885550100" }) === "unknown" &&
+    by({ phone: "" }) === "business";
 }
 
 // Per-business A2P routing (ISV model): customer texts go out ONLY through the
@@ -865,8 +1065,11 @@ const platformMsids = new Set(
 );
 
 // Can this customer get a MARKETING text (every campaign text) — their business has its
-// own registration, they ticked the marketing box (and haven't opted out), and the
+// own registration, they have marketing consent (and haven't opted out), and the
 // number is usable? Plan limits and the send window are checked separately by the callers.
+// Consent is sms_consent=true only: a check-in's pending double-opt-in request lives in
+// sms_consent_requests and counts for nothing until the customer's YES flips sms_consent.
+// The SMS send branch below tests the same fields, so the hold and the send agree.
 function canText(customer: Customer): boolean {
   return msidByUser.has(String(customer.user_id || "")) && !!customer.sms_consent &&
     !customer.sms_unsubscribed_at && !!normalizePhone(customer.phone);
@@ -885,12 +1088,12 @@ function withOptOut(body: string) {
   return /\b(reply|text|send)\s+["'“]?stop\b/i.test(body) ? body : `${body.trim()} Reply STOP to opt out.`;
 }
 
-async function sendSms(campaign: Campaign, customer: Customer, body: string, bizState = "") {
+async function sendSms(campaign: Campaign, customer: Customer, body: string, win: SmsWindow | null) {
   const msid = msidByUser.get(String(customer.user_id || "")) || "";
   if (!msid || platformMsids.has(msid)) return { ok: false, detail: "sms_not_registered" };
   // Last line of defence: whatever the caller checked, no text leaves outside the
-  // send window (an omitted state gets the narrowest window, never an open one).
-  if (!smsWindowOpen(bizState)) return { ok: false, detail: "sms_quiet_hours" };
+  // recipient's send window (a missing window counts as shut, never as open).
+  if (!smsWindowOpenFor(win)) return { ok: false, detail: "sms_quiet_hours" };
   if (!twilioSid || !twilioToken) {
     return { ok: false, detail: "Twilio is not configured" };
   }
@@ -1175,18 +1378,20 @@ function addressAskBlocked(customer: Customer): string {
   return "";
 }
 
-// An address request is due and would go out as a text, but the business's send
+// An address request is due and would go out as a text, but the customer's send
 // window is closed. Callers hold the whole touch until the window opens. Pure (no
-// I/O), so a dry run reports exactly the decision a live run makes.
-function addressAskHeld(customer: Customer, bizState: string): boolean {
-  return !addressAskBlocked(customer) && canTextService(customer) && !smsWindowOpen(bizState);
+// I/O), so a dry run reports exactly the decision a live run makes. winOf is the
+// business's per-customer window cache (computed once per customer).
+type WinOf = { (c: Customer): SmsWindow };
+function addressAskHeld(customer: Customer, winOf: WinOf): boolean {
+  return !addressAskBlocked(customer) && canTextService(customer) && !smsWindowOpenFor(winOf(customer));
 }
 
 // Ask the customer directly for their mailing address (tokenized link), at most
 // once every ADDRESS_ASK_COOLDOWN_DAYS. Texts first (with marketing or service
 // consent), else a branded email with the business logo + an explicit
 // no-payment-details note.
-async function maybeRequestAddress(campaign: Campaign, customer: Customer, businessName: string, whiteLabel: boolean, logoUrl = "", brandColor = "#0B62D6", lastVisitText = "", bizState = "", optOut = true) {
+async function maybeRequestAddress(campaign: Campaign, customer: Customer, businessName: string, whiteLabel: boolean, logoUrl: string, brandColor: string, lastVisitText: string, winOf: WinOf, optOut = true) {
   const blocked = addressAskBlocked(customer);
   if (blocked) return { asked: false, reason: blocked };
   const userId = String(customer.user_id || campaign.user_id || "");
@@ -1198,10 +1403,11 @@ async function maybeRequestAddress(campaign: Campaign, customer: Customer, busin
 
   if (canTextService(customer)) {
     // Quiet hours: hold the ask — it goes out as a text on the first run inside the
-    // window — rather than downgrade it to an email now.
-    if (!smsWindowOpen(bizState)) return { asked: false, reason: "sms_quiet_hours" };
+    // customer's window — rather than downgrade it to an email now.
+    const win = winOf(customer);
+    if (!smsWindowOpenFor(win)) return { asked: false, reason: "sms_quiet_hours" };
     const smsBody = `Hey ${first}! ${businessName} has a little something they want to MAIL you \u{1F381} Tell us where to send it: ${link}`;
-    const r = await sendSms(campaign, customer, optOut ? withOptOut(smsBody) : smsBody, bizState);
+    const r = await sendSms(campaign, customer, optOut ? withOptOut(smsBody) : smsBody, win);
     if (r.ok) { sent = true; channel = "sms"; }
   }
   // A customer who unsubscribed from email gets no address-request email either (the ask
@@ -1274,10 +1480,17 @@ Deno.serve(async (req) => {
     business_errors: 0,
     last_error: "",
     pos_check_errors: 0,
-    // Businesses with active campaigns, by whether customer texts may go out right now.
-    // state_unknown = no usable state on file, so the narrowest (all-US) window applies.
-    // self_check = the window maths verified against known answers in this runtime.
-    sms_window: { open: 0, closed: 0, state_unknown: 0, self_check: smsWindowSelfCheck() ? "ok" : "failed" },
+    // Businesses with active campaigns, by whether the window is open in the BUSINESS's
+    // own zones right now (state_unknown = no usable state on file). Customer texts follow
+    // each recipient's window: recipients = customers a text decision was made for, by
+    // what placed them (resolved once per customer per run); held_by = touches held for
+    // quiet hours, by the same source. self_check = the window maths verified against
+    // known answers in this runtime.
+    sms_window: {
+      open: 0, closed: 0, state_unknown: 0, self_check: smsWindowSelfCheck() ? "ok" : "failed",
+      recipients: { state: 0, zip: 0, area_code: 0, business: 0, unknown: 0 },
+      held_by: { state: 0, zip: 0, area_code: 0, business: 0, unknown: 0 },
+    },
     // How many businesses can text (active registration linked to their account);
     // the error flag means the registry read failed and the last snapshot was kept.
     sms_registered_businesses: 0,
@@ -1522,6 +1735,23 @@ Deno.serve(async (req) => {
         const smsLimit = PLAN_SMS_LIMITS[plan] ?? 0;
         const whiteLabel = plan === "scale";
         const postal = postalFor(userId, businessName);
+        // Each customer's send window, resolved ONCE (customer state > ZIP > area code ∩
+        // business > business) and reused by every text decision for them this run: the
+        // whole-touch hold, the SMS branch, sendSms, addressAskHeld and maybeRequestAddress.
+        const smsWins = new Map<number, SmsWindow>();
+        const winOf: WinOf = (c) => {
+          let w = smsWins.get(Number(c.id));
+          if (!w) {
+            w = smsRecipientWindow(c, bizState);
+            smsWins.set(Number(c.id), w);
+            summary.sms_window.recipients[w.by]++;
+          }
+          return w;
+        };
+        const heldForQuietHours = (c: Customer) => {
+          summary.skipped.sms_quiet_hours++;
+          summary.sms_window.held_by[winOf(c).by]++;
+        };
 
         for (const campaign of userCampaigns) {
           if (Date.now() > RUN_DEADLINE) { outOfTime = true; break; }
@@ -1601,8 +1831,8 @@ Deno.serve(async (req) => {
               // while the send window is closed — hold the whole gift touch. Queuing the
               // owner alert now would start this campaign's cooldown and the customer
               // would never be asked.
-              if (!hasAddress && addressAskHeld(customer, bizState)) {
-                summary.skipped.sms_quiet_hours++;
+              if (!hasAddress && addressAskHeld(customer, winOf)) {
+                heldForQuietHours(customer);
                 continue;
               }
               // The gift is named by its catalog row, or (older campaigns) by Printify product + variant.
@@ -1630,13 +1860,13 @@ Deno.serve(async (req) => {
                 }
                 let asked = true;
                 if (!hasAddress) {
-                  const ask = await maybeRequestAddress(campaign, customer, businessName, whiteLabel, logoUrl, brandColor, lastVisitText, bizState, optOut);
+                  const ask = await maybeRequestAddress(campaign, customer, businessName, whiteLabel, logoUrl, brandColor, lastVisitText, winOf, optOut);
                   if (ask.asked) {
                     summary.address_requests++;
                     if (ask.reason === "sms") textedRecently.add(customer.id);
                   } else if (ask.reason === "sms_quiet_hours") {
                     // The window shut between the check above and the ask — still hold.
-                    summary.skipped.sms_quiet_hours++;
+                    heldForQuietHours(customer);
                     continue;
                   } else if (ask.reason === "email_deferred") {
                     summary.skipped.email_backoff++;
@@ -1657,12 +1887,12 @@ Deno.serve(async (req) => {
             if (campaign.campaign_type === "postcard") {
               if (!hasAddress) {
                 summary.skipped.postcard_no_address++;
-                if (addressAskHeld(customer, bizState)) {
+                if (addressAskHeld(customer, winOf)) {
                   // Quiet hours: the address request waits and goes out as a text once the
-                  // send window opens (nothing is recorded, so the next run retries it).
-                  summary.skipped.sms_quiet_hours++;
+                  // customer's send window opens (nothing is recorded, so the next run retries it).
+                  heldForQuietHours(customer);
                 } else if (!dryRun) {
-                  const ask = await maybeRequestAddress(campaign, customer, businessName, whiteLabel, logoUrl, brandColor, lastVisitText, bizState, optOut);
+                  const ask = await maybeRequestAddress(campaign, customer, businessName, whiteLabel, logoUrl, brandColor, lastVisitText, winOf, optOut);
                   if (ask.asked) {
                     summary.address_requests++;
                     if (ask.reason === "sms") textedRecently.add(customer.id);
@@ -1755,14 +1985,14 @@ Deno.serve(async (req) => {
             }
 
             const channel = campaign.delivery_channel || "email";
-            // Quiet hours: this customer is due a text but the business's send window is
+            // Quiet hours: this customer is due a text but their send window is
             // closed, so hold the WHOLE touch. Sending the email now would record the send
             // and the per-campaign cooldown would then swallow the text for good; held, the
             // email and the text go out together on the first run inside the window.
             // Customers who can't be texted anyway (plan, registration, consent, phone)
             // fall through and get their email right away. Applies to dry runs too.
-            if (channel.includes("sms") && smsLimit > 0 && canText(customer) && !smsWindowOpen(bizState)) {
-              summary.skipped.sms_quiet_hours++;
+            if (channel.includes("sms") && smsLimit > 0 && canText(customer) && !smsWindowOpenFor(winOf(customer))) {
+              heldForQuietHours(customer);
               continue;
             }
             // Same idea while Resend is throttling this run: the touch waits for next hour.
@@ -1840,10 +2070,10 @@ Deno.serve(async (req) => {
                 summary.skipped.no_sms_consent++;
               } else if (!normalizePhone(customer.phone)) {
                 summary.skipped.missing_contact++;
-              } else if (!smsWindowOpen(bizState)) {
+              } else if (!smsWindowOpenFor(winOf(customer))) {
                 // Only reachable when the window shut mid-touch (the hold above covers the
                 // normal case): the email already went, the text still never leaves late.
-                summary.skipped.sms_quiet_hours++;
+                heldForQuietHours(customer);
               } else if (dryRun) {
                 if (smsUsed >= smsLimit && (await walletBalance(userId)) < SMS_OVERAGE_PRICE) summary.skipped.sms_budget++;
                 else sentSomething = true;
@@ -1874,7 +2104,7 @@ Deno.serve(async (req) => {
                 }
                 if (paid) {
                   const smsBody = fillTemplate(campaign.sms_message || template, customer, businessName) + reward.sms;
-                  const result = await sendSms(campaign, customer, optOut ? withOptOut(smsBody) : smsBody, bizState);
+                  const result = await sendSms(campaign, customer, optOut ? withOptOut(smsBody) : smsBody, winOf(customer));
                   if (result.ok) {
                     sentSomething = true;
                     smsUsed++;
