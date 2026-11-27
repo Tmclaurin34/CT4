@@ -301,6 +301,12 @@ function randHex(n: number) {
   return Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// shop/redact: remove a store account's login after its data was erased in SQL.
+export async function deleteAuthUser(userId: string): Promise<boolean> {
+  const r = await authAdmin(`/users/${encodeURIComponent(userId)}`, { method: "DELETE" });
+  return r.ok || r.status === 404;
+}
+
 // The Clicktide account Clicktide created for exactly this store?
 export async function provisionedFor(userId: string, shop: string): Promise<boolean> {
   const u = await authAdmin(`/users/${encodeURIComponent(userId)}`);
