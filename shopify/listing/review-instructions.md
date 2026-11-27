@@ -6,40 +6,32 @@ Paste the "For the reviewer" section into the submission's testing-instructions 
 
 ## For the reviewer
 
-**What Clicktide does:** Clicktide reads a store's orders, read-only. It learns how often each customer normally reorders, and it shows which customers have gone quiet compared with their own rhythm. The merchant can then turn on win-back messages: email, opted-in SMS, a mailed postcard or a small gift. Clicktide counts recovered revenue only when a customer actually orders again.
+**What Clicktide does:** Clicktide reads a store's orders (read-only), learns how often each customer normally reorders, and shows who has gone quiet compared with their own pattern. The merchant can turn on win-back messages: email, opted-in text, mailed postcard or branded gift. Nothing is sent until a campaign is switched on.
 
-**Clicktide is embedded in the Shopify admin** (App Bridge, session tokens, Shopify-managed install). The admin page shows each store's drifting customers; the full dashboard (campaigns, customer history) opens at goclicktide.com from a button on that page.
+**Clicktide is a non-embedded app.** Opening it from the Shopify admin opens goclicktide.com in the browser, already signed in to the store's Clicktide account. No separate sign-up, password or test account is needed.
 
-### 1. Install and connect
-1. Install Clicktide from the listing on your development store and approve read-only access to orders and customers. Shopify opens Clicktide inside the admin right away.
-2. On a store that isn't linked yet, Clicktide shows **"Finish connecting Clicktide"**. Click **Connect my Clicktide account**. A new tab opens at goclicktide.com.
-3. Log in with the test account below, or create a Clicktide account. Clicktide asks **"Connect the Shopify store _your-store_.myshopify.com to _business_?"**. Click **Connect store**. (This confirmation stops a link from attaching a store to the wrong account.)
-4. Back in the Shopify admin, click **I've connected it, refresh**. Clicktide now shows your customers, who is on rhythm and who is drifting.
-
-**Test account:** _(fill in before submitting: email and password of a dedicated Clicktide owner account with no 2FA, per rule 4.5.5)_
+### 1. Install
+1. Install Clicktide on your development store and approve read-only access to orders and customers.
+2. Shopify sends you to goclicktide.com. Clicktide creates the store's account automatically and asks **"Open Clicktide for the Shopify store your-store.myshopify.com?"** (a sign-in safety check). Click **Open Clicktide**. The dashboard opens.
 
 ### 2. Choose a plan (Shopify billing)
-- Clicktide bills through Shopify. Pick **Local, Growth or Scale** on Shopify's plan page; each has a **30-day free trial**.
-- On a development store this is a test charge, so nothing is billed, and it unlocks the full app.
+- The dashboard shows **Choose a plan**. It opens Shopify's plan page: Local, Growth or Scale, each with a 30-day free trial. On a development store this is a $0 test charge.
+- After approving, Shopify returns you to Clicktide. Plan changes are made on the same Shopify page (Settings → Manage subscription in Clicktide also links there).
 
 ### 3. See it working
-- **Import:** within a few minutes, Clicktide imports the store's orders and customers. Customers without an email or phone (guest or POS walk-ins) are counted but can't be messaged.
-- **Overview:** shows the active customer base, who is drifting and the dollars at risk. Rhythms need at least 2–3 orders per customer.
-  - The fastest way to see real behaviour is a store with backdated order history. We test on a store with 60 customers and 331 orders over 10 months: regulars, lapsed customers and returners.
-  - We're happy to give you access to that store if it helps.
-- **Customers:** each customer's learned rhythm (for example "usually every 21 days") and status (healthy / drifting / at risk / back).
-- **Campaigns:** turn on the Win-Back Playbook. Nothing is sent until the merchant activates a campaign. Texts only go to customers who opted in, and only between 9am and 8pm in the customer's time zone.
-- **Postcards and gifts on a development store:** these are physical items mailed at real cost, billed to the merchant as Shopify usage charges. On development stores and test charges Clicktide never bills usage, so postcard and gift sends are refused there ("not enough funds"). Email and opted-in text campaigns work fully. The wallet page shows "Test store: postcards, gifts and extra texts aren't billed through Shopify here."
+- **Import:** Clicktide imports the store's orders and customers in the background (recent 30 days first, then up to a year). Customers with no email or phone are counted but can't be messaged.
+- **Overview and Customers:** each customer's usual reorder rhythm and status (healthy, drifting, at risk, recovered). A personal rhythm needs at least 2 orders from that customer.
+- **Campaigns:** the Win-Back Playbook or the campaign builder. Emails start 48 hours after a store is first connected. Texts need carrier registration (Settings → Business texting) and customers who opted in.
+- **Postcards and gifts** are physical items billed as Shopify usage charges. Clicktide never bills usage on development stores or during the free trial, so these sends are refused there. Email works fully.
 
-### 4. Open from the Shopify admin
-- Apps → Clicktide opens Clicktide's embedded page with the store's current numbers. No reinstall, and no permissions screen again.
+### 4. Open again from the Shopify admin
+- Apps → Clicktide opens goclicktide.com signed in. No reinstall and no permissions screen.
 
 ### 5. Uninstall and privacy
-- Uninstalling stops syncing immediately: the token is wiped and the connection deactivated.
-- `shop/redact` (sent 48 hours later) deletes the store's customers and order history from Clicktide.
-- `customers/redact` deletes that shopper.
-- `customers/data_request` is fulfilled to the merchant by our support team within 30 days.
-- Privacy policy: https://goclicktide.com/privacy (see the Shopify section). Support: support@goclicktide.com.
+- Uninstalling stops syncing immediately (token wiped, connection deactivated).
+- `shop/redact` (48 hours later) deletes the store's data, including the Clicktide account made for the store, unless the app was reinstalled.
+- `customers/redact` deletes that shopper; `customers/data_request` is fulfilled to the merchant within 30 days.
+- Privacy policy: https://goclicktide.com/privacy. Support: support@goclicktide.com.
 
 ### Scopes
 | Scope | Why |
