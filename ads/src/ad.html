@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<title>Clicktide ad</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Inter+Tight:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+/* Clicktide brand: homepage sky gradient, Inter Tight headings, DM Sans body, Space Grotesk logo. */
+:root{--ink:#101215;--ink2:#3A3E46;--mut:#5E636C;--line:rgba(16,18,21,.10);--green:#17A35A;--red:#C8323C;--blue2:#4DA6FF}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:var(--w);height:var(--h);overflow:hidden}
+body{font-family:'DM Sans',sans-serif;color:var(--ink);background:linear-gradient(180deg,#DCEBFA 0%,#EEF5FC 45%,#FBFCFE 100%);-webkit-font-smoothing:antialiased}
+.frame{position:absolute;top:0;left:0;width:var(--w);height:var(--h);padding:var(--pad);display:flex;flex-direction:column;gap:var(--gap);overflow:hidden}
+.logo{display:flex;align-items:center;gap:14px;font:800 34px 'Space Grotesk',sans-serif;letter-spacing:.1em}
+.logo .b{color:var(--blue2)}
+.pill{align-self:flex-start;background:#fff;border:1px solid var(--line);border-radius:999px;padding:10px 22px;font-weight:600;font-size:24px;color:var(--ink2);display:flex;gap:10px;align-items:center}
+.pill i{width:12px;height:12px;border-radius:50%;background:var(--green);display:block}
+h1{font:600 var(--h1)/1.02 'Inter Tight',sans-serif;letter-spacing:-.025em}
+.sub{font-size:var(--sub);line-height:1.35;color:var(--ink2);max-width:920px}
+.card{background:#fff;border:1px solid var(--line);border-radius:28px;box-shadow:0 24px 60px rgba(16,18,21,.10);padding:30px}
+.cta{align-self:flex-start;background:var(--ink);color:#fff;border-radius:999px;padding:24px 40px;font:600 32px 'DM Sans',sans-serif;box-shadow:0 14px 30px rgba(16,18,21,.2)}
+.foot{display:flex;flex-wrap:wrap;gap:12px 26px;font-size:24px;color:var(--mut);font-weight:500}
+.foot span::before{content:"✓ ";color:var(--green);font-weight:800}
+.spacer{flex:1}
+.tag{font-size:20px;font-weight:700;background:#EEF0F3;color:var(--mut);border-radius:999px;padding:6px 14px;letter-spacing:.02em}
+/* report */
+.rh{display:flex;justify-content:space-between;align-items:flex-start}
+.rh b{display:block;font:600 32px 'Inter Tight',sans-serif}
+.rh small{font-size:20px;color:var(--mut)}
+.k3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:20px}
+.k3 div{border:1px solid var(--line);border-radius:18px;padding:16px 18px}
+.k3 b{display:block;font:700 48px 'Inter Tight',sans-serif;letter-spacing:-.02em}
+.k3 span{font-size:20px;color:var(--mut);line-height:1.2;display:block}
+.red b{color:var(--red)}
+.lbl{font-size:17px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin:22px 0 10px}
+.bar{display:flex;height:16px;border-radius:999px;overflow:hidden;background:#EEF1F5}
+.legend{display:flex;gap:24px;font-size:19px;color:var(--mut);margin-top:10px}
+.legend b{display:inline-block;width:13px;height:13px;border-radius:4px;margin-right:8px;vertical-align:-1px}
+.t3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.t3 div{background:#F4F7FB;border-radius:14px;padding:14px 16px}
+.t3 span{display:block;font-size:17px;color:var(--mut);line-height:1.25}
+.t3 b{font:700 30px 'Inter Tight',sans-serif}
+.t3 .g b{color:var(--green)}
+.note{font-size:17px;color:var(--mut);margin-top:14px}
+/* rhythm */
+.rhythm{width:100%;height:auto;display:block;margin-top:8px}
+.rhythm .axis{stroke:#D5DBE3;stroke-width:3}
+.rhythm .rv{fill:var(--green)}
+.rhythm .rexp{fill:none;stroke:#9AA2AD;stroke-width:2.5;stroke-dasharray:4 4}
+.rhythm .band{fill:rgba(200,50,60,.08)}
+.rhythm .flag{stroke:var(--red);stroke-width:3}
+.rhythm .fd{fill:var(--red)}
+.rhythm text{font-family:'DM Sans',sans-serif}
+.rhythm .t{font-size:15px;font-weight:600;fill:var(--ink2)}
+.rhythm .tr{font-size:15px;font-weight:700;fill:var(--red)}
+.rhythm .ts{font-size:13.5px;font-weight:500;fill:var(--mut)}
+.rhythm .m{font-size:13px;fill:#8A8E96}
+/* messages */
+.msgs{display:grid;grid-template-columns:1.05fr 1fr;gap:22px;align-items:end}
+.phone{background:#F4F6F9;border:1px solid var(--line);border-radius:34px;padding:22px 20px;box-shadow:0 22px 50px rgba(16,18,21,.12)}
+.ph{display:flex;gap:12px;align-items:center;font-size:18px;color:var(--mut);margin-bottom:16px}
+.ph b{display:block;color:var(--ink);font-size:20px}
+.av{width:46px;height:46px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:700;font-size:22px}
+.bub{background:#E6EAF0;border-radius:22px 22px 22px 6px;padding:16px 18px;font-size:21px;line-height:1.4}
+.pc{background:#fff;border:1px solid var(--line);border-radius:14px;padding:26px 24px;box-shadow:0 22px 50px rgba(16,18,21,.12);transform:rotate(2.5deg);position:relative;overflow:hidden}
+.pc::before{content:"";position:absolute;inset:0 0 auto;height:9px;background:linear-gradient(90deg,#BAE6FD,#4DA6FF)}
+.pc .k{font-size:16px;font-weight:700;letter-spacing:.1em;color:#8A8E96;text-transform:uppercase}
+.pc .h{font:600 32px 'Inter Tight',sans-serif;margin:8px 0}
+.pc .b{font-size:20px;color:var(--ink2);line-height:1.4}
+.pc .f{font-size:18px;font-weight:600;color:var(--mut);margin-top:14px}
+</style></head>
+<body><div class="frame" id="f"></div>
+<script>
+// Usage: ad.html#<concept>-<W>x<H>   concept: report | salon | rhythm | auto
+var p=(location.hash.slice(1)||"report-1080x1080").split("-"),c=p[0],sz=p[1].split("x"),W=+sz[0],H=+sz[1];
+var tall=H>=1900, port=H>=1300&&!tall;
+var R=document.documentElement.style;R.setProperty("--w",W+"px");R.setProperty("--h",H+"px");
+R.setProperty("--pad",tall?"190px 70px 300px":port?"64px 70px":"48px 58px");
+R.setProperty("--gap",tall?"34px":port?"26px":"18px");
+var logo='<div class="logo"><svg width="56" height="56" viewBox="0 0 44 44"><defs><linearGradient id="lg"><stop offset="0%" stop-color="#BAE6FD"/><stop offset="100%" stop-color="#4DA6FF"/></linearGradient></defs><g transform="translate(22,22)">'+[0,51.4,102.8,154.2,205.6,257,308.4].map(function(r){return '<path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#lg)" transform="rotate('+r+')" opacity=".9"/>';}).join("")+'<circle r="4.5" fill="#080D18"/></g></svg><span>CLICK<span class="b">TIDE</span></span></div>';
+var foot='<div class="foot"><span>Free report</span><span>No credit card</span><span>Nothing sent to your customers</span></div>';
+var cta='<div class="cta">Get my free report →</div>';
+function report(){return '<div class="card"><div class="rh"><div><b>Customer Retention Report</b><small>Sample café · 12,558 orders</small></div><span class="tag">EXAMPLE</span></div>'
+ +'<div class="k3"><div><b>593</b><span>customers analyzed</span></div><div class="red"><b>376</b><span>drifting away</span></div><div><b>124</b><span>high-priority win-backs</span></div></div>'
+ +'<div class="lbl">Three numbers, never blended</div><div class="t3"><div><span>Past spending of drifting customers</span><b>$83,580</b></div><div><span>Estimate if 1 in 5 return for 3 months</span><b>$3,686</b></div><div class="g"><span>Actually recovered</span><b>$0 so far</b></div></div>'
+ +'<div class="note">Illustrative example from a fictional café. Your report uses your own POS data.</div></div>';}
+// x = 24 + 19.7*week over a 26-week strip
+function timeline(name,every,visitsW,flagW,flagTxt,todayTxt,sub){
+  var X=function(w){return (24+19.7*w).toFixed(0);};
+  var dots=visitsW.map(function(w){return '<circle cx="'+X(w)+'" cy="112" r="9" class="rv"/>';}).join("");
+  var last=visitsW[visitsW.length-1],expW=last+every;
+  return '<div class="card"><div class="rh"><div><b>'+name+'</b><small>'+sub+'</small></div><span class="tag">EXAMPLE</span></div>'
+  +'<svg class="rhythm" viewBox="0 0 560 196"><rect x="'+X(last)+'" y="74" width="'+(536-X(last))+'" height="76" rx="12" class="band"/>'
+  +'<line x1="24" y1="112" x2="536" y2="112" class="axis"/>'+dots
+  +'<circle cx="'+X(expW)+'" cy="112" r="9" class="rexp"/>'
+  +'<line x1="'+X(flagW)+'" y1="58" x2="'+X(flagW)+'" y2="132" class="flag"/><circle cx="'+X(flagW)+'" cy="112" r="6" class="fd"/>'
+  +'<text x="24" y="86" class="t">Visits about every '+(every===1?'week':every+' weeks')+'</text>'
+  +'<text x="'+(+X(flagW)+8)+'" y="48" class="tr">'+flagTxt+'</text><text x="'+(+X(flagW)+8)+'" y="66" class="ts">Clicktide reaches out</text>'
+  +'<text x="530" y="142" text-anchor="end" class="ts">'+todayTxt+'</text>'
+  +'<text x="24" y="186" class="m">Jan</text><text x="109" y="186" class="m">Feb</text><text x="194" y="186" class="m">Mar</text><text x="280" y="186" class="m">Apr</text><text x="365" y="186" class="m">May</text><text x="450" y="186" class="m">Jun</text></svg></div>';}
+function msgs(){return '<div class="msgs"><div class="phone"><div class="ph"><span class="av">H</span><div><b>Harbor Street Café</b>Text message</div></div>'
+ +'<div class="bub">Hi Maya, we haven\'t seen you in a while and we miss you! Here\'s $5 off your next visit: <b>MAYA5</b>. Reply STOP to opt out.</div></div>'
+ +'<div class="pc"><div class="k">Mailed postcard</div><div class="h">We miss you, Maya!</div><div class="b">It\'s been a while since your last latte. Bring this card in for <b>$5 off</b>.</div><div class="f">Harbor Street Café</div></div></div>'
+ +'<div class="note" style="margin-top:0">Examples. Sent only after you subscribe and turn campaigns on; texts only to customers who opted in.</div>';}
+var C={
+ report:{pill:"Free POS audit",h:"How much revenue are you losing from customers who never come back?",s:"Connect your POS. Get a free report showing who's drifting away and what they used to spend.",v:report(),h1:[86,96,104],sub:[34,38,42]},
+ salon:{pill:"For salons & barbers",h:"Which regular clients haven't been back?",s:"Clicktide learns each client's own rhythm from your POS and shows who's overdue, free.",v:timeline("Jasmine, a regular client",4,[0,4,8,12],18,"2 weeks overdue","Today: 14 weeks since her last visit","Example client"),h1:[92,104,112],sub:[34,38,42]},
+ rhythm:{pill:"Free POS audit",h:"Your regular customers have stopped coming. Would you know?",s:"Clicktide spots when each customer slips past their own visit rhythm.",v:timeline("Maya, a regular",2,[0,2,4,6,8,10,12,14],17,"3 weeks past her rhythm","Today: 12 weeks gone","Example customer"),h1:[84,96,104],sub:[34,38,42]},
+ auto:{pill:"Free POS audit",h:"What if your business brought customers back automatically?",s:"See who's drifting for free. Then Clicktide can send the right message, reward, postcard or gift.",v:msgs(),h1:[80,92,100],sub:[34,38,42]}
+};
+var d=C[c]||C.report,i=tall?2:port?1:0;
+R.setProperty("--h1",d.h1[i]+"px");R.setProperty("--sub",d.sub[i]+"px");
+var showSub=!(i===0&&c!=="salon");
+document.getElementById("f").innerHTML=logo+'<div class="pill"><i></i>'+d.pill+'</div><h1>'+d.h+'</h1>'+(showSub?'<p class="sub">'+d.s+'</p>':'')+(i===0?'':'<div class="spacer"></div>')+d.v+(i===0?'':'<div class="spacer"></div>')+cta+(i===0?'':foot);
+// Auto-fit, once the web fonts have loaded: start from the design size and shrink the
+// headline (then the subline) only as far as needed so nothing spills off the frame.
+function fit(){var f=document.getElementById("f"),h=d.h1[i],sb=d.sub[i],n=0;
+  R.setProperty("--h1",h+"px");R.setProperty("--sub",sb+"px");
+  while(f.scrollHeight>f.clientHeight+1&&n++<80){if(h>58){h-=2;R.setProperty("--h1",h+"px");}else if(sb>26){sb-=1;R.setProperty("--sub",sb+"px");}else break;}
+  document.body.setAttribute("data-fit",h+"/"+sb+"/"+(f.scrollHeight<=f.clientHeight+1?"ok":"OVERFLOW"));document.body.setAttribute("data-parts",[].map.call(f.children,function(e){return e.className+":"+e.offsetHeight;}).join(",")+" sh="+f.scrollHeight+" ch="+f.clientHeight);}
+(document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(function(){fit();});
+</script></body></html>
