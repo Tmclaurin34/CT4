@@ -1,4 +1,4 @@
-// Clicktide campaign engine. v26 — reliability: every external call (Resend/Twilio/Lob/Printify/Supabase) now has a hard timeout (fetchT), and the run stops cleanly at a 110s deadline (timed_out flag) so it can never hit the ~150s gateway 504; unreached businesses are picked up next hour (cooldown prevents double-sends). v25 — adds the New-Customer Welcome Journey: "welcome" / "second-visit nudge (day N)" / "win the second visit (day N)" triggers, keyed on first-visit recency + visit count, staged so a brand-new customer is walked through their first weeks (and the journey self-pauses the moment they return). v24 — win-back trigger is cadence-aware: "inactive/win-back" fires on each customer's OWN learned visit rhythm (effChurn), not a flat owner-set timer. Mirrors effChurn() in index.html so dashboard drift flags and actual sends agree. (v20 — backfill-safe: event triggers gated by campaign.created_at; 48h warm-up after first POS connection)
+// Clicktide campaign engine. v42 — win-back runs on the shared retention engine: before each business is evaluated its customers' statuses are refreshed (clicktide_refresh_rhythm) and "inactive/win-back" fires on status drifting/at_risk (a campaign naming "at risk" or "drifting" targets just that status; an explicit day count still overrides). One-visit customers (no personal rhythm) are skipped unless the owner opts in (clicktide.winback_include_estimated). A customer gets a given win-back campaign at most once per drift episode. v26 — reliability: every external call (Resend/Twilio/Lob/Printify/Supabase) now has a hard timeout (fetchT), and the run stops cleanly at a 110s deadline (timed_out flag) so it can never hit the ~150s gateway 504; unreached businesses are picked up next hour (cooldown prevents double-sends). v25 — adds the New-Customer Welcome Journey: "welcome" / "second-visit nudge (day N)" / "win the second visit (day N)" triggers, keyed on first-visit recency + visit count, staged so a brand-new customer is walked through their first weeks (and the journey self-pauses the moment they return). v24 — win-back trigger is cadence-aware: "inactive/win-back" fires on each customer's OWN learned visit rhythm (effChurn), not a flat owner-set timer. Mirrors effChurn() in index.html so dashboard drift flags and actual sends agree. (v20 — backfill-safe: event triggers gated by campaign.created_at; 48h warm-up after first POS connection)
 // SMS quiet hours (2026-11): customer texts leave only inside the business's local send
 // window — 9:00–20:00, Sundays 12:00–20:00 (see smsWindowOpen). A customer who is due a
 // text while the window is closed has the WHOLE touch held, so the email and the text go
@@ -97,7 +97,11 @@ type Business = {
   logo_url?: string;
   state?: string;
   gift_auto_send?: boolean;
+  winback_include_estimated?: boolean;
 };
+
+// Retention engine output for one customer (customer_rhythm).
+type Rhythm = { status: string; status_since: string; episode_started_at?: string | null; confidence: string; drift_after_days?: number };
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -218,7 +222,7 @@ function effChurn(c: Customer, def = 60): number {
   return def || 60;
 }
 
-function matchesTrigger(trigger: string, c: Customer, churnDays: number, campCreatedAt?: string) {
+function matchesTrigger(trigger: string, c: Customer, churnDays: number, campCreatedAt?: string, rh?: Rhythm, includeEstimated = false) {
   // Event-style triggers only react to activity AFTER the campaign was created —
   // imported history is a baseline, never a trigger (prevents day-one backfill blasts).
   const campAt = campCreatedAt ? Date.parse(campCreatedAt) : 0;
@@ -265,7 +269,18 @@ function matchesTrigger(trigger: string, c: Customer, churnDays: number, campCre
     // An explicit number in the trigger ("inactive 90 days") is an owner override
     // and wins; otherwise use the customer's learned rhythm so a quarterly regular
     // isn't chased at the flat default. Same model as the dashboard drift flag.
-    const threshold = num || effChurn(c, churnDays || 60);
+    if (num) return { match: since !== null && since >= num, reason: "inactive" };
+    if (rh) {
+      // The shared retention engine decides. One-visit customers have no personal
+      // rhythm yet; they're only chased if the owner has opted in.
+      if (rh.confidence === "insufficient" && !includeEstimated) return { match: false, reason: "inactive_estimated" };
+      const atRiskOnly = /at[- ]?risk/.test(t);
+      const driftOnly = !atRiskOnly && /drift/.test(t);
+      const ok = atRiskOnly ? rh.status === "at_risk" : driftOnly ? rh.status === "drifting" : (rh.status === "drifting" || rh.status === "at_risk");
+      return { match: ok, reason: "inactive" };
+    }
+    // Not evaluated by the engine yet: previous per-customer rule.
+    const threshold = effChurn(c, churnDays || 60);
     return { match: since !== null && since >= threshold, reason: "inactive" };
   }
   if (/first (purchase|visit|order|class|payment)|new customer|welcome/.test(t)) {
@@ -905,7 +920,7 @@ Deno.serve(async (req) => {
 
     const userIds = [...new Set(campaigns.map((c) => c.user_id).filter(Boolean))];
     const businesses = await rest(
-      `/rest/v1/clicktide?user_id=in.(${userIds.join(",")})&select=user_id,email,business_name,churn_days,stripe_subscription_status,plan,logo_url,state,gift_auto_send`,
+      `/rest/v1/clicktide?user_id=in.(${userIds.join(",")})&select=user_id,email,business_name,churn_days,stripe_subscription_status,plan,logo_url,state,gift_auto_send,winback_include_estimated`,
     ) as Business[];
     const bizByUser = new Map(businesses.map((b) => [b.user_id, b]));
     summary.businesses = userIds.length;
@@ -994,6 +1009,18 @@ Deno.serve(async (req) => {
       ) as Customer[];
       if (!customers.length) continue;
 
+      // Shared retention engine: refresh this business's statuses, then read them.
+      const rhythm = new Map<number, Rhythm>();
+      try {
+        await rest("/rest/v1/rpc/clicktide_refresh_rhythm", { method: "POST", body: JSON.stringify({ p_user: userId }) });
+        const rows = await rest(
+          `/rest/v1/customer_rhythm?user_id=eq.${encodeURIComponent(userId)}&select=customer_id,status,status_since,episode_started_at,confidence,drift_after_days`,
+        ) as Array<Rhythm & { customer_id: number }>;
+        for (const r of rows || []) rhythm.set(Number(r.customer_id), r);
+      } catch (e) {
+        console.error("retention engine unavailable; using previous rule", e);
+      }
+
       let emailTpl: EmailTemplate | null = null;
       try {
         const tplRows = await rest(
@@ -1048,7 +1075,8 @@ Deno.serve(async (req) => {
           }
           summary.evaluated++;
 
-          const { match, reason } = matchesTrigger(campaign.trigger || "", customer, churnDays, campaign.created_at);
+          const rh = rhythm.get(Number(customer.id));
+          const { match, reason } = matchesTrigger(campaign.trigger || "", customer, churnDays, campaign.created_at, rh, !!biz?.winback_include_estimated);
           if (reason === "unsupported") {
             summary.skipped.unsupported_trigger++;
             continue;
@@ -1073,6 +1101,12 @@ Deno.serve(async (req) => {
           const key = `${campaign.id}:${customer.id}`;
           const last = lastSend.get(key);
           if (last && Date.now() - last < cooldownDays * 86400000) {
+            summary.skipped.cooldown++;
+            continue;
+          }
+          // One touch per drift episode: if this campaign already reached them since
+          // they started drifting, don't send it again until they come back and drift anew.
+          if (reason === "inactive" && rh && last && last >= Date.parse(rh.episode_started_at || rh.status_since)) {
             summary.skipped.cooldown++;
             continue;
           }

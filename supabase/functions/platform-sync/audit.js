@@ -41,7 +41,7 @@ export function aggregateAuditOrders(orders, own) {
     const t = Date.parse(o.at);
     if (!Number.isFinite(t)) { badDates++; continue; }
     let p = (email && byEmail.get(email)) || (phone && byPhone.get(phone)) || null;
-    if (!p) { p = { visits: 0, spend: 0, first: t, last: t }; people.push(p); }
+    if (!p) { p = { visits: 0, spend: 0, first: t, last: t, days: new Set() }; people.push(p); }
     if (email && !byEmail.has(email)) byEmail.set(email, p);
     if (phone && !byPhone.has(phone)) byPhone.set(phone, p);
     const amt = Number(o.amount);
@@ -49,6 +49,7 @@ export function aggregateAuditOrders(orders, own) {
     p.spend += Number.isFinite(amt) && amt > 0 ? amt : 0;
     if (t < p.first) p.first = t;
     if (t > p.last) p.last = t;
+    p.days.add(new Date(t).toISOString().slice(0, 10)); // visit dates only (UTC), for the rhythm engine
     used++;
   }
   const facts = people.map((p) => ({
@@ -56,6 +57,7 @@ export function aggregateAuditOrders(orders, own) {
     spend: Math.round(p.spend * 100) / 100,
     first_at: new Date(p.first).toISOString(),
     last_at: new Date(p.last).toISOString(),
+    visit_days: Array.from(p.days).sort().slice(-2000),
   }));
   return { facts, customers: facts.length, orders: used, anonymous, bad_dates: badDates };
 }
@@ -72,7 +74,15 @@ export function validateFacts(rows, maxRows) {
     const f = Date.parse(r && r.first_at), l = Date.parse(r && r.last_at);
     if (!(visits >= 1 && visits <= 100000) || !Number.isFinite(spend) || spend < 0 || spend > 10000000 ||
         !Number.isFinite(f) || !Number.isFinite(l) || f > l || l > now || f < Date.parse("1990-01-01")) { rejected++; continue; }
-    out.push({ visits, spend: Math.round(spend * 100) / 100, first_at: new Date(f).toISOString(), last_at: new Date(l).toISOString() });
+    const fact = { visits, spend: Math.round(spend * 100) / 100, first_at: new Date(f).toISOString(), last_at: new Date(l).toISOString() };
+    // Optional per-customer visit dates (YYYY-MM-DD) so the audit can use each customer's
+    // real rhythm. Anything malformed is dropped rather than rejecting the customer.
+    if (r && Array.isArray(r.visit_days)) {
+      const days = Array.from(new Set(r.visit_days.slice(0, 2000).filter((d) =>
+        typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d) && Number.isFinite(Date.parse(d)) && Date.parse(d) <= now && Date.parse(d) >= Date.parse("1990-01-01")))).sort();
+      if (days.length) fact.visit_days = days;
+    }
+    out.push(fact);
   }
   return { facts: out, rejected };
 }

@@ -1,6 +1,7 @@
 // AI campaign suggestions (Scale plan feature).
 // v11: learns from each campaign's real results (reached / returned after / $ back / cost),
 // gift guard (gift <= half a high-value visit, enforced server-side), model -> claude-haiku-5-5.
+// v14: "slipping" = drifting/at-risk from the shared retention engine (own rhythm), flat churn line only as fallback.
 // Studies each Scale business's customer patterns and proposes up to 3
 // campaigns the owner can approve with one click. Runs weekly via pg_cron
 // (cron key) or on demand by the business itself (their JWT).
@@ -133,10 +134,23 @@ async function statsFor(biz: Biz) {
   const spends = customers.map((c) => Number(c.total_spent) || 0);
   const avgSpend = Math.round(spends.reduce((a, b) => a + b, 0) / n);
   const lastSeen = (c: Cust) => daysSince(c.last_visit_at || c.last_order_at);
-  const slipping = customers.filter((c) => {
-    const d = lastSeen(c);
-    return d !== null && d >= churnDays;
-  }).length;
+  // Drifting/at-risk come from the shared retention engine (each customer's own rhythm);
+  // the flat churn-days line is only a fallback if the engine hasn't evaluated them yet.
+  let slipping = 0, atRiskN = 0, engine = false;
+  try {
+    const rh = await rest(`/rest/v1/customer_rhythm?user_id=eq.${encodeURIComponent(biz.user_id)}&select=status`) as Array<{ status: string }>;
+    if (Array.isArray(rh) && rh.length) {
+      engine = true;
+      slipping = rh.filter((r) => r.status === "drifting" || r.status === "at_risk").length;
+      atRiskN = rh.filter((r) => r.status === "at_risk").length;
+    }
+  } catch (_) { /* fall back below */ }
+  if (!engine) {
+    slipping = customers.filter((c) => {
+      const d = lastSeen(c);
+      return d !== null && d >= churnDays;
+    }).length;
+  }
   const active30 = customers.filter((c) => {
     const d = lastSeen(c);
     return d !== null && d <= 30;
@@ -161,7 +175,7 @@ async function statsFor(biz: Biz) {
   ) as Array<{ name: string; trigger: string }>;
   const results = await campaignResults(biz.user_id, customers).catch(() => [] as CampResult[]);
 
-  return { n, avgSpend, avgVisits, slipping, active30, highValue, unhappy, churnDays, gifts, giftCap, avgVisitValue, hvVisitValue, campaigns, results };
+  return { n, avgSpend, avgVisits, slipping, atRiskN, engine, active30, highValue, unhappy, churnDays, gifts, giftCap, avgVisitValue, hvVisitValue, campaigns, results };
 }
 
 type Outcome = { suggestions: number; proposed?: number; note?: string };
@@ -173,7 +187,7 @@ async function suggestFor(biz: Biz): Promise<Outcome> {
   const prompt = `You are a customer-retention strategist for a local business. Analyze the data and propose up to 3 retention campaigns.
 
 BUSINESS: ${biz.business_name || "a local business"} (type: ${biz.business_type || "other"})
-CUSTOMER DATA: ${s.n} customers total; ${s.active30} visited in the last 30 days; ${s.slipping} have not visited in ${s.churnDays}+ days (slipping); ${s.highValue} are high-value (2x+ average spend); ${s.unhappy} recently rated 1-2 stars; average lifetime spend $${s.avgSpend}; average ${s.avgVisits} visits.
+CUSTOMER DATA: ${s.n} customers total; ${s.active30} visited in the last 30 days; ${s.engine ? `${s.slipping} are drifting past their own usual visit rhythm (${s.atRiskN} of them well past it, at risk)` : `${s.slipping} have not visited in ${s.churnDays}+ days (slipping)`}; ${s.highValue} are high-value (2x+ average spend); ${s.unhappy} recently rated 1-2 stars; average lifetime spend $${s.avgSpend}; average ${s.avgVisits} visits.
 VISIT VALUE: an average visit is worth about $${s.avgVisitValue}; a high-value customer's visit about $${s.hvVisitValue}.
 AVAILABLE GIFTS (already limited to ones costing at most $${s.giftCap}, half of a high-value visit): ${s.gifts.map((g) => `${g.name} ($${g.estimated_cost})`).join(", ") || "none - do not suggest physical gifts"}
 CAMPAIGN RESULTS, last ${LOOKBACK_DAYS} days (a "return" = the customer visited within ${RESULT_WINDOW_DAYS} days of their last touch; this shows who came back AFTER a touch, not proof the touch caused it):

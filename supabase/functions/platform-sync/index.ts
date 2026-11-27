@@ -392,7 +392,7 @@ type AuditImport = {
   customers: number; truncated: boolean; recent_history_missing: boolean; window_days: number; rejected_rows?: number;
 };
 
-function auditLimitations(imp: AuditImport): string[] {
+function auditLimitations(imp: AuditImport, report: Record<string, unknown> = {}): string[] {
   const out: string[] = [];
   if (imp.source === "csv") out.push("Built from the CSV you uploaded. Names, emails and phone numbers stayed in your browser — only per-customer visit counts, spend and dates were sent.");
   else out.push(`Built from up to the last ${imp.window_days} days of completed orders in your ${imp.platform} account.`);
@@ -400,7 +400,11 @@ function auditLimitations(imp: AuditImport): string[] {
   if (imp.truncated && !imp.recent_history_missing) out.push("Your account has more history than the free audit reads in one pass, so the oldest orders in the window weren't included. A full sync runs after you subscribe.");
   if (imp.rejected_rows) out.push(`${imp.rejected_rows.toLocaleString("en-US")} CSV row${imp.rejected_rows === 1 ? " was" : "s were"} skipped because a date or amount couldn't be read.`);
   out.push("Customer satisfaction isn't in POS data, so unhappy customers can't be identified until Clicktide's post-visit surveys run.");
-  out.push("Drift is judged against each customer's own visit rhythm (or a 60-day default for one-time customers) — the same rule Clicktide's dashboard uses.");
+  out.push("Drift is judged against each customer's own usual gap between visits (the median of their past gaps, ignoring one-off long breaks) — the same engine Clicktide's dashboard and win-back campaigns use.");
+  const conf = (report.confidence || {}) as Record<string, number>;
+  const one = Number(conf.insufficient) || 0, low = Number(conf.low) || 0;
+  if (one > 0) out.push(`${one.toLocaleString("en-US")} customer${one === 1 ? " has" : "s have"} only one visit, so there's no personal rhythm yet: they're compared with your business's typical gap and counted as estimates.`);
+  if (low > 0) out.push(`${low.toLocaleString("en-US")} customer${low === 1 ? " has" : "s have"} only a few visits or very irregular ones, so their rhythm is a low-confidence estimate.`);
   return out;
 }
 
@@ -420,7 +424,7 @@ async function finishAudit(auditId: string, userId: string, imp: AuditImport) {
     suff.ok = false;
     suff.reasons.unshift("Your account has more order history than the free audit can read in one pass, and we couldn't reach your most recent orders — so we can't tell who has actually stopped coming. Try the CSV option with your last 6–12 months, or contact us.");
   }
-  const full = { ...report, import: imp, limitations: auditLimitations(imp), sufficient: suff.ok, insufficient_reasons: suff.reasons };
+  const full = { ...report, import: imp, limitations: auditLimitations(imp, report), sufficient: suff.ok, insufficient_reasons: suff.reasons };
   await rest(`/rest/v1/pos_audit_facts?audit_id=eq.${auditId}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
   await patchAudit(auditId, {
     status: suff.ok ? "complete" : "insufficient_data", stage: "done", report: full,

@@ -1,32 +1,41 @@
 {
  "vip": {
   "count": 255,
-  "drifting": 81
+  "drifting": 124
  },
+ "engine": "rhythm",
  "unhappy": {
   "available": false
  },
  "drifting": {
-  "count": 304,
+  "count": 376,
   "buckets": {
-   "just_past": 37,
-   "long_gone": 197,
-   "well_past": 70
+   "just_past": 103,
+   "long_gone": 258,
+   "well_past": 15
   },
-  "repeat_count": 146,
-  "avg_order_value": 16.15,
-  "historical_spend": 64197.82
+  "repeat_count": 187,
+  "avg_order_value": 13.61,
+  "historical_spend": 83579.54
  },
- "new_count": 117,
- "active_count": 289,
- "generated_at": "2026-11-26T18:39:57.9486+00:00",
+ "new_count": 124,
+ "confidence": {
+  "low": 0,
+  "high": 367,
+  "medium": 8,
+  "insufficient": 218
+ },
+ "active_count": 217,
+ "generated_at": "2026-11-27T00:42:47.118103+00:00",
+ "baseline_days": 13.0,
  "high_priority": {
-  "count": 81,
-  "avg_90d_value": 164.55,
-  "avg_order_value": 16.07,
-  "historical_spend": 48449.98
+  "count": 124,
+  "avg_90d_value": 147.44,
+  "avg_order_value": 13.14,
+  "historical_spend": 67948.74
  },
  "avg_order_value": 12.95,
+ "baseline_source": "business",
  "repeat_customers": 375,
  "churn_days_default": 60,
  "customers_analyzed": 593,
@@ -52,7 +61,8 @@
   "Built from the CSV you uploaded. Names, emails and phone numbers stayed in your browser \u2014 only per-customer visit counts, spend and dates were sent.",
   "900 orders had no customer email or phone attached (walk-ins, cash, guest checkouts), so they can't be tied to a person and aren't counted.",
   "Customer satisfaction isn't in POS data, so unhappy customers can't be identified until Clicktide's post-visit surveys run.",
-  "Drift is judged against each customer's own visit rhythm (or a 60-day default for one-time customers) \u2014 the same rule Clicktide's dashboard uses."
+  "Drift is judged against each customer's own usual gap between visits (the median of their past gaps, ignoring one-off long breaks) \u2014 the same engine Clicktide's dashboard and win-back campaigns use.",
+  "218 customers have only one visit, so there's no personal rhythm yet: they're compared with your business's typical gap and counted as estimates."
  ],
  "sufficient": true,
  "insufficient_reasons": []

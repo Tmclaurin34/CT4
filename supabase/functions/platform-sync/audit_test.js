@@ -60,7 +60,17 @@ eq(aggregateAuditOrders(null, none).customers, 0, "null import is safe");
 
 // --- no PII in facts -----------------------------------------------------
 var keys = Object.keys(r.facts[0]).sort();
-eq(keys, ["first_at", "last_at", "spend", "visits"], "facts carry no name/email/phone");
+eq(keys, ["first_at", "last_at", "spend", "visit_days", "visits"], "facts carry no name/email/phone (only counts, spend, dates)");
+eq(ann && ann.visit_days, ["2026-01-01", "2026-02-01"], "visit dates collected per customer, sorted");
+var rd = aggregateAuditOrders([
+  { email: "z@x.com", amount: 1, at: "2026-03-01T09:00:00Z" },
+  { email: "z@x.com", amount: 1, at: "2026-03-01T15:00:00Z" },
+  { email: "z@x.com", amount: 1, at: "2026-02-20T09:00:00Z" },
+], none);
+eq(rd.facts[0].visit_days, ["2026-02-20", "2026-03-01"], "same-day orders = one visit date");
+var vd = validateFacts([{ visits: 2, spend: 5, first_at: "2025-01-01", last_at: "2025-02-01", visit_days: ["2025-02-01", "2025-01-01", "bad", "2099-01-01", "2025-01-01", 7] }], 10);
+eq(vd.facts[0].visit_days, ["2025-01-01", "2025-02-01"], "CSV visit dates validated, de-duplicated, sorted");
+eq(validateFacts([{ visits: 2, spend: 5, first_at: "2025-01-01", last_at: "2025-02-01" }], 10).facts[0].visit_days, undefined, "facts without dates still accepted");
 
 // --- CSV fact validation -------------------------------------------------
 var v = validateFacts([

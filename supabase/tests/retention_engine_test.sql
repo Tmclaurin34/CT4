@@ -133,12 +133,18 @@ begin
   j := clicktide_refresh_rhythm(biz, timestamptz '2026-11-03 19:00+00');
   select count(*) into n from customer_status_events where customer_id = cid and to_status = 'drifting';
   if n = 1 then pass := pass + 1; else fail := fail + 1; msgs := msgs || format(' [dup drift events: %s]', n); end if;
+  -- 14c moving on to at_risk keeps the same drift episode (no second win-back)
+  select episode_started_at into now_ts from customer_rhythm where customer_id = cid;
+  j := clicktide_refresh_rhythm(biz, timestamptz '2026-11-12 18:00+00');
+  select * into r from customer_rhythm where customer_id = cid;
+  if r.status = 'at_risk' and r.episode_started_at = timestamptz '2026-11-03 18:00+00' then pass := pass + 1; else fail := fail + 1; msgs := msgs || format(' [episode: %s %s]', r.status, r.episode_started_at); end if;
+  now_ts := timestamptz '2026-11-26 18:00:00+00';
   -- 15 RETURNS → recovered, then back to healthy once settled
   perform clicktide_record_visit(biz, cid, timestamptz '2026-11-05 15:00+00', 12, 'square', 'qa-w-ret');
   update customers set visits = 11, last_visit_at = timestamptz '2026-11-05 15:00+00' where id = cid;
   j := clicktide_refresh_rhythm(biz, timestamptz '2026-11-06 18:00+00');
   select * into r from customer_rhythm where customer_id = cid;
-  if r.status = 'recovered' and r.reason like '%Came back after drifting.%' then pass := pass + 1; else fail := fail + 1; msgs := msgs || format(' [recovered: %s / %s]', r.status, r.reason); end if;
+  if r.status = 'recovered' and r.reason like '%Came back after drifting.%' and r.episode_started_at is null then pass := pass + 1; else fail := fail + 1; msgs := msgs || format(' [recovered: %s / %s]', r.status, r.reason); end if;
 
   -- 16 RETURN AFTER A WIN-BACK MESSAGE (customer the engine never saw drift) → recovered via win-back
   insert into customers(user_id, name, email, visits, total_spent, status, last_visit_at, first_order_at)

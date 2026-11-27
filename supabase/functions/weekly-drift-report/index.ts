@@ -1,4 +1,8 @@
 // Weekly drift report — every Monday each business gets an email showing which
+// (v9: driven by the shared retention engine — "started drifting" = customers whose
+// status moved from healthy/recovered to drifting/at_risk in the past 7 days and who
+// haven't come back; each row shows their own usual gap. Old 14/21-day lines are only
+// a fallback for a business the engine hasn't evaluated yet.)
 // customers started drifting in the past week, before they're gone for good.
 // Runs via pg_cron (cron key) Mondays, or on demand by a business (their JWT).
 
@@ -64,14 +68,15 @@ function escapeHtml(value: string) {
 }
 
 type Biz = { user_id: string; business_name?: string; email?: string; business_email?: string; churn_days?: number; contact_name?: string };
-type Cust = { name?: string; email?: string; total_spent?: number; visits?: number; last_visit_at?: string };
+type Cust = { id?: number; name?: string; email?: string; total_spent?: number; visits?: number; last_visit_at?: string; usual?: number | null };
 
 function reportHtml(biz: Biz, fresh: Cust[], atRisk: Cust[], hasPlaybook: boolean) {
   const first = (biz.contact_name || "there").trim().split(/\s+/)[0];
   const bn = biz.business_name || "your business";
   const row = (c: Cust) => {
     const d = daysSince(c.last_visit_at);
-    return `<tr><td style="padding:9px 12px;border-bottom:1px solid #F3F4F6;font-size:14px;color:#111827">${escapeHtml(c.name || "A customer")}</td><td style="padding:9px 12px;border-bottom:1px solid #F3F4F6;font-size:13px;color:#6B7280">${d} days ago</td><td style="padding:9px 12px;border-bottom:1px solid #F3F4F6;font-size:13px;color:#6B7280;text-align:right">$${Math.round(Number(c.total_spent) || 0)} lifetime</td></tr>`;
+    const usual = c.usual ? `<br><span style="font-size:12px;color:#9CA3AF">usually every ${Math.round(c.usual)} day${Math.round(c.usual) === 1 ? "" : "s"}</span>` : "";
+    return `<tr><td style="padding:9px 12px;border-bottom:1px solid #F3F4F6;font-size:14px;color:#111827">${escapeHtml(c.name || "A customer")}</td><td style="padding:9px 12px;border-bottom:1px solid #F3F4F6;font-size:13px;color:#6B7280">${d} days ago${usual}</td><td style="padding:9px 12px;border-bottom:1px solid #F3F4F6;font-size:13px;color:#6B7280;text-align:right">$${Math.round(Number(c.total_spent) || 0)} lifetime</td></tr>`;
   };
   const freshRows = fresh.slice(0, 8).map(row).join("");
   const riskLine = atRisk.length
@@ -115,15 +120,36 @@ Deno.serve(async (req) => {
       const to = String(biz.business_email || biz.email || "").trim();
       if (!to) { results.push({ business: biz.business_name, skipped: "no email" }); continue; }
       const customers = await rest(
-        `/rest/v1/customers?user_id=eq.${encodeURIComponent(biz.user_id)}&select=name,email,total_spent,visits,last_visit_at&limit=2000`,
+        `/rest/v1/customers?user_id=eq.${encodeURIComponent(biz.user_id)}&select=id,name,email,total_spent,visits,last_visit_at&limit=2000`,
       ) as Cust[];
       if (!customers.length) { results.push({ business: biz.business_name, skipped: "no customers" }); continue; }
 
-      // "Started drifting last week" = crossed the 14-day line within the past 7 days.
-      const fresh = customers.filter((c) => { const d = daysSince(c.last_visit_at); return d !== null && d >= 14 && d < 21; })
-        .sort((a, b) => (Number(b.total_spent) || 0) - (Number(a.total_spent) || 0));
-      const churn = Number(biz.churn_days) || 60;
-      const atRisk = customers.filter((c) => { const d = daysSince(c.last_visit_at); return d !== null && d >= 21 && d < churn + 30; });
+      // Shared retention engine: refresh, then read statuses and last week's status changes.
+      let rhythm: Array<{ customer_id: number; status: string; expected_interval: number | null }> = [];
+      let moved = new Set<number>();
+      try {
+        await rest("/rest/v1/rpc/clicktide_refresh_rhythm", { method: "POST", body: JSON.stringify({ p_user: biz.user_id }) });
+        rhythm = await rest(`/rest/v1/customer_rhythm?user_id=eq.${encodeURIComponent(biz.user_id)}&select=customer_id,status,expected_interval`) || [];
+        const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+        const ev = await rest(`/rest/v1/customer_status_events?user_id=eq.${encodeURIComponent(biz.user_id)}&occurred_at=gte.${weekAgo}&to_status=in.(drifting,at_risk)&from_status=in.(healthy,recovered)&select=customer_id`) as Array<{ customer_id: number }>;
+        moved = new Set((ev || []).map((e) => Number(e.customer_id)));
+      } catch (e) { console.error("retention engine unavailable; using day lines", e); rhythm = []; }
+
+      let fresh: Cust[]; let atRisk: Cust[];
+      if (rhythm.length) {
+        const byId = new Map(rhythm.map((r) => [Number(r.customer_id), r]));
+        const drifting = (c: Cust) => { const r = byId.get(Number(c.id)); return !!r && (r.status === "drifting" || r.status === "at_risk"); };
+        fresh = customers.filter((c) => moved.has(Number(c.id)) && drifting(c))
+          .map((c) => ({ ...c, usual: byId.get(Number(c.id))?.expected_interval ?? null }))
+          .sort((a, b) => (Number(b.total_spent) || 0) - (Number(a.total_spent) || 0));
+        atRisk = customers.filter((c) => !moved.has(Number(c.id)) && byId.get(Number(c.id))?.status === "at_risk");
+      } else {
+        // Fallback for a business the engine hasn't evaluated: previous fixed day lines.
+        fresh = customers.filter((c) => { const d = daysSince(c.last_visit_at); return d !== null && d >= 14 && d < 21; })
+          .sort((a, b) => (Number(b.total_spent) || 0) - (Number(a.total_spent) || 0));
+        const churn = Number(biz.churn_days) || 60;
+        atRisk = customers.filter((c) => { const d = daysSince(c.last_visit_at); return d !== null && d >= 21 && d < churn + 30; });
+      }
       if (!fresh.length) { results.push({ business: biz.business_name, skipped: "all quiet", at_risk: atRisk.length }); continue; }
 
       let hasPlaybook = false;

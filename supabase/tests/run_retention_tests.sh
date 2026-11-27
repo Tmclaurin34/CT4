@@ -7,10 +7,12 @@
 set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
 REF=hmihfncvahsdlmefyxyg
-FILES="$DIR/retention_engine_test.sql"
-[ "$1" = "--with-migration" ] && FILES="$DIR/../migrations/20261127090000_retention_engine.sql $FILES"
-BODY=$(python3 -c "import json,sys;print(json.dumps({'query':'\n'.join(open(f).read() for f in sys.argv[1:])}))" $FILES)
-OUT=$(curl -s -X POST "https://api.supabase.com/v1/projects/$REF/database/query" \
-  -H "Authorization: Bearer $(cat ~/.supabase_pat)" -H 'content-type: application/json' --data-binary "$BODY")
-echo "$OUT" | python3 -c "import sys,re;t=sys.stdin.read();m=re.search(r'RETENTION TESTS:.*?(?=\\\\n|\")',t);print(m.group(0) if m else t[:1200])"
-echo "$OUT" | grep -q 'RETENTION TESTS: [0-9]* passed, 0 failed' || exit 1
+RC=0
+for T in retention_engine_test.sql retention_phase3_test.sql; do
+  BODY=$(python3 -c "import json,sys;print(json.dumps({'query':open(sys.argv[1]).read()}))" "$DIR/$T")
+  OUT=$(curl -s -X POST "https://api.supabase.com/v1/projects/$REF/database/query" \
+    -H "Authorization: Bearer $(cat ~/.supabase_pat)" -H 'content-type: application/json' --data-binary "$BODY")
+  printf '%s: ' "$T"; echo "$OUT" | grep -o 'RETENTION TESTS: [0-9]* passed, [0-9]* failed[^\\"]*' || echo "$OUT" | head -c 600
+  echo "$OUT" | grep -q 'RETENTION TESTS: [0-9]* passed, 0 failed' || RC=1
+done
+exit $RC

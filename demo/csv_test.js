@@ -16,7 +16,8 @@ eq(a.bad,0,"demo: no unreadable rows");
 ok(a.facts.length>=590&&a.facts.length<=595,"demo: ~595 customers recognized (got "+a.facts.length+")");
 var visits=a.facts.reduce(function(s,f){return s+f.visits;},0);
 eq(visits+a.anon,12558,"demo: every order accounted for");
-ok(a.facts.every(function(f){return Object.keys(f).sort().join()==="first_at,last_at,spend,visits";}),"demo: facts carry no names/emails/phones");
+ok(a.facts.every(function(f){return Object.keys(f).sort().join()==="first_at,last_at,spend,visit_days,visits";}),"demo: facts carry no names/emails/phones (counts, spend, dates only)");
+ok(a.facts.every(function(f){return f.visit_days.length>=1&&f.visit_days.length<=f.visits&&f.visit_days.every(function(d){return /^\d{4}-\d{2}-\d{2}$/.test(d);});}),"demo: one visit date per day, never more dates than orders");
 ok(a.facts.every(function(f){return f.first_at<=f.last_at;}),"demo: first visit never after last");
 
 // edge cases
