@@ -270,9 +270,9 @@ footer{padding:56px 0 48px;color:var(--muted);font-size:14px}
         <div class="app-bar">
           <div class="who"><b id="bizMark">J</b><span id="bizName">June's Beauty Bar</span></div>
           <div class="kpis">
-            <span class="kpi up">Recovered this month <strong id="kRec">$1,240</strong></span>
-            <span class="kpi">Came back <strong id="kBack">9</strong></span>
-            <span class="kpi">Drifting now <strong id="kDrift">4</strong></span>
+            <span class="kpi up">Recovered this month <strong id="kRec">$1,260</strong></span>
+            <span class="kpi">Came back <strong id="kBack">14</strong></span>
+            <span class="kpi">Drifting now <strong id="kDrift">119</strong></span>
           </div>
         </div>
         <div class="board" id="board"></div>
@@ -367,17 +367,17 @@ footer{padding:56px 0 48px;color:var(--muted);font-size:14px}
         <div class="results">
           <div class="money">
             <div class="cap">Recovered in the last 30 days · example</div>
-            <div class="amt">$3,812</div>
+            <div class="amt">$1,260</div>
             <span class="pill p-g delta"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 8l3-3 2 2 3-4"/></svg>14 customers came back</span>
             <ul class="back-list">
-              <li>Maria G. <span>came back after a postcard · $185</span></li>
+              <li>Maria G. <span>came back with her $10 credit · $96</span></li>
               <li>Dev P. <span>came back after a text · $62</span></li>
-              <li>Aisha K. <span>came back after a gift · $240</span></li>
+              <li>Aisha K. <span>came back after a postcard · $88</span></li>
             </ul>
           </div>
           <div class="mini">
-            <div class="m"><span>Protected base</span><b>$58,400</b><span>yearly value of customers on rhythm</span></div>
-            <div class="m"><span>At risk right now</span><b>$4,950</b><span>11 customers past their usual return</span></div>
+            <div class="m"><span>Protected base</span><b>$352,764</b><span>yearly value of 371 customers on rhythm</span></div>
+            <div class="m"><span>At risk right now</span><b>$114,030</b><span>a year from 119 customers past their usual return</span></div>
             <div class="m"><span>Your time spent</span><b>0 hours</b><span>it runs every night on its own</span></div>
           </div>
         </div>
@@ -423,11 +423,11 @@ footer{padding:56px 0 48px;color:var(--muted);font-size:14px}
           <a class="btn btn-gold" href="/">Start free trial</a>
         </div>
         <div class="plan">
-          <h3>Scale</h3><div class="price">$449<small>/mo</small></div><div class="for">Unlimited customers</div>
+          <h3>Scale</h3><div class="price">$349<small>/mo</small></div><div class="for">Unlimited customers</div>
           <ul>
             <li><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5l3 3 7-7"/></svg>Everything in Growth</li>
             <li><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5l3 3 7-7"/></svg>AI campaign suggestions</li>
-            <li><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5l3 3 7-7"/></svg>White-label (your full brand)</li>
+            <li><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5l3 3 7-7"/></svg>Multiple locations in one account</li>
             <li><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5l3 3 7-7"/></svg>Multi-location (coming soon)</li>
           </ul>
           <a class="btn btn-ghost" href="/">Start free trial</a>
@@ -480,7 +480,7 @@ footer{padding:56px 0 48px;color:var(--muted);font-size:14px}
 
   // demo data: [name, rhythm text, status, note, spend]
   var P={
-    salon:{n:"June's Beauty Bar",m:"J",c:"#C2410C",rec:1240,back:9,c1:[
+    salon:{n:"June's Beauty Bar",m:"J",c:"#C2410C",rec:1260,back:14,drift:119,c1:[
       ["Tom R.","every 4 months · on schedule","h"],["Priya S.","every 5 weeks · in 2 days","h"],["Lena M.","every 6 weeks · on schedule","h"]],
       c2:[["Maria G.","every 3 weeks · 12 days late","d"],["Chloe W.","every 4 weeks · 9 days late","d"]],
       c3:[["Dana K.","every 3 weeks · 41 days late","r"],["Nia B.","every 6 weeks · 52 days late","r"]],
@@ -519,7 +519,7 @@ footer{padding:56px 0 48px;color:var(--muted);font-size:14px}
   function render(){var b=P[cur];
     document.getElementById("bizName").textContent=b.n;var mk=document.getElementById("bizMark");mk.textContent=b.m;mk.style.background=b.c;
     document.getElementById("kRec").textContent="$"+b.rec.toLocaleString();document.getElementById("kBack").textContent=b.back;
-    document.getElementById("kDrift").textContent=ran?0:b.c2.length+b.c3.length;
+    document.getElementById("kDrift").textContent=ran?0:(b.drift||b.c2.length+b.c3.length);
     var c2p=ran?["p-b","Text sent tonight"]:null,c3p=ran?["p-b","Postcard mailed"]:null;
     board.innerHTML=col("Healthy",b.c1,b.c1.length)+col("Drifting",b.c2,b.c2.length,c2p)+col("At risk",b.c3,b.c3.length,c3p)+col("Came back",b.c4,b.c4.length);
     var btn=document.getElementById("runBtn");btn.disabled=ran;btn.textContent=ran?"Win-back sent":"Run tonight's win-back";
