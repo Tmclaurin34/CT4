@@ -1,4 +1,4 @@
-// Clicktide campaign engine. 2026-11-28: included postcards (a free monthly allowance per active plan is used before the wallet is charged; see claimFreePostcard). 2026-11-27 (package sms) — recipient-local quiet hours + double opt-in (see the SMS notes below). v43 — security hardening merged onto the retention-engine v42: complete reads (customers, campaigns and businesses are paged past PostgREST's 1,000-row cap; cooldowns, win-back touch counts and SMS usage come from one SQL aggregate, clicktide_campaign_state), the published "three win-back touches, then nothing until they return" rule, marketing vs. account/service text consent, per-business email opt-outs + signed per-business unsubscribe links, a real postal address in every email, wallet debits through the atomic ledger (clicktide_wallet_apply) BEFORE a postcard or overage text goes out, one live run at a time (job lease) with a run log (engine_runs) that ops-alerts watches, and a timed-out run resumes where it stopped. A provider that gives no clear answer (timeout) makes the touch "unconfirmed": kept paid, never refunded or retried; ledger, Lob and Resend calls carry the touch's idempotency key. A staff-triggered run needs clicktide_is_staff(['admin']) answered with the caller's own token (so the staff-MFA rule applies); gift auto-sends name their gift_catalog row. v42 — win-back runs on the shared retention engine: before each business is evaluated its customers' statuses are refreshed (clicktide_refresh_rhythm) and "inactive/win-back" fires on status drifting/at_risk (a campaign naming "at risk" or "drifting" targets just that status; an explicit day count still overrides). One-visit customers (no personal rhythm) are skipped unless the owner opts in (clicktide.winback_include_estimated). A customer gets a given win-back campaign at most once per drift episode. v26 — reliability: every external call (Resend/Twilio/Lob/Printify/Supabase) now has a hard timeout (fetchT), and the run stops cleanly at a 110s deadline (timed_out flag) so it can never hit the ~150s gateway 504; unreached businesses are picked up next hour (cooldown prevents double-sends). v25 — adds the New-Customer Welcome Journey: "welcome" / "second-visit nudge (day N)" / "win the second visit (day N)" triggers, keyed on first-visit recency + visit count, staged so a brand-new customer is walked through their first weeks (and the journey self-pauses the moment they return). v24 — win-back trigger is cadence-aware: "inactive/win-back" fires on each customer's OWN learned visit rhythm (effChurn), not a flat owner-set timer. Mirrors effChurn() in index.html so dashboard drift flags and actual sends agree. (v20 — backfill-safe: event triggers gated by campaign.created_at; 48h warm-up after first POS connection)
+// Clicktide campaign engine. 2026-11-28: one-time offer codes per customer (issueOfferCode, offer_codes). 2026-11-28: included postcards (a free monthly allowance per active plan is used before the wallet is charged; see claimFreePostcard). 2026-11-27 (package sms) — recipient-local quiet hours + double opt-in (see the SMS notes below). v43 — security hardening merged onto the retention-engine v42: complete reads (customers, campaigns and businesses are paged past PostgREST's 1,000-row cap; cooldowns, win-back touch counts and SMS usage come from one SQL aggregate, clicktide_campaign_state), the published "three win-back touches, then nothing until they return" rule, marketing vs. account/service text consent, per-business email opt-outs + signed per-business unsubscribe links, a real postal address in every email, wallet debits through the atomic ledger (clicktide_wallet_apply) BEFORE a postcard or overage text goes out, one live run at a time (job lease) with a run log (engine_runs) that ops-alerts watches, and a timed-out run resumes where it stopped. A provider that gives no clear answer (timeout) makes the touch "unconfirmed": kept paid, never refunded or retried; ledger, Lob and Resend calls carry the touch's idempotency key. A staff-triggered run needs clicktide_is_staff(['admin']) answered with the caller's own token (so the staff-MFA rule applies); gift auto-sends name their gift_catalog row. v42 — win-back runs on the shared retention engine: before each business is evaluated its customers' statuses are refreshed (clicktide_refresh_rhythm) and "inactive/win-back" fires on status drifting/at_risk (a campaign naming "at risk" or "drifting" targets just that status; an explicit day count still overrides). One-visit customers (no personal rhythm) are skipped unless the owner opts in (clicktide.winback_include_estimated). A customer gets a given win-back campaign at most once per drift episode. v26 — reliability: every external call (Resend/Twilio/Lob/Printify/Supabase) now has a hard timeout (fetchT), and the run stops cleanly at a 110s deadline (timed_out flag) so it can never hit the ~150s gateway 504; unreached businesses are picked up next hour (cooldown prevents double-sends). v25 — adds the New-Customer Welcome Journey: "welcome" / "second-visit nudge (day N)" / "win the second visit (day N)" triggers, keyed on first-visit recency + visit count, staged so a brand-new customer is walked through their first weeks (and the journey self-pauses the moment they return). v24 — win-back trigger is cadence-aware: "inactive/win-back" fires on each customer's OWN learned visit rhythm (effChurn), not a flat owner-set timer. Mirrors effChurn() in index.html so dashboard drift flags and actual sends agree. (v20 — backfill-safe: event triggers gated by campaign.created_at; 48h warm-up after first POS connection)
 // SMS quiet hours (2026-11; recipient-local since 2026-11-27): customer texts leave only inside the
 // RECIPIENT's send window — 9:00–20:00, Sundays 12:00–20:00 (see smsRecipientWindow). The
 // recipient's zones come from the customer's own state, else their ZIP, else their phone's
@@ -80,6 +80,9 @@ type Campaign = {
   reward_code?: string;
   reward_link?: string;
   reward_expires?: string;
+  reward_unique?: boolean;    // give each customer their own one-time code (offer_codes)
+  reward_credit?: number | null;
+  reward_min_spend?: number | null;
 };
 
 type Customer = {
@@ -672,10 +675,36 @@ function fmtExpires(d?: string): string {
   }
 }
 // Build the digital-reward block (promo code / offer / online link) for email + SMS.
-function rewardBlocks(campaign: Campaign): { html: string; sms: string } {
+// One-time codes (2026-11-28, needs migration 20261128050000_offer_codes.sql): when a
+// digital_gift campaign has reward_unique on, each customer gets their own code that works
+// once, with a claim link (goclicktide.com/o?c=CODE) that staff open to redeem it. null = the
+// code couldn't be issued (e.g. migration not applied yet): the shared reward_code is used,
+// exactly as before.
+const OFFER_LINK_BASE = "https://goclicktide.com/o?c=";
+async function issueOfferCode(userId: string, campaign: Campaign, customer: Customer): Promise<string | null> {
   const offer = (campaign.reward_offer || "").trim();
-  const code = (campaign.reward_code || "").trim();
-  const link = normalizeUrl(campaign.reward_link || "");
+  if (!campaign.reward_unique || !offer) return null;
+  try {
+    const data = await rest("/rest/v1/rpc/clicktide_offer_code_issue", {
+      method: "POST",
+      body: JSON.stringify({
+        p_user: userId, p_customer: customer.id, p_campaign: campaign.id, p_offer: offer,
+        p_credit: campaign.reward_credit ?? null, p_min_spend: campaign.reward_min_spend ?? 0,
+        p_expires: campaign.reward_expires || null, p_issue_key: sendKey(campaign, customer, "offer"),
+      }),
+    });
+    const code = data && typeof data === "object" ? String((data as { code?: string }).code || "") : "";
+    return code || null;
+  } catch {
+    return null;
+  }
+}
+
+function rewardBlocks(campaign: Campaign, uniqueCode: string | null = null): { html: string; sms: string } {
+  const offer = (campaign.reward_offer || "").trim();
+  const code = (uniqueCode || campaign.reward_code || "").trim();
+  // A one-time code's claim link replaces the shared online link (one link per message).
+  const link = uniqueCode ? OFFER_LINK_BASE + encodeURIComponent(uniqueCode) : normalizeUrl(campaign.reward_link || "");
   if (!offer && !code && !link) return { html: "", sms: "" };
   const exp = fmtExpires(campaign.reward_expires);
   const codeRow = code
@@ -2057,7 +2086,7 @@ Deno.serve(async (req) => {
             }
             const template = campaign.message || "Thanks for being a customer of {{business_name}}!";
             const message = fillTemplate(template, customer, businessName);
-            const reward = rewardBlocks(campaign);
+            const reward = rewardBlocks(campaign, dryRun ? null : await issueOfferCode(userId, campaign, customer));
             let sentSomething = false;
             let closed = false; // recorded without a confirmed send (unknown outcome / already done today)
             let failure = "";
