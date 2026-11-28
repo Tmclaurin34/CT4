@@ -4,6 +4,13 @@
 // print provider, and creates each product with the logo centered. Products are tagged
 // "ct-catalog" so sync-printify-catalog and printify-design-proof can tell shared
 // catalog products from per-business proofs.
+//
+// Two narrower modes (added 2026-11-28 for swapping one catalog gift):
+//   {action:"lookup", blueprint_id, design_from_product_id?}
+//     read-only: the blueprint's providers, their variants and US first-item shipping,
+//     plus the design image ids used by an existing shop product.
+//   {action:"create_one", blueprint_id, provider_id, variant_ids:[..], title, description, image_id}
+//     creates ONE ct-catalog product with an image already in the Printify library.
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -97,11 +104,75 @@ Deno.serve(async (req) => {
 
   if (!(await authorized(req))) return json({ error: "Not authorized" }, 401);
 
-  let body: { image_base64?: string; file_name?: string };
+  let body: {
+    image_base64?: string; file_name?: string; action?: string; blueprint_id?: number; provider_id?: number;
+    variant_ids?: number[]; title?: string; description?: string; image_id?: string; design_from_product_id?: string;
+  };
   try {
     body = await req.json();
   } catch {
     return json({ error: "Invalid JSON" }, 400);
+  }
+
+  if (body?.action === "lookup") {
+    try {
+      const bp = Number(body.blueprint_id || 0);
+      if (!bp) return json({ error: "blueprint_id is required" }, 400);
+      const providers = await printify(`/catalog/blueprints/${bp}/print_providers.json`) as Array<{ id: number; title: string; location?: { country?: string } }>;
+      const out: Record<string, unknown>[] = [];
+      for (const pr of providers.slice(0, 12)) {
+        const v = await printify(`/catalog/blueprints/${bp}/print_providers/${pr.id}/variants.json`) as { variants?: Array<{ id: number; title: string }> };
+        let shipUS: unknown = null;
+        try {
+          const sh = await printify(`/catalog/blueprints/${bp}/print_providers/${pr.id}/shipping.json`) as { profiles?: Array<{ variant_ids?: number[]; countries?: string[]; first_item?: { cost?: number } }> };
+          shipUS = (sh.profiles || []).filter((x) => (x.countries || []).includes("US")).map((x) => ({ variant_ids: x.variant_ids, first_item: (x.first_item?.cost || 0) / 100 }));
+        } catch (e) { shipUS = e instanceof Error ? e.message : String(e); }
+        out.push({ id: pr.id, title: pr.title, country: pr.location?.country || null, variants: (v.variants || []).map((x) => ({ id: x.id, title: x.title })), ship_us: shipUS });
+      }
+      let designImages: unknown = null;
+      if (body.design_from_product_id) {
+        const prod = await printify(`/shops/${printifyShopId}/products/${encodeURIComponent(body.design_from_product_id)}.json`) as { print_areas?: Array<{ placeholders?: Array<{ position: string; images?: Array<{ id: string; x: number; y: number; scale: number; angle: number }> }> }> };
+        designImages = (prod.print_areas || []).flatMap((a) => (a.placeholders || []).map((p) => ({ position: p.position, images: p.images })));
+      }
+      return json({ ok: true, blueprint_id: bp, providers: out, design_images: designImages });
+    } catch (e) {
+      return json({ error: e instanceof Error ? e.message : "Lookup failed" }, 500);
+    }
+  }
+
+  if (body?.action === "create_one") {
+    try {
+      const bp = Number(body.blueprint_id || 0), pid = Number(body.provider_id || 0);
+      const wanted = (body.variant_ids || []).map(Number).filter((n) => n > 0);
+      if (!bp || !pid || !wanted.length || !body.image_id || !body.title) {
+        return json({ error: "blueprint_id, provider_id, variant_ids, image_id and title are required" }, 400);
+      }
+      const vd = await printify(`/catalog/blueprints/${bp}/print_providers/${pid}/variants.json`) as { variants: Array<{ id: number; title: string; placeholders: Array<{ position: string; width: number; height: number }> }> };
+      const variants = (vd.variants || []).filter((v) => wanted.includes(v.id));
+      if (!variants.length) return json({ error: "None of those variants exist for this provider" }, 400);
+      const ph = variants[0].placeholders?.[0];
+      const position = ph?.position || "front";
+      const ratio = ph && ph.width > 0 ? ph.height / ph.width : 1;
+      const scale = Math.min(1, ratio) * 0.8;
+      const product = await printify(`/shops/${printifyShopId}/products.json`, {
+        method: "POST",
+        body: JSON.stringify({
+          title: String(body.title).slice(0, 120),
+          description: String(body.description || body.title).slice(0, 500),
+          tags: [CATALOG_TAG],
+          blueprint_id: bp,
+          print_provider_id: pid,
+          variants: variants.map((v) => ({ id: v.id, price: 999, is_enabled: true })),
+          print_areas: [{ variant_ids: variants.map((v) => v.id), placeholders: [{ position, images: [{ id: body.image_id, x: 0.5, y: 0.5, scale, angle: 0 }] }] }],
+        }),
+      }) as { id: string; variants?: Array<{ id: number; cost?: number; title?: string; is_enabled?: boolean }> };
+      return json({
+        ok: true, product_id: product.id,
+        variants: (product.variants || []).filter((v) => v.is_enabled).map((v) => ({ id: v.id, title: v.title, cost: (v.cost || 0) / 100 })),
+      });
+    } catch (e) {
+      return json({ error: e instanceof Error ? e.message : "Create failed" }, 500);
+    }
   }
   if (!body || typeof body.image_base64 !== "string" || !body.image_base64) return json({ error: "image_base64 is required" }, 400);
 

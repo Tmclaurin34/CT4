@@ -1,13 +1,31 @@
-// Read-only margin audit: for each ACTIVE gift_catalog item, compare the listed
-// price (estimated_cost = what the business wallet pays) to Printify's real
-// product cost + US first-item shipping. Cron key or admin/support staff session.
-// No data is changed.
+// Gift price audit. For each ACTIVE gift_catalog item, compare the listed price
+// (estimated_cost = what the business pays, by wallet or Shopify usage) to the real
+// Printify product cost + US first-item shipping.
+//
+// POST {}                      report only (no data changed), same as before
+// POST {mode:"apply"}          also moves prices to the pricing rule (nightly cron)
+// POST {mode:"apply", dry_run:true}  shows what "apply" would change, changes nothing
+//
+// Pricing rule (public.gift_price_rules, one row):
+//   cost basis = landed x (1 + (tax_pct + fee_pct)/100)
+//   target     = cost basis + max(min_margin_usd, landed x min_margin_pct/100), rounded UP to .99
+//   raise when the price is below target; lower only when it is more than
+//   lower_if_above_usd above target; moves bigger than max_auto_change_pct are reported,
+//   not applied. Gifts routed to Gelato or CustomCat are reported but never repriced from
+//   Printify's cost. gift_costs.price_locked = report only for that gift.
+// Costs are kept in server-only tables (gift_costs, gift_price_changes): gift_catalog is
+// publicly readable and businesses must not see Clicktide's margins.
+// Changes, blocked moves and errors are emailed to support@goclicktide.com.
+// Auth: cron key or an admin/support staff session.
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const printifyToken = Deno.env.get("PRINTIFY_API_TOKEN") ?? "";
 const printifyShopId = Deno.env.get("PRINTIFY_SHOP_ID") ?? "";
+const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
+const resendFrom = Deno.env.get("RESEND_FROM_EMAIL") ?? "Clicktide <support@goclicktide.com>";
+const ALERT_TO = "support@goclicktide.com";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -82,7 +100,53 @@ async function printify(path: string) {
   return data;
 }
 
+
 const round2 = (n: number) => Math.round(n * 100) / 100;
+const up99 = (n: number) => round2(Math.ceil(round2(n) + 0.01) - 0.01);
+
+type Rules = {
+  tax_pct: number; fee_pct: number; min_margin_usd: number; min_margin_pct: number;
+  lower_if_above_usd: number; max_auto_change_pct: number; auto_apply: boolean;
+};
+const DEFAULT_RULES: Rules = {
+  tax_pct: 7, fee_pct: 3, min_margin_usd: 1, min_margin_pct: 10,
+  lower_if_above_usd: 2, max_auto_change_pct: 150, auto_apply: true,
+};
+
+function targetPrice(landed: number, r: Rules) {
+  const basis = landed * (1 + (Number(r.tax_pct) + Number(r.fee_pct)) / 100);
+  const margin = Math.max(Number(r.min_margin_usd), landed * Number(r.min_margin_pct) / 100);
+  return up99(basis + margin);
+}
+
+function esc(v: unknown) {
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+}
+
+async function emailSummary(subject: string, lines: string[]) {
+  if (!resendApiKey || !lines.length) return { sent: false };
+  try {
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: resendFrom,
+        to: [ALERT_TO],
+        subject,
+        text: lines.join("\n") + "\n\nSent by the nightly gift price audit (printify-cost-audit). Rules: table gift_price_rules. History: table gift_price_changes.",
+        html: `<p>${lines.map(esc).join("<br>")}</p><p style="color:#666;font-size:12px">Sent by the nightly gift price audit (printify-cost-audit). Rules: table gift_price_rules. History: table gift_price_changes.</p>`,
+      }),
+    });
+    return { sent: r.ok, status: r.status };
+  } catch (e) {
+    return { sent: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+type CatalogRow = {
+  id: string; name: string; printify_product_id: string; printify_variant_id: number;
+  estimated_cost: string | number; customcat_sku?: string | null; gelato_uid?: string | null;
+};
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -90,15 +154,36 @@ Deno.serve(async (req) => {
   if (!serviceRoleKey) return json({ error: "Server is not configured" }, 500);
   if (!(await authorized(req))) return json({ error: "Not authorized" }, 401);
 
+  let input: { mode?: string; dry_run?: boolean } = {};
+  try { input = (await req.json()) || {}; } catch (_) { input = {}; }
+  const apply = input.mode === "apply";
+  const dryRun = apply && input.dry_run === true;
+
+  let rules: Rules = DEFAULT_RULES;
+  try {
+    const rr = await rest(`/rest/v1/gift_price_rules?id=eq.1&select=*`) as Rules[];
+    if (rr?.[0]) rules = { ...DEFAULT_RULES, ...rr[0] };
+  } catch (_) { /* defaults */ }
+  const writing = apply && !dryRun && rules.auto_apply !== false;
+
   const rows = await rest(
-    `/rest/v1/gift_catalog?is_active=eq.true&printify_product_id=not.is.null&select=printify_product_id,printify_variant_id,estimated_cost&order=estimated_cost.asc&limit=60`,
-  ) as Array<{ printify_product_id: string; printify_variant_id: number; estimated_cost: string | number }>;
+    `/rest/v1/gift_catalog?is_active=eq.true&printify_product_id=not.is.null&select=id,name,printify_product_id,printify_variant_id,estimated_cost,customcat_sku,gelato_uid&order=estimated_cost.asc&limit=60`,
+  ) as CatalogRow[];
+
+  let locks = new Map<string, boolean>();
+  try {
+    const lk = await rest(`/rest/v1/gift_costs?select=gift_catalog_id,price_locked`) as Array<{ gift_catalog_id: string; price_locked: boolean }>;
+    locks = new Map(lk.map((x) => [x.gift_catalog_id, !!x.price_locked]));
+  } catch (_) { /* no locks */ }
 
   const items: Record<string, unknown>[] = [];
+  const mail: string[] = [];
   let totalListed = 0, totalCost = 0;
+  const now = new Date().toISOString();
 
   for (const row of rows) {
     const listed = Number(row.estimated_cost) || 0;
+    const provider = row.gelato_uid ? "gelato" : row.customcat_sku ? "customcat" : "printify";
     try {
       const prod = await printify(`/shops/${printifyShopId}/products/${encodeURIComponent(row.printify_product_id)}.json`) as {
         title?: string; blueprint_id?: number; print_provider_id?: number;
@@ -122,24 +207,96 @@ Deno.serve(async (req) => {
       const printifyTotal = round2(productCost + shipUS);
       const margin = round2(listed - printifyTotal);
       totalListed += listed; totalCost += printifyTotal;
-      items.push({
-        name: prod.title || row.printify_product_id,
+      const item: Record<string, unknown> = {
+        name: row.name || prod.title || row.printify_product_id,
         listed_price: listed,
         printify_product_cost: productCost,
         printify_us_shipping: shipUS,
         printify_total: printifyTotal,
         your_margin: margin,
         underwater: margin < 0,
-      });
+      };
+
+      if (apply) {
+        const complete = productCost > 0 && shipUS > 0;
+        const target = complete ? targetPrice(printifyTotal, rules) : 0;
+        item.provider = provider;
+        item.target_price = target || null;
+        let action = "keep";
+        let reason = "";
+        if (!complete) { action = "skip"; reason = "Printify cost or shipping missing"; }
+        else if (provider !== "printify") { action = "report"; reason = `sent through ${provider}, so Printify's cost isn't its real cost`; }
+        else if (locks.get(row.id)) { action = "report"; reason = "price is locked"; }
+        else if (listed < target) { action = "raise"; reason = `cost $${printifyTotal} (product $${productCost} + shipping $${shipUS}) needs $${target}`; }
+        else if (listed > round2(target + Number(rules.lower_if_above_usd))) { action = "lower"; reason = `cost fell to $${printifyTotal}; $${target} still covers it`; }
+        if ((action === "raise" || action === "lower") && listed > 0) {
+          const pct = Math.abs(target - listed) / listed * 100;
+          if (pct > Number(rules.max_auto_change_pct)) { reason += ` (a ${Math.round(pct)}% move is too big to apply automatically)`; action = "blocked"; }
+        }
+        item.action = action;
+        if (reason) item.reason = reason;
+
+        if (writing) {
+          let applied = false;
+          if (action === "raise" || action === "lower") {
+            // Only change it if nobody else changed it since we read it.
+            const upd = await rest(`/rest/v1/gift_catalog?id=eq.${encodeURIComponent(row.id)}&estimated_cost=eq.${listed}`, {
+              method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ estimated_cost: target, updated_at: now }),
+            }) as unknown[];
+            applied = Array.isArray(upd) && upd.length === 1;
+            item.applied = applied;
+            if (!applied) item.reason = `${reason}; not applied because the price changed while the audit ran`;
+          }
+          if (action === "raise" || action === "lower" || action === "blocked") {
+            await rest(`/rest/v1/gift_price_changes`, {
+              method: "POST", headers: { Prefer: "return=minimal" },
+              body: JSON.stringify({ gift_catalog_id: row.id, gift_name: item.name, old_price: listed, new_price: target, landed_cost: printifyTotal, provider, reason: item.reason, applied }),
+            });
+          }
+          await rest(`/rest/v1/gift_costs?on_conflict=gift_catalog_id`, {
+            method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+            body: JSON.stringify({
+              gift_catalog_id: row.id, provider, cost_product: productCost, cost_shipping: shipUS, landed_cost: printifyTotal,
+              target_price: target || null, checked_at: now, check_error: complete ? null : "cost or shipping missing",
+              ...(applied ? { price_auto_at: now } : {}),
+            }),
+          });
+          if (applied) mail.push(`${action === "raise" ? "RAISED" : "LOWERED"} ${item.name}: $${listed} -> $${target}. ${reason}.`);
+        }
+        if (action === "blocked") mail.push(`NOT CHANGED, needs you: ${item.name} at $${listed}, rule says $${target}. ${item.reason}.`);
+        if (action === "report" && margin < 0) mail.push(`LOSING MONEY, not auto-fixed: ${item.name} at $${listed} costs $${printifyTotal} on Printify (${reason}).`);
+        if (action === "skip") mail.push(`COULD NOT CHECK: ${item.name}. ${reason}.`);
+      }
+      items.push(item);
     } catch (e) {
-      items.push({ name: row.printify_product_id, listed_price: listed, error: e instanceof Error ? e.message : String(e) });
+      const msg = e instanceof Error ? e.message : String(e);
+      items.push({ name: row.name || row.printify_product_id, listed_price: listed, error: msg });
+      if (apply) {
+        mail.push(`COULD NOT CHECK: ${row.name}. ${msg}`);
+        if (writing) {
+          try {
+            await rest(`/rest/v1/gift_costs?on_conflict=gift_catalog_id`, {
+              method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+              body: JSON.stringify({ gift_catalog_id: row.id, provider, checked_at: now, check_error: msg.slice(0, 500) }),
+            });
+          } catch (_) { /* best effort */ }
+        }
+      }
     }
   }
 
+  const email = writing && mail.length
+    ? await emailSummary(`Clicktide gift prices: ${mail.length} item${mail.length === 1 ? "" : "s"} to know about`, mail)
+    : { sent: false };
+
   return json({
     ok: true,
-    note: "listed_price = what the business wallet pays. printify_total = Printify product cost + US first-item shipping you are billed. your_margin negative = you lose money on that gift.",
+    mode: apply ? (dryRun ? "apply (dry run, nothing changed)" : writing ? "apply" : "apply (auto_apply is off, nothing changed)") : "report",
+    note: "listed_price = what the business pays for the gift. printify_total = Printify product cost + US first-item shipping you are billed. your_margin negative = you lose money on that gift.",
+    rules: apply ? rules : undefined,
     items,
     totals: { listed: round2(totalListed), printify_cost: round2(totalCost), net_margin: round2(totalListed - totalCost) },
+    alerts: apply ? mail : undefined,
+    email,
   });
 });
