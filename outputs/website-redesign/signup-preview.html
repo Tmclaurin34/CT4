@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Clicktide · Sign-up preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0F1115;--ink2:#3B3F46;--muted:#6B6F76;--line:#E7E8EB;--panel:#F6F7F9;--orange:#E35B1F;--orange-d:#C94E17;
+--g-bg:#E6F6EB;--g-tx:#1C7A3A;--a-bg:#FFF2D9;--a-tx:#8A5A00;--r-bg:#FDE9E7;--r-tx:#B42318;--b-bg:#E7F0FF;--b-tx:#2453C2}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--ink);font:400 16px/1.6 "DM Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:"Nunito","DM Sans",sans-serif;letter-spacing:-.025em;margin:0}
+nav{display:flex;align-items:center;justify-content:space-between;max-width:1040px;margin:0 auto;padding:18px 24px}
+.brand{display:flex;align-items:center;gap:8px;font:900 22px/1 "Nunito",sans-serif;letter-spacing:-.03em;text-decoration:none;color:var(--ink)}
+.brand svg{width:28px;height:28px}
+.pill-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;font:600 15px/1 "DM Sans",sans-serif;cursor:pointer;border:0;padding:12px 22px;text-decoration:none;transition:transform .15s,background .15s}
+.go{background:var(--orange);color:#fff;font-size:17px;font-weight:700;padding:15px 30px;box-shadow:0 8px 22px rgba(227,91,31,.28)}
+.go:hover{background:var(--orange-d);transform:translateY(-1px)}
+.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+.ghost:hover{border-color:#cfd2d7}
+main{max-width:640px;margin:0 auto;padding:24px 24px 80px;text-align:center}
+.lead{color:var(--muted);font-size:17px;margin:10px auto 0;max-width:520px}
+.steps{display:flex;justify-content:center;gap:6px;margin:0 0 26px}
+.steps i{display:block;width:34px;height:5px;border-radius:5px;background:var(--line)}
+.steps i.on{background:var(--orange)}
+.hand{font:600 26px/1 "Caveat",cursive;color:var(--orange);display:inline-flex;align-items:flex-end;gap:4px;transform:rotate(-3deg);margin:18px 0 6px}
+.hand svg{width:40px;height:28px}
+.panel{background:var(--panel);border-radius:22px;padding:22px;margin-top:22px;text-align:left}
+.tabs{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:26px}
+.tab{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:11px 18px;font:600 15px/1 "DM Sans";cursor:pointer;color:var(--ink2)}
+.tab.on{border-color:var(--ink);color:var(--ink);background:#fff;box-shadow:0 0 0 1px var(--ink)}
+.pos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:22px}
+.pos button{display:flex;align-items:center;gap:12px;background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:14px 16px;font:600 15px/1.2 "DM Sans";cursor:pointer;color:var(--ink);text-align:left}
+.pos .logo{width:28px;height:28px;flex:none;display:block}
+.pos .lm{display:flex;align-items:center;justify-content:center;border-radius:8px;background:var(--panel);border:1px solid var(--line);font:800 15px/1 "Nunito";color:var(--ink2)}
+.works{display:flex;justify-content:center;align-items:center;gap:18px;margin-top:18px;opacity:.85}
+.works img{width:22px;height:22px}
+.works span{font-size:13px;color:var(--muted)}
+.pos button:hover{border-color:#cfd2d7}
+.bar{height:8px;border-radius:8px;background:#fff;overflow:hidden;margin:16px 0 8px}
+.bar b{display:block;height:100%;width:0;background:var(--orange);transition:width .5s}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.stat{background:#fff;border-radius:16px;padding:14px}
+.stat small{color:var(--muted);font-size:13px}
+.stat b{display:block;font:800 26px/1.2 "Nunito"}
+.tag{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:4px 10px;margin:2px 4px 2px 0}
+.t-g{background:var(--g-bg);color:var(--g-tx)}.t-a{background:var(--a-bg);color:var(--a-tx)}.t-r{background:var(--r-bg);color:var(--r-tx)}.t-b{background:var(--b-bg);color:var(--b-tx)}
+.opt{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#fff;border:1.5px solid var(--line);border-radius:18px;padding:14px 16px;margin-bottom:10px;cursor:pointer;text-align:left}
+.opt.on{border-color:var(--orange);box-shadow:0 0 0 1px var(--orange)}
+.opt h3{font-size:17px}
+.opt small{color:var(--muted);font-size:13px}
+.opt .amt{font:800 22px/1 "Nunito"}
+.res{background:var(--g-bg);color:var(--g-tx);border-radius:16px;padding:14px 16px;margin:6px 0 12px}
+.res b{font:800 19px/1.3 "Nunito";display:block}
+.ln{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:7px 0;border-bottom:1px solid var(--line)}
+.ln span:first-child{color:var(--muted)}
+.ln:last-child{border-bottom:0}
+.back{background:none;border:0;color:var(--muted);font:500 14px "DM Sans";cursor:pointer;margin-top:14px}
+.note{font-size:12px;color:var(--muted);margin-top:10px}
+.preview{position:fixed;right:14px;bottom:14px;background:var(--ink);color:#fff;font-size:12px;border-radius:999px;padding:6px 12px}
+@media(max-width:520px){h1{font-size:28px}.stat b{font-size:22px}}
+</style>
+</head>
+<body>
+<nav>
+  <a class="brand" href="/" aria-label="Clicktide home"><svg viewBox="-22 -22 44 44" aria-hidden="true"><defs><linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7CC4FA"/><stop offset="100%" stop-color="#2F80ED"/></linearGradient></defs><g id="petals"></g><circle r="4.5" fill="#fff"/></svg>Clicktide</a>
+  <a class="pill-btn ghost" href="/" style="padding:9px 16px;font-size:14px">Log in</a>
+</nav>
+<main id="app"></main>
+<div class="preview">Preview · sample data · nothing is sent</div>
+<script>
+(function(){
+var g=document.getElementById("petals"),d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z";
+for(var i=0;i<7;i++){var p=document.createElementNS("http://www.w3.org/2000/svg","path");p.setAttribute("d",d);p.setAttribute("fill","url(#lg)");p.setAttribute("transform","rotate("+(i*51.4)+")");g.appendChild(p);}
+})();
+
+// Sample businesses (seeded, so the numbers are the same on every visit).
+var BIZ={
+  "Salon":{name:"June's Beauty Bar",c:600,iv:[24,54],avg:[55,150],m:.60},
+  "Gym":{name:"Northside Fitness",c:450,iv:[20,40],avg:[30,70],m:.60},
+  "Café":{name:"Morning Rituals Café",c:1400,iv:[4,12],avg:[7,16],m:.65},
+  "Boutique":{name:"Hazel & Thread",c:800,iv:[50,100],avg:[45,130],m:.45},
+  "Auto shop":{name:"Precision Auto Care",c:380,iv:[100,200],avg:[220,620],m:.50}
+};
+var PLANS={Local:{p:79,pc:10,tx:0},Growth:{p:199,pc:30,tx:1500},Scale:{p:449,pc:75,tx:5000}};
+var state={step:0,type:"Salon",pos:"",sel:1};
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+function money(n){return "$"+Math.round(n).toLocaleString();}
+
+function customers(t){
+  var b=BIZ[t],seed=1234+t.length*97;
+  function rnd(){seed|=0;seed=seed+0x6D2B79F5|0;var x=Math.imul(seed^seed>>>15,1|seed);x=x+Math.imul(x^x>>>7,61|x)^x;return ((x^x>>>14)>>>0)/4294967296;}
+  var out=[];
+  for(var k=0;k<b.c;k++){
+    var iv=b.iv[0]+rnd()*(b.iv[1]-b.iv[0]);
+    var visits=1+Math.floor(Math.pow(rnd(),1.6)*20);
+    var avg=b.avg[0]+Math.pow(rnd(),1.3)*(b.avg[1]-b.avg[0]);
+    var roll=rnd(),since=roll<.74?rnd()*iv*1.3:roll<.88?iv*(1.6+rnd()*1.4):iv*(3+rnd()*4);
+    out.push({v:visits,avg:avg,iv:visits>1?iv:null,since:since});
+  }
+  return out;
+}
+
+// Same rules as the dashboard card (site-patches/plan_ready_card_patch.py).
+function model(t){
+  var b=BIZ[t],m=b.m,list=customers(t),drift=[],all=[],healthy=0,back30=0;
+  list.forEach(function(x){
+    all.push(x.avg);
+    if(!x.iv)return;
+    var iv=Math.max(7,x.iv);
+    if(x.since>1.5*iv)drift.push({v:x.v,avg:x.avg,iv:iv,worth:x.avg*(90/iv)*m});else healthy++;
+  });
+  all.sort(function(a,b){return a-b;});
+  var A=all[Math.floor(all.length/2)];
+  var plan=b.c<=200?"Local":b.c<=1000?"Growth":"Scale",pl=PLANS[plan];
+  var credit=A<15?0:Math.max(5,Math.round(A*.1/5)*5);
+  var minS=credit?Math.ceil(Math.max(credit/(m*.5),.75*A)/5)*5:0;
+  var elig=drift.filter(function(d){return d.v>=3;}).sort(function(a,c){return c.worth-a.worth;});
+  var rest=drift.filter(function(d){return d.v<3;});
+  var BASE=.077;
+  function r5(n){return n<=0?0:Math.max(5,Math.ceil(n/5)*5);}
+  function mk(k,who,L,rate,boost,low,lowRate){
+    low=low||[];lowRate=lowRate||0;var n=L.length+low.length;if(!n)return null;
+    var avgW=L.concat(low).reduce(function(a,x){return a+x.worth;},0)/n*boost;
+    var back=Math.max(1,Math.round(L.length*rate+low.length*lowRate));
+    var extra=Math.max(0,L.length*(rate-BASE)+low.length*Math.max(0,lowRate-BASE));
+    var pcs=Math.round(n*.4),pcx=Math.max(0,pcs-pl.pc)*1.5;
+    var giftsOK=.1*avgW*.5>=7.99,gift=giftsOK?Math.round(n*.1)*7.99:0;
+    var cred=credit?back*.55*credit:0;
+    var txt=Math.round(b.c*.3)+Math.round(n*2.5),tx=pl.tx?Math.max(0,txt-pl.tx)*.05:0;
+    var billExtra=pcx+gift+tx;
+    return {k:k,who:who,n:n,back:back,extra:Math.round(extra),bill:r5(billExtra),cred:Math.round(cred),budget:r5(billExtra+cred),profit:Math.max(0,Math.round(extra*avgW-billExtra-cred)),txt:txt,pcs:pcs,pcx:pcx,tx:tx,gift:gift,giftsOK:giftsOK};
+  }
+  var top=elig.slice(0,Math.max(1,Math.round(elig.length*.2)));
+  return {b:b,plan:plan,pl:pl,A:A,credit:credit,minS:minS,D:drift.length,W:elig.length,healthy:healthy,orders:Math.round(b.c*7.9),
+    yr:Math.round(elig.reduce(function(a,x){return a+x.avg*(365/x.iv);},0)),
+    O:[mk("Starter","Your best customers only",top,.18,1.3),mk("Recommended","Everyone worth winning back",elig,.13,1),mk("Everything","Every drifting customer",elig,.13,1,rest,.08)]};
+}
+
+// POS logos: Square, Shopify and Stripe from Simple Icons (official brand marks, CC0 icon set).
+// Clover: its symbol from clover.com/resources/intellectual-property. Mindbody: its charcoal
+// logomark from mindbodyonline.com/company/brand. Both served from /logos/ next to this page.
+function posLogo(p){
+  var si={"Square":"square","Shopify":"shopify","Stripe":"stripe"}[p];
+  if(si)return '<img class="logo" src="https://cdn.simpleicons.org/'+si+'" alt="" width="28" height="28" loading="lazy">';
+  var own={"Clover":"/logos/clover.png","Mindbody":"/logos/mindbody.svg"}[p];
+  if(own)return '<img class="logo" src="'+own+'" alt="" width="28" height="28" style="object-fit:contain" loading="lazy">';
+  if(p==="Upload a CSV")return '<svg class="logo" viewBox="0 0 24 24" fill="none" stroke="#3B3F46" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 12v6M9 15l3-3 3 3"/></svg>';
+  return '<span class="logo lm">'+p.charAt(0)+'</span>';
+}
+function steps(){var s='<div class="steps">';for(var i=0;i<4;i++)s+='<i class="'+(i<=state.step?"on":"")+'"></i>';return s+'</div>';}
+function render(){
+  var app=document.getElementById("app"),t=state.type,M=model(t),h="";
+  if(state.step===0){
+    h=steps()+'<h1 style="font-size:38px;line-height:1.15">What kind of business<br>do you run?</h1>'+
+      '<p class="lead">We use it to size your offers and your budget. That\'s the only question.</p>'+
+      '<div class="tabs">'+Object.keys(BIZ).map(function(k){return '<button class="tab '+(k===t?"on":"")+'" data-t="'+esc(k)+'">'+esc(k)+'</button>';}).join("")+'</div>'+
+      '<div style="margin-top:30px"><button class="pill-btn go" data-go="1">Continue</button></div>'+
+      '<div class="works"><span>Works with</span><img src="https://cdn.simpleicons.org/square" alt="Square"><img src="https://cdn.simpleicons.org/shopify" alt="Shopify"><img src="https://cdn.simpleicons.org/stripe" alt="Stripe"><img src="/logos/clover.png" alt="Clover" style="object-fit:contain"><img src="/logos/mindbody.svg" alt="Mindbody" style="object-fit:contain"><span>or a CSV</span></div>';
+  }
+  if(state.step===1){
+    h=steps()+'<h1 style="font-size:36px;line-height:1.15">Connect your sales system</h1>'+
+      '<p class="lead">Read-only. Clicktide never changes anything in it.</p>'+
+      '<div class="pos">'+["Square","Shopify","Stripe","Clover","Mindbody","Upload a CSV"].map(function(p){return '<button data-pos="'+p+'">'+posLogo(p)+'<span>'+p+'</span></button>';}).join("")+'</div>'+
+      '<div id="sync"></div><button class="back" data-go="0">← Back</button>';
+  }
+  if(state.step===2){
+    h=steps()+'<h1 style="font-size:34px;line-height:1.15">Here\'s what we found</h1>'+
+      '<p class="lead">From '+esc(M.b.name)+'\'s '+esc(state.pos)+' history. You didn\'t type a thing.</p>'+
+      '<div class="panel"><div class="stats">'+
+      '<div class="stat"><small>Customers</small><b>'+M.b.c.toLocaleString()+'</b></div>'+
+      '<div class="stat"><small>Typical visit</small><b>'+money(M.A)+'</b></div>'+
+      '<div class="stat"><small>Slipping away</small><b>'+M.D+'</b></div>'+
+      '<div class="stat"><small>Worth winning back</small><b>'+M.W+'</b></div></div>'+
+      '<div style="margin-top:14px"><span class="tag t-g">'+M.healthy+' healthy</span><span class="tag t-a">'+(M.D-M.W)+' slipping, too new to judge</span><span class="tag t-r">'+M.W+' slipping, worth saving</span></div>'+
+      '<div style="margin-top:10px;font-size:14px;color:var(--ink2)">The '+M.W+' worth saving used to spend about <b>'+money(M.yr)+'</b> a year with you.</div></div>'+
+      '<div style="margin-top:26px"><button class="pill-btn go" data-go="3">See my plan</button></div><button class="back" data-go="1">← Back</button>';
+  }
+  if(state.step===3){
+    var o=M.O[state.sel]||M.O[1];
+    h=steps()+'<h1 style="font-size:34px;line-height:1.15">Your win-back plan is ready</h1>'+
+      '<p class="lead">'+M.plan+' plan, sized to your '+M.b.c.toLocaleString()+' customers. Pick a monthly budget.</p>'+
+      '<div class="hand" aria-hidden="true">we suggest this one<svg viewBox="0 0 46 34" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 6c10 2 24 4 30 16"/><path d="M27 19l7 4 3-8"/></svg></div>'+
+      '<div class="panel" style="margin-top:6px">'+M.O.map(function(x,i){if(!x)return "";return '<div class="opt '+(i===state.sel?"on":"")+'" data-sel="'+i+'"><div><h3>'+x.k+(i===1?' <span class="tag t-b" style="vertical-align:2px">Suggested</span>':'')+'</h3><small>'+x.who+' · '+x.n+'</small></div><div class="amt">'+money(x.budget)+'<small>/mo</small></div></div>';}).join("")+
+      '<div class="res"><span style="font-size:13px">Expected each month</span><b>About '+o.back+' customers back · about '+money(o.profit)+' extra profit</b><span style="font-size:12px">Counts only customers who likely wouldn\'t have come back on their own.</span></div>'+
+      '<div class="ln"><span>Offer</span><span>'+(M.credit?money(M.credit)+" off "+money(M.minS)+"+":"A friendly message (tickets too small for a credit)")+'</span></div>'+
+      '<div class="ln"><span>Texts</span><span>'+(M.pl.tx?o.txt.toLocaleString()+" of "+M.pl.tx.toLocaleString()+" included"+(o.tx>0?" · "+money(o.tx)+" extra":""):"Email only on Local")+'</span></div>'+
+      '<div class="ln"><span>Postcards</span><span>'+o.pcs+" · "+(o.pcx>0?money(o.pcx)+" extra":"covered by your plan")+'</span></div>'+
+      '<div class="ln"><span>Mailed gifts</span><span>'+(o.giftsOK?money(o.gift)+" for top customers":"Not yet, until results justify it")+'</span></div>'+
+      '<div class="ln" style="font-weight:600"><span style="color:var(--ink)">You pay Clicktide</span><span>'+money(M.pl.p+o.bill)+'/mo</span></div>'+
+      '<div class="ln"><span>Credit given at checkout</span><span>about '+money(o.cred)+', only when they come back</span></div></div>'+
+      '<div style="margin-top:26px"><button class="pill-btn go" id="start">Start my win-back plan</button></div>'+
+      '<div class="note" id="startnote">Nothing is sent until you start. You can change the budget any time.</div><button class="back" data-go="2">← Back</button>';
+  }
+  app.innerHTML=h;
+}
+document.addEventListener("click",function(e){
+  var el=e.target.closest("[data-t],[data-go],[data-pos],[data-sel],#start");if(!el)return;
+  if(el.dataset.t){state.type=el.dataset.t;state.sel=1;render();return;}
+  if(el.dataset.go){state.step=+el.dataset.go;render();scrollTo(0,0);return;}
+  if(el.dataset.sel){state.sel=+el.dataset.sel;render();return;}
+  if(el.id==="start"){el.textContent="Running";el.style.background="#1C7A3A";document.getElementById("startnote").textContent="Preview only: in the real app this switches your plan on. Nothing is sent from this page.";return;}
+  if(el.dataset.pos){
+    state.pos=el.dataset.pos;var M=model(state.type),box=document.getElementById("sync");
+    box.innerHTML='<div class="panel"><div class="pos" style="margin:0;grid-template-columns:1fr"><button style="pointer-events:none">'+posLogo(state.pos)+'<span>'+esc(state.pos)+' · read-only</span></button></div><div class="bar"><b id="b"></b></div><div id="m" style="font-size:14px;color:var(--ink2)"></div></div>';
+    var msgs=["Connecting to "+state.pos+"…","Importing "+M.b.c.toLocaleString()+" customers…","Reading "+M.orders.toLocaleString()+" orders…","Learning each customer's rhythm…","Done"],k=0;
+    document.getElementById("m").textContent=msgs[0];
+    var tm=setInterval(function(){k++;document.getElementById("b").style.width=Math.min(100,k*25)+"%";document.getElementById("m").textContent=msgs[Math.min(k,4)];if(k>=4){clearInterval(tm);setTimeout(function(){state.step=2;render();scrollTo(0,0);},450);}},550);
+  }
+});
+render();
+</script>
+</body>
+</html>

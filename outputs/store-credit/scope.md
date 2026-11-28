@@ -24,6 +24,47 @@ Clicktide's POS connections are read-only. That has two consequences:
 
 > **Money rules:** every paid step here follows [the shared spending rules](../business-roi/scope.md): margin-based worth, the up-front rule, the credit minimum spend, free-first, the monthly cap and auto-pause. Where this document gives a different number, those rules win.
 
+## Per-customer amount: AI sizes it, the money rules cap it (revised 2026-11-28)
+A flat "10% of their visit" breaks for high-ticket businesses. 10% of a $2,000 piece of jewelry is $200, and a $25 cap is meaningless there. So the AI proposes the amount for each business and each customer, and the server checks it against the profit rules.
+
+**What the AI looks at:**
+- The customer's own average purchase and how often they buy. For high-ticket, that's often once or twice a year, and the rhythm engine already handles long cycles.
+- How confident the pattern is. With only 2 purchases, it leans on the business's typical customer instead.
+- The business type and margin (no input needed: see [business-roi](../business-roi/scope.md), section 0).
+- What has worked for this business before (comparison-group results).
+
+**What it can propose:**
+1. **Cash credit, sized to the ticket.** For example:
+   - Cafe regular ($9): no credit, just a message.
+   - Salon ($100): $10 off $75+.
+   - Auto repair ($450): $40 off $300+.
+   - Jeweler ($2,000): $100 off $1,000+.
+2. **A perk instead of cash**, often better for high-ticket because it costs the business less than its face value:
+   - free cleaning or inspection
+   - a free add-on service
+   - priority booking
+   - free delivery or installation
+
+   The owner picks which perks they offer, once.
+3. **Nothing,** when the history doesn't justify it.
+
+**Guardrails the server enforces, never the AI:**
+- **Rule B:** the credit must leave profit on that purchase. Credit ≤ ½ × margin × minimum spend.
+- **Worth:** the credit must stay small next to the profit from that customer's next purchases (the up-front rule's worth).
+- **Monthly limit:** paid-on-use credits count against the monthly limit at their expected use.
+- **No fixed dollar cap.** The limits come from the business's own numbers, so a jeweler can offer $100 and a cafe can't offer $10.
+
+**Codes:**
+- The POS connections are read-only, so the owner creates a **small set of codes once**. The AI picks the tiers that fit *this* business: a salon gets $5/$10/$15, a jeweler $50/$100/$200, and a perk gets a code like FREECLEAN.
+- The setup steps list exactly which codes to create. Each customer receives the code for their amount.
+
+**The AI's other jobs, unchanged:**
+- explains each pick in one line
+- excludes discount hunters
+- learns this business's best amount by profit
+- writes in the business's voice
+- never sends without the owner's go-ahead
+
 ## What gets built
 
 ### 1. Quick picks in the Digital reward box (index.html)
