@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Clicktide Billing Policy</title>
+<meta name="description" content="Clicktide billing policy: plans, gift wallet, refunds, and cancellations."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0F1115; --ink2:#3B3F46; --muted:#6B6F76; --line:#E7E8EB; --panel:#F6F7F9; --bg:#FFFFFF;
+  --orange:#E35B1F; --orange-d:#C94E17;
+  --g-bg:#E6F6EB; --g-tx:#1C7A3A; --r-bg:#FDE9E7; --r-tx:#B42318; --b-bg:#E7F0FF; --b-tx:#2453C2;
+  --l-bg:#F1EAFE; --l-tx:#5B36B0; --t-bg:#E3F5F4; --t-tx:#0F6560;
+  --radius:18px;
+}
+*{box-sizing:border-box}
+
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.65 "DM Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:3px solid #2453C2;outline-offset:3px;border-radius:8px}
+/* Droplist header + footer */
+.dl-wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+.dl-nav{background:#fff;border-bottom:1px solid var(--line)}
+.dl-nav-in{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:68px}
+.dl-brand{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--ink);font:900 23px/1 "Nunito","DM Sans",sans-serif;letter-spacing:-.03em;flex:none}
+.dl-brand svg{width:30px;height:30px;flex:none}
+.dl-nav-cta{display:flex;gap:10px;align-items:center;min-width:0}
+.dl-btn{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;font:600 14px/1 "DM Sans",sans-serif;text-decoration:none;padding:9px 16px;white-space:nowrap;transition:background .15s ease,border-color .15s ease}
+.dl-btn-ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+.dl-btn-ghost:hover{border-color:#cfd2d7}
+.dl-btn-ink{background:var(--ink);color:#fff;border:1.5px solid var(--ink)}
+.dl-btn-ink:hover{background:#2a2e35;border-color:#2a2e35}
+.dl-footer{padding:56px 0 48px;color:var(--muted);font-size:14px;line-height:1.6}
+.dl-foot{display:flex;justify-content:space-between;gap:14px 24px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:28px}
+.dl-foot nav{display:flex;gap:8px 20px;flex-wrap:wrap}
+.dl-foot a{color:inherit;text-decoration:none}
+.dl-foot a:hover{color:var(--ink)}
+@media (max-width:560px){
+  .dl-wrap{padding:0 16px}
+  .dl-nav-cta{gap:6px}
+  .dl-btn{padding:8px 12px;font-size:13.5px}
+}
+@media (max-width:400px){
+  .dl-brand{font-size:20px;gap:6px}
+  .dl-brand svg{width:26px;height:26px}
+  .dl-btn{padding:8px 11px;font-size:12.5px}
+  .dl-footer{padding:40px 0 36px}
+}
+
+main{max-width:760px;margin:0 auto;padding:56px 24px 8px}
+h1,h2,h3{font-family:"Nunito","DM Sans",sans-serif;color:var(--ink);letter-spacing:-.02em;line-height:1.2}
+h1{font-size:clamp(32px,5vw,44px);font-weight:900;line-height:1.08;letter-spacing:-.025em;margin:0 0 14px}
+h2{font-size:22px;font-weight:800;margin:44px 0 10px}
+h3{font-size:18px;font-weight:800;margin:28px 0 8px}
+p,li{color:var(--ink2);font-size:16px;overflow-wrap:break-word}
+ul{padding-left:22px}
+li{margin:0 0 6px}
+main a{color:var(--ink);text-decoration:underline;text-decoration-color:#C3C6CC;text-underline-offset:3px}
+main a:hover{text-decoration-color:var(--ink)}
+.meta{display:inline-block;background:var(--b-bg);color:var(--b-tx);font-size:13px;font-weight:600;line-height:1.4;padding:5px 12px;border-radius:999px;margin:0 0 28px}
+.box{background:var(--panel);border-radius:var(--radius);padding:22px 24px;margin:24px 0;color:var(--ink2);font-size:16px;overflow-wrap:break-word}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.6;color:var(--ink2)}
+.check input{accent-color:var(--ink);flex:none}
+.muted{font-size:13px;color:var(--muted)}
+@media (max-width:560px){
+  main{padding:36px 16px 0}
+  .box{padding:18px;border-radius:16px}
+  h2{margin-top:36px}
+}
+</style>
+</head>
+<body>
+<nav class="dl-nav" aria-label="Clicktide">
+  <div class="dl-wrap dl-nav-in">
+    <a class="dl-brand" href="/" aria-label="Clicktide home"><svg viewBox="-22 -22 44 44" aria-hidden="true" class="dl-mark"><defs><linearGradient id="dlg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7CC4FA"/><stop offset="100%" stop-color="#2F80ED"/></linearGradient></defs><g><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(0)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(51.4)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(102.8)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(154.2)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(205.6)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(257)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(308.4)"/></g><circle r="4.5" fill="#fff"/></svg>Clicktide</a>
+    <div class="dl-nav-cta">
+      <a class="dl-btn dl-btn-ghost" href="/">Log in</a>
+      <a class="dl-btn dl-btn-ink" href="/">Start free trial</a>
+    </div>
+  </div>
+</nav>
+<main>
+  <h1>Clicktide Billing Policy</h1>
+  <div class="meta">Effective date: June 8, 2026</div>
+  <div class="box">Clicktide is operated by Six Seasons Partners LLC. This Billing Policy explains subscriptions, wallet funds, cancellations, refunds, failed payments, and billing disputes.</div>
+
+  <h2>1. Plans and recurring billing</h2>
+  <p>Clicktide offers paid subscription plans such as Local, Growth, and Scale. By selecting a paid plan and completing checkout, you authorize Clicktide and its payment processor to charge your payment method on a recurring basis until you cancel.</p>
+  <p>New subscriptions begin with a 30-day free trial. A payment method is collected at checkout, but no subscription charge is made during the trial. Your first subscription charge occurs when the trial ends, and recurring billing continues from that date until you cancel. Wallet top-ups and wallet-funded gift activity are separate purchases and are charged when made, including during a trial.</p>
+
+  <h2>2. Gift wallet and usage charges</h2>
+  <p>Subscription fees cover platform access and included features described at checkout or in the dashboard. Physical gifts, shipping, taxes, premium fulfillment, add-ons, overages, or wallet-funded activity may cost extra. Gift wallet funds are used to pay for approved gift activity and related fulfillment costs.</p>
+  <p>Gift wallet funds are credited to the specific business account that purchased them and are not transferable between unrelated businesses unless approved by Clicktide. Wallet funds may be reduced when a gift, message, shipping label, tax, fulfillment action, or related campaign expense is authorized or processed.</p>
+
+  <h2>3. Taxes</h2>
+  <p>Prices may not include taxes, duties, or government charges. Where required, taxes may be calculated and charged by our payment processor.</p>
+
+  <h2>4. Cancellations</h2>
+  <p>You may cancel your subscription at any time through the dashboard or by contacting support. If you cancel during your free trial, you will not be charged a subscription fee. After the trial, cancellation stops future subscription renewals, but it does not automatically refund charges already incurred. Access may continue until the end of the current paid billing period unless otherwise stated.</p>
+
+  <h2>5. Refunds</h2>
+  <p>Subscription fees are generally non-refundable unless required by law or expressly approved by Clicktide. Gift, fulfillment, shipping, and usage charges may be non-refundable once a campaign, order, message, or fulfillment action has started. If we issue a refund, it does not create an obligation to issue the same refund in the future.</p>
+  <p>Unused gift wallet balances that have not been committed to campaigns, orders, fulfillment, shipping, taxes, disputes, chargebacks, or payment processor activity may be eligible for refund at Clicktide's discretion or where required by law.</p>
+
+  <h2>6. Failed payments</h2>
+  <p>If a payment fails, we may retry the charge, notify you, restrict paid features, pause campaigns, or suspend account access until payment is resolved. You remain responsible for amounts owed.</p>
+
+  <h2>7. Plan changes</h2>
+  <p>If you upgrade, downgrade, or change plans, billing may be prorated or adjusted depending on payment processor settings and the effective date of the change. Some features may be unavailable after a downgrade.</p>
+
+  <h2>8. Disputes</h2>
+  <p>If you believe a charge is incorrect, contact us promptly at <a href="mailto:support@goclicktide.com">support@goclicktide.com</a>. You agree to work with us in good faith before initiating a chargeback where possible.</p>
+
+  <h2>9. Contact</h2>
+  <p>Billing questions can be sent to <a href="mailto:support@goclicktide.com">support@goclicktide.com</a>.</p>
+</main>
+<footer class="dl-footer">
+  <div class="dl-wrap dl-foot">
+    <div>&copy; 2026 Clicktide &middot; P.O. Box 304, Glen Cove, NY 11542 &middot; <a href="mailto:support@goclicktide.com">support@goclicktide.com</a></div>
+    <nav aria-label="Legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/billing-policy">Billing</a><a href="/sms-policy">SMS policy</a><a href="/help">Help</a></nav>
+  </div>
+</footer>
+</body>
+</html>

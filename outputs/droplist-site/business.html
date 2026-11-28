@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Business — Clicktide</title>
+<meta name="description" content="Customer messaging program, privacy policy, terms, and SMS opt-in for a business powered by Clicktide."/>
+<link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0F1115; --ink2:#3B3F46; --muted:#6B6F76; --line:#E7E8EB; --panel:#F6F7F9; --bg:#FFFFFF;
+  --orange:#E35B1F; --orange-d:#C94E17;
+  --g-bg:#E6F6EB; --g-tx:#1C7A3A; --r-bg:#FDE9E7; --r-tx:#B42318; --b-bg:#E7F0FF; --b-tx:#2453C2;
+  --l-bg:#F1EAFE; --l-tx:#5B36B0; --t-bg:#E3F5F4; --t-tx:#0F6560;
+  --radius:18px;
+}
+*{box-sizing:border-box}
+
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.65 "DM Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:3px solid #2453C2;outline-offset:3px;border-radius:8px}
+/* Droplist header + footer */
+.dl-wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+.dl-nav{background:#fff;border-bottom:1px solid var(--line)}
+.dl-nav-in{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:68px}
+.dl-brand{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--ink);font:900 23px/1 "Nunito","DM Sans",sans-serif;letter-spacing:-.03em;flex:none}
+.dl-brand svg{width:30px;height:30px;flex:none}
+.dl-nav-cta{display:flex;gap:10px;align-items:center;min-width:0}
+.dl-btn{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;font:600 14px/1 "DM Sans",sans-serif;text-decoration:none;padding:9px 16px;white-space:nowrap;transition:background .15s ease,border-color .15s ease}
+.dl-btn-ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+.dl-btn-ghost:hover{border-color:#cfd2d7}
+.dl-btn-ink{background:var(--ink);color:#fff;border:1.5px solid var(--ink)}
+.dl-btn-ink:hover{background:#2a2e35;border-color:#2a2e35}
+.dl-footer{padding:56px 0 48px;color:var(--muted);font-size:14px;line-height:1.6}
+.dl-foot{display:flex;justify-content:space-between;gap:14px 24px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:28px}
+.dl-foot nav{display:flex;gap:8px 20px;flex-wrap:wrap}
+.dl-foot a{color:inherit;text-decoration:none}
+.dl-foot a:hover{color:var(--ink)}
+@media (max-width:560px){
+  .dl-wrap{padding:0 16px}
+  .dl-nav-cta{gap:6px}
+  .dl-btn{padding:8px 12px;font-size:13.5px}
+}
+@media (max-width:400px){
+  .dl-brand{font-size:20px;gap:6px}
+  .dl-brand svg{width:26px;height:26px}
+  .dl-btn{padding:8px 11px;font-size:12.5px}
+  .dl-footer{padding:40px 0 36px}
+}
+
+.hero{padding:32px 24px 0}
+.hero .in{max-width:760px;margin:0 auto;background:var(--panel);border-radius:24px;padding:36px 32px}
+.kick{display:inline-block;font-size:13px;font-weight:600;line-height:1.4;padding:5px 12px;border-radius:999px;background:var(--b-bg);color:var(--b-tx)}
+h1,h2{font-family:"Nunito","DM Sans",sans-serif;color:var(--ink);letter-spacing:-.02em;line-height:1.2}
+h1{font-size:clamp(30px,5vw,40px);font-weight:900;line-height:1.1;letter-spacing:-.025em;margin:14px 0 8px;overflow-wrap:break-word}
+.sub{font-size:16px;color:var(--ink2);line-height:1.6}
+.op{font-size:13px;color:var(--muted);margin-top:12px}
+.hero nav{display:flex;flex-wrap:wrap;gap:8px;font-size:14px;margin:18px 0 0}
+.hero nav a{background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-weight:600;color:var(--ink);text-decoration:none}
+.hero nav a:hover{border-color:#cfd2d7}
+main{max-width:760px;margin:0 auto;padding:8px 24px 8px}
+h2{font-size:22px;font-weight:800;margin:44px 0 10px;scroll-margin-top:14px}
+p,li{font-size:16px;color:var(--ink2);overflow-wrap:break-word}
+ul{padding-left:22px}
+li{margin-bottom:6px}
+.box{background:var(--panel);border-radius:var(--radius);padding:22px 24px;margin:18px 0}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.6;color:var(--ink2);margin:10px 0}
+.check input{accent-color:var(--ink);flex:none}
+main a{color:var(--ink);text-decoration:underline;text-decoration-color:#C3C6CC;text-underline-offset:3px}
+main a:hover{text-decoration-color:var(--ink)}
+.muted{font-size:13px;color:var(--muted)}
+.disc{font-size:13px;color:var(--muted);border-top:1px solid var(--line);margin-top:36px;padding-top:16px}
+.biz{font-weight:inherit}
+@media (max-width:560px){
+  .hero{padding:20px 16px 0}
+  .hero .in{padding:26px 20px;border-radius:20px}
+  main{padding:0 16px}
+  .box{padding:18px;border-radius:16px}
+}
+</style>
+</head>
+<body>
+<nav class="dl-nav" aria-label="Clicktide">
+  <div class="dl-wrap dl-nav-in">
+    <a class="dl-brand" href="/" aria-label="Clicktide home"><svg viewBox="-22 -22 44 44" aria-hidden="true" class="dl-mark"><defs><linearGradient id="dlg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7CC4FA"/><stop offset="100%" stop-color="#2F80ED"/></linearGradient></defs><g><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(0)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(51.4)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(102.8)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(154.2)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(205.6)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(257)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(308.4)"/></g><circle r="4.5" fill="#fff"/></svg>Clicktide</a>
+  </div>
+</nav>
+<div class="hero"><div class="in">
+  <div class="kick">Customer messaging</div>
+  <h1><span class="biz">This Business</span></h1>
+  <div class="sub"><span class="biz">This business</span> sends loyalty texts, appointment reminders, rewards, and occasional offers to customers who have opted in. This page describes how you opt in and how your information is handled.</div>
+  <div class="op">Messaging operated for <span class="biz">this business</span> by Clicktide, a service of Six Seasons Partners LLC · goclicktide.com</div>
+  <nav><a href="#optin">Opt-in</a><a href="#privacy">Privacy</a><a href="#terms">Terms</a><a href="#sms">SMS Program</a></nav>
+</div></div>
+
+<main>
+  <h2 id="optin">How customers opt in</h2>
+  <p>Consent is collected by <span class="biz">this business</span> before any message is sent — in person by scanning a check-in QR code (<a href="checkin.html">goclicktide.com/checkin</a>) or completing a sign-up form, where the customer checks an unchecked-by-default consent box. Opt-in is never required to make a purchase, and consent is specific to <span class="biz">this business</span>.</p>
+  <div class="box">
+    <p style="margin-top:0;font-weight:bold;font-size:13px">The consent customers see (two separate, optional, unchecked boxes):</p>
+    <label class="check"><input type="checkbox" disabled style="margin-top:2px"/><span>Text me <strong>marketing</strong> messages (offers, rewards) from <span class="biz">this business</span>. Message frequency varies. Msg &amp; data rates may apply. Reply HELP for help, STOP to opt out.</span></label>
+    <label class="check"><input type="checkbox" disabled style="margin-top:2px"/><span>Text me <strong>account &amp; service</strong> messages (reminders, order updates) from <span class="biz">this business</span>. Message frequency varies. Msg &amp; data rates may apply. Reply HELP for help, STOP to opt out.</span></label>
+    <p class="muted" style="margin-bottom:0">By checking a box you agree to the <a href="#privacy">Privacy Policy</a> &amp; <a href="#terms">Terms</a>. Consent is not a condition of purchase.</p>
+  </div>
+
+  <h2 id="privacy">Privacy Policy</h2>
+  <p><strong>Information we collect.</strong> <span class="biz">This business</span> collects customer details such as name, phone number, email, mailing address, and visit or purchase history — provided by you or synced from the business's point-of-sale system.</p>
+  <p><strong>How we use it.</strong> To deliver the loyalty, reminder, and marketing messages you opted into, and to operate <span class="biz">this business</span>'s customer program.</p>
+  <p><strong>Mobile/SMS information.</strong> No mobile information will be shared with third parties or affiliates for marketing or promotional purposes. Phone numbers and SMS consent records are used solely to deliver the messages described here and are never sold.</p>
+  <p><strong>Service providers.</strong> <span class="biz">This business</span> uses Clicktide (operated by Six Seasons Partners LLC) as its messaging platform to deliver these messages. Data shared with Clicktide is processed only to provide the service and is not sold or shared for third-party marketing.</p>
+  <p><strong>Your choices.</strong> Reply STOP to any text to opt out, HELP for help. You may request access to, correction of, or deletion of your information by contacting <span class="biz">this business</span>.</p>
+
+  <h2 id="terms">Terms of Service</h2>
+  <p>By participating in <span class="biz">this business</span>'s messaging program you agree to receive the communications described above from <span class="biz">this business</span>. The program is offered as-is; message delivery depends on your carrier, and carriers are not liable for delayed or undelivered messages. The program is intended for individuals 18 or older, on supported U.S. carriers. <span class="biz">This business</span> may update these terms or the program; continued participation constitutes acceptance. Questions: contact <span class="biz">this business</span> directly.</p>
+
+  <h2 id="sms">SMS Program</h2>
+  <ul>
+    <li><strong>Message types:</strong> thank-yous, satisfaction surveys, appointment/visit reminders, win-back check-ins, rewards, and gift/order notifications.</li>
+    <li><strong>Frequency:</strong> varies by business and activity, typically 1–4 messages per month.</li>
+    <li><strong>Rates:</strong> message and data rates may apply.</li>
+    <li><strong>Opt-out:</strong> reply <strong>STOP</strong> to any message to unsubscribe (one confirmation, then no further messages). Reply <strong>START</strong> to re-subscribe.</li>
+    <li><strong>Help:</strong> reply <strong>HELP</strong>, or contact <span class="biz">this business</span>.</li>
+    <li>No mobile information is shared with third parties or affiliates for marketing or promotional purposes.</li>
+  </ul>
+
+  <div class="disc">These policies are a compliant starting template provided by Clicktide (Six Seasons Partners LLC) for <span class="biz">this business</span>'s messaging program. <span class="biz">This business</span> is responsible for its own policies and should review them with legal counsel. Messaging platform: goclicktide.com.</div>
+</main>
+<footer class="dl-footer">
+  <div class="dl-wrap dl-foot">
+    <div>&copy; 2026 Clicktide &middot; P.O. Box 304, Glen Cove, NY 11542 &middot; <a href="mailto:support@goclicktide.com">support@goclicktide.com</a></div>
+    <nav aria-label="Legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/billing-policy">Billing</a><a href="/sms-policy">SMS policy</a><a href="/help">Help</a></nav>
+  </div>
+</footer>
+
+<script>
+var FN="https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1/checkin";
+var b=new URLSearchParams(location.search).get("b")||"";
+function setName(n){
+  document.title=n+" — Messaging Policy";
+  var els=document.getElementsByClassName("biz");
+  for(var i=0;i<els.length;i++){
+    var t=els[i].textContent;
+    // preserve possessive/casing for the leading-cap vs lowercase variants
+    if(t==="This Business")els[i].textContent=n;
+    else if(t==="This business")els[i].textContent=n;
+    else if(t==="this business")els[i].textContent=n;
+  }
+}
+(function(){
+  if(!b){ setName("Your Business (demo)"); return; }
+  fetch(FN+"?b="+encodeURIComponent(b)).then(function(r){return r.json();}).then(function(d){
+    if(d&&d.business_name) setName(d.business_name);
+  }).catch(function(){});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Clicktide Privacy Policy</title>
+<meta name="description" content="Clicktide's privacy policy: what we collect, how SMS consent works, and our promise that mobile data is never shared for marketing."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0F1115; --ink2:#3B3F46; --muted:#6B6F76; --line:#E7E8EB; --panel:#F6F7F9; --bg:#FFFFFF;
+  --orange:#E35B1F; --orange-d:#C94E17;
+  --g-bg:#E6F6EB; --g-tx:#1C7A3A; --r-bg:#FDE9E7; --r-tx:#B42318; --b-bg:#E7F0FF; --b-tx:#2453C2;
+  --l-bg:#F1EAFE; --l-tx:#5B36B0; --t-bg:#E3F5F4; --t-tx:#0F6560;
+  --radius:18px;
+}
+*{box-sizing:border-box}
+
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.65 "DM Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:3px solid #2453C2;outline-offset:3px;border-radius:8px}
+/* Droplist header + footer */
+.dl-wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+.dl-nav{background:#fff;border-bottom:1px solid var(--line)}
+.dl-nav-in{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:68px}
+.dl-brand{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--ink);font:900 23px/1 "Nunito","DM Sans",sans-serif;letter-spacing:-.03em;flex:none}
+.dl-brand svg{width:30px;height:30px;flex:none}
+.dl-nav-cta{display:flex;gap:10px;align-items:center;min-width:0}
+.dl-btn{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;font:600 14px/1 "DM Sans",sans-serif;text-decoration:none;padding:9px 16px;white-space:nowrap;transition:background .15s ease,border-color .15s ease}
+.dl-btn-ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+.dl-btn-ghost:hover{border-color:#cfd2d7}
+.dl-btn-ink{background:var(--ink);color:#fff;border:1.5px solid var(--ink)}
+.dl-btn-ink:hover{background:#2a2e35;border-color:#2a2e35}
+.dl-footer{padding:56px 0 48px;color:var(--muted);font-size:14px;line-height:1.6}
+.dl-foot{display:flex;justify-content:space-between;gap:14px 24px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:28px}
+.dl-foot nav{display:flex;gap:8px 20px;flex-wrap:wrap}
+.dl-foot a{color:inherit;text-decoration:none}
+.dl-foot a:hover{color:var(--ink)}
+@media (max-width:560px){
+  .dl-wrap{padding:0 16px}
+  .dl-nav-cta{gap:6px}
+  .dl-btn{padding:8px 12px;font-size:13.5px}
+}
+@media (max-width:400px){
+  .dl-brand{font-size:20px;gap:6px}
+  .dl-brand svg{width:26px;height:26px}
+  .dl-btn{padding:8px 11px;font-size:12.5px}
+  .dl-footer{padding:40px 0 36px}
+}
+
+main{max-width:760px;margin:0 auto;padding:56px 24px 8px}
+h1,h2,h3{font-family:"Nunito","DM Sans",sans-serif;color:var(--ink);letter-spacing:-.02em;line-height:1.2}
+h1{font-size:clamp(32px,5vw,44px);font-weight:900;line-height:1.08;letter-spacing:-.025em;margin:0 0 14px}
+h2{font-size:22px;font-weight:800;margin:44px 0 10px}
+h3{font-size:18px;font-weight:800;margin:28px 0 8px}
+p,li{color:var(--ink2);font-size:16px;overflow-wrap:break-word}
+ul{padding-left:22px}
+li{margin:0 0 6px}
+main a{color:var(--ink);text-decoration:underline;text-decoration-color:#C3C6CC;text-underline-offset:3px}
+main a:hover{text-decoration-color:var(--ink)}
+.meta{display:inline-block;background:var(--b-bg);color:var(--b-tx);font-size:13px;font-weight:600;line-height:1.4;padding:5px 12px;border-radius:999px;margin:0 0 28px}
+.box{background:var(--panel);border-radius:var(--radius);padding:22px 24px;margin:24px 0;color:var(--ink2);font-size:16px;overflow-wrap:break-word}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.6;color:var(--ink2)}
+.check input{accent-color:var(--ink);flex:none}
+.muted{font-size:13px;color:var(--muted)}
+@media (max-width:560px){
+  main{padding:36px 16px 0}
+  .box{padding:18px;border-radius:16px}
+  h2{margin-top:36px}
+}
+</style>
+</head>
+<body>
+<nav class="dl-nav" aria-label="Clicktide">
+  <div class="dl-wrap dl-nav-in">
+    <a class="dl-brand" href="/" aria-label="Clicktide home"><svg viewBox="-22 -22 44 44" aria-hidden="true" class="dl-mark"><defs><linearGradient id="dlg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7CC4FA"/><stop offset="100%" stop-color="#2F80ED"/></linearGradient></defs><g><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(0)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(51.4)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(102.8)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(154.2)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(205.6)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(257)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(308.4)"/></g><circle r="4.5" fill="#fff"/></svg>Clicktide</a>
+    <div class="dl-nav-cta">
+      <a class="dl-btn dl-btn-ghost" href="/">Log in</a>
+      <a class="dl-btn dl-btn-ink" href="/">Start free trial</a>
+    </div>
+  </div>
+</nav>
+<main>
+  <h1>Clicktide Privacy Policy</h1>
+  <div class="meta">Effective date: November 27, 2026</div>
+  <div class="box">Clicktide is operated by Six Seasons Partners LLC. This Privacy Policy explains how Clicktide collects, uses, shares, and protects information.</div>
+
+  <h2>Privacy Policy Section for SMS Messaging</h2>
+  <div class="box">
+    <p style="margin-top:0"><strong>SMS Communications.</strong> A participating business may use text messaging (SMS), delivered through Clicktide, to communicate with its customers regarding loyalty rewards, appreciation messages, satisfaction surveys, win-back check-ins, visit reminders, and gift or order updates. By providing your phone number and opting in — on the business's Clicktide check-in page or in person at the business — you consent to receive SMS messages from that business.</p>
+    <p>Message frequency may vary based on your activity with the business. Standard message and data rates may apply. You may opt out of SMS communications at any time by replying STOP to any message, and reply HELP for help.</p>
+    <p style="margin-bottom:0"><strong>Data Use and Sharing.</strong> Your contact information, including your mobile number and opt-in consent, will only be used to deliver the messages you requested from that business and <strong>will not be sold, rented, or shared with any third parties or affiliates for marketing purposes.</strong> Clicktide may share limited data with contracted service providers solely for the purpose of delivering these messages (for example, Twilio). Full details are in Section 5 below and in the <a href="sms-policy.html">SMS Program Policy</a>.</p>
+  </div>
+
+  <h2>1. Information we collect</h2>
+  <p>We collect information you provide when creating an account, including name, email, phone number, business name, business contact details, address, billing selections, campaign settings, uploaded files, logos, and support messages.</p>
+  <p>We may collect customer information that you upload or sync from connected platforms, such as customer names, emails, phone numbers, purchase history, visit history, order information, loyalty status, campaign eligibility, and gift delivery details.</p>
+
+  <h2>2. Information from connected services</h2>
+  <p>When you connect a point-of-sale, commerce, payment, scheduling, email, SMS, or fulfillment provider, we receive information allowed by that provider and authorized by you. This may include transaction, customer, subscription, product, appointment, or campaign data needed to operate Clicktide.</p>
+  <p>Platform connections are made through each provider's official OAuth authorization flow — Clicktide never receives or stores your platform password. Where the provider supports it, Clicktide requests read-only permissions limited to viewing sales and customer information: Clicktide cannot move funds, issue refunds, or modify products, prices, or settings inside your point-of-sale or commerce platform. Access tokens are stored securely, and you may revoke Clicktide's access at any time from your Clicktide settings or from the provider's own dashboard.</p>
+
+  <h3>Shopify stores</h3>
+  <p>If you install Clicktide from Shopify, Clicktide reads your store's orders and the customers on those orders (name, email, phone number and mailing address, plus order dates, totals and items) with read-only permissions. Clicktide uses this data only to provide Clicktide to your store: learning each customer's visit rhythm, showing who is drifting away, and sending the win-back messages, rewards, postcards or gifts you turn on. Clicktide never sells Shopify customer data, never shares it with other merchants, and never uses one store's data for another store.</p>
+  <p>Clicktide honors Shopify's privacy requests: when Shopify sends a customer data request, we provide that customer's data to the store owner; when Shopify asks us to erase a customer, we delete that customer's records; and when a store uninstalls Clicktide, syncing stops immediately and Shopify's shop-erasure request (sent 48 hours later) deletes the store's customer data. Each request is completed within 30 days. Text messages and emails respect each customer's opt-in and unsubscribe choices.</p>
+
+  <h2>3. How we use information</h2>
+  <ul>
+    <li>To create and manage your account.</li>
+    <li>To operate customer messaging, retention, loyalty, win-back, and gift campaigns.</li>
+    <li>To process checkout, subscriptions, invoices, usage, gift wallet activity, and billing.</li>
+    <li>To connect with third-party platforms you authorize.</li>
+    <li>To provide analytics, ROI estimates, campaign recommendations, and support.</li>
+    <li>To protect the service, prevent abuse, troubleshoot errors, and comply with law.</li>
+  </ul>
+
+  <h2>4. Customer data responsibilities</h2>
+  <p>Your business is responsible for having the required rights, consent, notice, or lawful basis to upload, sync, and use customer information with Clicktide. You are also responsible for honoring customer opt-outs and communication preferences where required.</p>
+
+  <h2>5. SMS and text message data</h2>
+  <p>If a business uses Clicktide to send SMS or text messages, we may process customer mobile numbers, consent status, opt-in timestamps, message content, delivery status, replies, opt-out requests, and related carrier or provider records. Text messages may be sent through providers such as Twilio.</p>
+  <p>Businesses using Clicktide may send text messages to customers who have given express consent to receive them. Message types may include loyalty and appreciation messages, satisfaction surveys, win-back check-ins, gift notifications, mailing-address requests for gifts, and delivery updates. Message frequency varies. Message and data rates may apply.</p>
+  <p>Businesses are responsible for collecting valid consent before sending text messages. Customers may opt out by replying STOP, or request help by replying HELP where supported. No mobile information will be shared with third parties or affiliates for marketing or promotional purposes. We do not sell customer mobile numbers, and we do not share mobile opt-in data or consent records with third parties or affiliates for their own marketing purposes.</p>
+
+    <h2>6. Gift mailing addresses</h2>
+  <p>When a business sends a physical gift or postcard through Clicktide and no mailing address is on file for a customer, Clicktide may, on the business's behalf, invite that customer by text or email to provide a mailing address through a secure, single-purpose form. Mailing addresses may also be received from platforms the business has connected (for example, order shipping addresses). Mailing addresses are used only to deliver mail and gifts from that business, are stored on that business's customer records, and are never sold or shared with third parties for their own marketing.</p>
+
+<h2>7. Sharing information</h2>
+  <p>We share information with service providers that help operate Clicktide, including hosting, database, payment processing, email, SMS, analytics, platform integrations, shipping, and fulfillment providers. We may also share information when required by law, to protect rights and safety, or in connection with a business transfer.</p>
+
+  <h2>8. Payments</h2>
+  <p>Payment information is processed by Stripe or another payment processor. Clicktide does not store full payment card numbers. Payment processors handle payment data under their own terms and privacy policies.</p>
+
+  <h2>9. Data retention</h2>
+  <p>We keep information only as long as needed to provide the service:</p>
+  <ul>
+    <li><strong>Active accounts:</strong> customer and sales data is kept while your business has an active or trialing Clicktide plan.</li>
+    <li><strong>Closed accounts:</strong> 90 days after a business's plan ends (cancelled, unpaid or never started), Clicktide automatically deletes that business's customer records, visit history, text message history and the personal details on gift shipments, and disconnects its POS or commerce platform. Account, billing and invoice records are kept as required for accounting and legal purposes.</li>
+    <li><strong>Rolling limits for all accounts:</strong> text message history is deleted after 2 years, the transaction de-duplication ledger after 400 days, site analytics events after 13 months, and expired sign-in links after 1 day.</li>
+    <li><strong>On request:</strong> you can ask us to delete your account data at any time by emailing support; Shopify customer and shop erasure requests are completed within 30 days.</li>
+  </ul>
+
+  <h2>10. Security</h2>
+  <p>We use administrative, technical, and organizational safeguards designed to protect information, including: encryption of data in transit (TLS/HTTPS) and at rest (AES-256 database storage); per-business data isolation enforced in the database, so one business can never read another's customers; access to customer data limited to the few Clicktide staff who need it for support, with every staff view or change of a business's data recorded in a permanent access log; platform access tokens stored server-side only; and a written security incident response process, including notifying affected businesses and, where required, regulators and platforms such as Shopify. No system is perfectly secure, and we cannot guarantee absolute security.</p>
+
+  <h2>11. Your choices</h2>
+  <p>You can update account information in the dashboard, disconnect integrations, stop campaigns, request export or deletion where available, and contact us for privacy questions. Customers who receive messages from a business should contact that business or use the opt-out method provided in the message.</p>
+
+  <h2>12. Children's privacy</h2>
+  <p>Clicktide is not intended for children under 13, and businesses should not upload children's personal information unless they have all required legal authority and safeguards.</p>
+
+  <h2>13. Changes</h2>
+  <p>We may update this Privacy Policy. If changes are material, we will take reasonable steps to notify users, such as posting an updated date or providing in-app notice.</p>
+
+  <h2>14. Contact</h2>
+  <p>Privacy questions can be sent to <a href="mailto:support@goclicktide.com">support@goclicktide.com</a>.</p>
+</main>
+<footer class="dl-footer">
+  <div class="dl-wrap dl-foot">
+    <div>&copy; 2026 Clicktide &middot; P.O. Box 304, Glen Cove, NY 11542 &middot; <a href="mailto:support@goclicktide.com">support@goclicktide.com</a></div>
+    <nav aria-label="Legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/billing-policy">Billing</a><a href="/sms-policy">SMS policy</a><a href="/help">Help</a></nav>
+  </div>
+</footer>
+</body>
+</html>

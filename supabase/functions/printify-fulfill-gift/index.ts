@@ -4,6 +4,7 @@
 // key before money moves and debits through clicktide_wallet_apply. A repeat with the
 // same key never orders or charges twice: a caller-supplied key, the same campaign on
 // the same day, or a dashboard send repeated within about ten minutes (see sendKey).
+import { ensureBrandProduct } from "../_shared/brand_product.ts";
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://hmihfncvahsdlmefyxyg.supabase.co";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const printifyToken = Deno.env.get("PRINTIFY_API_TOKEN") || "";
@@ -610,7 +611,28 @@ Deno.serve(async (req) => {
     }
 
     const logoUrl = artworkUrl(biz.logo_url);
-    const lineItem = buildLineItem(row, logoUrl);
+    // Order the business's OWN branded product (exact catalog item + their placement), so the
+    // gift prints the way their Design Studio shows it. Built on the first gift for this item and
+    // rebuilt when the logo changes. If that fails, stop here (nothing claimed or charged yet)
+    // rather than print an on-the-fly order, which crops the logo (draft-order test 2026-11-28).
+    let lineItem: Record<string, unknown> = buildLineItem(row, logoUrl);
+    let brandedWith = "print_areas" in lineItem ? "business_logo" : "catalog_design";
+    if (logoUrl) {
+      let own: Awaited<ReturnType<typeof ensureBrandProduct>> = null;
+      try {
+        own = await ensureBrandProduct({
+          userId, row, logoUrl, shopId: printifyShopId, printify,
+          rest: (path, init = {}) => supabaseFetch(path, { ...init, headers: { "Content-Type": "application/json", ...(init.headers || {}) } }),
+        });
+      } catch (e) {
+        console.error("fulfill-gift: could not prepare the business's branded product:", e);
+        throw new AppError("We couldn't prepare your branded gift with your logo just now. Nothing was charged — please try again in a minute.", 502);
+      }
+      if (own) {
+        lineItem = { product_id: own.productId, variant_id: own.variantId, quantity: 1 };
+        brandedWith = "business_product";
+      }
+    }
     const typedAddress = normalizeAddress(body.address, customerName, customerEmail);
     if (!addressComplete(typedAddress)) {
       throw new AppError("A complete shipping address is required before sending a gift", 400);
@@ -741,7 +763,7 @@ Deno.serve(async (req) => {
       shipment,
       printify_order_id: orderId,
       wallet_balance: Number(debit.balance ?? 0),
-      branded_with: "print_areas" in lineItem ? "business_logo" : "catalog_design",
+      branded_with: brandedWith,
       production,
       production_note: productionNote || null,
       status: production ? "in_production" : "processing",

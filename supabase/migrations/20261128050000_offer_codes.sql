@@ -1,6 +1,6 @@
 -- One-time offer codes (store credit / perks) + staff redeem devices.
 -- Plan: outputs/gift-intelligence/scope.md ("Codes can't be reused", "Easy for staff").
--- NOT applied yet: held until the Shopify review is complete.
+-- Applied 2026-11-28 (owner approved offer codes); two-step checks added on the owner functions.
 --
 -- * Each customer gets their OWN code (e.g. JUNE-7K3Q-MX) for a campaign's offer. It works once.
 -- * Staff redeem it by opening the code's link on a device the owner set up ("redeem device").
@@ -158,6 +158,7 @@ declare
   v_token text;
 begin
   if v_user is null then raise exception 'sign in first'; end if;
+  if not public.clicktide_owner_mfa_ok() then raise exception 'two-step verification required'; end if;
   if not exists (select 1 from public.clicktide c where c.user_id = v_user) then
     raise exception 'no business on this account';
   end if;
@@ -207,7 +208,9 @@ begin
   update public.offer_codes
      set status = 'used', used_at = now(), used_via = 'scan', used_device = v_dev.id, undo_until = now() + interval '2 minutes'
    where id = v_row.id and status = 'open';
-  return jsonb_build_object('result', 'redeemed', 'customer', v_name, 'offer', v_row.offer,
+  -- a TEST code redeemed on this business's own device proves the counter works
+  if coalesce(v_row.is_test, false) then update public.clicktide set offers_store_verified_at = now() where user_id = v_dev.user_id; end if;
+  return jsonb_build_object('result', 'redeemed', 'customer', v_name, 'offer', v_row.offer, 'test', coalesce(v_row.is_test, false),
                             'credit', v_row.credit_amount, 'min_spend', v_row.min_spend,
                             'undo_until', now() + interval '2 minutes');
 end;
@@ -274,7 +277,7 @@ as $$
                             'used_via', o.used_via, 'used_at', o.used_at, 'created_at', o.created_at)
     from public.offer_codes o
     left join public.customers cu on cu.id = o.customer_id and cu.user_id = o.user_id
-   where o.user_id = auth.uid()
+   where o.user_id = auth.uid() and public.clicktide_owner_mfa_ok()
    order by o.created_at desc
    limit least(greatest(coalesce(p_limit, 200), 1), 500);
 $$;

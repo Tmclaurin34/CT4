@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Clicktide Terms of Service</title>
+<meta name="description" content="Terms of use for Clicktide, the customer retention platform for local businesses."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0F1115; --ink2:#3B3F46; --muted:#6B6F76; --line:#E7E8EB; --panel:#F6F7F9; --bg:#FFFFFF;
+  --orange:#E35B1F; --orange-d:#C94E17;
+  --g-bg:#E6F6EB; --g-tx:#1C7A3A; --r-bg:#FDE9E7; --r-tx:#B42318; --b-bg:#E7F0FF; --b-tx:#2453C2;
+  --l-bg:#F1EAFE; --l-tx:#5B36B0; --t-bg:#E3F5F4; --t-tx:#0F6560;
+  --radius:18px;
+}
+*{box-sizing:border-box}
+
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.65 "DM Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:3px solid #2453C2;outline-offset:3px;border-radius:8px}
+/* Droplist header + footer */
+.dl-wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+.dl-nav{background:#fff;border-bottom:1px solid var(--line)}
+.dl-nav-in{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:68px}
+.dl-brand{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--ink);font:900 23px/1 "Nunito","DM Sans",sans-serif;letter-spacing:-.03em;flex:none}
+.dl-brand svg{width:30px;height:30px;flex:none}
+.dl-nav-cta{display:flex;gap:10px;align-items:center;min-width:0}
+.dl-btn{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;font:600 14px/1 "DM Sans",sans-serif;text-decoration:none;padding:9px 16px;white-space:nowrap;transition:background .15s ease,border-color .15s ease}
+.dl-btn-ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+.dl-btn-ghost:hover{border-color:#cfd2d7}
+.dl-btn-ink{background:var(--ink);color:#fff;border:1.5px solid var(--ink)}
+.dl-btn-ink:hover{background:#2a2e35;border-color:#2a2e35}
+.dl-footer{padding:56px 0 48px;color:var(--muted);font-size:14px;line-height:1.6}
+.dl-foot{display:flex;justify-content:space-between;gap:14px 24px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:28px}
+.dl-foot nav{display:flex;gap:8px 20px;flex-wrap:wrap}
+.dl-foot a{color:inherit;text-decoration:none}
+.dl-foot a:hover{color:var(--ink)}
+@media (max-width:560px){
+  .dl-wrap{padding:0 16px}
+  .dl-nav-cta{gap:6px}
+  .dl-btn{padding:8px 12px;font-size:13.5px}
+}
+@media (max-width:400px){
+  .dl-brand{font-size:20px;gap:6px}
+  .dl-brand svg{width:26px;height:26px}
+  .dl-btn{padding:8px 11px;font-size:12.5px}
+  .dl-footer{padding:40px 0 36px}
+}
+
+main{max-width:760px;margin:0 auto;padding:56px 24px 8px}
+h1,h2,h3{font-family:"Nunito","DM Sans",sans-serif;color:var(--ink);letter-spacing:-.02em;line-height:1.2}
+h1{font-size:clamp(32px,5vw,44px);font-weight:900;line-height:1.08;letter-spacing:-.025em;margin:0 0 14px}
+h2{font-size:22px;font-weight:800;margin:44px 0 10px}
+h3{font-size:18px;font-weight:800;margin:28px 0 8px}
+p,li{color:var(--ink2);font-size:16px;overflow-wrap:break-word}
+ul{padding-left:22px}
+li{margin:0 0 6px}
+main a{color:var(--ink);text-decoration:underline;text-decoration-color:#C3C6CC;text-underline-offset:3px}
+main a:hover{text-decoration-color:var(--ink)}
+.meta{display:inline-block;background:var(--b-bg);color:var(--b-tx);font-size:13px;font-weight:600;line-height:1.4;padding:5px 12px;border-radius:999px;margin:0 0 28px}
+.box{background:var(--panel);border-radius:var(--radius);padding:22px 24px;margin:24px 0;color:var(--ink2);font-size:16px;overflow-wrap:break-word}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.6;color:var(--ink2)}
+.check input{accent-color:var(--ink);flex:none}
+.muted{font-size:13px;color:var(--muted)}
+@media (max-width:560px){
+  main{padding:36px 16px 0}
+  .box{padding:18px;border-radius:16px}
+  h2{margin-top:36px}
+}
+</style>
+</head>
+<body>
+<nav class="dl-nav" aria-label="Clicktide">
+  <div class="dl-wrap dl-nav-in">
+    <a class="dl-brand" href="/" aria-label="Clicktide home"><svg viewBox="-22 -22 44 44" aria-hidden="true" class="dl-mark"><defs><linearGradient id="dlg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7CC4FA"/><stop offset="100%" stop-color="#2F80ED"/></linearGradient></defs><g><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(0)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(51.4)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(102.8)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(154.2)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(205.6)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(257)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(308.4)"/></g><circle r="4.5" fill="#fff"/></svg>Clicktide</a>
+    <div class="dl-nav-cta">
+      <a class="dl-btn dl-btn-ghost" href="/">Log in</a>
+      <a class="dl-btn dl-btn-ink" href="/">Start free trial</a>
+    </div>
+  </div>
+</nav>
+<main>
+  <h1>Clicktide Terms of Service</h1>
+  <div class="meta">Effective date: June 19, 2026</div>
+  <div class="box">Clicktide is operated by Six Seasons Partners LLC. These Terms govern your access to and use of Clicktide.</div>
+
+  <h2>Consent to Receive SMS Messages</h2>
+  <div class="box">
+    <p style="margin-top:0">By providing your contact information to a participating business and opting in through its Clicktide check-in page (<a href="checkin.html">goclicktide.com/checkin</a>) or an in-person sign-up, you agree to receive SMS messages from that business — including loyalty and appreciation messages, satisfaction surveys, win-back check-ins, visit reminders, and gift or order updates — delivered through Clicktide.</p>
+    <p><strong>Opt-Out Policy.</strong> You may opt out of receiving text messages at any time by replying STOP. After opting out, you will no longer receive SMS updates but may still receive email communications from the business if you have agreed to them. Reply HELP for help.</p>
+    <p><strong>Message Frequency and Rates.</strong> Message frequency will vary depending on your activity with the business. Message and data rates may apply according to your mobile carrier's plan.</p>
+    <p><strong>Consent and Sharing.</strong> Opt-in is never required to make a purchase or check in. Mobile opt-in information and consent are never sold or shared with third parties or affiliates for marketing purposes.</p>
+    <p style="margin-bottom:0"><strong>Support and Contact.</strong> For questions about this policy or assistance with SMS communications, contact <a href="mailto:support@goclicktide.com">support@goclicktide.com</a>.</p>
+  </div>
+
+  <h2>1. Agreement</h2>
+  <p>These Terms of Service govern access to and use of Clicktide, including our website, dashboard, integrations, customer messaging tools, gift campaign tools, billing, support, and related services. By creating an account, connecting a business platform, starting checkout, or using Clicktide, you agree to these Terms on behalf of yourself and the business you represent.</p>
+
+  <h2>2. Who may use Clicktide</h2>
+  <p>You must be at least 18 years old and authorized to bind the business using Clicktide. You represent that all account, business, billing, and contact information you provide is accurate and current.</p>
+
+  <h2>3. Business authorization</h2>
+  <p>You authorize Clicktide to provide customer retention services for your business, including creating campaigns, processing customer data you provide or connect, sending customer messages, generating or sending promotional offers, coordinating gift fulfillment, and using connected platforms as necessary to provide the service.</p>
+  <p>You are responsible for the lawfulness, accuracy, and permission basis for customer data uploaded to or synced with Clicktide. You agree not to use Clicktide to contact people where you do not have the required consent or lawful basis.</p>
+
+  <h2>4. Customer communications</h2>
+  <p>Clicktide may help your business send email, SMS, or other messages to customers. You are responsible for message content, audience selection, campaign timing, and compliance with laws that may apply, including marketing, privacy, consumer protection, anti-spam, and telecommunications rules. Clicktide may suspend campaigns that appear abusive, misleading, unlawful, or harmful.</p>
+
+  <h2>5. SMS consent and opt-outs</h2>
+  <p>If you use Clicktide to send SMS or text messages, you must obtain and maintain any required consent from each recipient before sending messages. You must not use purchased, rented, scraped, or third-party customer lists for SMS campaigns.</p>
+  <p>Clicktide is a software platform that each business uses to message only its own customers who have given prior express consent. Clicktide does not enable, and you may not use Clicktide for, marketing on behalf of unrelated third parties, affiliate or lead-generation marketing, sharing or selling customer or mobile opt-in data, or messaging consumers with whom you have no direct relationship.</p>
+  <p>You agree that SMS messages must clearly identify the sending business (the brand the customer transacted with), include required opt-out language where applicable, and honor STOP, HELP, and other carrier-required commands. Clicktide may block, suppress, pause, or refuse messages if consent, opt-out, carrier, platform, or legal requirements are not satisfied.</p>
+  <p>Mobile opt-in information and messaging consent are never shared with or sold to third parties or affiliates for their own marketing or promotional purposes.</p>
+
+  <h2>6. Gifts, promotions, and fulfillment</h2>
+  <p>Physical gifts, digital rewards, promo codes, and related fulfillment may be provided using Clicktide and its service providers (fulfillment, payment, shipping, email, and SMS-delivery vendors acting only as our processors). Product availability, delivery timelines, carrier performance, vendor inventory, and recipient information can affect fulfillment. Unless Clicktide expressly states otherwise, estimated gift costs, shipping times, and campaign ROI are estimates only.</p>
+  <p>You are responsible for honoring promo codes, discounts, credits, or offers created for your business. You must not use Clicktide to send illegal, unsafe, deceptive, infringing, discriminatory, or prohibited products or promotions.</p>
+
+  <h2>7. Connected platforms</h2>
+  <p>If you connect services such as point-of-sale, commerce, scheduling, payment, or customer platforms, you authorize Clicktide to access, process, and use the connected data needed to operate campaigns and analytics. Your use of connected platforms remains subject to their own terms.</p>
+
+  <h2>8. Fees and subscriptions</h2>
+  <p>Paid plans are billed through Stripe or another payment processor. Subscription fees, gift wallet deposits, usage fees, taxes, and other charges are described at checkout or in the dashboard. By purchasing a plan, you authorize recurring billing until canceled. More details are in the Billing Policy.</p>
+
+  <h2>9. Account security</h2>
+  <p>You are responsible for protecting login credentials and all activity under your account. Notify us promptly if you believe your account or connected platform access has been compromised.</p>
+
+  <h2>10. Acceptable use</h2>
+  <p>You may not misuse Clicktide, interfere with the service, reverse engineer non-public parts of the service, attempt unauthorized access, upload malicious code, violate laws, infringe rights, send deceptive messages, scrape the service, or use Clicktide to harm customers or third parties.</p>
+
+  <h2>11. Intellectual property</h2>
+  <p>Clicktide and its software, designs, workflows, branding, and content are owned by Clicktide or its licensors. You retain ownership of your business data, customer lists, logos, and campaign content. You grant Clicktide the limited rights needed to host, process, display, transmit, and use that material to provide and improve the service.</p>
+
+  <h2>12. Service changes and availability</h2>
+  <p>We may improve, modify, suspend, or discontinue parts of the service. We work to keep Clicktide reliable, but we do not guarantee uninterrupted or error-free operation.</p>
+
+  <h2>13. Disclaimers</h2>
+  <p>Clicktide is provided on an "as is" and "as available" basis. We do not guarantee specific revenue, retention, churn reduction, delivery outcomes, customer responses, or ROI. Analytics and calculators are estimates and should not be treated as financial advice.</p>
+
+  <h2>14. Limitation of liability</h2>
+  <p>To the fullest extent allowed by law, Clicktide will not be liable for indirect, incidental, special, consequential, exemplary, or punitive damages, or lost profits, revenue, data, goodwill, or business opportunities. Our total liability for claims related to the service will not exceed the amounts you paid to Clicktide in the three months before the event giving rise to the claim.</p>
+
+  <h2>15. Indemnification</h2>
+  <p>You agree to defend, indemnify, and hold harmless Clicktide from claims, damages, losses, liabilities, and expenses arising from your business data, campaigns, customer communications, offers, misuse of the service, violation of law, or breach of these Terms.</p>
+
+  <h2>16. Termination</h2>
+  <p>You may stop using Clicktide at any time. We may suspend or terminate access if you violate these Terms, fail to pay, create risk, or use the service in a harmful or unlawful way. Sections that by nature should survive termination will survive.</p>
+
+  <h2>17. Contact</h2>
+  <p>Questions about these Terms can be sent to <a href="mailto:support@goclicktide.com">support@goclicktide.com</a>.</p>
+</main>
+<footer class="dl-footer">
+  <div class="dl-wrap dl-foot">
+    <div>&copy; 2026 Clicktide &middot; P.O. Box 304, Glen Cove, NY 11542 &middot; <a href="mailto:support@goclicktide.com">support@goclicktide.com</a></div>
+    <nav aria-label="Legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/billing-policy">Billing</a><a href="/sms-policy">SMS policy</a><a href="/help">Help</a></nav>
+  </div>
+</footer>
+</body>
+</html>

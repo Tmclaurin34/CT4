@@ -1,4 +1,4 @@
-// Clicktide campaign engine. 2026-11-28: one-time offer codes per customer (issueOfferCode, offer_codes). 2026-11-28: included postcards (a free monthly allowance per active plan is used before the wallet is charged; see claimFreePostcard). 2026-11-27 (package sms) — recipient-local quiet hours + double opt-in (see the SMS notes below). v43 — security hardening merged onto the retention-engine v42: complete reads (customers, campaigns and businesses are paged past PostgREST's 1,000-row cap; cooldowns, win-back touch counts and SMS usage come from one SQL aggregate, clicktide_campaign_state), the published "three win-back touches, then nothing until they return" rule, marketing vs. account/service text consent, per-business email opt-outs + signed per-business unsubscribe links, a real postal address in every email, wallet debits through the atomic ledger (clicktide_wallet_apply) BEFORE a postcard or overage text goes out, one live run at a time (job lease) with a run log (engine_runs) that ops-alerts watches, and a timed-out run resumes where it stopped. A provider that gives no clear answer (timeout) makes the touch "unconfirmed": kept paid, never refunded or retried; ledger, Lob and Resend calls carry the touch's idempotency key. A staff-triggered run needs clicktide_is_staff(['admin']) answered with the caller's own token (so the staff-MFA rule applies); gift auto-sends name their gift_catalog row. v42 — win-back runs on the shared retention engine: before each business is evaluated its customers' statuses are refreshed (clicktide_refresh_rhythm) and "inactive/win-back" fires on status drifting/at_risk (a campaign naming "at risk" or "drifting" targets just that status; an explicit day count still overrides). One-visit customers (no personal rhythm) are skipped unless the owner opts in (clicktide.winback_include_estimated). A customer gets a given win-back campaign at most once per drift episode. v26 — reliability: every external call (Resend/Twilio/Lob/Printify/Supabase) now has a hard timeout (fetchT), and the run stops cleanly at a 110s deadline (timed_out flag) so it can never hit the ~150s gateway 504; unreached businesses are picked up next hour (cooldown prevents double-sends). v25 — adds the New-Customer Welcome Journey: "welcome" / "second-visit nudge (day N)" / "win the second visit (day N)" triggers, keyed on first-visit recency + visit count, staged so a brand-new customer is walked through their first weeks (and the journey self-pauses the moment they return). v24 — win-back trigger is cadence-aware: "inactive/win-back" fires on each customer's OWN learned visit rhythm (effChurn), not a flat owner-set timer. Mirrors effChurn() in index.html so dashboard drift flags and actual sends agree. (v20 — backfill-safe: event triggers gated by campaign.created_at; 48h warm-up after first POS connection)
+// Clicktide campaign engine. 2026-11-28: owner-verified offer codes — each customer gets their own one-time counter code (offer_codes, redeemed on the business's counter device) and/or one of the business's own website codes (offer_code_pool); a code offer only goes out after the owner's counter/website test passed. 2026-11-27 (package sms) — recipient-local quiet hours + double opt-in (see the SMS notes below). v43 — security hardening merged onto the retention-engine v42: complete reads (customers, campaigns and businesses are paged past PostgREST's 1,000-row cap; cooldowns, win-back touch counts and SMS usage come from one SQL aggregate, clicktide_campaign_state), the published "three win-back touches, then nothing until they return" rule, marketing vs. account/service text consent, per-business email opt-outs + signed per-business unsubscribe links, a real postal address in every email, wallet debits through the atomic ledger (clicktide_wallet_apply) BEFORE a postcard or overage text goes out, one live run at a time (job lease) with a run log (engine_runs) that ops-alerts watches, and a timed-out run resumes where it stopped. A provider that gives no clear answer (timeout) makes the touch "unconfirmed": kept paid, never refunded or retried; ledger, Lob and Resend calls carry the touch's idempotency key. A staff-triggered run needs clicktide_is_staff(['admin']) answered with the caller's own token (so the staff-MFA rule applies); gift auto-sends name their gift_catalog row. v42 — win-back runs on the shared retention engine: before each business is evaluated its customers' statuses are refreshed (clicktide_refresh_rhythm) and "inactive/win-back" fires on status drifting/at_risk (a campaign naming "at risk" or "drifting" targets just that status; an explicit day count still overrides). One-visit customers (no personal rhythm) are skipped unless the owner opts in (clicktide.winback_include_estimated). A customer gets a given win-back campaign at most once per drift episode. v26 — reliability: every external call (Resend/Twilio/Lob/Printify/Supabase) now has a hard timeout (fetchT), and the run stops cleanly at a 110s deadline (timed_out flag) so it can never hit the ~150s gateway 504; unreached businesses are picked up next hour (cooldown prevents double-sends). v25 — adds the New-Customer Welcome Journey: "welcome" / "second-visit nudge (day N)" / "win the second visit (day N)" triggers, keyed on first-visit recency + visit count, staged so a brand-new customer is walked through their first weeks (and the journey self-pauses the moment they return). v24 — win-back trigger is cadence-aware: "inactive/win-back" fires on each customer's OWN learned visit rhythm (effChurn), not a flat owner-set timer. Mirrors effChurn() in index.html so dashboard drift flags and actual sends agree. (v20 — backfill-safe: event triggers gated by campaign.created_at; 48h warm-up after first POS connection)
 // SMS quiet hours (2026-11; recipient-local since 2026-11-27): customer texts leave only inside the
 // RECIPIENT's send window — 9:00–20:00, Sundays 12:00–20:00 (see smsRecipientWindow). The
 // recipient's zones come from the customer's own state, else their ZIP, else their phone's
@@ -80,9 +80,11 @@ type Campaign = {
   reward_code?: string;
   reward_link?: string;
   reward_expires?: string;
-  reward_unique?: boolean;    // give each customer their own one-time code (offer_codes)
-  reward_credit?: number | null;
+  reward_unique?: boolean;          // one-time code per customer (2026-11-28)
+  reward_where?: string | null;     // store | web | both
+  reward_credit?: number | null;    // dollars off (null for % off or a free item)
   reward_min_spend?: number | null;
+  reward_valid_days?: number | null;
 };
 
 type Customer = {
@@ -127,6 +129,8 @@ type Business = {
   address?: string;
   city?: string;
   zip?: string;
+  offers_store_verified_at?: string | null;
+  offers_web_verified_at?: string | null;
 };
 
 // clicktide_campaign_state(p_user): one jsonb value, so no row cap applies.
@@ -239,38 +243,6 @@ async function walletApplySafe(userId: string, delta: number, kind: string, desc
     return await walletApply(userId, delta, kind, description, reference, key);
   } catch {
     return await walletApply(userId, delta, kind, description, reference, key).catch(() => null);
-  }
-}
-
-// Included postcards (2026-11-28): each ACTIVE paid plan gets a monthly allowance of free
-// postcards (Local 10, Growth 30, Scale 75; clicktide_postcard_claim_free). The engine
-// claims a free slot first and only charges the wallet once the allowance is used up.
-// null = the allowance couldn't be checked (RPC missing or unreachable): the card is then
-// charged exactly as before, so this never mails an unpaid card by mistake.
-type FreePostcard = { free?: boolean; duplicate?: boolean; released?: boolean; used?: number; allowance?: number };
-async function claimFreePostcard(userId: string, key: string): Promise<FreePostcard | null> {
-  const call = () => rest("/rest/v1/rpc/clicktide_postcard_claim_free", {
-    method: "POST",
-    body: JSON.stringify({ p_user: userId, p_key: key }),
-  });
-  try {
-    const d = await call();
-    return d && typeof d === "object" ? d as FreePostcard : null;
-  } catch {
-    // A timed-out claim may have committed: asking again with the same key returns duplicate.
-    const d = await call().catch(() => null);
-    return d && typeof d === "object" ? d as FreePostcard : null;
-  }
-}
-async function releaseFreePostcard(userId: string, key: string) {
-  try {
-    await rest("/rest/v1/rpc/clicktide_postcard_release_free", {
-      method: "POST",
-      body: JSON.stringify({ p_user: userId, p_key: key }),
-    });
-    return true;
-  } catch {
-    return false;
   }
 }
 
@@ -674,37 +646,78 @@ function fmtExpires(d?: string): string {
     return "";
   }
 }
-// Build the digital-reward block (promo code / offer / online link) for email + SMS.
-// One-time codes (2026-11-28, needs migration 20261128050000_offer_codes.sql): when a
-// digital_gift campaign has reward_unique on, each customer gets their own code that works
-// once, with a claim link (goclicktide.com/o?c=CODE) that staff open to redeem it. null = the
-// code couldn't be issued (e.g. migration not applied yet): the shared reward_code is used,
-// exactly as before.
-const OFFER_LINK_BASE = "https://goclicktide.com/o?c=";
-async function issueOfferCode(userId: string, campaign: Campaign, customer: Customer): Promise<string | null> {
+// One-time offer codes (2026-11-28). Counter codes come from clicktide_offer_code_issue (Clicktide
+// checks them itself on the business's counter device, so the register never has to know them);
+// website codes are the business's OWN codes from offer_code_pool, created in their store's
+// discount settings, so their checkout accepts them. null = a needed code couldn't be issued
+// (pool empty / RPC down): the touch waits for the next run instead of going out without it.
+type OfferCodes = { store: string | null; web: string | null; expires: string | null };
+const OFFER_LINK_BASE = Deno.env.get("OFFER_LINK_BASE") || "https://goclicktide.com/o?c=";
+function offerKey(campaign: Campaign, customer: Customer, kind: string) {
+  return `offer:${kind}:${campaign.id}:${customer.id}:${new Date().toISOString().slice(0, 10)}`;
+}
+async function offerCodesFor(userId: string, campaign: Campaign, customer: Customer, needStore: boolean, needWeb: boolean): Promise<OfferCodes | null> {
   const offer = (campaign.reward_offer || "").trim();
-  if (!campaign.reward_unique || !offer) return null;
+  const days = Number(campaign.reward_valid_days || 0);
+  const expires = days > 0
+    ? new Date(Date.now() + days * 86400000).toISOString().slice(0, 10)
+    : (campaign.reward_expires || null);
+  const out: OfferCodes = { store: null, web: null, expires };
   try {
-    const data = await rest("/rest/v1/rpc/clicktide_offer_code_issue", {
-      method: "POST",
-      body: JSON.stringify({
-        p_user: userId, p_customer: customer.id, p_campaign: campaign.id, p_offer: offer,
-        p_credit: campaign.reward_credit ?? null, p_min_spend: campaign.reward_min_spend ?? 0,
-        p_expires: campaign.reward_expires || null, p_issue_key: sendKey(campaign, customer, "offer"),
-      }),
-    });
-    const code = data && typeof data === "object" ? String((data as { code?: string }).code || "") : "";
-    return code || null;
+    if (needStore) {
+      const d = await rest("/rest/v1/rpc/clicktide_offer_code_issue", {
+        method: "POST",
+        body: JSON.stringify({
+          p_user: userId, p_customer: customer.id, p_campaign: campaign.id, p_offer: offer,
+          p_credit: campaign.reward_credit ?? null, p_min_spend: campaign.reward_min_spend ?? 0,
+          p_expires: expires, p_issue_key: offerKey(campaign, customer, "store"),
+        }),
+      });
+      out.store = String((d as { code?: string } | null)?.code || "") || null;
+      if (!out.store) return null;
+    }
+    if (needWeb) {
+      const d = await rest("/rest/v1/rpc/clicktide_offer_pool_assign", {
+        method: "POST",
+        body: JSON.stringify({ p_user: userId, p_customer: customer.id, p_campaign: campaign.id, p_issue_key: offerKey(campaign, customer, "web") }),
+      });
+      out.web = String((d as { code?: string } | null)?.code || "") || null;
+      if (!out.web) return null;
+    }
+    return out;
   } catch {
     return null;
   }
 }
-
-function rewardBlocks(campaign: Campaign, uniqueCode: string | null = null): { html: string; sms: string } {
+function uniqueRewardBlocks(campaign: Campaign, codes: OfferCodes): { html: string; sms: string } {
   const offer = (campaign.reward_offer || "").trim();
-  const code = (uniqueCode || campaign.reward_code || "").trim();
-  // A one-time code's claim link replaces the shared online link (one link per message).
-  const link = uniqueCode ? OFFER_LINK_BASE + encodeURIComponent(uniqueCode) : normalizeUrl(campaign.reward_link || "");
+  const exp = fmtExpires(codes.expires || undefined);
+  const box = (c: string) => `<div style="margin:8px 0 2px"><span style="display:inline-block;border:2px dashed #0B62D6;border-radius:10px;padding:9px 18px;font-family:'Courier New',monospace;font-size:20px;font-weight:bold;letter-spacing:2px;color:#0B62D6">${escapeHtml(c)}</span></div>`;
+  const storeLink = codes.store ? OFFER_LINK_BASE + encodeURIComponent(codes.store) : "";
+  const webLink = normalizeUrl(campaign.reward_link || "");
+  const storePart = codes.store
+    ? `<div style="font-size:12px;color:#6B7280;margin-top:10px">In store: show this code at the counter</div>${box(codes.store)}<div style="margin:8px 0 0"><a href="${escapeHtml(storeLink)}" style="display:inline-block;background:#0B62D6;color:#FFFFFF;font-size:14px;font-weight:bold;text-decoration:none;padding:10px 22px;border-radius:8px">Open my code</a></div>`
+    : "";
+  const webPart = codes.web
+    ? `<div style="font-size:12px;color:#6B7280;margin-top:14px">Online: enter this code at checkout</div>${box(codes.web)}${webLink ? `<div style="margin:8px 0 0"><a href="${escapeHtml(webLink)}" style="display:inline-block;background:#0B62D6;color:#FFFFFF;font-size:14px;font-weight:bold;text-decoration:none;padding:10px 22px;border-radius:8px">Shop online</a></div>` : ""}`
+    : "";
+  const expRow = exp ? `<div style="font-size:12px;color:#6B7280;margin-top:10px">Works once · expires ${escapeHtml(exp)}</div>` : `<div style="font-size:12px;color:#6B7280;margin-top:10px">Works once</div>`;
+  const html = `<div style="margin:18px 0 0;background:#F0F6FF;border:1px solid #D6E4FF;border-radius:12px;padding:18px;text-align:center">${
+    offer ? `<div style="font-size:16px;font-weight:bold;color:#0B3D91">${escapeHtml(offer)}</div>` : ""
+  }${storePart}${webPart}${expRow}</div>`;
+  let sms = offer ? ` ${offer}.` : "";
+  if (codes.store) sms += ` In store, show code ${codes.store}: ${storeLink}`;
+  if (codes.web) sms += `${codes.store ? "." : ""} Online, use code ${codes.web} at checkout.`;
+  if (exp) sms += ` Expires ${exp}.`;
+  return { html, sms: " —" + sms };
+}
+
+// Build the digital-reward block (promo code / offer / online link) for email + SMS.
+function rewardBlocks(campaign: Campaign, codes: OfferCodes | null = null): { html: string; sms: string } {
+  if (codes && (codes.store || codes.web)) return uniqueRewardBlocks(campaign, codes);
+  const offer = (campaign.reward_offer || "").trim();
+  const code = (campaign.reward_code || "").trim();
+  const link = normalizeUrl(campaign.reward_link || "");
   if (!offer && !code && !link) return { html: "", sms: "" };
   const exp = fmtExpires(campaign.reward_expires);
   const codeRow = code
@@ -1557,9 +1570,9 @@ Deno.serve(async (req) => {
     sms_registered_businesses: 0,
     sms_unlinked_registrations: 0,
     sms_registry_error: false,
-    postcards_included: 0, // mailed from the plan's free monthly allowance (no charge)
-    free_postcard_release_failed: 0,
     skipped: {
+      offer_not_verified: 0, // code offer held: the owner hasn't passed the counter/website test yet
+      offer_code_unavailable: 0, // code offer held: no code could be issued (website codes ran out / RPC down)
       billing_inactive: 0,
       cooldown: 0,
       no_match: 0,
@@ -1636,7 +1649,7 @@ Deno.serve(async (req) => {
     const bizByUser = new Map<string, Business>();
     for (let i = 0; i < userIds.length; i += 100) {
       const rows = await restAll(
-        `/rest/v1/clicktide?user_id=in.(${userIds.slice(i, i + 100).join(",")})&select=id,user_id,email,business_name,churn_days,stripe_subscription_status,plan,logo_url,state,gift_auto_send,winback_include_estimated,address,city,zip&order=id.asc`,
+        `/rest/v1/clicktide?user_id=in.(${userIds.slice(i, i + 100).join(",")})&select=id,user_id,email,business_name,churn_days,stripe_subscription_status,plan,logo_url,state,gift_auto_send,winback_include_estimated,address,city,zip,offers_store_verified_at,offers_web_verified_at&order=id.asc`,
       ) as Business[];
       for (const b of rows) if (b.user_id && !bizByUser.has(b.user_id)) bizByUser.set(b.user_id, b);
     }
@@ -1968,45 +1981,31 @@ Deno.serve(async (req) => {
                 // refused mailing is refunded. The key means a repeat today never charges again.
                 const payKey = sendKey(campaign, customer, "postcard");
                 const label = plainText(campaign.name || campaign.trigger || "campaign");
-                let replay = false;
-                // Included postcards first: a free slot from the plan's monthly allowance.
-                const freeCard = await claimFreePostcard(userId, payKey);
-                if (freeCard?.released) {
-                  // This card was tried today on a free slot and Lob refused it: don't retry today.
-                  summary.skipped.duplicate_send++;
-                  await recordSend(campaign, customer, "postcard", "failed", "already attempted today (free postcard, not mailed)");
-                  touched();
+                const debit = await walletApplySafe(userId, -POSTCARD_PRICE, "postcard_debit", `Postcard: ${label}`, String(campaign.id), payKey);
+                if (!debit) {
+                  summary.skipped.wallet_unavailable++;
                   continue;
                 }
-                const isFree = !!freeCard?.free;
-                if (isFree) {
-                  replay = !!freeCard?.duplicate;
-                } else {
-                  const debit = await walletApplySafe(userId, -POSTCARD_PRICE, "postcard_debit", `Postcard: ${label}`, String(campaign.id), payKey);
-                  if (!debit) {
-                    summary.skipped.wallet_unavailable++;
-                    continue;
-                  }
-                  if (!debit.ok) {
-                    summary.skipped.postcard_wallet++;
-                    continue;
-                  }
-                  if (debit.duplicate) {
-                    // Today's charge for this card is already on the ledger: an earlier attempt
-                    // was refunded (Lob refused), or it mailed / never reached Lob and lost its
-                    // record. Only the refunded case stops here; otherwise the same Lob key
-                    // returns the card already made or makes the one already paid for.
-                    const refunded = await ledgerHas(`${payKey}:refund`);
-                    if (refunded !== false) {
-                      summary.skipped.duplicate_send++;
-                      if (refunded) {
-                        await recordSend(campaign, customer, "postcard", "failed", "already attempted and refunded today");
-                        touched();
-                      }
-                      continue;
+                if (!debit.ok) {
+                  summary.skipped.postcard_wallet++;
+                  continue;
+                }
+                let replay = false;
+                if (debit.duplicate) {
+                  // Today's charge for this card is already on the ledger: an earlier attempt
+                  // was refunded (Lob refused), or it mailed / never reached Lob and lost its
+                  // record. Only the refunded case stops here; otherwise the same Lob key
+                  // returns the card already made or makes the one already paid for.
+                  const refunded = await ledgerHas(`${payKey}:refund`);
+                  if (refunded !== false) {
+                    summary.skipped.duplicate_send++;
+                    if (refunded) {
+                      await recordSend(campaign, customer, "postcard", "failed", "already attempted and refunded today");
+                      touched();
                     }
-                    replay = true;
+                    continue;
                   }
+                  replay = true;
                 }
                 const pcMessage = fillTemplate(campaign.message || "We miss you, {{first_name}}! Come see us at {{business_name}} soon.", customer, businessName);
                 const result = await sendPostcard(customer, businessName, pcMessage, whiteLabel, brandColor, logoUrl, String(campaign.postcard_design || "bold"), payKey);
@@ -2039,20 +2038,13 @@ Deno.serve(async (req) => {
                   }).catch(() => {});
                   touched();
                   summary.sent++;
-                  if (isFree) summary.postcards_included++;
                   bizSends++;
                 } else if (result.ambiguous) {
-                  // Lob may have accepted it: keep the charge (or the free slot), start the cooldown, and leave
+                  // Lob may have accepted it: keep the charge, start the cooldown, and leave
                   // it for ops (the row is listed under failed sends as 'unconfirmed').
                   touched();
                   summary.unconfirmed++;
                   bizSends++;
-                } else if (isFree) {
-                  if (!(await releaseFreePostcard(userId, payKey))) {
-                    summary.free_postcard_release_failed++;
-                    globalThis.console?.error(`free postcard release failed for ${payKey}`);
-                  }
-                  summary.failed++;
                 } else {
                   const refund = await walletApplySafe(userId, POSTCARD_PRICE, "postcard_refund", `Refund: postcard not mailed (${label})`, String(campaign.id), `${payKey}:refund`);
                   if (!refund?.ok) {
@@ -2086,7 +2078,26 @@ Deno.serve(async (req) => {
             }
             const template = campaign.message || "Thanks for being a customer of {{business_name}}!";
             const message = fillTemplate(template, customer, businessName);
-            const reward = rewardBlocks(campaign, dryRun ? null : await issueOfferCode(userId, campaign, customer));
+            // One-time code offers wait until the owner's counter / website test has passed, and
+            // until each needed code is in hand (no cooldown starts, so the next run retries).
+            let offerCodes: OfferCodes | null = null;
+            if (campaign.reward_unique && (campaign.reward_offer || "").trim()) {
+              const where = campaign.reward_where || "store";
+              const needStore = where !== "web";
+              const needWeb = where !== "store";
+              if ((needStore && !biz?.offers_store_verified_at) || (needWeb && !biz?.offers_web_verified_at)) {
+                summary.skipped.offer_not_verified++;
+                continue;
+              }
+              if (!dryRun) {
+                offerCodes = await offerCodesFor(userId, campaign, customer, needStore, needWeb);
+                if (!offerCodes) {
+                  summary.skipped.offer_code_unavailable++;
+                  continue;
+                }
+              }
+            }
+            const reward = rewardBlocks(campaign, offerCodes);
             let sentSomething = false;
             let closed = false; // recorded without a confirmed send (unknown outcome / already done today)
             let failure = "";

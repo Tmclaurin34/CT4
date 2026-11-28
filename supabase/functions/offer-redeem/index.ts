@@ -1,5 +1,5 @@
 // One-time offer codes: the customer's claim view and the staff redeem / undo actions.
-// NOT deployed yet (held until the Shopify review is complete). Needs migration
+// Deployed 2026-11-28 (owner approved offer codes). Needs migration
 // 20261128050000_offer_codes.sql. Deploy with verify_jwt=false: the page calling it is public
 // (goclicktide.com/o?c=CODE) and the staff device proves itself with its device token.
 //
@@ -52,7 +52,7 @@ async function underLimit(bucket: string, windowSeconds: number, max: number) {
   }
 }
 
-const CODE_RE = /^[A-Z]{2,4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
+const CODE_RE = /^[A-Z]{1,4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(req) });

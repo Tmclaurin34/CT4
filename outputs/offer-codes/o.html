@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Your offer · Clicktide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0F1115;--ink2:#3B3F46;--muted:#6B6F76;--line:#E7E8EB;--panel:#F6F7F9;--orange:#E35B1F;--g-bg:#E6F6EB;--g-tx:#1C7A3A;--r-bg:#FDE9E7;--r-tx:#B42318;--a-bg:#FFF2D9;--a-tx:#8A5A00}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--ink);font:400 16px/1.6 "DM Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:440px;margin:0 auto;padding:28px 20px 60px;text-align:center}
+h1,h2{font-family:"Nunito","DM Sans",sans-serif;letter-spacing:-.02em;margin:0}
+.mut{color:var(--muted);font-size:14px}
+.card{background:var(--panel);border-radius:24px;padding:24px;margin-top:18px}
+.big{font:900 48px/1.05 "Nunito"}
+.code{display:inline-block;font:600 22px/1 ui-monospace,Menlo,monospace;letter-spacing:2px;border:2px dashed var(--ink2);border-radius:12px;padding:12px 18px;margin:14px 0 6px;background:#fff}
+#qr{display:flex;justify-content:center;margin:14px 0 4px}
+#qr img,#qr canvas{width:180px;height:180px;image-rendering:pixelated}
+.state{border-radius:24px;padding:28px 20px;margin-top:18px}
+.ok{background:var(--g-bg);color:var(--g-tx)}.no{background:var(--r-bg);color:var(--r-tx)}.warn{background:var(--a-bg);color:var(--a-tx)}
+.state h2{font-size:30px;line-height:1.15;margin:6px 0}
+.btn{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;font:600 16px/1 "DM Sans";cursor:pointer;border:0;padding:14px 26px;margin-top:16px}
+.btn-undo{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+.btn-go{background:var(--orange);color:#fff}
+.demo{margin-top:26px;border-top:1px solid var(--line);padding-top:16px}
+.demo button{font:500 13px "DM Sans";border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;margin:3px;cursor:pointer}
+.tag{position:fixed;right:12px;bottom:12px;background:var(--ink);color:#fff;font-size:12px;border-radius:999px;padding:5px 11px}
+</style>
+</head>
+<body>
+<main id="app"><p class="mut">Loading…</p></main>
+<div class="tag" id="tag" hidden>Demo · nothing is real</div>
+<script>
+// goclicktide.com/o?c=CODE
+// - Customer's own phone: shows their offer, their code and a QR to show at the counter.
+// - A staff "redeem device" (set up once by the owner; its token is in this browser's storage):
+//   opening the link REDEEMS the code in one step, with a 2-minute Undo.
+// - ?demo=1: works without the server (preview), with buttons to switch between screens.
+var API="https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1/offer-redeem";
+var q=new URLSearchParams(location.search),code=(q.get("c")||"").toUpperCase(),DEMO=q.get("demo")==="1";
+var DEVKEY="ct_redeem_device",app=document.getElementById("app");
+if(DEMO){document.getElementById("tag").hidden=false;if(!code)code="JUNE-7K3Q-MXBW";}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+function money(n){return n==null?"":"$"+(Math.round(n*100)/100).toLocaleString();}
+function dateStr(d){if(!d)return "";var x=new Date(d+"T12:00:00");return x.toLocaleDateString(undefined,{month:"short",day:"numeric"});}
+function time(t){return new Date(t).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});}
+
+var DEMO_STATE={status:"open",used_at:null};
+var DEMO_OFFER={found:true,business:"June's Beauty Bar",first_name:"Maria",offer:"$10 off your next visit",credit:10,min_spend:75,expires_on:"2026-12-28"};
+async function call(action){
+  if(DEMO){
+    if(action==="view")return Object.assign({},DEMO_OFFER,{status:DEMO_STATE.status});
+    if(action==="redeem"){
+      if(!staffToken())return{result:"not_a_staff_device"};
+      if(DEMO_STATE.status==="used")return{result:"already_used",used_at:DEMO_STATE.used_at,customer:"Maria Lopez"};
+      if(DEMO_STATE.status==="closed")return{result:"closed",customer:"Maria Lopez"};
+      if(DEMO_STATE.status==="expired")return{result:"expired",expires_on:"2026-11-27",customer:"Maria Lopez"};
+      DEMO_STATE={status:"used",used_at:new Date().toISOString()};
+      return{result:"redeemed",customer:"Maria Lopez",offer:DEMO_OFFER.offer,credit:10,min_spend:75,undo_until:new Date(Date.now()+120000).toISOString()};
+    }
+    if(action==="undo"){DEMO_STATE={status:"open",used_at:null};return{result:"undone"};}
+  }
+  var r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:action,code:code,device_token:staffToken()||undefined})});
+  return r.json();
+}
+function staffToken(){try{return localStorage.getItem(DEVKEY)||"";}catch(e){return "";}}
+
+function customerView(o){
+  if(!o||o.result==="not_found"||!o.found){app.innerHTML='<h1 style="font-size:26px">This code wasn\'t found</h1><p class="mut">Check the link in your message, or ask the business.</p>';return;}
+  var head='<div class="mut">'+esc(o.business)+'</div>';
+  if(o.status==="used"||o.status==="closed"){app.innerHTML=head+'<div class="state warn"><h2>Already used</h2><p>Thanks for coming back'+(o.first_name?", "+esc(o.first_name):"")+'!</p></div>';return;}
+  if(o.status==="expired"){app.innerHTML=head+'<div class="state warn"><h2>This offer has expired</h2><p>It ended '+esc(dateStr(o.expires_on))+'.</p></div>';return;}
+  app.innerHTML=head+
+    '<div class="card"><div class="mut">'+(o.first_name?"Just for "+esc(o.first_name):"Your offer")+'</div>'+
+    '<div class="big">'+(o.credit?money(o.credit)+" off":esc(o.offer))+'</div>'+
+    (o.min_spend>0?'<div class="mut">on a visit of '+money(o.min_spend)+' or more</div>':'')+
+    '<div id="qr"></div><div class="code">'+esc(code)+'</div>'+
+    '<div class="mut">Show this screen at the counter'+(o.expires_on?" · expires "+esc(dateStr(o.expires_on)):"")+'</div></div>'+
+    '<p class="mut" style="margin-top:14px">Works once. Staff scan it, and it\'s done.</p>';
+  drawQR();
+}
+function drawQR(){
+  var el=document.getElementById("qr");if(!el||typeof qrcode==="undefined")return;
+  var u=location.origin+location.pathname+"?c="+encodeURIComponent(code)+(DEMO?"&demo=1":"");
+  var qr=qrcode(0,"M");qr.addData(u);qr.make();el.innerHTML=qr.createImgTag(6,8,"QR code for this offer");
+}
+var undoTimer=null;
+function staffView(r){
+  if(undoTimer){clearInterval(undoTimer);undoTimer=null;}
+  var who=r.customer?'<p style="margin:4px 0 0">'+esc(r.customer)+'</p>':'';
+  if(r.result==="redeemed"){
+    if(r.test){app.innerHTML='<div class="state ok"><div style="font-size:15px">Test passed</div><h2>Your counter is ready</h2><p>Real customer codes will work on this device exactly like this. Offers can now go out.</p></div>';demoBar();return;}
+    app.innerHTML='<div class="state ok"><div style="font-size:15px">Code accepted</div><h2>Give '+esc((r.customer||"them").split(" ")[0])+' '+(r.credit?money(r.credit)+" off":esc(r.offer))+'</h2>'+
+      (r.min_spend>0?'<div>Purchase must be '+money(r.min_spend)+' or more</div>':'')+who+
+      '<div class="mut" style="color:var(--g-tx);margin-top:8px">Already marked used. Nothing else to tap.</div>'+
+      '<button class="btn btn-undo" id="undo">Undo · <span id="cd">2:00</span></button></div>';
+    var until=new Date(r.undo_until||Date.now()+120000).getTime();
+    undoTimer=setInterval(function(){var s=Math.max(0,Math.round((until-Date.now())/1000)),b=document.getElementById("undo"),c=document.getElementById("cd");
+      if(c)c.textContent=Math.floor(s/60)+":"+String(s%60).padStart(2,"0");if(s<=0&&b){b.remove();clearInterval(undoTimer);}},500);
+    document.getElementById("undo").onclick=async function(){var u=await call("undo");app.innerHTML=u.result==="undone"?'<div class="state warn"><h2>Scan undone</h2><p>The code works again.</p></div>':'<div class="state no"><h2>Too late to undo</h2><p>The 2 minutes have passed.</p></div>';demoBar();};
+  }else if(r.result==="already_used"){
+    app.innerHTML='<div class="state no"><h2>Already used</h2><p>Redeemed '+(r.used_at?esc(dateStr(r.used_at.slice(0,10)))+" at "+esc(time(r.used_at)):"before")+'</p>'+who+'</div>';
+  }else if(r.result==="closed"){
+    app.innerHTML='<div class="state no"><h2>Already used</h2><p>This customer bought again since the code was sent, so it closed itself.</p>'+who+'</div>';
+  }else if(r.result==="expired"){
+    app.innerHTML='<div class="state no"><h2>Expired</h2><p>It ended '+esc(dateStr(r.expires_on))+'.</p>'+who+'</div>';
+  }else if(r.result==="not_for_this_business"){
+    app.innerHTML='<div class="state no"><h2>Not for this business</h2><p>This code belongs to a different business.</p></div>';
+  }else{
+    app.innerHTML='<div class="state no"><h2>Couldn\'t check this code</h2><p>Try again in a moment.</p></div>';
+  }
+  if(!DEMO&&staffToken()){var a=document.createElement('button');a.className='btn btn-undo';a.textContent='Check another code';a.onclick=function(){code='';history.replaceState(null,'',location.pathname);counterView();};app.appendChild(a);}
+  demoBar();
+}
+function counterView(msg){
+  app.innerHTML='<h1 style="font-size:28px">Counter</h1><p class="mut">Scan a customer\'s QR with this device\'s camera, or type their code.</p>'+
+    '<div class="card"><input id="cin" autocapitalize="characters" autocomplete="off" placeholder="e.g. JUNE-7K3Q-MXBW" style="width:100%;font:600 20px ui-monospace,Menlo,monospace;letter-spacing:1px;text-transform:uppercase;padding:14px;border:1.5px solid var(--line);border-radius:14px;text-align:center"/>'+
+    '<button class="btn btn-go" id="cgo" style="width:100%">Check code</button>'+(msg?'<p style="color:var(--r-tx);margin:10px 0 0">'+esc(msg)+'</p>':'')+'</div>';
+  var go=function(){var v=(document.getElementById("cin").value||"").trim().toUpperCase();if(!/^[A-Z]{1,4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(v)){counterView("That doesn't look like a code. Check the letters and try again.");return;}code=v;start();};
+  document.getElementById("cgo").onclick=go;document.getElementById("cin").onkeydown=function(e){if(e.key==="Enter")go();};
+  setTimeout(function(){var i=document.getElementById("cin");if(i)i.focus();},50);
+}
+function demoBar(){
+  if(!DEMO)return;
+  var d=document.createElement("div");d.className="demo";
+  d.innerHTML='<div class="mut" style="margin-bottom:6px">Demo controls</div>'+
+    '<button data-d="customer">Customer\'s phone</button><button data-d="staff">Staff device scans</button>'+
+    '<button data-d="reset">Reset code</button><button data-d="closed">Bought again (POS closes it)</button><button data-d="expired">Expired</button>';
+  app.appendChild(d);
+  d.onclick=function(e){var k=e.target.getAttribute("data-d");if(!k)return;
+    if(k==="customer"){try{localStorage.removeItem(DEVKEY);}catch(_){}}
+    if(k==="staff"){try{localStorage.setItem(DEVKEY,"demo-device-token-0000000000000000000000");}catch(_){}}
+    if(k==="reset")DEMO_STATE={status:"open",used_at:null};
+    if(k==="closed")DEMO_STATE={status:"closed",used_at:new Date().toISOString()};
+    if(k==="expired")DEMO_STATE={status:"expired",used_at:null};
+    start();};
+}
+async function start(){
+  if(!code&&staffToken()){counterView();return;}
+  if(!/^[A-Z]{1,4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code)){app.innerHTML='<h1 style="font-size:26px">This code wasn\'t found</h1><p class="mut">Check the link in your message.</p>';return;}
+  try{
+    if(staffToken()){staffView(await call("redeem"));}
+    else{customerView(await call("view"));demoBar();}
+  }catch(e){app.innerHTML='<div class="state no"><h2>Couldn\'t load this offer</h2><p>Check your connection and try again.</p></div>';demoBar();}
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" onload="drawQR()"></script>
+<script>start();</script>
+</body>
+</html>

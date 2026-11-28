@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>SMS Program Policy — Clicktide</title>
+<meta name="description" content="Clicktide's SMS program: how customers opt in, message frequency, rates, and how to opt out with STOP."/>
+<link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0F1115; --ink2:#3B3F46; --muted:#6B6F76; --line:#E7E8EB; --panel:#F6F7F9; --bg:#FFFFFF;
+  --orange:#E35B1F; --orange-d:#C94E17;
+  --g-bg:#E6F6EB; --g-tx:#1C7A3A; --r-bg:#FDE9E7; --r-tx:#B42318; --b-bg:#E7F0FF; --b-tx:#2453C2;
+  --l-bg:#F1EAFE; --l-tx:#5B36B0; --t-bg:#E3F5F4; --t-tx:#0F6560;
+  --radius:18px;
+}
+*{box-sizing:border-box}
+
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.65 "DM Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:3px solid #2453C2;outline-offset:3px;border-radius:8px}
+/* Droplist header + footer */
+.dl-wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+.dl-nav{background:#fff;border-bottom:1px solid var(--line)}
+.dl-nav-in{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:68px}
+.dl-brand{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--ink);font:900 23px/1 "Nunito","DM Sans",sans-serif;letter-spacing:-.03em;flex:none}
+.dl-brand svg{width:30px;height:30px;flex:none}
+.dl-nav-cta{display:flex;gap:10px;align-items:center;min-width:0}
+.dl-btn{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;font:600 14px/1 "DM Sans",sans-serif;text-decoration:none;padding:9px 16px;white-space:nowrap;transition:background .15s ease,border-color .15s ease}
+.dl-btn-ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+.dl-btn-ghost:hover{border-color:#cfd2d7}
+.dl-btn-ink{background:var(--ink);color:#fff;border:1.5px solid var(--ink)}
+.dl-btn-ink:hover{background:#2a2e35;border-color:#2a2e35}
+.dl-footer{padding:56px 0 48px;color:var(--muted);font-size:14px;line-height:1.6}
+.dl-foot{display:flex;justify-content:space-between;gap:14px 24px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:28px}
+.dl-foot nav{display:flex;gap:8px 20px;flex-wrap:wrap}
+.dl-foot a{color:inherit;text-decoration:none}
+.dl-foot a:hover{color:var(--ink)}
+@media (max-width:560px){
+  .dl-wrap{padding:0 16px}
+  .dl-nav-cta{gap:6px}
+  .dl-btn{padding:8px 12px;font-size:13.5px}
+}
+@media (max-width:400px){
+  .dl-brand{font-size:20px;gap:6px}
+  .dl-brand svg{width:26px;height:26px}
+  .dl-btn{padding:8px 11px;font-size:12.5px}
+  .dl-footer{padding:40px 0 36px}
+}
+
+main{max-width:760px;margin:0 auto;padding:56px 24px 8px}
+h1,h2,h3{font-family:"Nunito","DM Sans",sans-serif;color:var(--ink);letter-spacing:-.02em;line-height:1.2}
+h1{font-size:clamp(32px,5vw,44px);font-weight:900;line-height:1.08;letter-spacing:-.025em;margin:0 0 14px}
+h2{font-size:22px;font-weight:800;margin:44px 0 10px}
+h3{font-size:18px;font-weight:800;margin:28px 0 8px}
+p,li{color:var(--ink2);font-size:16px;overflow-wrap:break-word}
+ul{padding-left:22px}
+li{margin:0 0 6px}
+main a{color:var(--ink);text-decoration:underline;text-decoration-color:#C3C6CC;text-underline-offset:3px}
+main a:hover{text-decoration-color:var(--ink)}
+.meta{display:inline-block;background:var(--b-bg);color:var(--b-tx);font-size:13px;font-weight:600;line-height:1.4;padding:5px 12px;border-radius:999px;margin:0 0 28px}
+.box{background:var(--panel);border-radius:var(--radius);padding:22px 24px;margin:24px 0;color:var(--ink2);font-size:16px;overflow-wrap:break-word}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.6;color:var(--ink2)}
+.check input{accent-color:var(--ink);flex:none}
+.muted{font-size:13px;color:var(--muted)}
+@media (max-width:560px){
+  main{padding:36px 16px 0}
+  .box{padding:18px;border-radius:16px}
+  h2{margin-top:36px}
+}
+</style>
+</head>
+<body>
+<nav class="dl-nav" aria-label="Clicktide">
+  <div class="dl-wrap dl-nav-in">
+    <a class="dl-brand" href="/" aria-label="Clicktide home"><svg viewBox="-22 -22 44 44" aria-hidden="true" class="dl-mark"><defs><linearGradient id="dlg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7CC4FA"/><stop offset="100%" stop-color="#2F80ED"/></linearGradient></defs><g><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(0)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(51.4)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(102.8)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(154.2)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(205.6)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(257)"/><path d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z" fill="url(#dlg)" transform="rotate(308.4)"/></g><circle r="4.5" fill="#fff"/></svg>Clicktide</a>
+    <div class="dl-nav-cta">
+      <a class="dl-btn dl-btn-ghost" href="/">Log in</a>
+      <a class="dl-btn dl-btn-ink" href="/">Start free trial</a>
+    </div>
+  </div>
+</nav>
+<main>
+  <h1>Clicktide SMS Program Policy</h1>
+  <p><strong>Clicktide</strong> is operated by <strong>Six Seasons Partners LLC</strong> — the registered messaging brand for this program. goclicktide.com · support@goclicktide.com</p>
+
+  <h2>What this program is</h2>
+  <p>Clicktide sends customer loyalty and appreciation text messages on behalf of local businesses (gyms, salons, cafés, retail shops, and similar) to their own customers who have given express written consent. Message types include thank-you notes, one-question satisfaction surveys (reply 1–5), win-back check-ins, and notifications that a thank-you gift has shipped. Recipients are never purchased lists — every recipient is an existing customer of the sending business.</p>
+
+  <h2>How customers opt in</h2>
+  <p>Consent is collected by the participating business before any message is sent, through one of these methods:</p>
+  <ul>
+    <li><strong>Digital check-in:</strong> the customer checks an unchecked-by-default consent box on the business's Clicktide check-in page (shown below).</li>
+    <li><strong>In-store / signup:</strong> the customer writes their phone number on a paper or tablet signup form and gives written consent by signing or initialing next to this statement: <em>"I agree to receive marketing and account texts (offers, rewards, win-back, and service updates) from this business via Clicktide. Message frequency varies. Msg &amp; data rates may apply. Reply HELP for help, STOP to opt out. Consent is not a condition of any purchase."</em> The signed consent and a timestamp are stored on that customer's record.</li>
+  </ul>
+  <p>Consent is recorded with a timestamp. Opt-in is never required to make a purchase, and consent is specific to the individual business.</p>
+
+  <div class="box">
+    <p style="margin-top:0;font-weight:bold;font-size:13px">The exact consent boxes customers see (both unchecked by default):</p>
+    <label class="check"><input type="checkbox" disabled style="margin-top:2px"/>
+      <span>By checking this box you agree to receive <b>marketing texts</b> (offers, rewards, and win-back messages) from this business via Clicktide. Message frequency varies. Msg &amp; data rates may apply. Reply HELP for help, STOP to opt out.</span></label>
+    <label class="check" style="margin-top:10px"><input type="checkbox" disabled style="margin-top:2px"/>
+      <span>By checking this box you agree to receive <b>account &amp; service texts</b> (visit reminders and gift or order updates) from this business via Clicktide. Message frequency varies. Msg &amp; data rates may apply. Reply HELP for help, STOP to opt out.</span></label>
+    <p class="muted" style="margin-bottom:0">Live example: the customer check-in page at <a href="checkin.html">https://goclicktide.com/checkin</a>. No box is pre-checked and no consent is assumed — the customer must take an affirmative action on every opt-in path, whether digital check-in or in-store signup.</p>
+  </div>
+
+  <h2>Message frequency, rates, and opt-out</h2>
+  <ul>
+    <li>Message frequency varies by business and customer activity (typically 1–4 messages per month).</li>
+    <li>Message and data rates may apply. Contact your wireless provider for details about your plan.</li>
+    <li>Reply <strong>STOP</strong> to any message to opt out — you will receive a one-time confirmation and no further messages. Reply <strong>START</strong> to the same number to re-subscribe.</li>
+    <li>Reply <strong>HELP</strong> for help, or contact <a href="mailto:support@goclicktide.com">support@goclicktide.com</a>.</li>
+    <li>Opt-outs are honored instantly and recorded.</li>
+    <li>Carriers are not liable for delayed or undelivered messages.</li>
+  </ul>
+
+  <h2>Eligibility</h2>
+  <p>This program is intended for individuals 18 years of age or older, or with the consent of a parent or legal guardian. The program is available on major U.S. carriers; messaging interoperability outside the U.S. is not guaranteed.</p>
+
+  <h2>Changes to this program</h2>
+  <p>We may update this policy or the program's features from time to time. Material changes will be posted on this page with continued program participation constituting acceptance.</p>
+
+  <h2>Privacy</h2>
+  <p>No mobile information will be shared with third parties or affiliates for marketing or promotional purposes. Phone numbers and opt-in records are used solely to deliver the messages described above. See our full <a href="privacy.html">Privacy Policy</a> and <a href="terms.html">Terms of Use</a>.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about this program: <a href="mailto:support@goclicktide.com">support@goclicktide.com</a></p>
+</main>
+<footer class="dl-footer">
+  <div class="dl-wrap dl-foot">
+    <div>&copy; 2026 Clicktide &middot; P.O. Box 304, Glen Cove, NY 11542 &middot; <a href="mailto:support@goclicktide.com">support@goclicktide.com</a></div>
+    <nav aria-label="Legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/billing-policy">Billing</a><a href="/sms-policy">SMS policy</a><a href="/help">Help</a></nav>
+  </div>
+</footer>
+</body>
+</html>

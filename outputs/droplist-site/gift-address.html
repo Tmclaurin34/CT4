@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Where should we send your gift?</title>
+  <meta name="robots" content="noindex"/>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+  <meta name="theme-color" content="#FFFFFF"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Caveat:wght@600&display=swap" rel="stylesheet">
+  <style>
+:root{
+  --ink:#0F1115; --ink2:#3B3F46; --muted:#6B6F76; --line:#E7E8EB; --panel:#F6F7F9; --bg:#FFFFFF;
+  --orange:#E35B1F; --orange-d:#C94E17;
+  --g-bg:#E6F6EB; --g-tx:#1C7A3A; --r-bg:#FDE9E7; --r-tx:#B42318; --b-bg:#E7F0FF; --b-tx:#2453C2;
+  --l-bg:#F1EAFE; --l-tx:#5B36B0; --t-bg:#E3F5F4; --t-tx:#0F6560;
+  --radius:18px;
+}
+*{box-sizing:border-box}
+
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.6 "DM Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px 16px}
+.card{max-width:430px;width:100%;background:#fff;border:1px solid var(--line);border-radius:22px;padding:32px 26px;text-align:center;box-shadow:0 18px 50px rgba(15,17,21,.08)}
+.gift{font-size:44px;margin-bottom:10px}
+h1{font:900 24px/1.25 "Nunito","DM Sans",sans-serif;letter-spacing:-.02em;color:var(--ink);margin:0 0 8px}
+p{color:var(--muted);font-size:15px;margin:0 0 20px}
+.fl{display:block;text-align:left;font-size:12px;font-weight:600;color:var(--ink2);margin:14px 0 6px;text-transform:uppercase;letter-spacing:.05em}
+input{width:100%;background:var(--panel);border:1.5px solid var(--line);border-radius:12px;color:var(--ink);font:400 16px "DM Sans",sans-serif;padding:12px 14px;outline:none;-webkit-appearance:none;appearance:none}
+input:focus{border-color:#9DB7EA;background:#fff}
+.row{display:flex;gap:10px}
+.row>div{flex:1;min-width:0}
+button{width:100%;margin-top:22px;background:var(--orange);color:#fff;font:700 16px/1.2 "DM Sans",sans-serif;border:none;border-radius:999px;padding:15px;cursor:pointer;box-shadow:0 8px 22px rgba(227,91,31,.25);transition:background .15s ease}
+button:hover{background:var(--orange-d)}
+button:disabled{opacity:.6;cursor:default}
+:focus-visible{outline:3px solid #2453C2;outline-offset:3px}
+.err{color:var(--r-tx);background:var(--r-bg);border-radius:12px;padding:10px 12px;font-size:13.5px;margin-top:12px;display:none}
+.muted{font-size:12px;color:var(--muted);margin-top:18px}
+.hide{display:none}
+@media (max-width:380px){.card{padding:26px 18px}}
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <h1 id="hd">One moment…</h1>
+  <p id="sub"></p>
+  <form id="f" class="hide" onsubmit="return false">
+    <label class="fl">Street address</label>
+    <input id="addr" autocomplete="street-address" placeholder="123 Main St"/>
+    <label class="fl">City</label>
+    <input id="city" autocomplete="address-level2" placeholder="Brooklyn"/>
+    <div class="row">
+      <div><label class="fl">State</label><input id="state" autocomplete="address-level1" placeholder="NY" maxlength="14"/></div>
+      <div><label class="fl">ZIP</label><input id="zip" autocomplete="postal-code" placeholder="11201" inputmode="numeric" maxlength="10"/></div>
+    </div>
+    <button id="go" onclick="send()">Send my gift here →</button>
+    <div class="err" id="err"></div>
+  </form>
+  <div class="muted">Your address is only used for mail from this business. Powered by Clicktide.</div>
+</div>
+<script>
+var API="https://hmihfncvahsdlmefyxyg.supabase.co/functions/v1/gift-address";
+var T=new URLSearchParams(location.search).get("t")||"";
+var hd=document.getElementById("hd"),sub=document.getElementById("sub"),f=document.getElementById("f"),err=document.getElementById("err");
+function fail(msg){hd.textContent="Hmm, that link didn't work";sub.textContent=msg||"Please use the latest link we sent you, or just reply to the message and we'll sort it out.";}
+function val(id){return document.getElementById(id).value.trim();}
+async function load(){
+  if(!T){fail();return;}
+  try{
+    var r=await fetch(API+"?t="+encodeURIComponent(T));
+    var d=await r.json();
+    if(!r.ok||!d.ok){fail(d&&d.error);return;}
+    if(d.has_address){hd.textContent="You're all set, "+d.first_name+"!";sub.textContent="We already have your mailing address on file. "+d.business_name+"'s gift is on its way — keep an eye on your mailbox.";return;}
+    hd.textContent=d.business_name+" has something to mail you, "+d.first_name+"!";
+    sub.textContent="Pop in your mailing address below and we'll get it on its way. Takes 20 seconds.";
+    f.classList.remove("hide");
+  }catch(e){fail();}
+}
+async function send(){
+  var b=document.getElementById("go");err.style.display="none";
+  if(!val("addr")||!val("city")||!val("state")||!val("zip")){err.textContent="Please fill in every field.";err.style.display="block";return;}
+  b.disabled=true;b.textContent="Saving…";
+  try{
+    var r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({t:T,address:val("addr"),city:val("city"),state:val("state"),zip:val("zip")})});
+    var d=await r.json();
+    if(!r.ok||!d.ok){err.textContent=(d&&d.error)||"Something went wrong — please try again.";err.style.display="block";b.disabled=false;b.textContent="Send my gift here →";return;}
+    f.classList.add("hide");
+    hd.textContent="Perfect — it's on its way!";
+    sub.textContent="Keep an eye on your mailbox. (You can close this page.)";
+  }catch(e){err.textContent="Network hiccup — please try again.";err.style.display="block";b.disabled=false;b.textContent="Send my gift here →";}
+}
+load();
+</script>
+</body>
+</html>
