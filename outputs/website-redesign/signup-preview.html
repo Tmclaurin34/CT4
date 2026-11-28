@@ -91,7 +91,47 @@ var state={step:0,type:"Salon",pos:"",sel:1};
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
 function money(n){return "$"+Math.round(n).toLocaleString();}
 
+// The salon is the SAME sample business as the dashboard demo (?demo=1): its 14 showcase
+// customers plus ctDemoMore(14), copied byte-for-byte from site-patches/plan_ready_card_patch.py,
+// with rhythm worked out from the dates exactly like the dashboard card does.
+function dDay(n){return new Date(Date.now()-Math.round(n*86400000)).toISOString();}
+var SHOWCASE=[[14,1240,420,9],[9,830,360,12],[11,610,300,21],[22,2980,500,7],[6,540,210,58],[8,720,260,74],[4,360,150,96],[5,430,180,52],[2,95,9,9],[1,48,3,3],[1,52,12,12],[7,690,240,33],[3,170,120,40],[16,1860,460,5]];
+function ctDemoMore(start){
+  var seed=20261128;function rnd(){seed|=0;seed=seed+0x6D2B79F5|0;var t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;}
+  var FN=["Olivia","Emma","Ava","Mia","Isabella","Amelia","Harper","Evelyn","Abigail","Ella","Camila","Luna","Sofia","Avery","Scarlett","Layla","Nora","Zoe","Riley","Lily","Maya","Elena","Naomi","Aria","Valentina","Jasmine","Leah","Gabriela","Nia","Imani","Rosa","Tanya","Keisha","Lauren","Megan","Rachel","Dana","Carmen","Yara","Sasha"];
+  var LN=["Johnson","Williams","Brown","Jones","Garcia","Miller","Davis","Rodriguez","Wilson","Anderson","Thomas","Taylor","Moore","Jackson","Martin","Lee","Thompson","White","Harris","Clark","Lewis","Robinson","Walker","Young","Allen","King","Wright","Scott","Torres","Nguyen","Hill","Flores","Green","Adams","Baker","Rivera","Campbell","Mitchell","Carter","Roberts"];
+  var out=[],N=586;
+  for(var k=0;k<N;k++){
+    var iv=24+Math.round(rnd()*30);
+    var visits=1+Math.floor(Math.pow(rnd(),1.6)*20);
+    var avg=Math.round(55+Math.pow(rnd(),1.3)*95);
+    var roll=rnd(),last;
+    if(roll<0.74)last=Math.round(rnd()*iv*1.3);
+    else if(roll<0.88)last=Math.round(iv*(1.6+rnd()*1.4));
+    else last=Math.round(iv*(3+rnd()*4));
+    var first=last+Math.round((visits-1)*iv*(0.9+rnd()*0.2));
+    var fn=FN[Math.floor(rnd()*FN.length)],ln=LN[Math.floor(rnd()*LN.length)];
+    var hasEmail=rnd()<0.85,hasPhone=rnd()<0.6,cons=hasPhone&&rnd()<0.5,addr=rnd()<0.7;
+    var canMsg=hasEmail||(hasPhone&&cons),reach=!canMsg?"nocontact":(!addr?"noaddress":"ok");
+    var phone=hasPhone?"+1212555"+String(1000+((start+k)*37)%9000):"";
+    out.push({id:start+k+1,user_id:"demo-user",name:fn+" "+ln,email:hasEmail?(fn+"."+ln+(start+k)+"@example.com").toLowerCase():"",phone:phone,visits:visits,order_count:visits,total_spent:visits*avg,satisfaction_score:rnd()<0.6?(rnd()<0.85?5:4):0,loyalty_score:0,last_visit_at:dDay(last),last_order_at:dDay(last),last_order_amount:avg,first_order_at:dDay(first),sms_consent:cons,sms_unsubscribed_at:null,address:addr?(100+k)+" Park Pl":"",city:addr?"Brooklyn":"",state:addr?"NY":"",zip:addr?"11217":"",reach:reach});
+  }
+  return out;
+}
+
+function fromRecords(recs){
+  var now=Date.now();
+  return recs.map(function(x){
+    var v=Number(x.visits||x.order_count||0),sp=Number(x.total_spent)||0,fo=Date.parse(x.first_order_at||""),la=Date.parse(x.last_visit_at||x.last_order_at||"");
+    var ok=v>=2&&!isNaN(fo)&&!isNaN(la)&&la>fo;
+    return {v:v,avg:v?sp/v:0,iv:ok?(la-fo)/86400000/(v-1):null,since:isNaN(la)?0:(now-la)/86400000};
+  }).filter(function(x){return x.v>=1&&x.avg>0;});
+}
 function customers(t){
+  if(t==="Salon"){
+    var show=SHOWCASE.map(function(d){return {visits:d[0],total_spent:d[1],first_order_at:dDay(d[2]),last_visit_at:dDay(d[3])};});
+    return fromRecords(show.concat(ctDemoMore(show.length)));
+  }
   var b=BIZ[t],seed=1234+t.length*97;
   function rnd(){seed|=0;seed=seed+0x6D2B79F5|0;var x=Math.imul(seed^seed>>>15,1|seed);x=x+Math.imul(x^x>>>7,61|x)^x;return ((x^x>>>14)>>>0)/4294967296;}
   var out=[];
@@ -203,7 +243,7 @@ document.addEventListener("click",function(e){
   if(el.dataset.t){state.type=el.dataset.t;state.sel=1;render();return;}
   if(el.dataset.go){state.step=+el.dataset.go;render();scrollTo(0,0);return;}
   if(el.dataset.sel){state.sel=+el.dataset.sel;render();return;}
-  if(el.id==="start"){el.textContent="Running";el.style.background="#1C7A3A";document.getElementById("startnote").textContent="Preview only: in the real app this switches your plan on. Nothing is sent from this page.";return;}
+  if(el.id==="start"){el.textContent="Running";el.style.background="#1C7A3A";document.getElementById("startnote").innerHTML='Preview only: in the real app this switches your plan on. Nothing is sent from this page.<div style="margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><a class="pill-btn ghost" href="/?demo=1">See your dashboard →</a><a class="pill-btn ghost" href="/updates-preview">See what\'s coming →</a></div>';return;}
   if(el.dataset.pos){
     state.pos=el.dataset.pos;var M=model(state.type),box=document.getElementById("sync");
     box.innerHTML='<div class="panel"><div class="pos" style="margin:0;grid-template-columns:1fr"><button style="pointer-events:none">'+posLogo(state.pos)+'<span>'+esc(state.pos)+' · read-only</span></button></div><div class="bar"><b id="b"></b></div><div id="m" style="font-size:14px;color:var(--ink2)"></div></div>';

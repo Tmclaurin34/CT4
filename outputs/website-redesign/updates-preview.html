@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Clicktide · What's coming (preview)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0F1115;--ink2:#3B3F46;--muted:#6B6F76;--line:#E7E8EB;--panel:#F6F7F9;--orange:#E35B1F;--orange-d:#C94E17;
+--g-bg:#E6F6EB;--g-tx:#1C7A3A;--a-bg:#FFF2D9;--a-tx:#8A5A00;--r-bg:#FDE9E7;--r-tx:#B42318;--b-bg:#E7F0FF;--b-tx:#2453C2}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--ink);font:400 16px/1.6 "DM Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:"Nunito","DM Sans",sans-serif;letter-spacing:-.025em;margin:0}
+nav{display:flex;align-items:center;justify-content:space-between;max-width:1040px;margin:0 auto;padding:18px 24px}
+.brand{display:flex;align-items:center;gap:8px;font:900 22px/1 "Nunito",sans-serif;letter-spacing:-.03em;text-decoration:none;color:var(--ink)}
+.brand svg{width:28px;height:28px}
+.pill-btn{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;font:600 15px/1 "DM Sans";cursor:pointer;border:0;padding:12px 22px;text-decoration:none}
+.go{background:var(--orange);color:#fff;font-size:16px;font-weight:700;padding:14px 26px;box-shadow:0 8px 22px rgba(227,91,31,.25)}
+.go:hover{background:var(--orange-d)}
+.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line);padding:9px 16px;font-size:14px}
+header{text-align:center;max-width:720px;margin:0 auto;padding:30px 24px 10px}
+header h1{font-size:44px;line-height:1.1}
+.lead{color:var(--muted);font-size:18px;margin:12px auto 0;max-width:560px}
+.hand{font:600 24px/1 "Caveat",cursive;color:var(--orange);display:inline-flex;align-items:flex-end;gap:4px;transform:rotate(-3deg)}
+.hand svg{width:38px;height:26px}
+section{max-width:1040px;margin:0 auto;padding:56px 24px 0}
+.sec-head{text-align:center;max-width:600px;margin:0 auto 22px}
+.label{display:inline-block;font-size:13px;font-weight:600;border-radius:999px;padding:5px 12px;margin-bottom:10px}
+.sec-head h2{font-size:32px;line-height:1.15}
+.sec-head p{color:var(--muted);margin:8px 0 0}
+.panel{background:var(--panel);border-radius:26px;padding:26px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.card{background:#fff;border-radius:18px;padding:18px;border:1px solid var(--line)}
+.card h3{font-size:18px;margin-bottom:6px}
+.mut{color:var(--muted);font-size:13px}
+.tag{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:4px 10px;margin:2px 4px 2px 0}
+.t-g{background:var(--g-bg);color:var(--g-tx)}.t-a{background:var(--a-bg);color:var(--a-tx)}.t-r{background:var(--r-bg);color:var(--r-tx)}.t-b{background:var(--b-bg);color:var(--b-tx)}
+.big{font:800 34px/1.1 "Nunito"}
+.mid{font:800 22px/1.2 "Nunito"}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px;padding:9px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.sms{background:#E9EAEE;border-radius:18px;padding:12px 14px;font-size:14px;line-height:1.55;max-width:300px}
+.code{display:inline-block;font:600 16px/1 ui-monospace,Menlo,monospace;letter-spacing:1px;border:1.5px dashed var(--ink2);border-radius:10px;padding:8px 14px}
+.ok{background:var(--g-bg);border-radius:18px;padding:22px;text-align:center;color:var(--g-tx)}
+.no{background:var(--r-bg);border-radius:18px;padding:16px;text-align:center;color:var(--r-tx)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{border:1.5px solid var(--line);border-radius:999px;padding:8px 14px;font-size:14px;background:#fff}
+.chip.on{border-color:var(--orange);box-shadow:0 0 0 1px var(--orange)}
+.cta{text-align:center;margin-top:20px}
+footer{text-align:center;color:var(--muted);font-size:13px;padding:60px 24px 40px}
+.preview{position:fixed;right:14px;bottom:14px;background:var(--ink);color:#fff;font-size:12px;border-radius:999px;padding:6px 12px}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}header h1{font-size:34px}.sec-head h2{font-size:26px}}
+</style>
+</head>
+<body>
+<nav>
+  <a class="brand" href="/" aria-label="Clicktide home"><svg viewBox="-22 -22 44 44" aria-hidden="true"><defs><linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7CC4FA"/><stop offset="100%" stop-color="#2F80ED"/></linearGradient></defs><g id="petals"></g><circle r="4.5" fill="#fff"/></svg>Clicktide</a>
+  <a class="pill-btn ghost" href="/">Log in</a>
+</nav>
+
+<header>
+  <span class="label t-b">Coming after the Shopify review</span>
+  <h1>What's coming to Clicktide</h1>
+  <p class="lead">Smarter win-backs that only spend when it pays. Every screen below is a preview with sample data. Nothing here is live yet.</p>
+</header>
+
+<!-- 1. Sign-up -->
+<section>
+  <div class="sec-head"><span class="label t-b">Sign-up</span><h2>One question, then your plan</h2><p>Pick your business type and connect your POS. Clicktide reads your customers and recommends a budget. You don't type a thing.</p></div>
+  <div class="panel">
+    <div class="grid2">
+      <div class="card"><h3>Here's what we found</h3>
+        <div class="grid2" style="gap:10px;margin-top:8px">
+          <div><div class="mut">Customers</div><div class="mid">600</div></div>
+          <div><div class="mut">Typical visit</div><div class="mid">$92</div></div>
+          <div><div class="mut">Slipping away</div><div class="mid">119</div></div>
+          <div><div class="mut">Worth winning back</div><div class="mid">106</div></div>
+        </div>
+        <div style="margin-top:10px"><span class="tag t-g">371 healthy</span><span class="tag t-r">106 worth saving</span></div>
+      </div>
+      <div class="card"><h3>Your win-back plan is ready</h3>
+        <div class="row"><span>Starter</span><b>$40/mo</b></div>
+        <div class="row" style="color:var(--orange)"><span><b>Recommended</b> <span class="tag t-b">Suggested</span></span><b>$100/mo</b></div>
+        <div class="row"><span>Everything</span><b>$110/mo</b></div>
+        <div class="ok" style="padding:12px;margin-top:10px;text-align:left"><b>About 14 customers back · about $712 extra profit</b></div>
+      </div>
+    </div>
+    <div class="cta"><a class="pill-btn go" href="/signup-preview">Try the sign-up preview</a></div>
+  </div>
+</section>
+
+<!-- 2. Gift menu -->
+<section>
+  <div class="sec-head"><span class="label t-a">Gift menu</span><h2>You choose what to offer</h2><p>Clicktide suggests a menu sized to your prices. Keep it, edit it, or add your own perk. Every offer needs a minimum spend.</p></div>
+  <div class="panel">
+    <div class="grid2">
+      <div class="card"><h3>Suggested for June's Beauty Bar</h3>
+        <div class="row"><span>$5 off $40+</span><span class="tag t-g">On</span></div>
+        <div class="row"><span>$10 off $70+</span><span class="tag t-g">On</span></div>
+        <div class="row"><span>$15 off $110+</span><span class="tag t-g">On</span></div>
+        <div class="row"><span>Free deep-conditioning with $60+</span><span class="tag t-g">On</span></div>
+        <div class="row"><span>Mailed postcard ($1.50)</span><span class="tag t-g">On</span></div>
+        <div class="row"><span>Mailed magnet ($9.99)</span><span class="tag t-a">Top customers only</span></div>
+      </div>
+      <div class="card"><h3>Picked for each customer</h3>
+        <p class="mut" style="margin:0 0 10px">Only from your menu, with the reason shown.</p>
+        <div class="card" style="background:var(--panel);border:0">
+          <b>Maria Lopez</b> <span class="tag t-r">3 weeks late</span>
+          <div class="mut" style="margin:4px 0 8px">Spends about $100 every 4 weeks</div>
+          <div>Suggested: <b>$10 off $75+</b></div>
+          <div class="chips"><span class="chip on">Send</span><span class="chip">Swap</span><span class="chip">Skip</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. Customer side -->
+<section>
+  <div class="sec-head"><span class="label t-g">Store credit</span><h2>A gift that costs nothing unless they come back</h2><p>Each customer gets their own one-time code by text, email or postcard.</p></div>
+  <div class="panel">
+    <div class="grid2">
+      <div class="card"><h3>Their text</h3>
+        <div class="sms">Hi Maria, it's June's Beauty Bar. We've missed you! Here's $10 off your next visit ($75+). Show this at the counter: goclicktide.com/o/JUNE-7K3Q-MX Reply STOP to opt out.</div>
+      </div>
+      <div class="card" style="text-align:center"><h3>Their email</h3>
+        <div class="mut">A gift for you</div>
+        <div class="big" style="margin:4px 0">$10</div>
+        <div class="mut" style="margin-bottom:10px">off your next visit of $75 or more</div>
+        <div class="code">JUNE-7K3Q-MX</div>
+        <div style="margin-top:12px"><span class="pill-btn go" style="padding:10px 20px;font-size:14px">Book a visit</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. Redeem -->
+<section>
+  <div class="sec-head"><span class="label t-g">At the counter</span><h2>One scan. Nothing to forget.</h2><p>Scanning uses the code right away. If staff forget, the code still closes when the customer's purchase shows up in your POS.</p></div>
+  <div class="panel">
+    <div class="grid2">
+      <div class="ok"><div class="mid">Give Maria $10 off</div><div style="font-size:14px;margin-top:4px">Purchase must be $75 or more</div><div style="margin-top:12px"><span class="chip" style="background:#fff">Undo · 2:00</span></div></div>
+      <div class="no"><div class="mid">Already used</div><div style="font-size:14px;margin-top:4px">Redeemed today at 2:14 pm for Maria Lopez</div></div>
+    </div>
+    <p class="mut" style="text-align:center;margin:14px 0 0">Online orders close the code on their own. Codes can't be reused or shared.</p>
+  </div>
+</section>
+
+<!-- 5. Results -->
+<section>
+  <div class="sec-head"><span class="label t-g">Results</span><h2>Simple, honest numbers</h2><p>Three numbers on the front. The details are one tap away.</p></div>
+  <div class="panel">
+    <div class="card" style="max-width:520px;margin:0 auto">
+      <div class="mut">June's Beauty Bar · this month</div>
+      <div class="mut" style="margin-top:10px">Came back after Clicktide reached out</div>
+      <div class="big">14 customers</div>
+      <div class="grid2" style="gap:10px;margin-top:12px">
+        <div class="card" style="background:var(--panel);border:0"><div class="mut">They spent</div><div class="mid">$1,260</div></div>
+        <div class="card" style="background:var(--g-bg);border:0;color:var(--g-tx)"><div style="font-size:13px">Your profit after offers</div><div class="mid">$636</div></div>
+      </div>
+      <div class="row" style="margin-top:10px"><span>Maria came back today · spent $96</span><span class="mut">See details</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. Autopilot -->
+<section>
+  <div class="sec-head"><span class="label t-b">Autopilot</span><h2>Set up for you. Started by you.</h2><p>After you connect, everything is prepared automatically. Nothing is sent or spent until you tap Start. After that, it runs itself.</p></div>
+  <div class="panel" style="text-align:center">
+    <div class="chips" style="justify-content:center">
+      <span class="chip">Every hour: sync and close used codes</span>
+      <span class="chip">Every night: new drifters join the plan</span>
+      <span class="chip">Mondays: a short note from Maya</span>
+      <span class="chip">Monthly: budget check, raised only with your OK</span>
+    </div>
+    <div style="margin-top:16px"><span class="hand">only spends when it pays<svg viewBox="0 0 46 34" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 6c10 2 24 4 30 16"/><path d="M27 19l7 4 3-8"/></svg></span></div>
+  </div>
+</section>
+
+<div class="cta" style="margin-top:40px"><a class="pill-btn ghost" href="/new-home">← New homepage</a> <a class="pill-btn ghost" href="/signup-preview">Sign-up</a> <a class="pill-btn ghost" href="/?demo=1">Dashboard demo</a></div>
+<footer>Preview for the owner · sample data · nothing on this page is live or sends anything.</footer>
+<div class="preview">Preview · not live</div>
+<script>
+(function(){var g=document.getElementById("petals"),d="M0,-16 C2,-16 7,-10 6,-4 C5,1 2,4 0,4 C-2,4 -3,2 -3,0 C-3,-5 -2,-16 0,-16Z";
+for(var i=0;i<7;i++){var p=document.createElementNS("http://www.w3.org/2000/svg","path");p.setAttribute("d",d);p.setAttribute("fill","url(#lg)");p.setAttribute("transform","rotate("+(i*51.4)+")");g.appendChild(p);}})();
+</script>
+</body>
+</html>

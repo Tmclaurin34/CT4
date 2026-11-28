@@ -60,8 +60,10 @@ function ctPlanModel(u){
     var giftsOK=.1*avgW*.5>=7.99,gift=giftsOK?Math.round(n*.1)*7.99:0;
     var cred=credit?back*.55*credit:0;
     var txt=Math.round((u||[]).length*.3)+Math.round(n*2.5),tx=pl.tx?Math.max(0,txt-pl.tx)*.05:0;
-    var b=r5(pcx+gift+cred+tx);
-    return {k:k,who:who,n:n,b:b,back:back,extra:Math.round(extra),profit:Math.max(0,Math.round(extra*avgW-b)),pcs:pcs,pcx:pcx,giftsOK:giftsOK,gift:gift,cred:cred,txt:txt,tx:tx};
+    var billExtra=pcx+gift+tx;
+    // Same maths as outputs/website-redesign/signup-preview.html: the Clicktide bill and the
+    // credit given at checkout are kept apart; the budget is both together.
+    return {k:k,who:who,n:n,b:r5(billExtra+cred),bill:r5(billExtra),back:back,extra:Math.round(extra),profit:Math.max(0,Math.round(extra*avgW-billExtra-cred)),pcs:pcs,pcx:pcx,giftsOK:giftsOK,gift:gift,cred:Math.round(cred),txt:txt,tx:tx};
   };
   var top=elig.slice(0,Math.max(1,Math.round(elig.length*.2)));
   var rest=drift.filter(function(d){return d.v<3;});
@@ -98,8 +100,8 @@ function ctPlanInner(){
     '<div style="font-size:13px;font-weight:700;color:#0F1115;margin-bottom:6px">Monthly budget</div>'+opts+
     '<div style="background:rgba(34,197,94,.10);border-radius:10px;padding:10px 12px;margin:4px 0 10px"><div style="font-size:12px;color:#1E874F">Expected each month</div><div style="font-size:16px;font-weight:700;color:#1E874F">About '+o.back+' customer'+(o.back===1?'':'s')+' back · about '+f(o.profit)+' extra profit</div><div style="font-size:11px;color:#1E874F;margin-top:2px">Profit counts only the customers who likely wouldn’t have come back on their own.</div></div>'+
     '<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#0F1115"><span style="'+mu+'">Offer</span><span>'+offer+'</span></div>'+
-    '<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0 0;margin-top:4px;border-top:1px solid rgba(16,18,21,.08);font-weight:700;color:#0F1115"><span>All-in per month</span><span>'+f(M.pl.p+o.b)+'</span></div>'+
-    '<div style="'+mu+';margin-bottom:10px">'+f(M.pl.p)+' plan + '+f(o.b)+' budget</div>'+det+
+    '<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0 0;margin-top:4px;border-top:1px solid rgba(16,18,21,.08);font-weight:700;color:#0F1115"><span>You pay Clicktide</span><span>'+f(M.pl.p+o.bill)+'/mo</span></div>'+
+    '<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0 10px;color:#0F1115"><span style="'+mu+'">Credit given at checkout</span><span>about '+f(o.cred||0)+', only when they come back</span></div>'+det+
     '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn" onclick="ctPlanDet()" style="flex:1">What’s in this</button><button class="btn btn-gold" onclick="ctPlanStart()" style="flex:1">Start</button></div>'+
     '<div style="'+mu+';text-align:center;margin-top:8px">Preview · nothing is sent until you start, and this preview never sends.</div>';
 }
@@ -134,6 +136,32 @@ function ctDemoMore(start){
   return out;
 }
 '''
+
+FUNC += r'''/*ct-plan-drift-match*/
+// Preview only: the Overview's "customers drifting" section counts the same customers as the
+// plan card: past 1.5x their own usual gap between visits (2+ visits needed to know a rhythm).
+function ctPlanDriftList(u){
+  var now=Date.now();
+  return (u||[]).filter(function(x){
+    var v=Number(x.visits||x.order_count||0),sp=Number(x.total_spent)||0;
+    var fo=Date.parse(x.first_order_at||""),la=Date.parse(x.last_visit_at||x.last_order_at||"");
+    if(v<2||sp<=0||isNaN(fo)||isNaN(la)||la<=fo)return false;
+    var iv=Math.max(7,(la-fo)/86400000/(v-1));
+    return (now-la)/86400000>1.5*iv;
+  });
+}
+'''
+
+anchor_dorm = 'var _dorm=u.filter(function(x){var d=_days(x.last_visit_at||x.last_order_at);return d!==null&&d>=effChurn(x,_chv);});'
+assert s.count(anchor_dorm) == 1, "drift list anchor not unique"
+s = s.replace(anchor_dorm, 'var _dorm=(typeof ctPlanOn==="function"&&ctPlanOn())?ctPlanDriftList(u):u.filter(function(x){var d=_days(x.last_visit_at||x.last_order_at);return d!==null&&d>=effChurn(x,_chv);});', 1)
+anchor_txt = "No visit in '+_chv+'+ days"
+assert s.count(anchor_txt) == 1, "drift wording anchor not unique"
+s = s.replace(anchor_txt, "'+((typeof ctPlanOn===\"function\"&&ctPlanOn())?\"Past their own usual visit rhythm\":\"No visit in \"+_chv+\"+ days\")+'", 1)
+
+anchor_isdrift = "function isDrift(c){return sinceLast(c)>=effChurn(c,churn);}"
+assert s.count(anchor_isdrift) == 1, "demo isDrift anchor not unique"
+s = s.replace(anchor_isdrift, 'function isDrift(c){if(typeof ctPlanOn==="function"&&ctPlanOn())return ctPlanDriftList([c]).length===1;return sinceLast(c)>=effChurn(c,churn);}', 1)
 
 anchor_demo = "DEMO_DATA={"
 assert s.count(anchor_demo) == 1, f"DEMO_DATA anchor count {s.count(anchor_demo)}"
