@@ -1,4 +1,4 @@
-// Clicktide campaign engine. 2026-11-27 (package sms) — recipient-local quiet hours + double opt-in (see the SMS notes below). v43 — security hardening merged onto the retention-engine v42: complete reads (customers, campaigns and businesses are paged past PostgREST's 1,000-row cap; cooldowns, win-back touch counts and SMS usage come from one SQL aggregate, clicktide_campaign_state), the published "three win-back touches, then nothing until they return" rule, marketing vs. account/service text consent, per-business email opt-outs + signed per-business unsubscribe links, a real postal address in every email, wallet debits through the atomic ledger (clicktide_wallet_apply) BEFORE a postcard or overage text goes out, one live run at a time (job lease) with a run log (engine_runs) that ops-alerts watches, and a timed-out run resumes where it stopped. A provider that gives no clear answer (timeout) makes the touch "unconfirmed": kept paid, never refunded or retried; ledger, Lob and Resend calls carry the touch's idempotency key. A staff-triggered run needs clicktide_is_staff(['admin']) answered with the caller's own token (so the staff-MFA rule applies); gift auto-sends name their gift_catalog row. v42 — win-back runs on the shared retention engine: before each business is evaluated its customers' statuses are refreshed (clicktide_refresh_rhythm) and "inactive/win-back" fires on status drifting/at_risk (a campaign naming "at risk" or "drifting" targets just that status; an explicit day count still overrides). One-visit customers (no personal rhythm) are skipped unless the owner opts in (clicktide.winback_include_estimated). A customer gets a given win-back campaign at most once per drift episode. v26 — reliability: every external call (Resend/Twilio/Lob/Printify/Supabase) now has a hard timeout (fetchT), and the run stops cleanly at a 110s deadline (timed_out flag) so it can never hit the ~150s gateway 504; unreached businesses are picked up next hour (cooldown prevents double-sends). v25 — adds the New-Customer Welcome Journey: "welcome" / "second-visit nudge (day N)" / "win the second visit (day N)" triggers, keyed on first-visit recency + visit count, staged so a brand-new customer is walked through their first weeks (and the journey self-pauses the moment they return). v24 — win-back trigger is cadence-aware: "inactive/win-back" fires on each customer's OWN learned visit rhythm (effChurn), not a flat owner-set timer. Mirrors effChurn() in index.html so dashboard drift flags and actual sends agree. (v20 — backfill-safe: event triggers gated by campaign.created_at; 48h warm-up after first POS connection)
+// Clicktide campaign engine. 2026-11-28: included postcards (a free monthly allowance per active plan is used before the wallet is charged; see claimFreePostcard). 2026-11-27 (package sms) — recipient-local quiet hours + double opt-in (see the SMS notes below). v43 — security hardening merged onto the retention-engine v42: complete reads (customers, campaigns and businesses are paged past PostgREST's 1,000-row cap; cooldowns, win-back touch counts and SMS usage come from one SQL aggregate, clicktide_campaign_state), the published "three win-back touches, then nothing until they return" rule, marketing vs. account/service text consent, per-business email opt-outs + signed per-business unsubscribe links, a real postal address in every email, wallet debits through the atomic ledger (clicktide_wallet_apply) BEFORE a postcard or overage text goes out, one live run at a time (job lease) with a run log (engine_runs) that ops-alerts watches, and a timed-out run resumes where it stopped. A provider that gives no clear answer (timeout) makes the touch "unconfirmed": kept paid, never refunded or retried; ledger, Lob and Resend calls carry the touch's idempotency key. A staff-triggered run needs clicktide_is_staff(['admin']) answered with the caller's own token (so the staff-MFA rule applies); gift auto-sends name their gift_catalog row. v42 — win-back runs on the shared retention engine: before each business is evaluated its customers' statuses are refreshed (clicktide_refresh_rhythm) and "inactive/win-back" fires on status drifting/at_risk (a campaign naming "at risk" or "drifting" targets just that status; an explicit day count still overrides). One-visit customers (no personal rhythm) are skipped unless the owner opts in (clicktide.winback_include_estimated). A customer gets a given win-back campaign at most once per drift episode. v26 — reliability: every external call (Resend/Twilio/Lob/Printify/Supabase) now has a hard timeout (fetchT), and the run stops cleanly at a 110s deadline (timed_out flag) so it can never hit the ~150s gateway 504; unreached businesses are picked up next hour (cooldown prevents double-sends). v25 — adds the New-Customer Welcome Journey: "welcome" / "second-visit nudge (day N)" / "win the second visit (day N)" triggers, keyed on first-visit recency + visit count, staged so a brand-new customer is walked through their first weeks (and the journey self-pauses the moment they return). v24 — win-back trigger is cadence-aware: "inactive/win-back" fires on each customer's OWN learned visit rhythm (effChurn), not a flat owner-set timer. Mirrors effChurn() in index.html so dashboard drift flags and actual sends agree. (v20 — backfill-safe: event triggers gated by campaign.created_at; 48h warm-up after first POS connection)
 // SMS quiet hours (2026-11; recipient-local since 2026-11-27): customer texts leave only inside the
 // RECIPIENT's send window — 9:00–20:00, Sundays 12:00–20:00 (see smsRecipientWindow). The
 // recipient's zones come from the customer's own state, else their ZIP, else their phone's
@@ -236,6 +236,38 @@ async function walletApplySafe(userId: string, delta: number, kind: string, desc
     return await walletApply(userId, delta, kind, description, reference, key);
   } catch {
     return await walletApply(userId, delta, kind, description, reference, key).catch(() => null);
+  }
+}
+
+// Included postcards (2026-11-28): each ACTIVE paid plan gets a monthly allowance of free
+// postcards (Local 10, Growth 30, Scale 75; clicktide_postcard_claim_free). The engine
+// claims a free slot first and only charges the wallet once the allowance is used up.
+// null = the allowance couldn't be checked (RPC missing or unreachable): the card is then
+// charged exactly as before, so this never mails an unpaid card by mistake.
+type FreePostcard = { free?: boolean; duplicate?: boolean; released?: boolean; used?: number; allowance?: number };
+async function claimFreePostcard(userId: string, key: string): Promise<FreePostcard | null> {
+  const call = () => rest("/rest/v1/rpc/clicktide_postcard_claim_free", {
+    method: "POST",
+    body: JSON.stringify({ p_user: userId, p_key: key }),
+  });
+  try {
+    const d = await call();
+    return d && typeof d === "object" ? d as FreePostcard : null;
+  } catch {
+    // A timed-out claim may have committed: asking again with the same key returns duplicate.
+    const d = await call().catch(() => null);
+    return d && typeof d === "object" ? d as FreePostcard : null;
+  }
+}
+async function releaseFreePostcard(userId: string, key: string) {
+  try {
+    await rest("/rest/v1/rpc/clicktide_postcard_release_free", {
+      method: "POST",
+      body: JSON.stringify({ p_user: userId, p_key: key }),
+    });
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -1496,6 +1528,8 @@ Deno.serve(async (req) => {
     sms_registered_businesses: 0,
     sms_unlinked_registrations: 0,
     sms_registry_error: false,
+    postcards_included: 0, // mailed from the plan's free monthly allowance (no charge)
+    free_postcard_release_failed: 0,
     skipped: {
       billing_inactive: 0,
       cooldown: 0,
@@ -1905,31 +1939,45 @@ Deno.serve(async (req) => {
                 // refused mailing is refunded. The key means a repeat today never charges again.
                 const payKey = sendKey(campaign, customer, "postcard");
                 const label = plainText(campaign.name || campaign.trigger || "campaign");
-                const debit = await walletApplySafe(userId, -POSTCARD_PRICE, "postcard_debit", `Postcard: ${label}`, String(campaign.id), payKey);
-                if (!debit) {
-                  summary.skipped.wallet_unavailable++;
-                  continue;
-                }
-                if (!debit.ok) {
-                  summary.skipped.postcard_wallet++;
-                  continue;
-                }
                 let replay = false;
-                if (debit.duplicate) {
-                  // Today's charge for this card is already on the ledger: an earlier attempt
-                  // was refunded (Lob refused), or it mailed / never reached Lob and lost its
-                  // record. Only the refunded case stops here; otherwise the same Lob key
-                  // returns the card already made or makes the one already paid for.
-                  const refunded = await ledgerHas(`${payKey}:refund`);
-                  if (refunded !== false) {
-                    summary.skipped.duplicate_send++;
-                    if (refunded) {
-                      await recordSend(campaign, customer, "postcard", "failed", "already attempted and refunded today");
-                      touched();
-                    }
+                // Included postcards first: a free slot from the plan's monthly allowance.
+                const freeCard = await claimFreePostcard(userId, payKey);
+                if (freeCard?.released) {
+                  // This card was tried today on a free slot and Lob refused it: don't retry today.
+                  summary.skipped.duplicate_send++;
+                  await recordSend(campaign, customer, "postcard", "failed", "already attempted today (free postcard, not mailed)");
+                  touched();
+                  continue;
+                }
+                const isFree = !!freeCard?.free;
+                if (isFree) {
+                  replay = !!freeCard?.duplicate;
+                } else {
+                  const debit = await walletApplySafe(userId, -POSTCARD_PRICE, "postcard_debit", `Postcard: ${label}`, String(campaign.id), payKey);
+                  if (!debit) {
+                    summary.skipped.wallet_unavailable++;
                     continue;
                   }
-                  replay = true;
+                  if (!debit.ok) {
+                    summary.skipped.postcard_wallet++;
+                    continue;
+                  }
+                  if (debit.duplicate) {
+                    // Today's charge for this card is already on the ledger: an earlier attempt
+                    // was refunded (Lob refused), or it mailed / never reached Lob and lost its
+                    // record. Only the refunded case stops here; otherwise the same Lob key
+                    // returns the card already made or makes the one already paid for.
+                    const refunded = await ledgerHas(`${payKey}:refund`);
+                    if (refunded !== false) {
+                      summary.skipped.duplicate_send++;
+                      if (refunded) {
+                        await recordSend(campaign, customer, "postcard", "failed", "already attempted and refunded today");
+                        touched();
+                      }
+                      continue;
+                    }
+                    replay = true;
+                  }
                 }
                 const pcMessage = fillTemplate(campaign.message || "We miss you, {{first_name}}! Come see us at {{business_name}} soon.", customer, businessName);
                 const result = await sendPostcard(customer, businessName, pcMessage, whiteLabel, brandColor, logoUrl, String(campaign.postcard_design || "bold"), payKey);
@@ -1962,13 +2010,20 @@ Deno.serve(async (req) => {
                   }).catch(() => {});
                   touched();
                   summary.sent++;
+                  if (isFree) summary.postcards_included++;
                   bizSends++;
                 } else if (result.ambiguous) {
-                  // Lob may have accepted it: keep the charge, start the cooldown, and leave
+                  // Lob may have accepted it: keep the charge (or the free slot), start the cooldown, and leave
                   // it for ops (the row is listed under failed sends as 'unconfirmed').
                   touched();
                   summary.unconfirmed++;
                   bizSends++;
+                } else if (isFree) {
+                  if (!(await releaseFreePostcard(userId, payKey))) {
+                    summary.free_postcard_release_failed++;
+                    globalThis.console?.error(`free postcard release failed for ${payKey}`);
+                  }
+                  summary.failed++;
                 } else {
                   const refund = await walletApplySafe(userId, POSTCARD_PRICE, "postcard_refund", `Refund: postcard not mailed (${label})`, String(campaign.id), `${payKey}:refund`);
                   if (!refund?.ok) {
